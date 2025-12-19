@@ -1,0 +1,9 @@
+.env
+*.log
+/bin/
+/tmp/
+.DS_Store
+coverage.out
+
+# Docker files
+docker-compose.yml
