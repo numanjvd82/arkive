@@ -4,9 +4,9 @@ import (
 	"context"
 	"log"
 
-	"arkive/internal/config"
-	"arkive/internal/database"
-	"arkive/internal/router"
+	"arkive/core/config"
+	"arkive/core/database"
+	"arkive/core/router"
 
 	"github.com/joho/godotenv"
 )

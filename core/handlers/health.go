@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"arkive/internal/database"
+	"arkive/core/database"
 )
 
 func Health(db database.PgExecutor) gin.HandlerFunc {

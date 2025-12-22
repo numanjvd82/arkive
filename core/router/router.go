@@ -3,8 +3,8 @@ package router
 import (
 	"github.com/gin-gonic/gin"
 
-	"arkive/internal/database"
-	"arkive/internal/handlers"
+	"arkive/core/database"
+	"arkive/core/handlers"
 )
 
 func New(db database.PgExecutor) *gin.Engine {
