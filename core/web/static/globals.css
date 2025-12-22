@@ -1,0 +1,22 @@
+@font-face {
+  font-family: "Space Grotesk";
+  src: local("Space Grotesk");
+  font-weight: 400 700;
+}
+
+:root {
+  --bg: #141824;
+  --surface: #1d2231;
+  --text: #f6f7fb;
+  --muted: #b9c0d0;
+  --accent: #f2f4ff;
+  --accent-ink: #141824;
+  --accent-strong: #ffffff;
+  --border: #2b3347;
+  --shadow: 0 24px 40px rgba(7, 9, 15, 0.35);
+}
+
+body {
+  font-family: "Space Grotesk", "Arial Black", Arial, sans-serif;
+  color: var(--text);
+}

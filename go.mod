@@ -62,4 +62,5 @@ require (
 	golang.org/x/text v0.31.0 // indirect
 	golang.org/x/tools v0.38.0 // indirect
 	google.golang.org/protobuf v1.36.9 // indirect
+	maragu.dev/gomponents v1.2.0 // indirect
 )
