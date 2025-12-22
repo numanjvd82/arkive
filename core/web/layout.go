@@ -21,6 +21,10 @@ func Layout(data LayoutData, content ...g.Node) g.Node {
 	if data.CSS != "" {
 		headNodes = append(headNodes, h.Link(h.Rel("stylesheet"), h.Href(data.CSS)))
 	}
+	headNodes = append(headNodes,
+		h.Script(h.Src("/static/global.js"),
+			h.Defer(),
+		))
 
 	return h.Doctype(h.HTML(
 		h.Lang("en"),

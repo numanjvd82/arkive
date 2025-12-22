@@ -44,6 +44,14 @@ func homeHeader() g.Node {
 			),
 			h.Div(
 				h.Class("nav-actions"),
+				h.Button(
+					h.Class("button secondary theme-toggle"),
+					h.Type("button"),
+					h.ID("theme-toggle"),
+					g.Attr("aria-pressed", "true"),
+					h.Span(h.Class("theme-icon"), g.Text("◐")),
+					h.Span(h.Class("theme-label"), g.Text("Theme")),
+				),
 				h.A(h.Class("button secondary"), h.Href("/login"), g.Text("Login")),
 				h.A(h.Class("button primary"), h.Href("/signup"), g.Text("Create account")),
 			),

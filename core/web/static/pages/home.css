@@ -42,6 +42,18 @@
   gap: 12px;
 }
 
+.theme-toggle {
+  border-style: dashed;
+}
+
+.theme-toggle .theme-icon {
+  font-size: 0.9rem;
+}
+
+.theme-toggle .theme-label {
+  font-size: 0.95rem;
+}
+
 .hero {
   position: relative;
   padding: 88px 0 64px;
