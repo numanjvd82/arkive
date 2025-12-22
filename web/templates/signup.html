@@ -1,0 +1,34 @@
+{{define "signup.html"}}
+{{template "layout" .}}
+{{end}}
+
+{{define "content"}}
+<main class="hero">
+  <div class="container">
+    <h1>Create your Arkive.</h1>
+    <p>Start organizing your project references in minutes.</p>
+
+    <form class="form-card" action="/signup" method="post">
+      <label class="form-field">
+        <span>Name</span>
+        <input type="text" name="name" placeholder="Your name" value="{{.Name}}" required />
+      </label>
+      <label class="form-field">
+        <span>Email</span>
+        <input type="email" name="email" placeholder="you@company.com" value="{{.Email}}" required />
+      </label>
+      <label class="form-field">
+        <span>Password</span>
+        <input type="password" name="password" placeholder="Create a password" required />
+      </label>
+      {{if .Error}}
+      <p class="form-message error">{{.Error}}</p>
+      {{end}}
+      {{if .Success}}
+      <p class="form-message success">{{.Success}}</p>
+      {{end}}
+      <button class="button primary" type="submit">Create account</button>
+    </form>
+  </div>
+</main>
+{{end}}

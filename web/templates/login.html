@@ -1,0 +1,30 @@
+{{define "login.html"}}
+{{template "layout" .}}
+{{end}}
+
+{{define "content"}}
+<main class="hero">
+  <div class="container">
+    <h1>Welcome back.</h1>
+    <p>Log in to continue building your archive.</p>
+
+    <form class="form-card" action="/login" method="post">
+      <label class="form-field">
+        <span>Email</span>
+        <input type="email" name="email" placeholder="you@company.com" value="{{.Email}}" required />
+      </label>
+      <label class="form-field">
+        <span>Password</span>
+        <input type="password" name="password" placeholder="••••••••" required />
+      </label>
+      {{if .Error}}
+      <p class="form-message error">{{.Error}}</p>
+      {{end}}
+      {{if .Success}}
+      <p class="form-message success">{{.Success}}</p>
+      {{end}}
+      <button class="button primary" type="submit">Login</button>
+    </form>
+  </div>
+</main>
+{{end}}

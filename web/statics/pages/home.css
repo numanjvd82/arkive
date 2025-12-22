@@ -1,0 +1,26 @@
+.features {
+  padding: 24px 0 80px;
+}
+
+.features .container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 24px;
+}
+
+.feature {
+  background: var(--surface);
+  padding: 24px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.feature h2 {
+  font-size: 1.25rem;
+  margin-bottom: 12px;
+}
+
+.feature p {
+  color: var(--muted);
+}
