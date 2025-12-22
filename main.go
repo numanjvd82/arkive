@@ -7,6 +7,7 @@ import (
 	"arkive/core/config"
 	"arkive/core/database"
 	"arkive/core/router"
+	"arkive/migrations"
 
 	"github.com/joho/godotenv"
 )
@@ -29,6 +30,10 @@ func main() {
 
 	if err := db.Ping(context.Background()); err != nil {
 		log.Fatalf("db ping failed: %v", err)
+	}
+
+	if err := migrations.Run(context.Background(), db, "migrations"); err != nil {
+		log.Fatalf("migrations failed: %v", err)
 	}
 
 	r := router.New(db)
