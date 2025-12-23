@@ -21,13 +21,14 @@ func New(db database.PgExecutor, cfg config.Config) *gin.Engine {
 	})
 
 	r.Static("/static", "./core/web/static")
+	r.Static("/web/pages", "./core/web/pages")
 	r.GET("/", handlers.WebHome())
 	r.GET("/login", handlers.WebLoginGet())
-	r.POST("/login", handlers.WebLoginPost(authService, cfg.CookieSecure))
+	r.POST("/login", handlers.WebLoginPost(authService))
 	r.GET("/signup", handlers.WebSignupGet())
-	r.POST("/signup", handlers.WebSignupPost(authService, cfg.CookieSecure))
+	r.POST("/signup", handlers.WebSignupPost(authService))
 	r.GET("/dashboard", handlers.WebDashboard())
-	r.POST("/logout", handlers.WebLogout(authService, cfg.CookieSecure))
+	r.POST("/logout", handlers.WebLogout(authService))
 
 	api := r.Group("/api")
 	{

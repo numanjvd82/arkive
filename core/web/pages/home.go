@@ -4,15 +4,14 @@ import (
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
 
-	. "arkive/core/web"
+	"arkive/core/web"
 )
 
-func HomePage() g.Node {
-	return Layout(LayoutData{
+func HomePage() web.Page {
+	return web.Page{
 		Title: "Arkive",
-		CSS:   "/static/pages/home.css",
-	},
-		h.Div(
+		CSS:   []string{"/web/pages/home.css"},
+		Body: h.Div(
 			h.Class("page home"),
 			homeHeader(),
 			homeHero(),
@@ -22,7 +21,7 @@ func HomePage() g.Node {
 			homeCTA(),
 			homeFooter(),
 		),
-	)
+	}
 }
 
 func homeHeader() g.Node {

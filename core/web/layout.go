@@ -7,7 +7,8 @@ import (
 
 type LayoutData struct {
 	Title string
-	CSS   string
+	CSS   []string
+	JS    []string
 }
 
 func Layout(data LayoutData, content ...g.Node) g.Node {
@@ -18,13 +19,13 @@ func Layout(data LayoutData, content ...g.Node) g.Node {
 		h.Link(h.Rel("stylesheet"), h.Href("/static/reset.css")),
 		h.Link(h.Rel("stylesheet"), h.Href("/static/globals.css")),
 	}
-	if data.CSS != "" {
-		headNodes = append(headNodes, h.Link(h.Rel("stylesheet"), h.Href(data.CSS)))
+	for _, css := range data.CSS {
+		headNodes = append(headNodes, h.Link(h.Rel("stylesheet"), h.Href(css)))
 	}
-	headNodes = append(headNodes,
-		h.Script(h.Src("/static/global.js"),
-			h.Defer(),
-		))
+	headNodes = append(headNodes, h.Script(h.Src("/static/global.js"), h.Defer()))
+	for _, src := range data.JS {
+		headNodes = append(headNodes, h.Script(h.Src(src), h.Defer()))
+	}
 
 	return h.Doctype(h.HTML(
 		h.Lang("en"),

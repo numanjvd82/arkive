@@ -4,15 +4,14 @@ import (
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
 
-	. "arkive/core/web"
+	"arkive/core/web"
 )
 
-func DashboardPage() g.Node {
-	return Layout(LayoutData{
+func DashboardPage() web.Page {
+	return web.Page{
 		Title: "Arkive · Dashboard",
-		CSS:   "/static/pages/dashboard.css",
-	},
-		h.Main(
+		CSS:   []string{"/web/pages/dashboard.css"},
+		Body: h.Main(
 			h.Class("dashboard"),
 			h.Div(
 				h.Class("container"),
@@ -42,7 +41,7 @@ func DashboardPage() g.Node {
 				),
 			),
 		),
-	)
+	}
 }
 
 func dashboardCard(title, body string) g.Node {
