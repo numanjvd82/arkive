@@ -10,7 +10,7 @@ import (
 func LoginPage() web.Page {
 	return web.Page{
 		Title: "Arkive · Login",
-		CSS:   []string{"/web/pages/auth.css"},
+		CSS:   []string{"/web/pages/login.css"},
 		Body:  loginBody(),
 	}
 }

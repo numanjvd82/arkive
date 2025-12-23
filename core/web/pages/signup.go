@@ -10,7 +10,7 @@ import (
 func SignupPage() web.Page {
 	return web.Page{
 		Title: "Arkive · Sign Up",
-		CSS:   []string{"/web/pages/auth.css"},
+		CSS:   []string{"/web/pages/signup.css"},
 		Body:  signUpBody(),
 	}
 }
