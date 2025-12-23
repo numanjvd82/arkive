@@ -36,7 +36,7 @@ func main() {
 		log.Fatalf("migrations failed: %v", err)
 	}
 
-	r := router.New(db)
+	r := router.New(db, cfg)
 
 	if err := r.Run(cfg.Port); err != nil {
 		log.Fatalf("server failed: %v", err)

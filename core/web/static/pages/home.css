@@ -21,14 +21,6 @@
   letter-spacing: 0.04em;
 }
 
-.logo-dot {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent-cool), var(--accent-warm));
-  box-shadow: 0 0 16px rgba(107, 209, 230, 0.5);
-}
-
 .nav-links {
   display: flex;
   gap: 18px;
