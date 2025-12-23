@@ -7,13 +7,16 @@ import (
 	"arkive/core/database"
 	"arkive/core/handlers"
 	"arkive/core/middleware"
+	authrepo "arkive/core/repositories/auth"
 	"arkive/core/services/auth"
 )
 
-func New(db database.PgExecutor, cfg config.Config) *gin.Engine {
+func New(db database.PgPool, cfg config.Config) *gin.Engine {
 	r := gin.Default()
 
-	authService := auth.NewService(db, auth.Config{
+	authRepo := authrepo.New(db)
+
+	authService := auth.NewService(db, authRepo, auth.Config{
 		JWTSecret:  cfg.JWTSecret,
 		AccessTTL:  cfg.AccessTTL,
 		RefreshTTL: cfg.RefreshTTL,

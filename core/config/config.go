@@ -13,7 +13,6 @@ type Config struct {
 	AccessTTL   time.Duration
 	RefreshTTL  time.Duration
 	SessionTTL  time.Duration
-	CookieSecure bool
 }
 
 func Load() (Config, error) {
@@ -40,8 +39,6 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 
-	cookieSecure := os.Getenv("COOKIE_SECURE") == "true"
-
 	addr := ":8080"
 	if port := os.Getenv("PORT"); port != "" {
 		addr = ":" + port
@@ -54,7 +51,6 @@ func Load() (Config, error) {
 		AccessTTL:   accessTTL,
 		RefreshTTL:  refreshTTL,
 		SessionTTL:  sessionTTL,
-		CookieSecure: cookieSecure,
 	}, nil
 }
 

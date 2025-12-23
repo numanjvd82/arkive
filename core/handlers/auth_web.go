@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -28,22 +27,16 @@ func WebSignupGet() gin.HandlerFunc {
 
 func WebLoginPost(svc *auth.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		email := strings.TrimSpace(c.PostForm("email"))
-		password := strings.TrimSpace(c.PostForm("password"))
-		if email == "" || password == "" {
-			web.Render(c, pages.LoginPage())
-			return
-		}
-
-		user, err := svc.Authenticate(c.Request.Context(), email, password)
+		email := c.PostForm("email")
+		password := c.PostForm("password")
+		sessionID, expiresAt, err := svc.WebLogin(c.Request.Context(), email, password)
 		if err != nil {
-			web.Render(c, pages.LoginPage())
-			return
-		}
-
-		sessionID, expiresAt, err := svc.CreateSession(c.Request.Context(), user.ID)
-		if err != nil {
-			c.Status(http.StatusInternalServerError)
+			switch err {
+			case auth.ErrInvalidInput, auth.ErrInvalidCredentials:
+				web.Render(c, pages.LoginPage())
+			default:
+				c.Status(http.StatusInternalServerError)
+			}
 			return
 		}
 
@@ -54,30 +47,17 @@ func WebLoginPost(svc *auth.Service) gin.HandlerFunc {
 
 func WebSignupPost(svc *auth.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		brandName := strings.TrimSpace(c.PostForm("brand_name"))
-		email := strings.TrimSpace(c.PostForm("email"))
-		password := strings.TrimSpace(c.PostForm("password"))
-		if brandName == "" || email == "" || password == "" {
-			web.Render(c, pages.SignupPage())
-			return
-		}
-
-		user, err := svc.CreateUser(c.Request.Context(), brandName, email, password)
+		brandName := c.PostForm("brand_name")
+		email := c.PostForm("email")
+		password := c.PostForm("password")
+		sessionID, expiresAt, err := svc.WebSignup(c.Request.Context(), brandName, email, password)
 		if err != nil {
-			message := "Unable to create account."
 			switch err {
-			case auth.ErrEmailExists:
-				message = "Email already in use."
-			case auth.ErrBrandNameExists:
-				message = "Brand name already taken."
+			case auth.ErrInvalidInput, auth.ErrEmailExists, auth.ErrBrandNameExists:
+				web.Render(c, pages.SignupPage())
+			default:
+				c.Status(http.StatusInternalServerError)
 			}
-			web.Render(c, pages.SignupPage())
-			return
-		}
-
-		sessionID, expiresAt, err := svc.CreateSession(c.Request.Context(), user.ID)
-		if err != nil {
-			c.Status(http.StatusInternalServerError)
 			return
 		}
 
@@ -88,9 +68,15 @@ func WebSignupPost(svc *auth.Service) gin.HandlerFunc {
 
 func WebLogout(svc *auth.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		sessionID := ""
 		cookie, err := c.Request.Cookie(cookies.SessionName)
 		if err == nil && cookie.Value != "" {
-			_ = svc.DeleteSession(c.Request.Context(), cookie.Value)
+			sessionID = cookie.Value
+		}
+
+		if err := svc.LogoutSession(c.Request.Context(), sessionID); err != nil {
+			c.Status(http.StatusInternalServerError)
+			return
 		}
 
 		cookies.ClearSession(c, false)

@@ -15,6 +15,11 @@ type PgExecutor interface {
 	QueryRow(ctx context.Context, sql string, arguments ...any) pgx.Row
 }
 
+type PgPool interface {
+	PgExecutor
+	BeginTx(ctx context.Context, txOptions pgx.TxOptions) (pgx.Tx, error)
+}
+
 func NewPool(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 	cfg, err := pgxpool.ParseConfig(dsn)
 	if err != nil {

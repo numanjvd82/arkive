@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -14,10 +15,13 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"arkive/core/database"
+	"arkive/core/models"
+	authrepo "arkive/core/repositories/auth"
 )
 
 type Service struct {
-	db         database.PgExecutor
+	db         database.PgPool
+	authRepo   *authrepo.Repository
 	jwtSecret  []byte
 	accessTTL  time.Duration
 	refreshTTL time.Duration
@@ -31,15 +35,10 @@ type Config struct {
 	SessionTTL time.Duration
 }
 
-type User struct {
-	ID        string
-	BrandName string
-	Email     string
-}
-
-func NewService(db database.PgExecutor, cfg Config) *Service {
+func NewService(db database.PgPool, authRepo *authrepo.Repository, cfg Config) *Service {
 	return &Service{
 		db:         db,
+		authRepo:   authRepo,
 		jwtSecret:  []byte(cfg.JWTSecret),
 		accessTTL:  cfg.AccessTTL,
 		refreshTTL: cfg.RefreshTTL,
@@ -47,62 +46,236 @@ func NewService(db database.PgExecutor, cfg Config) *Service {
 	}
 }
 
-func (s *Service) CreateUser(ctx context.Context, brandName, email, password string) (User, error) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return User{}, err
+func (s *Service) WebLogin(ctx context.Context, email, password string) (string, time.Time, error) {
+	email = strings.TrimSpace(email)
+	password = strings.TrimSpace(password)
+	if email == "" || password == "" {
+		return "", time.Time{}, ErrInvalidInput
 	}
 
-	var user User
-	query := `insert into users (brand_name, email, password_hash) values ($1, $2, $3) returning id, brand_name, email`
-	if err := s.db.QueryRow(ctx, query, brandName, email, string(hash)).Scan(&user.ID, &user.BrandName, &user.Email); err != nil {
+	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return "", time.Time{}, err
+	}
+
+	user, err := s.authenticateUser(ctx, email, password)
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		return "", time.Time{}, err
+	}
+
+	sessionID, expiresAt, err := s.createSession(ctx, user.ID)
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		return "", time.Time{}, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return "", time.Time{}, err
+	}
+
+	return sessionID, expiresAt, nil
+}
+
+func (s *Service) WebSignup(ctx context.Context, brandName, email, password string) (string, time.Time, error) {
+	brandName = strings.TrimSpace(brandName)
+	email = strings.TrimSpace(email)
+	password = strings.TrimSpace(password)
+	if brandName == "" || email == "" || password == "" {
+		return "", time.Time{}, ErrInvalidInput
+	}
+
+	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return "", time.Time{}, err
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		return "", time.Time{}, err
+	}
+
+	user, err := s.authRepo.CreateUser(ctx, brandName, email, string(hash))
+	if err != nil {
+		_ = tx.Rollback(ctx)
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 			switch pgErr.ConstraintName {
 			case "users_email_key":
-				return User{}, ErrEmailExists
+				return "", time.Time{}, ErrEmailExists
 			case "users_brand_name_key":
-				return User{}, ErrBrandNameExists
+				return "", time.Time{}, ErrBrandNameExists
 			}
 		}
-		return User{}, err
-	}
-
-	return user, nil
-}
-
-func (s *Service) Authenticate(ctx context.Context, email, password string) (User, error) {
-	var user User
-	var hash string
-	query := `select id, brand_name, email, password_hash from users where email = $1`
-	if err := s.db.QueryRow(ctx, query, email).Scan(&user.ID, &user.BrandName, &user.Email, &hash); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return User{}, ErrInvalidCredentials
-		}
-		return User{}, err
-	}
-
-	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)); err != nil {
-		return User{}, ErrInvalidCredentials
-	}
-
-	return user, nil
-}
-
-func (s *Service) CreateSession(ctx context.Context, userID string) (string, time.Time, error) {
-	expiresAt := time.Now().Add(s.sessionTTL)
-	var sessionID string
-	query := `insert into sessions (user_id, expires_at) values ($1, $2) returning id`
-	if err := s.db.QueryRow(ctx, query, userID, expiresAt).Scan(&sessionID); err != nil {
 		return "", time.Time{}, err
 	}
+
+	sessionID, expiresAt, err := s.createSession(ctx, user.ID)
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		return "", time.Time{}, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return "", time.Time{}, err
+	}
+
 	return sessionID, expiresAt, nil
 }
 
-func (s *Service) DeleteSession(ctx context.Context, sessionID string) error {
-	query := `delete from sessions where id = $1`
-	_, err := s.db.Exec(ctx, query, sessionID)
-	return err
+func (s *Service) LogoutSession(ctx context.Context, sessionID string) error {
+	sessionID = strings.TrimSpace(sessionID)
+	if sessionID == "" {
+		return nil
+	}
+
+	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+
+	if err := s.authRepo.DeleteSession(ctx, sessionID); err != nil {
+		_ = tx.Rollback(ctx)
+		return err
+	}
+
+	return tx.Commit(ctx)
+}
+
+func (s *Service) LoginTokens(ctx context.Context, email, password string) (string, time.Time, string, time.Time, error) {
+	email = strings.TrimSpace(email)
+	password = strings.TrimSpace(password)
+	if email == "" || password == "" {
+		return "", time.Time{}, "", time.Time{}, ErrInvalidInput
+	}
+
+	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return "", time.Time{}, "", time.Time{}, err
+	}
+
+	user, err := s.authenticateUser(ctx, email, password)
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		return "", time.Time{}, "", time.Time{}, err
+	}
+
+	refreshToken, refreshExpires, err := s.createRefreshToken(ctx, user.ID)
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		return "", time.Time{}, "", time.Time{}, err
+	}
+
+	accessToken, accessExpires, err := s.CreateAccessToken(user.ID)
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		return "", time.Time{}, "", time.Time{}, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return "", time.Time{}, "", time.Time{}, err
+	}
+
+	return accessToken, accessExpires, refreshToken, refreshExpires, nil
+}
+
+func (s *Service) RefreshTokens(ctx context.Context, token string) (string, time.Time, string, time.Time, error) {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return "", time.Time{}, "", time.Time{}, ErrInvalidInput
+	}
+
+	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return "", time.Time{}, "", time.Time{}, err
+	}
+
+	hash := sha256.Sum256([]byte(token))
+	id, userID, expiresAt, revokedAt, err := s.authRepo.GetRefreshToken(ctx, hash[:])
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", time.Time{}, "", time.Time{}, ErrRefreshTokenInvalid
+		}
+		return "", time.Time{}, "", time.Time{}, err
+	}
+	if revokedAt != nil || time.Now().After(expiresAt) {
+		_ = tx.Rollback(ctx)
+		return "", time.Time{}, "", time.Time{}, ErrRefreshTokenInvalid
+	}
+
+	if err := s.authRepo.RevokeRefreshToken(ctx, id); err != nil {
+		_ = tx.Rollback(ctx)
+		return "", time.Time{}, "", time.Time{}, err
+	}
+
+	refreshToken, refreshExpires, err := s.createRefreshToken(ctx, userID)
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		return "", time.Time{}, "", time.Time{}, err
+	}
+
+	accessToken, accessExpires, err := s.CreateAccessToken(userID)
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		return "", time.Time{}, "", time.Time{}, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return "", time.Time{}, "", time.Time{}, err
+	}
+
+	return accessToken, accessExpires, refreshToken, refreshExpires, nil
+}
+
+func (s *Service) RevokeRefreshToken(ctx context.Context, token string) error {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return nil
+	}
+
+	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+
+	hash := sha256.Sum256([]byte(token))
+	revoked, err := s.authRepo.RevokeRefreshTokenByHash(ctx, hash[:])
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		return err
+	}
+	if !revoked {
+		_ = tx.Rollback(ctx)
+		return ErrRefreshTokenInvalid
+	}
+
+	return tx.Commit(ctx)
+}
+
+func (s *Service) GetUserByID(ctx context.Context, userID string) (models.User, error) {
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return models.User{}, ErrInvalidInput
+	}
+
+	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return models.User{}, err
+	}
+
+	user, err := s.authRepo.GetUserByID(ctx, userID)
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		return models.User{}, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return models.User{}, err
+	}
+
+	return user, nil
 }
 
 func (s *Service) CreateAccessToken(userID string) (string, time.Time, error) {
@@ -134,67 +307,41 @@ func (s *Service) ParseAccessToken(tokenString string) (string, error) {
 	return claims.Subject, nil
 }
 
-func (s *Service) CreateRefreshToken(ctx context.Context, userID string) (string, time.Time, error) {
+func (s *Service) authenticateUser(ctx context.Context, email, password string) (models.User, error) {
+	user, hash, err := s.authRepo.GetUserByEmail(ctx, email)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.User{}, ErrInvalidCredentials
+		}
+		return models.User{}, err
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)); err != nil {
+		return models.User{}, ErrInvalidCredentials
+	}
+
+	return user, nil
+}
+
+func (s *Service) createSession(ctx context.Context, userID string) (string, time.Time, error) {
+	expiresAt := time.Now().Add(s.sessionTTL)
+	sessionID, err := s.authRepo.CreateSession(ctx, userID, expiresAt)
+	if err != nil {
+		return "", time.Time{}, err
+	}
+	return sessionID, expiresAt, nil
+}
+
+func (s *Service) createRefreshToken(ctx context.Context, userID string) (string, time.Time, error) {
 	token, hash, err := generateToken()
 	if err != nil {
 		return "", time.Time{}, err
 	}
 	expiresAt := time.Now().Add(s.refreshTTL)
-	query := `insert into refresh_tokens (user_id, token_hash, expires_at) values ($1, $2, $3)`
-	if _, err := s.db.Exec(ctx, query, userID, hash, expiresAt); err != nil {
+	if err := s.authRepo.CreateRefreshToken(ctx, userID, hash, expiresAt); err != nil {
 		return "", time.Time{}, err
 	}
 	return token, expiresAt, nil
-}
-
-func (s *Service) RotateRefreshToken(ctx context.Context, token string) (string, time.Time, string, error) {
-	hash := sha256.Sum256([]byte(token))
-	var id string
-	var userID string
-	var expiresAt time.Time
-	var revokedAt *time.Time
-	query := `select id, user_id, expires_at, revoked_at from refresh_tokens where token_hash = $1`
-	if err := s.db.QueryRow(ctx, query, hash[:]).Scan(&id, &userID, &expiresAt, &revokedAt); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return "", time.Time{}, "", ErrRefreshTokenInvalid
-		}
-		return "", time.Time{}, "", err
-	}
-	if revokedAt != nil || time.Now().After(expiresAt) {
-		return "", time.Time{}, "", ErrRefreshTokenInvalid
-	}
-
-	if _, err := s.db.Exec(ctx, `update refresh_tokens set revoked_at = now() where id = $1`, id); err != nil {
-		return "", time.Time{}, "", err
-	}
-
-	newToken, newExpiresAt, err := s.CreateRefreshToken(ctx, userID)
-	if err != nil {
-		return "", time.Time{}, "", err
-	}
-
-	return newToken, newExpiresAt, userID, nil
-}
-
-func (s *Service) RevokeRefreshToken(ctx context.Context, token string) error {
-	hash := sha256.Sum256([]byte(token))
-	tag, err := s.db.Exec(ctx, `update refresh_tokens set revoked_at = now() where token_hash = $1 and revoked_at is null`, hash[:])
-	if err != nil {
-		return err
-	}
-	if tag.RowsAffected() == 0 {
-		return ErrRefreshTokenInvalid
-	}
-	return nil
-}
-
-func (s *Service) GetUserByID(ctx context.Context, userID string) (User, error) {
-	var user User
-	query := `select id, brand_name, email from users where id = $1`
-	if err := s.db.QueryRow(ctx, query, userID).Scan(&user.ID, &user.BrandName, &user.Email); err != nil {
-		return User{}, err
-	}
-	return user, nil
 }
 
 func generateToken() (string, []byte, error) {
