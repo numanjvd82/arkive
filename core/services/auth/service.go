@@ -2,14 +2,11 @@ package auth
 
 import (
 	"context"
-	"crypto/rand"
 	"crypto/sha256"
-	"encoding/base64"
 	"errors"
 	"strings"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"golang.org/x/crypto/bcrypt"
@@ -17,32 +14,42 @@ import (
 	"arkive/core/database"
 	"arkive/core/models"
 	authrepo "arkive/core/repositories/auth"
+	sessionrepo "arkive/core/repositories/session"
+	jwtservice "arkive/core/services/jwt"
+	"arkive/pkg/tokens"
 )
 
 type Service struct {
-	db         database.PgPool
-	authRepo   *authrepo.Repository
-	jwtSecret  []byte
-	accessTTL  time.Duration
-	refreshTTL time.Duration
-	sessionTTL time.Duration
+	db          database.PgPool
+	authRepo    *authrepo.Repository
+	sessionRepo *sessionrepo.Repository
+	jwtService  *jwtservice.Service
+	accessTTL   time.Duration
+	refreshTTL  time.Duration
+	sessionTTL  time.Duration
 }
 
 type Config struct {
-	JWTSecret  string
 	AccessTTL  time.Duration
 	RefreshTTL time.Duration
 	SessionTTL time.Duration
 }
 
-func NewService(db database.PgPool, authRepo *authrepo.Repository, cfg Config) *Service {
+func NewService(
+	db database.PgPool,
+	authRepo *authrepo.Repository,
+	sessionRepo *sessionrepo.Repository,
+	jwtService *jwtservice.Service,
+	cfg Config,
+) *Service {
 	return &Service{
-		db:         db,
-		authRepo:   authRepo,
-		jwtSecret:  []byte(cfg.JWTSecret),
-		accessTTL:  cfg.AccessTTL,
-		refreshTTL: cfg.RefreshTTL,
-		sessionTTL: cfg.SessionTTL,
+		db:          db,
+		authRepo:    authRepo,
+		sessionRepo: sessionRepo,
+		jwtService:  jwtService,
+		accessTTL:   cfg.AccessTTL,
+		refreshTTL:  cfg.RefreshTTL,
+		sessionTTL:  cfg.SessionTTL,
 	}
 }
 
@@ -64,7 +71,7 @@ func (s *Service) WebLogin(ctx context.Context, email, password string) (string,
 		return "", time.Time{}, err
 	}
 
-	sessionID, expiresAt, err := s.createSession(ctx, user.ID)
+	sessionID, expiresAt, err := s.createSession(ctx, tx, user.ID)
 	if err != nil {
 		_ = tx.Rollback(ctx)
 		return "", time.Time{}, err
@@ -96,7 +103,7 @@ func (s *Service) WebSignup(ctx context.Context, brandName, email, password stri
 		return "", time.Time{}, err
 	}
 
-	user, err := s.authRepo.CreateUser(ctx, brandName, email, string(hash))
+	user, err := s.authRepo.CreateUser(ctx, tx, brandName, email, string(hash))
 	if err != nil {
 		_ = tx.Rollback(ctx)
 		var pgErr *pgconn.PgError
@@ -111,7 +118,7 @@ func (s *Service) WebSignup(ctx context.Context, brandName, email, password stri
 		return "", time.Time{}, err
 	}
 
-	sessionID, expiresAt, err := s.createSession(ctx, user.ID)
+	sessionID, expiresAt, err := s.createSession(ctx, tx, user.ID)
 	if err != nil {
 		_ = tx.Rollback(ctx)
 		return "", time.Time{}, err
@@ -135,7 +142,7 @@ func (s *Service) LogoutSession(ctx context.Context, sessionID string) error {
 		return err
 	}
 
-	if err := s.authRepo.DeleteSession(ctx, sessionID); err != nil {
+	if err := s.sessionRepo.DeleteSession(ctx, tx, sessionID); err != nil {
 		_ = tx.Rollback(ctx)
 		return err
 	}
@@ -161,7 +168,7 @@ func (s *Service) LoginTokens(ctx context.Context, email, password string) (stri
 		return "", time.Time{}, "", time.Time{}, err
 	}
 
-	refreshToken, refreshExpires, err := s.createRefreshToken(ctx, user.ID)
+	refreshToken, refreshExpires, err := s.createRefreshToken(ctx, tx, user.ID)
 	if err != nil {
 		_ = tx.Rollback(ctx)
 		return "", time.Time{}, "", time.Time{}, err
@@ -192,7 +199,7 @@ func (s *Service) RefreshTokens(ctx context.Context, token string) (string, time
 	}
 
 	hash := sha256.Sum256([]byte(token))
-	id, userID, expiresAt, revokedAt, err := s.authRepo.GetRefreshToken(ctx, hash[:])
+	id, userID, expiresAt, revokedAt, err := s.sessionRepo.GetRefreshToken(ctx, tx, hash[:])
 	if err != nil {
 		_ = tx.Rollback(ctx)
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -205,12 +212,12 @@ func (s *Service) RefreshTokens(ctx context.Context, token string) (string, time
 		return "", time.Time{}, "", time.Time{}, ErrRefreshTokenInvalid
 	}
 
-	if err := s.authRepo.RevokeRefreshToken(ctx, id); err != nil {
+	if err := s.sessionRepo.RevokeRefreshToken(ctx, tx, id); err != nil {
 		_ = tx.Rollback(ctx)
 		return "", time.Time{}, "", time.Time{}, err
 	}
 
-	refreshToken, refreshExpires, err := s.createRefreshToken(ctx, userID)
+	refreshToken, refreshExpires, err := s.createRefreshToken(ctx, tx, userID)
 	if err != nil {
 		_ = tx.Rollback(ctx)
 		return "", time.Time{}, "", time.Time{}, err
@@ -241,7 +248,7 @@ func (s *Service) RevokeRefreshToken(ctx context.Context, token string) error {
 	}
 
 	hash := sha256.Sum256([]byte(token))
-	revoked, err := s.authRepo.RevokeRefreshTokenByHash(ctx, hash[:])
+	revoked, err := s.sessionRepo.RevokeRefreshTokenByHash(ctx, tx, hash[:])
 	if err != nil {
 		_ = tx.Rollback(ctx)
 		return err
@@ -265,7 +272,7 @@ func (s *Service) GetUserByID(ctx context.Context, userID string) (models.User, 
 		return models.User{}, err
 	}
 
-	user, err := s.authRepo.GetUserByID(ctx, userID)
+	user, err := s.authRepo.GetUserByID(ctx, tx, userID)
 	if err != nil {
 		_ = tx.Rollback(ctx)
 		return models.User{}, err
@@ -279,36 +286,23 @@ func (s *Service) GetUserByID(ctx context.Context, userID string) (models.User, 
 }
 
 func (s *Service) CreateAccessToken(userID string) (string, time.Time, error) {
-	expiresAt := time.Now().Add(s.accessTTL)
-	claims := jwt.RegisteredClaims{
-		Subject:   userID,
-		IssuedAt:  jwt.NewNumericDate(time.Now()),
-		ExpiresAt: jwt.NewNumericDate(expiresAt),
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	signed, err := token.SignedString(s.jwtSecret)
-	if err != nil {
-		return "", time.Time{}, err
-	}
-	return signed, expiresAt, nil
+	return s.jwtService.CreateAccessToken(userID, s.accessTTL)
 }
 
 func (s *Service) ParseAccessToken(tokenString string) (string, error) {
-	claims := &jwt.RegisteredClaims{}
-	parsed, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-		return s.jwtSecret, nil
-	})
-	if err != nil || !parsed.Valid {
+	userID, err := s.jwtService.ParseAccessToken(tokenString)
+	if err != nil {
 		return "", ErrInvalidCredentials
 	}
-	if claims.Subject == "" {
-		return "", ErrInvalidCredentials
-	}
-	return claims.Subject, nil
+	return userID, nil
 }
 
 func (s *Service) authenticateUser(ctx context.Context, email, password string) (models.User, error) {
-	user, hash, err := s.authRepo.GetUserByEmail(ctx, email)
+	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return models.User{}, err
+	}
+	user, hash, err := s.authRepo.GetUserByEmail(ctx, tx, email)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return models.User{}, ErrInvalidCredentials
@@ -323,33 +317,23 @@ func (s *Service) authenticateUser(ctx context.Context, email, password string) 
 	return user, nil
 }
 
-func (s *Service) createSession(ctx context.Context, userID string) (string, time.Time, error) {
+func (s *Service) createSession(ctx context.Context, db database.PgExecutor, userID string) (string, time.Time, error) {
 	expiresAt := time.Now().Add(s.sessionTTL)
-	sessionID, err := s.authRepo.CreateSession(ctx, userID, expiresAt)
+	sessionID, err := s.sessionRepo.CreateSession(ctx, db, userID, expiresAt)
 	if err != nil {
 		return "", time.Time{}, err
 	}
 	return sessionID, expiresAt, nil
 }
 
-func (s *Service) createRefreshToken(ctx context.Context, userID string) (string, time.Time, error) {
-	token, hash, err := generateToken()
+func (s *Service) createRefreshToken(ctx context.Context, db database.PgExecutor, userID string) (string, time.Time, error) {
+	token, hash, err := tokens.Generate()
 	if err != nil {
 		return "", time.Time{}, err
 	}
 	expiresAt := time.Now().Add(s.refreshTTL)
-	if err := s.authRepo.CreateRefreshToken(ctx, userID, hash, expiresAt); err != nil {
+	if err := s.sessionRepo.CreateRefreshToken(ctx, db, userID, hash, expiresAt); err != nil {
 		return "", time.Time{}, err
 	}
 	return token, expiresAt, nil
-}
-
-func generateToken() (string, []byte, error) {
-	raw := make([]byte, 32)
-	if _, err := rand.Read(raw); err != nil {
-		return "", nil, err
-	}
-	token := base64.RawURLEncoding.EncodeToString(raw)
-	hash := sha256.Sum256([]byte(token))
-	return token, hash[:], nil
 }
