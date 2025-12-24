@@ -64,17 +64,21 @@ func InputField(props InputProps) g.Node {
 					g.Attr("aria-pressed", "false"),
 					g.Attr("data-target", id),
 					g.Attr("data-visible", "false"),
-					h.Img(
+					h.Span(
 						h.Class("icon-eye"),
-						g.Attr("src", "/static/icons/eye-open.svg"),
-						g.Attr("alt", ""),
-						g.Attr("aria-hidden", "true"),
+						Icon(IconProps{
+							Name:       "eye-open",
+							Size:       "md",
+							Decorative: true,
+						}),
 					),
-					h.Img(
+					h.Span(
 						h.Class("icon-eye-off"),
-						g.Attr("src", "/static/icons/eye-closed.svg"),
-						g.Attr("alt", ""),
-						g.Attr("aria-hidden", "true"),
+						Icon(IconProps{
+							Name:       "eye-closed",
+							Size:       "md",
+							Decorative: true,
+						}),
 					),
 				),
 			),

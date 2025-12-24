@@ -149,9 +149,14 @@ a {
   box-shadow: 0 8px 16px rgba(7, 9, 15, 0.2);
 }
 
-.password-toggle img {
+.password-toggle .icon {
   width: 20px;
   height: 20px;
+}
+
+.password-toggle .icon-eye,
+.password-toggle .icon-eye-off {
+  display: inline-flex;
 }
 
 .password-toggle .icon-eye-off {
