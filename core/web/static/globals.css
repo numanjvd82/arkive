@@ -39,7 +39,7 @@
 body {
   font-family: "Space Grotesk", "Arial Black", Arial, sans-serif;
   color: var(--text);
-  background: radial-gradient(circle at top, var(--bg-soft) 0%, var(--bg) 55%);
+  background: var(--bg);
 }
 
 a {
@@ -64,10 +64,11 @@ a {
   color: var(--text);
   font-weight: 600;
   box-shadow: var(--shadow);
+  cursor: pointer;
 }
 
 .button.primary {
-  background: linear-gradient(120deg, var(--accent-warm), var(--accent));
+  background: var(--accent);
   color: var(--accent-ink);
   border-color: transparent;
 }
@@ -81,13 +82,36 @@ a {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent-cool), var(--accent-warm));
+  background: var(--accent-cool);
   box-shadow: 0 0 16px rgba(107, 209, 230, 0.5);
 }
 
 .logo-text {
   font-weight: 700;
   letter-spacing: 0.04em;
+}
+
+.card {
+  padding: 22px;
+  border-radius: 22px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.card-header {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.card-header h3 {
+  font-size: 1.2rem;
+}
+
+.card-header p {
+  color: var(--muted);
+  font-size: 0.95rem;
 }
 
 .form-field {
@@ -117,13 +141,13 @@ a {
 }
 
 .form-input::placeholder {
-  color: color-mix(in srgb, var(--muted) 75%, transparent);
+  color: var(--muted);
 }
 
 .form-input:focus {
   outline: none;
-  border-color: color-mix(in srgb, var(--accent-cool) 70%, transparent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-cool) 25%, transparent),
+  border-color: var(--accent-cool);
+  box-shadow: 0 0 0 3px rgba(107, 209, 230, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
@@ -144,6 +168,7 @@ a {
   color: var(--muted);
   padding: 6px;
   border-radius: 10px;
+  background: transparent;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
