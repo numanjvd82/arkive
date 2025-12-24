@@ -140,18 +140,20 @@ a {
   top: 50%;
   right: 12px;
   transform: translateY(-50%);
-  border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--surface) 85%, transparent);
+  border: none;
   color: var(--muted);
   padding: 6px;
   border-radius: 10px;
   cursor: pointer;
-  box-shadow: 0 8px 16px rgba(7, 9, 15, 0.2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .password-toggle .icon {
   width: 20px;
   height: 20px;
+  display: block;
 }
 
 .password-toggle .icon-eye,

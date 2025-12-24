@@ -11,6 +11,7 @@ import (
 	sessionrepo "arkive/core/repositories/session"
 	"arkive/core/services/auth"
 	jwtservice "arkive/core/services/jwt"
+	"arkive/core/web"
 )
 
 func New(db database.PgPool, cfg config.Config) *gin.Engine {
@@ -24,8 +25,8 @@ func New(db database.PgPool, cfg config.Config) *gin.Engine {
 		SessionTTL: cfg.SessionTTL,
 	})
 
-	r.Static("/static", "./core/web/static")
-	r.Static("/web/pages", "./core/web/pages")
+	r.StaticFS("/static", web.StaticFS("static"))
+	r.StaticFS("/web/pages", web.StaticFS("pages"))
 	r.GET("/", handlers.WebHome())
 	r.GET("/login", handlers.WebLoginGet())
 	r.POST("/login", handlers.WebLoginPost(authService))
