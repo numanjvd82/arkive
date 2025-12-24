@@ -3,6 +3,8 @@ package web
 import (
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
+
+	"arkive/core/web/components"
 )
 
 type LayoutData struct {
@@ -18,6 +20,7 @@ func Layout(data LayoutData, content ...g.Node) g.Node {
 		h.Title(data.Title),
 		h.Link(h.Rel("stylesheet"), h.Href("/static/reset.css")),
 		h.Link(h.Rel("stylesheet"), h.Href("/static/globals.css")),
+		h.Link(h.Rel("stylesheet"), h.Href("/static/components.css")),
 	}
 	for _, css := range data.CSS {
 		headNodes = append(headNodes, h.Link(h.Rel("stylesheet"), h.Href(css)))
@@ -31,6 +34,7 @@ func Layout(data LayoutData, content ...g.Node) g.Node {
 		h.Lang("en"),
 		h.Head(headNodes...),
 		h.Body(
+			components.Nav(),
 			g.Group(content),
 		),
 	))

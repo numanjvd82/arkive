@@ -1,18 +1,57 @@
 (function() {
+  var modes = ["dark", "system", "light"];
   var stored = localStorage.getItem("theme");
-  var current = stored || "dark";
-  document.documentElement.setAttribute("data-theme", current);
+  var current = modes.indexOf(stored) !== -1 ? stored : "system";
+  var root = document.documentElement;
+  var prefersLight = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)");
+
+  function updateToggle(mode) {
+    var toggle = document.getElementById("theme-toggle");
+    if (!toggle) {
+      return;
+    }
+    var label = toggle.querySelector(".theme-label");
+    if (label) {
+      label.textContent = mode;
+    } else {
+      toggle.textContent = mode;
+    }
+    toggle.setAttribute("aria-label", "Theme: " + mode);
+  }
+
+  function resolvedTheme(mode) {
+    if (mode !== "system") {
+      return mode;
+    }
+    return prefersLight && prefersLight.matches ? "light" : "dark";
+  }
+
+  function setMode(mode) {
+    root.setAttribute("data-theme", resolvedTheme(mode));
+    root.setAttribute("data-theme-mode", mode);
+    localStorage.setItem("theme", mode);
+    updateToggle(mode);
+  }
+
+  setMode(current);
+
+  if (prefersLight && prefersLight.addEventListener) {
+    prefersLight.addEventListener("change", function() {
+      if ((root.getAttribute("data-theme-mode") || "system") === "system") {
+        setMode("system");
+      }
+    });
+  }
+
   var toggle = document.getElementById("theme-toggle");
   if (!toggle) {
     return;
   }
-  toggle.setAttribute("aria-pressed", current === "dark" ? "true" : "false");
   toggle.addEventListener("click", function() {
-    var active = document.documentElement.getAttribute("data-theme") || "dark";
-    var next = active === "dark" ? "light" : "dark";
-    document.documentElement.setAttribute("data-theme", next);
-    localStorage.setItem("theme", next);
-    toggle.setAttribute("aria-pressed", next === "dark" ? "true" : "false");
+    var active = root.getAttribute("data-theme-mode") || "system";
+    var index = modes.indexOf(active);
+    var next = modes[(index + 1) % modes.length];
+    setMode(next);
   });
 })();
 
