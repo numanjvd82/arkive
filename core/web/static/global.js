@@ -15,3 +15,29 @@
     toggle.setAttribute("aria-pressed", next === "dark" ? "true" : "false");
   });
 })();
+
+(function() {
+  var toggles = document.querySelectorAll(".password-toggle");
+  if (!toggles.length) {
+    return;
+  }
+
+  toggles.forEach(function(toggle) {
+    toggle.addEventListener("click", function() {
+      var targetId = toggle.getAttribute("data-target");
+      if (!targetId) {
+        return;
+      }
+      var input = document.getElementById(targetId);
+      if (!input) {
+        return;
+      }
+      var visible = input.getAttribute("type") === "text";
+      var nextVisible = !visible;
+      input.setAttribute("type", nextVisible ? "text" : "password");
+      toggle.setAttribute("aria-pressed", nextVisible ? "true" : "false");
+      toggle.setAttribute("data-visible", nextVisible ? "true" : "false");
+      toggle.setAttribute("aria-label", nextVisible ? "Hide password" : "Show password");
+    });
+  });
+})();

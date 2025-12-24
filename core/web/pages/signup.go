@@ -5,6 +5,7 @@ import (
 	h "maragu.dev/gomponents/html"
 
 	"arkive/core/web"
+	"arkive/core/web/components"
 )
 
 func SignupPage() web.Page {
@@ -22,26 +23,20 @@ func signUpBody() g.Node {
 			h.Class("auth-form"),
 			g.Attr("method", "POST"),
 			h.H2(g.Text("Login")),
-			h.Label(
-				g.Attr("for", "email"),
-				g.Text("Email"),
-			),
-			h.Input(
-				g.Attr("type", "email"),
-				g.Attr("name", "email"),
-				g.Attr("id", "email"),
-				g.Attr("required", "required"),
-			),
-			h.Label(
-				g.Attr("for", "password"),
-				g.Text("Password"),
-			),
-			h.Input(
-				g.Attr("type", "password"),
-				g.Attr("name", "password"),
-				g.Attr("id", "password"),
-				g.Attr("required", "required"),
-			),
+			components.InputField(components.InputProps{
+				Label:       "Email",
+				Name:        "email",
+				Type:        "email",
+				Placeholder: "you@example.com",
+				Required:    true,
+			}),
+			components.InputField(components.InputProps{
+				Label:       "Password",
+				Name:        "password",
+				Type:        "password",
+				Placeholder: "Create a password",
+				Required:    true,
+			}),
 			h.Button(
 				g.Attr("type", "submit"),
 				g.Text("Login"),
