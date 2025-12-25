@@ -13,6 +13,7 @@ type Config struct {
 	AccessTTL   time.Duration
 	RefreshTTL  time.Duration
 	SessionTTL  time.Duration
+	Env         string
 }
 
 func Load() (Config, error) {
@@ -44,6 +45,11 @@ func Load() (Config, error) {
 		addr = ":" + port
 	}
 
+	env := os.Getenv("APP_ENV")
+	if env == "" {
+		env = "prod"
+	}
+
 	return Config{
 		DatabaseURL: dsn,
 		Port:        addr,
@@ -51,6 +57,7 @@ func Load() (Config, error) {
 		AccessTTL:   accessTTL,
 		RefreshTTL:  refreshTTL,
 		SessionTTL:  sessionTTL,
+		Env:         env,
 	}, nil
 }
 
