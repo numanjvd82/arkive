@@ -15,13 +15,23 @@ type LayoutData struct {
 }
 
 func Layout(data LayoutData, content ...g.Node) g.Node {
+	pageTitle := data.Title
+	if pageTitle == "" {
+		pageTitle = "arkive.sh"
+	}
+
 	headNodes := []g.Node{
 		h.Meta(h.Charset("utf-8")),
 		h.Meta(h.Name("viewport"), h.Content("width=device-width, initial-scale=1")),
-		h.Title(data.Title),
+		h.Title(pageTitle),
 		h.Link(h.Rel("stylesheet"), h.Href("/static/reset.css")),
 		h.Link(h.Rel("stylesheet"), h.Href("/static/globals.css")),
 		h.Link(h.Rel("stylesheet"), h.Href("/static/components.css")),
+		h.Link(h.Rel("icon"), h.Type("image/x-icon"), h.Href("/static/assets/images/favicon.ico")),
+		h.Link(h.Rel("icon"), h.Type("image/png"), g.Attr("sizes", "32x32"), h.Href("/static/assets/images/favicon-32x32.png")),
+		h.Link(h.Rel("icon"), h.Type("image/png"), g.Attr("sizes", "16x16"), h.Href("/static/assets/images/favicon-16x16.png")),
+		h.Link(h.Rel("apple-touch-icon"), g.Attr("sizes", "180x180"), h.Href("/static/assets/images/apple-touch-icon.png")),
+		h.Link(h.Rel("manifest"), h.Href("/static/assets/images/site.webmanifest")),
 	}
 	for _, css := range data.CSS {
 		headNodes = append(headNodes, h.Link(h.Rel("stylesheet"), h.Href(css)))
