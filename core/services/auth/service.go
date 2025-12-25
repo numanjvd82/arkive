@@ -92,7 +92,7 @@ func (s *Service) WebLogin(ctx context.Context, email, password string) (string,
 	return sessionID, expiresAt, nil, nil
 }
 
-func (s *Service) WebSignup(ctx context.Context, brandName, email, password, confirmPassword string) (string, time.Time, validation.Errors, error) {
+func (s *Service) WebSignup(ctx context.Context, brandName, email, password, confirmPassword string) (validation.Errors, error) {
 	brandName = strings.TrimSpace(brandName)
 	email = strings.TrimSpace(email)
 	password = strings.TrimSpace(password)
@@ -119,56 +119,50 @@ func (s *Service) WebSignup(ctx context.Context, brandName, email, password, con
 		validationErrors.Add("confirm_password", "Passwords do not match.")
 	}
 	if validationErrors.HasAny() {
-		return "", time.Time{}, validationErrors, nil
+		return validationErrors, nil
 	}
 
 	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		return "", time.Time{}, nil, err
+		return nil, err
 	}
 
 	if _, _, err := s.authRepo.GetUserByEmail(ctx, tx, email); err == nil {
 		validationErrors.Add("email", "Email already exists.")
 	} else if !errors.Is(err, pgx.ErrNoRows) {
 		_ = tx.Rollback(ctx)
-		return "", time.Time{}, nil, err
+		return nil, err
 	}
 
 	if _, err := s.authRepo.GetUserByBrandName(ctx, tx, brandName); err == nil {
 		validationErrors.Add("brand_name", "Brand name already exists.")
 	} else if !errors.Is(err, pgx.ErrNoRows) {
 		_ = tx.Rollback(ctx)
-		return "", time.Time{}, nil, err
+		return nil, err
 	}
 
 	if validationErrors.HasAny() {
 		_ = tx.Rollback(ctx)
-		return "", time.Time{}, validationErrors, nil
+		return validationErrors, nil
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		_ = tx.Rollback(ctx)
-		return "", time.Time{}, nil, err
+		return nil, err
 	}
 
-	user, err := s.authRepo.CreateUser(ctx, tx, brandName, email, string(hash))
+	_, err = s.authRepo.CreateUser(ctx, tx, brandName, email, string(hash))
 	if err != nil {
 		_ = tx.Rollback(ctx)
-		return "", time.Time{}, nil, err
-	}
-
-	sessionID, expiresAt, err := s.createSession(ctx, tx, user.ID)
-	if err != nil {
-		_ = tx.Rollback(ctx)
-		return "", time.Time{}, nil, err
+		return nil, err
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return "", time.Time{}, nil, err
+		return nil, err
 	}
 
-	return sessionID, expiresAt, nil, nil
+	return nil, nil
 }
 
 func (s *Service) LogoutSession(ctx context.Context, sessionID string) error {

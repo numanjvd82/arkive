@@ -84,7 +84,7 @@ func WebSignupPost(svc *auth.Service) gin.HandlerFunc {
 			return
 		}
 
-		sessionID, expiresAt, validationErrors, err := svc.WebSignup(
+		validationErrors, err := svc.WebSignup(
 			c.Request.Context(),
 			form.BrandName,
 			form.Email,
@@ -104,8 +104,7 @@ func WebSignupPost(svc *auth.Service) gin.HandlerFunc {
 			return
 		}
 
-		cookies.SetSession(c, sessionID, expiresAt, false)
-		c.Redirect(http.StatusSeeOther, "/dashboard")
+		c.Redirect(http.StatusSeeOther, "/login")
 	}
 }
 
