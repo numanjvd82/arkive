@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
 	"arkive/core/database"
 )
 
@@ -30,6 +32,21 @@ func (r *Repository) DeleteSession(ctx context.Context, db database.PgExecutor, 
 		WHERE id = $1`
 	_, err := db.Exec(ctx, query, sessionID)
 	return err
+}
+
+func (r *Repository) GetSessionByID(ctx context.Context, db database.PgExecutor, sessionID string) (string, time.Time, error) {
+	var userID string
+	var expiresAt time.Time
+	query := `SELECT user_id, expires_at
+		FROM sessions
+		WHERE id = $1`
+	if err := db.QueryRow(ctx, query, sessionID).Scan(&userID, &expiresAt); err != nil {
+		return "", time.Time{}, err
+	}
+	if expiresAt.Before(time.Now()) {
+		return "", time.Time{}, pgx.ErrNoRows
+	}
+	return userID, expiresAt, nil
 }
 
 func (r *Repository) CreateRefreshToken(ctx context.Context, db database.PgExecutor, userID string, hash []byte, expiresAt time.Time) error {

@@ -1,0 +1,27 @@
+.forbidden-page {
+  display: flex;
+  flex-direction: column;
+}
+
+.forbidden-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 18px;
+  background: var(--bg);
+}
+
+.forbidden-card {
+  width: min(420px, 92vw);
+}
+
+.forbidden-text {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.forbidden-action {
+  width: 100%;
+}

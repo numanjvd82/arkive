@@ -9,19 +9,36 @@ import (
 	"arkive/core/services/auth"
 	"arkive/core/web"
 	"arkive/core/web/pages"
+	appcontext "arkive/pkg/context"
 	"arkive/pkg/cookies"
 	"arkive/pkg/validation"
 )
 
-func WebLoginGet() gin.HandlerFunc {
+func WebLoginGet(svc *auth.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if _, ok, err := appcontext.LoadUser(c, svc); err != nil {
+			c.Status(http.StatusInternalServerError)
+			return
+		} else if ok {
+			c.Redirect(http.StatusSeeOther, "/dashboard")
+			return
+		}
+
 		webPage := pages.LoginPage(pages.LoginPageProps{})
 		web.Render(c, webPage)
 	}
 }
 
-func WebSignupGet() gin.HandlerFunc {
+func WebSignupGet(svc *auth.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if _, ok, err := appcontext.LoadUser(c, svc); err != nil {
+			c.Status(http.StatusInternalServerError)
+			return
+		} else if ok {
+			c.Redirect(http.StatusSeeOther, "/dashboard")
+			return
+		}
+
 		webPage := pages.SignupPage(pages.SignupPageProps{})
 		web.Render(c, webPage)
 	}
@@ -34,6 +51,14 @@ func WebLoginPost(svc *auth.Service) gin.HandlerFunc {
 	}
 
 	return func(c *gin.Context) {
+		if _, ok, err := appcontext.LoadUser(c, svc); err != nil {
+			c.Status(http.StatusInternalServerError)
+			return
+		} else if ok {
+			c.Redirect(http.StatusSeeOther, "/dashboard")
+			return
+		}
+
 		var form loginForm
 		if err := c.ShouldBind(&form); err != nil {
 			web.Render(c, pages.LoginPage(pages.LoginPageProps{
@@ -72,6 +97,14 @@ func WebSignupPost(svc *auth.Service) gin.HandlerFunc {
 	}
 
 	return func(c *gin.Context) {
+		if _, ok, err := appcontext.LoadUser(c, svc); err != nil {
+			c.Status(http.StatusInternalServerError)
+			return
+		} else if ok {
+			c.Redirect(http.StatusSeeOther, "/dashboard")
+			return
+		}
+
 		var form signupForm
 		if err := c.ShouldBind(&form); err != nil {
 			web.Render(c, pages.SignupPage(pages.SignupPageProps{

@@ -184,6 +184,22 @@ func (s *Service) LogoutSession(ctx context.Context, sessionID string) error {
 	return tx.Commit(ctx)
 }
 
+func (s *Service) ValidateSession(ctx context.Context, sessionID string) (string, error) {
+	sessionID = strings.TrimSpace(sessionID)
+	if sessionID == "" {
+		return "", ErrSessionNotFound
+	}
+
+	userID, _, err := s.sessionRepo.GetSessionByID(ctx, s.db, sessionID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", ErrSessionNotFound
+		}
+		return "", err
+	}
+	return userID, nil
+}
+
 func (s *Service) LoginTokens(ctx context.Context, email, password string) (string, time.Time, string, time.Time, error) {
 	email = strings.TrimSpace(email)
 	password = strings.TrimSpace(password)

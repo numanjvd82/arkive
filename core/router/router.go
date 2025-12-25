@@ -18,7 +18,6 @@ func New(db database.PgPool, cfg config.Config) *gin.Engine {
 	r := gin.Default()
 
 	jwtSvc := jwtservice.New(cfg.JWTSecret)
-
 	authService := auth.NewService(db, authrepo.New(), sessionrepo.New(), jwtSvc, auth.Config{
 		AccessTTL:  cfg.AccessTTL,
 		RefreshTTL: cfg.RefreshTTL,
@@ -28,11 +27,11 @@ func New(db database.PgPool, cfg config.Config) *gin.Engine {
 	r.StaticFS("/static", web.StaticFS("static"))
 	r.StaticFS("/web/pages", web.StaticFS("pages"))
 	r.GET("/", handlers.WebHome())
-	r.GET("/login", handlers.WebLoginGet())
+	r.GET("/login", handlers.WebLoginGet(authService))
 	r.POST("/login", handlers.WebLoginPost(authService))
-	r.GET("/signup", handlers.WebSignupGet())
+	r.GET("/signup", handlers.WebSignupGet(authService))
 	r.POST("/signup", handlers.WebSignupPost(authService))
-	r.GET("/dashboard", handlers.WebDashboard())
+	r.GET("/dashboard", handlers.WebDashboard(authService))
 	r.POST("/logout", handlers.WebLogout(authService))
 
 	api := r.Group("/api")
