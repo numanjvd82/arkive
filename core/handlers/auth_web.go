@@ -26,10 +26,19 @@ func WebSignupGet() gin.HandlerFunc {
 }
 
 func WebLoginPost(svc *auth.Service) gin.HandlerFunc {
+	type loginForm struct {
+		Email    string `form:"email"`
+		Password string `form:"password"`
+	}
+
 	return func(c *gin.Context) {
-		email := c.PostForm("email")
-		password := c.PostForm("password")
-		sessionID, expiresAt, err := svc.WebLogin(c.Request.Context(), email, password)
+		var form loginForm
+		if err := c.ShouldBind(&form); err != nil {
+			web.Render(c, pages.LoginPage())
+			return
+		}
+
+		sessionID, expiresAt, err := svc.WebLogin(c.Request.Context(), form.Email, form.Password)
 		if err != nil {
 			switch err {
 			case auth.ErrInvalidInput, auth.ErrInvalidCredentials:
@@ -46,11 +55,20 @@ func WebLoginPost(svc *auth.Service) gin.HandlerFunc {
 }
 
 func WebSignupPost(svc *auth.Service) gin.HandlerFunc {
+	type signupForm struct {
+		BrandName string `form:"brand_name"`
+		Email     string `form:"email"`
+		Password  string `form:"password"`
+	}
+
 	return func(c *gin.Context) {
-		brandName := c.PostForm("brand_name")
-		email := c.PostForm("email")
-		password := c.PostForm("password")
-		sessionID, expiresAt, err := svc.WebSignup(c.Request.Context(), brandName, email, password)
+		var form signupForm
+		if err := c.ShouldBind(&form); err != nil {
+			web.Render(c, pages.SignupPage())
+			return
+		}
+
+		sessionID, expiresAt, err := svc.WebSignup(c.Request.Context(), form.BrandName, form.Email, form.Password)
 		if err != nil {
 			switch err {
 			case auth.ErrInvalidInput, auth.ErrEmailExists, auth.ErrBrandNameExists:

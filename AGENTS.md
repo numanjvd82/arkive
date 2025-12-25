@@ -16,6 +16,7 @@
 - SQL is uppercase and kept in repos only.
 - Services start a transaction per request and call repo methods with the tx.
 - Web pages use reusable components (inputs, cards, buttons, icons).
+- Handlers parse form inputs into structs before calling services.
 
 ## Potential Improvements
 - **Modularization**: Consider splitting large services into smaller, focused modules.
