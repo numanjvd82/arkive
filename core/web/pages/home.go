@@ -9,15 +9,17 @@ import (
 
 func HomePage() web.Page {
 	return web.Page{
-		Title: "Arkive",
-		CSS:   []string{"/web/pages/home.css"},
+		Title:   "Arkive · Share with freedom",
+		CSS:     []string{"/web/pages/home.css"},
+		HideNav: true,
 		Body: h.Div(
 			h.Class("page home"),
 			homeHeader(),
 			homeHero(),
-			homeHighlights(),
-			homeWorkflow(),
+			homeFeatures(),
+			homeSharing(),
 			homeSecurity(),
+			homeRoadmap(),
 			homeCTA(),
 			homeFooter(),
 		),
@@ -29,27 +31,24 @@ func homeHeader() g.Node {
 		h.Class("site-header"),
 		h.Div(
 			h.Class("container nav"),
-			h.Div(
-				h.Class("logo-mark"),
-				h.Span(h.Class("logo-dot")),
-				h.Span(h.Class("logo-text"), g.Text("Arkive")),
+			h.A(
+				h.Class("nav-brand"),
+				h.Href("/"),
+				h.Span(
+					h.Class("brand-mark"),
+					h.Span(h.Class("brand-core")),
+				),
+				h.Span(h.Class("logo-text"), g.Text("arkive.sh")),
 			),
 			h.Nav(
 				h.Class("nav-links"),
 				h.A(h.Href("#features"), g.Text("Features")),
-				h.A(h.Href("#workflow"), g.Text("Workflow")),
+				h.A(h.Href("#sharing"), g.Text("Sharing")),
 				h.A(h.Href("#security"), g.Text("Security")),
-				h.A(h.Href("#pricing"), g.Text("Pricing")),
+				h.A(h.Href("#roadmap"), g.Text("Roadmap")),
 			),
 			h.Div(
 				h.Class("nav-actions"),
-				h.Button(
-					h.Class("button secondary theme-toggle"),
-					h.Type("button"),
-					h.ID("theme-toggle"),
-					h.Span(h.Class("theme-icon"), g.Text("◐")),
-					h.Span(h.Class("theme-label"), g.Text("system")),
-				),
 				h.A(h.Class("button secondary"), h.Href("/login"), g.Text("Login")),
 				h.A(h.Class("button primary"), h.Href("/signup"), g.Text("Create account")),
 			),
@@ -64,46 +63,48 @@ func homeHero() g.Node {
 			h.Class("container hero-grid"),
 			h.Div(
 				h.Class("hero-copy"),
-				h.Span(h.Class("eyebrow"), g.Text("Your archive, always ready")),
-				h.H1(g.Text("A calm place for every project file, note, and decision.")),
-				h.P(g.Text("Collect research, drafts, and discussions in one space. Arkive helps you keep momentum while your team stays aligned.")),
+				h.Span(h.Class("eyebrow"), g.Text("Share with freedom")),
+				h.H1(g.Text("Fast, secure file sharing with zero friction.")),
+				h.P(g.Text("Arkive gives you 2GB free storage with unlimited retention. Share links instantly, add passwords, and let anyone download—no account required.")),
+				h.Div(
+					h.Class("hero-offer"),
+					h.Span(h.Class("offer-tag"), g.Text("Limited offer")),
+					h.P(g.Text("Create an account from Jan 1–7, 2026 and get an extra 3GB bonus on top of your 2GB free space.")),
+				),
 				h.Div(
 					h.Class("hero-actions"),
-					h.A(h.Class("button primary"), h.Href("/signup"), g.Text("Start free")),
-					h.A(h.Class("button secondary"), h.Href("/login"), g.Text("View demo")),
+					h.A(h.Class("button primary"), h.Href("/signup"), g.Text("Claim free space")),
+					h.A(h.Class("button secondary"), h.Href("#features"), g.Text("See features")),
 				),
 				h.Div(
 					h.Class("hero-stats"),
-					statItem("24/7", "instant access"),
-					statItem("3x", "faster handoffs"),
-					statItem("SOC2", "ready vault"),
+					statItem("2GB", "free storage"),
+					statItem("0", "expiry limits"),
+					statItem("No login", "for shared links"),
 				),
 			),
 			h.Div(
 				h.Class("hero-panel"),
 				h.Div(
 					h.Class("hero-card"),
-					h.P(h.Class("card-title"), g.Text("Latest capture")),
+					h.P(h.Class("card-title"), g.Text("Share link")),
+					h.H3(g.Text("arkive.sh/s/quiet-sunrise")),
+					h.P(g.Text("Password protected · Unlimited downloads")),
 					h.Div(
-						h.Class("card-body"),
-						h.Div(h.Class("card-chip"), g.Text("Product research")),
-						h.H3(g.Text("Competitive teardown")),
-						h.P(g.Text("Saved 12 links, 4 notes, and 2 design drafts.")),
-						h.Div(
-							h.Class("card-meta"),
-							h.Span(g.Text("Updated 2 hours ago")),
-							h.Span(g.Text("6 collaborators")),
-						),
+						h.Class("card-list"),
+						h.Span(g.Text("• Instant uploads")),
+						h.Span(g.Text("• Link previews")),
+						h.Span(g.Text("• Zero sign-in")),
 					),
 				),
 				h.Div(
 					h.Class("hero-card secondary"),
-					h.P(h.Class("card-title"), g.Text("Sharing status")),
-					h.Ul(
-						h.Class("card-list"),
-						h.Li(g.Text("Marketing: view access")),
-						h.Li(g.Text("Product: edit access")),
-						h.Li(g.Text("Design: edit access")),
+					h.P(h.Class("card-title"), g.Text("Freedom pack")),
+					h.Div(
+						h.Class("freedom-grid"),
+						freedomItem("Lightning fast", "Optimized for quick uploads and downloads."),
+						freedomItem("Secure sharing", "Encrypted storage and optional passwords."),
+						freedomItem("Open source", "Public roadmap and code coming soon."),
 					),
 				),
 			),
@@ -111,7 +112,7 @@ func homeHero() g.Node {
 	)
 }
 
-func homeHighlights() g.Node {
+func homeFeatures() g.Node {
 	return h.Section(
 		h.ID("features"),
 		h.Class("feature-section"),
@@ -119,59 +120,52 @@ func homeHighlights() g.Node {
 			h.Class("container"),
 			h.Div(
 				h.Class("section-heading"),
-				h.H2(g.Text("Designed to keep your context alive.")),
-				h.P(g.Text("Capture quickly, organize with clarity, and share without losing the thread.")),
+				h.H2(g.Text("Everything you need to share without friction.")),
+				h.P(g.Text("Built for creators, teams, and anyone who wants to move files fast without hoops.")),
 			),
 			h.Div(
 				h.Class("feature-grid"),
-				featureCard("Capture anything", "Save files, links, voice notes, and images in seconds from any device."),
-				featureCard("Collections that breathe", "Structure your archive by project, milestone, or team without rigid folders."),
-				featureCard("Smart reminders", "Get subtle nudges when a project is drifting or a file is outdated."),
-				featureCard("Clean handoffs", "Deliver polished summaries for stakeholders with one click."),
+				featureCard("Lightning fast", "Uploads and downloads tuned for speed across the globe."),
+				featureCard("No accounts for viewers", "Anyone can access shared files without logging in."),
+				featureCard("Password protected", "Lock shared links with a password whenever you want."),
+				featureCard("Unlimited retention", "No expiry dates. Your files stay available."),
+				featureCard("Secure by default", "Encrypted storage and privacy-first defaults."),
+				featureCard("Open source soon", "We are preparing a public repo and roadmap."),
 			),
 		),
 	)
 }
 
-func homeWorkflow() g.Node {
+func homeSharing() g.Node {
 	return h.Section(
-		h.ID("workflow"),
-		h.Class("workflow"),
+		h.ID("sharing"),
+		h.Class("sharing"),
 		h.Div(
-			h.Class("container"),
+			h.Class("container sharing-grid"),
 			h.Div(
-				h.Class("section-heading"),
-				h.H2(g.Text("A workflow that feels lighter.")),
-				h.P(g.Text("From capture to delivery, Arkive keeps your team in flow without noisy tools.")),
-			),
-			h.Div(
-				h.Class("step-grid"),
-				stepCard("01", "Collect", "Drop in anything you find. Arkive tags and connects it automatically."),
-				stepCard("02", "Curate", "Pin the key moments and draft summaries together."),
-				stepCard("03", "Share", "Publish a living brief or export a clean report."),
-			),
-		),
-	)
-}
-
-func homeCTA() g.Node {
-	return h.Section(
-		h.ID("pricing"),
-		h.Class("cta"),
-		h.Div(
-			h.Class("container"),
-			h.Div(
-				h.Class("cta-card"),
+				h.Class("sharing-copy"),
+				h.H2(g.Text("Share in seconds, keep control forever.")),
+				h.P(g.Text("Upload any file, generate a link instantly, and set a password if needed. Recipients can download without creating an account.")),
 				h.Div(
-					h.Class("cta-copy"),
-					h.Span(h.Class("eyebrow"), g.Text("Launch your Arkive")),
-					h.H2(g.Text("Keep every project decision discoverable.")),
-					h.P(g.Text("Start with a free workspace, invite your team, and upgrade when you are ready.")),
+					h.Class("share-steps"),
+					stepCard("01", "Upload", "Drop files or folders in one click."),
+					stepCard("02", "Secure", "Add a password or keep it open."),
+					stepCard("03", "Send", "Share the link anywhere, instantly."),
 				),
+			),
+			h.Div(
+				h.Class("sharing-panel"),
 				h.Div(
-					h.Class("cta-actions"),
-					h.A(h.Class("button primary"), h.Href("/signup"), g.Text("Create workspace")),
-					h.A(h.Class("button secondary"), h.Href("/login"), g.Text("Talk to sales")),
+					h.Class("panel-card"),
+					h.P(h.Class("card-title"), g.Text("Preview")),
+					h.H3(g.Text("Campaign assets.zip")),
+					h.P(g.Text("1.2 GB · Ready to download")),
+					h.Div(
+						h.Class("panel-tags"),
+						h.Span(h.Class("tag"), g.Text("Password on")),
+						h.Span(h.Class("tag"), g.Text("No expiry")),
+						h.Span(h.Class("tag"), g.Text("Unlimited downloads")),
+					),
 				),
 			),
 		),
@@ -186,20 +180,65 @@ func homeSecurity() g.Node {
 			h.Class("container security-grid"),
 			h.Div(
 				h.Class("security-copy"),
-				h.H2(g.Text("Secure by default, calm by design.")),
-				h.P(g.Text("Your archive is encrypted, audited, and ready for compliance from day one.")),
+				h.H2(g.Text("Secure, private, and built to last.")),
+				h.P(g.Text("Arkive keeps your files protected with encryption and privacy-first defaults. No retention timers. No surprise deletions.")),
 				h.Div(
 					h.Class("security-tags"),
-					h.Span(h.Class("tag"), g.Text("SOC2 ready")),
-					h.Span(h.Class("tag"), g.Text("Role based access")),
-					h.Span(h.Class("tag"), g.Text("Private by default")),
+					h.Span(h.Class("tag"), g.Text("Encrypted storage")),
+					h.Span(h.Class("tag"), g.Text("Password locks")),
+					h.Span(h.Class("tag"), g.Text("Unlimited retention")),
 				),
 			),
 			h.Div(
 				h.Class("security-panel"),
-				securityRow("Encryption at rest", "All files and notes are encrypted with modern standards."),
-				securityRow("Activity logging", "See who accessed or shared any collection."),
-				securityRow("Export control", "Invite partners with time-bound access."),
+				securityRow("Zero friction access", "Recipients never need to create an account."),
+				securityRow("Fast global delivery", "Share links optimized for rapid downloads."),
+				securityRow("Open source soon", "A transparent, community-driven roadmap."),
+			),
+		),
+	)
+}
+
+func homeRoadmap() g.Node {
+	return h.Section(
+		h.ID("roadmap"),
+		h.Class("roadmap"),
+		h.Div(
+			h.Class("container"),
+			h.Div(
+				h.Class("section-heading"),
+				h.H2(g.Text("More freedom is coming.")),
+				h.P(g.Text("We are building the next layer of Arkive with tools for creators, teams, and partners.")),
+			),
+			h.Div(
+				h.Class("roadmap-grid"),
+				roadmapCard("Affiliate program", "Earn well for every creator you bring."),
+				roadmapCard("Mobile apps", "Android and iOS apps with instant sharing."),
+				roadmapCard("Premium membership", "More storage, advanced controls, and priority support."),
+				roadmapCard("Open source", "Public repo and community contributions."),
+			),
+		),
+	)
+}
+
+func homeCTA() g.Node {
+	return h.Section(
+		h.Class("cta"),
+		h.Div(
+			h.Class("container"),
+			h.Div(
+				h.Class("cta-card"),
+				h.Div(
+					h.Class("cta-copy"),
+					h.Span(h.Class("eyebrow"), g.Text("Start free")),
+					h.H2(g.Text("2GB free today. 5GB total during launch week.")),
+					h.P(g.Text("Create your account and start sharing instantly. No limits on retention, no friction for recipients.")),
+				),
+				h.Div(
+					h.Class("cta-actions"),
+					h.A(h.Class("button primary"), h.Href("/signup"), g.Text("Create account")),
+					h.A(h.Class("button secondary"), h.Href("/login"), g.Text("Log in")),
+				),
 			),
 		),
 	)
@@ -213,20 +252,19 @@ func homeFooter() g.Node {
 			h.Div(
 				h.Class("footer-brand"),
 				h.H3(g.Text("Arkive")),
-				h.P(g.Text("Capture, curate, and share what matters.")),
+				h.P(g.Text("Share files with freedom, speed, and security.")),
 			),
 			h.Div(
 				h.Class("footer-links"),
 				h.A(h.Href("#features"), g.Text("Features")),
-				h.A(h.Href("#workflow"), g.Text("Workflow")),
+				h.A(h.Href("#sharing"), g.Text("Sharing")),
 				h.A(h.Href("#security"), g.Text("Security")),
-				h.A(h.Href("#pricing"), g.Text("Pricing")),
+				h.A(h.Href("#roadmap"), g.Text("Roadmap")),
 			),
 			h.Div(
 				h.Class("footer-links"),
-				h.A(h.Href("#"), g.Text("Docs")),
-				h.A(h.Href("#"), g.Text("Changelog")),
-				h.A(h.Href("#"), g.Text("Support")),
+				h.A(h.Href("/login"), g.Text("Login")),
+				h.A(h.Href("/signup"), g.Text("Create account")),
 			),
 		),
 	)
@@ -261,6 +299,22 @@ func securityRow(title, body string) g.Node {
 	return h.Div(
 		h.Class("security-row"),
 		h.H3(g.Text(title)),
+		h.P(g.Text(body)),
+	)
+}
+
+func roadmapCard(title, body string) g.Node {
+	return h.Article(
+		h.Class("roadmap-card"),
+		h.H3(g.Text(title)),
+		h.P(g.Text(body)),
+	)
+}
+
+func freedomItem(title, body string) g.Node {
+	return h.Div(
+		h.Class("freedom-item"),
+		h.H4(g.Text(title)),
 		h.P(g.Text(body)),
 	)
 }

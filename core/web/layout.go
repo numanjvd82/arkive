@@ -8,9 +8,10 @@ import (
 )
 
 type LayoutData struct {
-	Title string
-	CSS   []string
-	JS    []string
+	Title   string
+	CSS     []string
+	JS      []string
+	HideNav bool
 }
 
 func Layout(data LayoutData, content ...g.Node) g.Node {
@@ -34,7 +35,7 @@ func Layout(data LayoutData, content ...g.Node) g.Node {
 		h.Lang("en"),
 		h.Head(headNodes...),
 		h.Body(
-			components.Nav(),
+			g.If(!data.HideNav, components.Nav()),
 			g.Group(content),
 		),
 	))

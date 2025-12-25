@@ -8,19 +8,20 @@ import (
 )
 
 type Page struct {
-	Title string
-	CSS   []string
-	JS    []string
-	Body  g.Node
+	Title   string
+	CSS     []string
+	JS      []string
+	Body    g.Node
+	HideNav bool
 }
 
 func Render(c *gin.Context, page Page) {
 	c.Header("Content-Type", "text/html; charset=utf-8")
 	var node g.Node
 	if page.Body == nil {
-		node = Layout(LayoutData{Title: page.Title, CSS: page.CSS, JS: page.JS})
+		node = Layout(LayoutData{Title: page.Title, CSS: page.CSS, JS: page.JS, HideNav: page.HideNav})
 	} else {
-		node = Layout(LayoutData{Title: page.Title, CSS: page.CSS, JS: page.JS}, page.Body)
+		node = Layout(LayoutData{Title: page.Title, CSS: page.CSS, JS: page.JS, HideNav: page.HideNav}, page.Body)
 	}
 	if err := node.Render(c.Writer); err != nil {
 		c.Status(http.StatusInternalServerError)

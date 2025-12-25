@@ -13,7 +13,11 @@ func Nav() g.Node {
 			h.A(
 				h.Class("nav-brand"),
 				h.Href("/"),
-				g.Text("arkive.sh"),
+				h.Span(
+					h.Class("brand-mark"),
+					h.Span(h.Class("brand-core")),
+				),
+				h.Span(h.Class("logo-text"), g.Text("arkive.sh")),
 			),
 			h.Button(
 				h.Class("button secondary theme-toggle"),
