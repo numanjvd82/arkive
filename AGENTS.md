@@ -17,6 +17,7 @@
 - Services start a transaction per request and call repo methods with the tx.
 - Web pages use reusable components (inputs, cards, buttons, icons).
 - Handlers parse form inputs into structs before calling services.
+- Validation errors are returned as a `validation.Errors` map and rendered inline in forms.
 
 ## Potential Improvements
 - **Modularization**: Consider splitting large services into smaller, focused modules.
@@ -34,3 +35,7 @@
 - Engage in code reviews to maintain high code quality and share knowledge among the team.
 - Monitor performance and optimize database queries as needed.
 - Don't run destructive commands like `git reset --hard` without backups or confirmation.
+
+## Recent Updates
+- Added `pkg/validation` for reusable validation helpers and error maps.
+- Auth signup checks uniqueness via repo lookups (`GetUserByEmail`, `GetUserByBrandName`) before insert.

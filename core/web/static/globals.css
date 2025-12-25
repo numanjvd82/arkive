@@ -16,6 +16,7 @@
   --accent-strong: #ffffff;
   --accent-warm: #f3b46c;
   --accent-cool: #6bd1e6;
+  --danger: #ff5c5c;
   --border: #2b3347;
   --shadow: 0 24px 40px rgba(7, 9, 15, 0.35);
 }
@@ -32,6 +33,7 @@
   --accent-strong: #0f1422;
   --accent-warm: #d99d55;
   --accent-cool: #3a9bb0;
+  --danger: #d93025;
   --border: #dde2ee;
   --shadow: 0 20px 36px rgba(17, 21, 34, 0.1);
 }

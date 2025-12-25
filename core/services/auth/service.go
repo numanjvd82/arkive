@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"golang.org/x/crypto/bcrypt"
 
 	"arkive/core/database"
@@ -17,6 +16,7 @@ import (
 	sessionrepo "arkive/core/repositories/session"
 	jwtservice "arkive/core/services/jwt"
 	"arkive/pkg/tokens"
+	"arkive/pkg/validation"
 )
 
 type Service struct {
@@ -53,82 +53,122 @@ func NewService(
 	}
 }
 
-func (s *Service) WebLogin(ctx context.Context, email, password string) (string, time.Time, error) {
+func (s *Service) WebLogin(ctx context.Context, email, password string) (string, time.Time, validation.Errors, error) {
 	email = strings.TrimSpace(email)
 	password = strings.TrimSpace(password)
 	if email == "" || password == "" {
-		return "", time.Time{}, ErrInvalidInput
+		validationErrors := validation.New()
+		validationErrors.Add("email", "Email is required.")
+		validationErrors.Add("password", "Password is required.")
+		return "", time.Time{}, validationErrors, nil
 	}
 
 	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		return "", time.Time{}, err
+		return "", time.Time{}, nil, err
 	}
 
 	user, err := s.authenticateUser(ctx, email, password)
 	if err != nil {
 		_ = tx.Rollback(ctx)
-		return "", time.Time{}, err
+		if errors.Is(err, ErrInvalidCredentials) {
+			validationErrors := validation.New()
+			validationErrors.Add(validation.GeneralKey, "Invalid email or password.")
+			return "", time.Time{}, validationErrors, nil
+		}
+		return "", time.Time{}, nil, err
 	}
 
 	sessionID, expiresAt, err := s.createSession(ctx, tx, user.ID)
 	if err != nil {
 		_ = tx.Rollback(ctx)
-		return "", time.Time{}, err
+		return "", time.Time{}, nil, err
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return "", time.Time{}, err
+		return "", time.Time{}, nil, err
 	}
 
-	return sessionID, expiresAt, nil
+	return sessionID, expiresAt, nil, nil
 }
 
-func (s *Service) WebSignup(ctx context.Context, brandName, email, password string) (string, time.Time, error) {
+func (s *Service) WebSignup(ctx context.Context, brandName, email, password, confirmPassword string) (string, time.Time, validation.Errors, error) {
 	brandName = strings.TrimSpace(brandName)
 	email = strings.TrimSpace(email)
 	password = strings.TrimSpace(password)
-	if brandName == "" || email == "" || password == "" {
-		return "", time.Time{}, ErrInvalidInput
+	confirmPassword = strings.TrimSpace(confirmPassword)
+	validationErrors := validation.New()
+	if brandName == "" {
+		validationErrors.Add("brand_name", "Brand name is required.")
+	}
+	if email == "" {
+		validationErrors.Add("email", "Email is required.")
+	}
+	if password == "" {
+		validationErrors.Add("password", "Password is required.")
+	}
+	if confirmPassword == "" {
+		validationErrors.Add("confirm_password", "Confirm password is required.")
+	}
+	if password != "" {
+		if passwordError := validation.PasswordError(password); passwordError != "" {
+			validationErrors.Add("password", passwordError)
+		}
+	}
+	if password != "" && confirmPassword != "" && password != confirmPassword {
+		validationErrors.Add("confirm_password", "Passwords do not match.")
+	}
+	if validationErrors.HasAny() {
+		return "", time.Time{}, validationErrors, nil
 	}
 
 	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		return "", time.Time{}, err
+		return "", time.Time{}, nil, err
+	}
+
+	if _, _, err := s.authRepo.GetUserByEmail(ctx, tx, email); err == nil {
+		validationErrors.Add("email", "Email already exists.")
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		_ = tx.Rollback(ctx)
+		return "", time.Time{}, nil, err
+	}
+
+	if _, err := s.authRepo.GetUserByBrandName(ctx, tx, brandName); err == nil {
+		validationErrors.Add("brand_name", "Brand name already exists.")
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		_ = tx.Rollback(ctx)
+		return "", time.Time{}, nil, err
+	}
+
+	if validationErrors.HasAny() {
+		_ = tx.Rollback(ctx)
+		return "", time.Time{}, validationErrors, nil
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		_ = tx.Rollback(ctx)
-		return "", time.Time{}, err
+		return "", time.Time{}, nil, err
 	}
 
 	user, err := s.authRepo.CreateUser(ctx, tx, brandName, email, string(hash))
 	if err != nil {
 		_ = tx.Rollback(ctx)
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			switch pgErr.ConstraintName {
-			case "users_email_key":
-				return "", time.Time{}, ErrEmailExists
-			case "users_brand_name_key":
-				return "", time.Time{}, ErrBrandNameExists
-			}
-		}
-		return "", time.Time{}, err
+		return "", time.Time{}, nil, err
 	}
 
 	sessionID, expiresAt, err := s.createSession(ctx, tx, user.ID)
 	if err != nil {
 		_ = tx.Rollback(ctx)
-		return "", time.Time{}, err
+		return "", time.Time{}, nil, err
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return "", time.Time{}, err
+		return "", time.Time{}, nil, err
 	}
 
-	return sessionID, expiresAt, nil
+	return sessionID, expiresAt, nil, nil
 }
 
 func (s *Service) LogoutSession(ctx context.Context, sessionID string) error {

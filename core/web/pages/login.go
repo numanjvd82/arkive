@@ -6,17 +6,25 @@ import (
 
 	"arkive/core/web"
 	"arkive/core/web/components"
+	"arkive/pkg/validation"
 )
 
-func LoginPage() web.Page {
+type LoginPageProps struct {
+	Errors validation.Errors
+	Email  string
+}
+
+func LoginPage(props LoginPageProps) web.Page {
 	return web.Page{
 		Title: "Arkive · Login",
 		CSS:   []string{"/web/pages/login.css"},
-		Body:  loginBody(),
+		Body:  loginBody(props),
 	}
 }
 
-func loginBody() g.Node {
+func loginBody(props LoginPageProps) g.Node {
+	generalError := validation.FieldError(props.Errors, validation.GeneralKey)
+
 	return h.Div(
 		h.Class("auth-page"),
 		h.Div(
@@ -29,12 +37,22 @@ func loginBody() g.Node {
 					h.Form(
 						h.Class("auth-form"),
 						g.Attr("method", "POST"),
+						g.If(
+							generalError != "",
+							h.P(
+								h.Class("form-error"),
+								g.Text(generalError),
+							),
+						),
 						components.InputField(components.InputProps{
 							Label:       "Email",
 							Name:        "email",
 							Type:        components.InputTypeEmail,
 							Placeholder: "you@example.com",
+							Value:       props.Email,
 							Required:    true,
+							HelperText:  validation.FieldError(props.Errors, "email"),
+							HasError:    validation.FieldError(props.Errors, "email") != "",
 						}),
 						components.InputField(components.InputProps{
 							Label:       "Password",
@@ -42,6 +60,8 @@ func loginBody() g.Node {
 							Type:        components.InputTypePassword,
 							Placeholder: "Enter your password",
 							Required:    true,
+							HelperText:  validation.FieldError(props.Errors, "password"),
+							HasError:    validation.FieldError(props.Errors, "password") != "",
 						}),
 						components.Button(components.ButtonProps{
 							Text:    "Login",

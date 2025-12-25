@@ -12,8 +12,15 @@
   background: var(--bg);
 }
 
-.auth-form {
+.auth-card {
   width: min(420px, 92vw);
+}
+
+.auth-form {
   display: grid;
   gap: 16px;
+}
+
+.auth-submit {
+  width: 100%;
 }

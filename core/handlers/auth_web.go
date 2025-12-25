@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -9,18 +10,19 @@ import (
 	"arkive/core/web"
 	"arkive/core/web/pages"
 	"arkive/pkg/cookies"
+	"arkive/pkg/validation"
 )
 
 func WebLoginGet() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		webPage := pages.LoginPage()
+		webPage := pages.LoginPage(pages.LoginPageProps{})
 		web.Render(c, webPage)
 	}
 }
 
 func WebSignupGet() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		webPage := pages.SignupPage()
+		webPage := pages.SignupPage(pages.SignupPageProps{})
 		web.Render(c, webPage)
 	}
 }
@@ -34,18 +36,25 @@ func WebLoginPost(svc *auth.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var form loginForm
 		if err := c.ShouldBind(&form); err != nil {
-			web.Render(c, pages.LoginPage())
+			web.Render(c, pages.LoginPage(pages.LoginPageProps{
+				Errors: validation.Errors{
+					validation.GeneralKey: "Please fill out the form.",
+				},
+				Email: strings.TrimSpace(c.PostForm("email")),
+			}))
 			return
 		}
 
-		sessionID, expiresAt, err := svc.WebLogin(c.Request.Context(), form.Email, form.Password)
+		sessionID, expiresAt, validationErrors, err := svc.WebLogin(c.Request.Context(), form.Email, form.Password)
+		if len(validationErrors) > 0 {
+			web.Render(c, pages.LoginPage(pages.LoginPageProps{
+				Errors: validationErrors,
+				Email:  strings.TrimSpace(form.Email),
+			}))
+			return
+		}
 		if err != nil {
-			switch err {
-			case auth.ErrInvalidInput, auth.ErrInvalidCredentials:
-				web.Render(c, pages.LoginPage())
-			default:
-				c.Status(http.StatusInternalServerError)
-			}
+			c.Status(http.StatusInternalServerError)
 			return
 		}
 
@@ -56,26 +65,42 @@ func WebLoginPost(svc *auth.Service) gin.HandlerFunc {
 
 func WebSignupPost(svc *auth.Service) gin.HandlerFunc {
 	type signupForm struct {
-		BrandName string `form:"brand_name"`
-		Email     string `form:"email"`
-		Password  string `form:"password"`
+		BrandName       string `form:"brand_name"`
+		Email           string `form:"email"`
+		Password        string `form:"password"`
+		ConfirmPassword string `form:"confirm_password"`
 	}
 
 	return func(c *gin.Context) {
 		var form signupForm
 		if err := c.ShouldBind(&form); err != nil {
-			web.Render(c, pages.SignupPage())
+			web.Render(c, pages.SignupPage(pages.SignupPageProps{
+				Errors: validation.Errors{
+					validation.GeneralKey: "Please fill out the form.",
+				},
+				BrandName: strings.TrimSpace(c.PostForm("brand_name")),
+				Email:     strings.TrimSpace(c.PostForm("email")),
+			}))
 			return
 		}
 
-		sessionID, expiresAt, err := svc.WebSignup(c.Request.Context(), form.BrandName, form.Email, form.Password)
+		sessionID, expiresAt, validationErrors, err := svc.WebSignup(
+			c.Request.Context(),
+			form.BrandName,
+			form.Email,
+			form.Password,
+			form.ConfirmPassword,
+		)
+		if len(validationErrors) > 0 {
+			web.Render(c, pages.SignupPage(pages.SignupPageProps{
+				Errors:    validationErrors,
+				BrandName: strings.TrimSpace(form.BrandName),
+				Email:     strings.TrimSpace(form.Email),
+			}))
+			return
+		}
 		if err != nil {
-			switch err {
-			case auth.ErrInvalidInput, auth.ErrEmailExists, auth.ErrBrandNameExists:
-				web.Render(c, pages.SignupPage())
-			default:
-				c.Status(http.StatusInternalServerError)
-			}
+			c.Status(http.StatusInternalServerError)
 			return
 		}
 

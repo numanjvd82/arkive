@@ -102,6 +102,12 @@
   color: var(--muted);
 }
 
+.form-subtitle {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
 .form-input {
   width: 100%;
   padding: 14px 16px;
@@ -114,6 +120,11 @@
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
+.form-input.is-invalid {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px rgba(255, 92, 92, 0.2);
+}
+
 .form-input::placeholder {
   color: var(--muted);
 }
@@ -123,6 +134,21 @@
   border-color: var(--accent-cool);
   box-shadow: 0 0 0 3px rgba(107, 209, 230, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.form-helper {
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.85rem;
+}
+
+.form-error {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 92, 92, 0.12);
+  color: var(--danger);
+  font-size: 0.9rem;
 }
 
 /* Password field */

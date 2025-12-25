@@ -47,3 +47,14 @@ func (r *Repository) GetUserByID(ctx context.Context, db database.PgExecutor, us
 	}
 	return user, nil
 }
+
+func (r *Repository) GetUserByBrandName(ctx context.Context, db database.PgExecutor, brandName string) (models.User, error) {
+	var user models.User
+	query := `SELECT id, brand_name, email
+		FROM users
+		WHERE brand_name = $1`
+	if err := db.QueryRow(ctx, query, brandName).Scan(&user.ID, &user.BrandName, &user.Email); err != nil {
+		return models.User{}, err
+	}
+	return user, nil
+}
