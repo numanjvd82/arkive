@@ -51,6 +51,14 @@ func (r *Repository) UpdateFileStatus(ctx context.Context, db database.PgExecuto
 	return err
 }
 
+func (r *Repository) UpdateFileSize(ctx context.Context, db database.PgExecutor, fileID string, sizeBytes int64) error {
+	query := `UPDATE files
+		SET size_bytes = $2, updated_at = now()
+		WHERE id = $1`
+	_, err := db.Exec(ctx, query, fileID, sizeBytes)
+	return err
+}
+
 func (r *Repository) GetFileByID(ctx context.Context, db database.PgExecutor, fileID string) (models.File, error) {
 	var file models.File
 	query := `SELECT id, user_id, bucket, object_key, filename, content_type, size_bytes, status, created_at, updated_at
