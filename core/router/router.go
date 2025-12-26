@@ -10,10 +10,11 @@ import (
 	authrepo "arkive/core/repositories/auth"
 	sessionrepo "arkive/core/repositories/session"
 	"arkive/core/services/auth"
+	"arkive/core/services/uploads"
 	"arkive/core/web"
 )
 
-func New(db database.PgPool, cfg config.Config) *gin.Engine {
+func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) *gin.Engine {
 	r := gin.Default()
 
 	authService := auth.NewService(db, authrepo.New(), sessionrepo.New(), auth.Config{
@@ -27,6 +28,7 @@ func New(db database.PgPool, cfg config.Config) *gin.Engine {
 	r.POST("/login", handlers.WebLoginPost(authService))
 	r.GET("/signup", handlers.WebSignupGet(authService))
 	r.POST("/signup", handlers.WebSignupPost(authService))
+	r.GET("/share/:token", handlers.ShareDownload(uploadService))
 
 	protected := r.Group("/")
 	protected.Use(middleware.RequireSessionRedirect(authService))
@@ -37,6 +39,22 @@ func New(db database.PgPool, cfg config.Config) *gin.Engine {
 	{
 		api.GET("/me", middleware.RequireSessionJSON(authService), handlers.APIMe(authService))
 		api.GET("/health", handlers.Health(db))
+	}
+
+	apiUploads := api.Group("/uploads")
+	apiUploads.Use(middleware.RequireSessionJSON(authService))
+	{
+		apiUploads.POST("/multipart/start", handlers.APIMultipartStart(uploadService))
+		apiUploads.POST("/multipart/part-url", handlers.APIMultipartPartURL(uploadService))
+		apiUploads.POST("/multipart/complete", handlers.APIMultipartComplete(uploadService))
+		apiUploads.POST("/multipart/abort", handlers.APIMultipartAbort(uploadService))
+	}
+
+	apiFiles := api.Group("/files")
+	apiFiles.Use(middleware.RequireSessionJSON(authService))
+	{
+		apiFiles.POST("/:id/share", handlers.APIShareCreate(uploadService))
+		apiFiles.GET("/:id/download", handlers.APIDownloadFile(uploadService))
 	}
 
 	return r

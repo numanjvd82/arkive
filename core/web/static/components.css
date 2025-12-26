@@ -212,3 +212,49 @@
 .password-toggle[data-visible="true"] .icon-eye-off {
   display: block;
 }
+
+/* Upload */
+.upload-input {
+  padding: 12px;
+  cursor: pointer;
+}
+
+.upload-input::file-selector-button {
+  margin-right: 12px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.progress {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.progress-label {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.progress-track {
+  position: relative;
+  width: 100%;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--surface-strong);
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent-cool), var(--accent));
+  box-shadow: 0 0 16px rgba(107, 209, 230, 0.35);
+  transition: width 0.2s ease;
+}

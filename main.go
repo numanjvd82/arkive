@@ -4,11 +4,16 @@ import (
 	"context"
 	"log"
 	"strings"
+	"time"
 
 	"arkive/core/config"
 	"arkive/core/database"
+	filerepo "arkive/core/repositories/files"
+	uploadrepo "arkive/core/repositories/uploads"
 	"arkive/core/router"
+	"arkive/core/services/uploads"
 	"arkive/migrations"
+	"arkive/pkg/storage/r2"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -38,13 +43,45 @@ func main() {
 		log.Fatalf("migrations failed: %v", err)
 	}
 
+	r2Client, err := r2.New(context.Background(), r2.Config{
+		AccessKeyID:     cfg.R2AccessKeyID,
+		SecretAccessKey: cfg.R2SecretAccessKey,
+		SessionToken:    cfg.R2SessionToken,
+		Bucket:          cfg.R2Bucket,
+		Endpoint:        cfg.R2Endpoint,
+		Region:          cfg.R2Region,
+	})
+	if err != nil {
+		log.Fatalf("r2 client failed: %v", err)
+	}
+
+	uploadService := uploads.NewService(db, filerepo.New(), uploadrepo.New(), r2Client, uploads.Config{
+		Bucket:         cfg.R2Bucket,
+		UploadExpires:  15 * time.Minute,
+		DownloadExpire: 1 * time.Minute,
+	})
+
+	go func() {
+		ticker := time.NewTicker(6 * time.Hour)
+		defer ticker.Stop()
+		for {
+			cleaned, err := uploadService.CleanupStaleMultipart(context.Background(), 24*time.Hour)
+			if err != nil {
+				log.Printf("multipart cleanup failed: %v", err)
+			} else if cleaned > 0 {
+				log.Printf("multipart cleanup: aborted %d uploads", cleaned)
+			}
+			<-ticker.C
+		}
+	}()
+
 	if strings.EqualFold(cfg.Env, "dev") {
 		gin.SetMode(gin.DebugMode)
 	} else {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	r := router.New(db, cfg)
+	r := router.New(db, cfg, uploadService)
 
 	if err := r.Run(cfg.Port); err != nil {
 		log.Fatalf("server failed: %v", err)

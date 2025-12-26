@@ -7,10 +7,16 @@ import (
 )
 
 type Config struct {
-	DatabaseURL string
-	Port        string
-	SessionTTL  time.Duration
-	Env         string
+	DatabaseURL       string
+	Port              string
+	SessionTTL        time.Duration
+	Env               string
+	R2AccessKeyID     string
+	R2SecretAccessKey string
+	R2SessionToken    string
+	R2Bucket          string
+	R2Endpoint        string
+	R2Region          string
 }
 
 func Load() (Config, error) {
@@ -34,11 +40,42 @@ func Load() (Config, error) {
 		env = "prod"
 	}
 
+	r2AccessKeyID := os.Getenv("R2_ACCESS_KEY_ID")
+	if r2AccessKeyID == "" {
+		return Config{}, errors.New("R2_ACCESS_KEY_ID is required")
+	}
+
+	r2SecretAccessKey := os.Getenv("R2_SECRET_ACCESS_KEY")
+	if r2SecretAccessKey == "" {
+		return Config{}, errors.New("R2_SECRET_ACCESS_KEY is required")
+	}
+
+	r2Bucket := os.Getenv("R2_BUCKET")
+	if r2Bucket == "" {
+		return Config{}, errors.New("R2_BUCKET is required")
+	}
+
+	r2Endpoint := os.Getenv("R2_ENDPOINT")
+	if r2Endpoint == "" {
+		return Config{}, errors.New("R2_ENDPOINT is required")
+	}
+
+	r2Region := os.Getenv("R2_REGION")
+	if r2Region == "" {
+		r2Region = "auto"
+	}
+
 	return Config{
-		DatabaseURL: dsn,
-		Port:        addr,
-		SessionTTL:  sessionTTL,
-		Env:         env,
+		DatabaseURL:       dsn,
+		Port:              addr,
+		SessionTTL:        sessionTTL,
+		Env:               env,
+		R2AccessKeyID:     r2AccessKeyID,
+		R2SecretAccessKey: r2SecretAccessKey,
+		R2SessionToken:    os.Getenv("R2_SESSION_TOKEN"),
+		R2Bucket:          r2Bucket,
+		R2Endpoint:        r2Endpoint,
+		R2Region:          r2Region,
 	}, nil
 }
 

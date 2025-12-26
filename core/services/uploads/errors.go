@@ -1,0 +1,17 @@
+package uploads
+
+import "errors"
+
+var (
+	ErrInvalidInput = errors.New("invalid input")
+	ErrNotFound     = errors.New("not found")
+	ErrUnauthorized = errors.New("unauthorized")
+	ErrUploadFailed = errors.New("upload failed")
+)
+
+var (
+	ErrFilenameRequired  = errors.New("filename is required")
+	ErrFileSizeRequired  = errors.New("file size is required")
+	ErrPartNumberInvalid = errors.New("part number is invalid")
+	ErrPartsRequired     = errors.New("parts are required")
+)

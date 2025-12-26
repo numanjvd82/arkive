@@ -1,0 +1,16 @@
+package models
+
+import "time"
+
+type File struct {
+	ID          string
+	UserID      string
+	Bucket      string
+	ObjectKey   string
+	Filename    string
+	ContentType string
+	SizeBytes   int64
+	Status      string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
