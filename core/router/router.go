@@ -10,17 +10,13 @@ import (
 	authrepo "arkive/core/repositories/auth"
 	sessionrepo "arkive/core/repositories/session"
 	"arkive/core/services/auth"
-	jwtservice "arkive/core/services/jwt"
 	"arkive/core/web"
 )
 
 func New(db database.PgPool, cfg config.Config) *gin.Engine {
 	r := gin.Default()
 
-	jwtSvc := jwtservice.New(cfg.JWTSecret)
-	authService := auth.NewService(db, authrepo.New(), sessionrepo.New(), jwtSvc, auth.Config{
-		AccessTTL:  cfg.AccessTTL,
-		RefreshTTL: cfg.RefreshTTL,
+	authService := auth.NewService(db, authrepo.New(), sessionrepo.New(), auth.Config{
 		SessionTTL: cfg.SessionTTL,
 	})
 
@@ -39,11 +35,7 @@ func New(db database.PgPool, cfg config.Config) *gin.Engine {
 
 	api := r.Group("/api")
 	{
-		api.POST("/auth/login", handlers.APILogin(authService))
-		api.POST("/auth/refresh", handlers.APIRefresh(authService))
-		api.POST("/auth/logout", handlers.APILogout(authService))
-
-		api.GET("/me", middleware.RequireAccessToken(authService), handlers.APIMe(authService))
+		api.GET("/me", middleware.RequireSessionJSON(authService), handlers.APIMe(authService))
 		api.GET("/health", handlers.Health(db))
 	}
 

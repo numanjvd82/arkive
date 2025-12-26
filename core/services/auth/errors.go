@@ -7,7 +7,6 @@ var (
 	ErrInvalidInput        = errors.New("invalid input")
 	ErrEmailExists         = errors.New("email already exists")
 	ErrBrandNameExists     = errors.New("brand name already exists")
-	ErrRefreshTokenInvalid = errors.New("refresh token invalid")
 	ErrSessionNotFound     = errors.New("session not found")
 
 	ErrEmailRequired           = errors.New("email is required")

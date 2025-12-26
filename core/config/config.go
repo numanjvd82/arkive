@@ -9,9 +9,6 @@ import (
 type Config struct {
 	DatabaseURL string
 	Port        string
-	JWTSecret   string
-	AccessTTL   time.Duration
-	RefreshTTL  time.Duration
 	SessionTTL  time.Duration
 	Env         string
 }
@@ -22,19 +19,6 @@ func Load() (Config, error) {
 		return Config{}, errors.New("DATABASE_URL is required")
 	}
 
-	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == "" {
-		return Config{}, errors.New("JWT_SECRET is required")
-	}
-
-	accessTTL, err := parseDurationEnv("ACCESS_TOKEN_TTL")
-	if err != nil {
-		return Config{}, err
-	}
-	refreshTTL, err := parseDurationEnv("REFRESH_TOKEN_TTL")
-	if err != nil {
-		return Config{}, err
-	}
 	sessionTTL, err := parseDurationEnv("SESSION_TTL")
 	if err != nil {
 		return Config{}, err
@@ -53,9 +37,6 @@ func Load() (Config, error) {
 	return Config{
 		DatabaseURL: dsn,
 		Port:        addr,
-		JWTSecret:   jwtSecret,
-		AccessTTL:   accessTTL,
-		RefreshTTL:  refreshTTL,
 		SessionTTL:  sessionTTL,
 		Env:         env,
 	}, nil
