@@ -58,8 +58,12 @@ func (s *Service) WebLogin(ctx context.Context, email, password string) (string,
 	password = strings.TrimSpace(password)
 	if email == "" || password == "" {
 		validationErrors := validation.New()
-		validationErrors.Add("email", "Email is required.")
-		validationErrors.Add("password", "Password is required.")
+		if email == "" {
+			validationErrors.Add("email", ErrEmailRequired.Error())
+		}
+		if password == "" {
+			validationErrors.Add("password", ErrPasswordRequired.Error())
+		}
 		return "", time.Time{}, validationErrors, nil
 	}
 
@@ -73,7 +77,7 @@ func (s *Service) WebLogin(ctx context.Context, email, password string) (string,
 		_ = tx.Rollback(ctx)
 		if errors.Is(err, ErrInvalidCredentials) {
 			validationErrors := validation.New()
-			validationErrors.Add(validation.GeneralKey, "Invalid email or password.")
+			validationErrors.Add(validation.GeneralKey, ErrLoginInvalid.Error())
 			return "", time.Time{}, validationErrors, nil
 		}
 		return "", time.Time{}, nil, err
@@ -99,24 +103,31 @@ func (s *Service) WebSignup(ctx context.Context, brandName, email, password, con
 	confirmPassword = strings.TrimSpace(confirmPassword)
 	validationErrors := validation.New()
 	if brandName == "" {
-		validationErrors.Add("brand_name", "Brand name is required.")
+		validationErrors.Add("brand_name", ErrBrandNameRequired.Error())
 	}
 	if email == "" {
-		validationErrors.Add("email", "Email is required.")
+		validationErrors.Add("email", ErrEmailRequired.Error())
 	}
 	if password == "" {
-		validationErrors.Add("password", "Password is required.")
+		validationErrors.Add("password", ErrPasswordRequired.Error())
 	}
 	if confirmPassword == "" {
-		validationErrors.Add("confirm_password", "Confirm password is required.")
+		validationErrors.Add("confirm_password", ErrConfirmPasswordRequired.Error())
 	}
 	if password != "" {
-		if passwordError := validation.PasswordError(password); passwordError != "" {
-			validationErrors.Add("password", passwordError)
+		switch validation.PasswordIssueFor(password) {
+		case validation.PasswordTooShort:
+			validationErrors.Add("password", ErrPasswordTooShort.Error())
+		case validation.PasswordMissingLower:
+			validationErrors.Add("password", ErrPasswordMissingLower.Error())
+		case validation.PasswordMissingUpper:
+			validationErrors.Add("password", ErrPasswordMissingUpper.Error())
+		case validation.PasswordMissingSymbol:
+			validationErrors.Add("password", ErrPasswordMissingSymbol.Error())
 		}
 	}
 	if password != "" && confirmPassword != "" && password != confirmPassword {
-		validationErrors.Add("confirm_password", "Passwords do not match.")
+		validationErrors.Add("confirm_password", ErrPasswordMismatch.Error())
 	}
 	if validationErrors.HasAny() {
 		return validationErrors, nil
@@ -128,14 +139,14 @@ func (s *Service) WebSignup(ctx context.Context, brandName, email, password, con
 	}
 
 	if _, _, err := s.authRepo.GetUserByEmail(ctx, tx, email); err == nil {
-		validationErrors.Add("email", "Email already exists.")
+		validationErrors.Add("email", ErrEmailExists.Error())
 	} else if !errors.Is(err, pgx.ErrNoRows) {
 		_ = tx.Rollback(ctx)
 		return nil, err
 	}
 
 	if _, err := s.authRepo.GetUserByBrandName(ctx, tx, brandName); err == nil {
-		validationErrors.Add("brand_name", "Brand name already exists.")
+		validationErrors.Add("brand_name", ErrBrandNameExists.Error())
 	} else if !errors.Is(err, pgx.ErrNoRows) {
 		_ = tx.Rollback(ctx)
 		return nil, err

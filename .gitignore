@@ -7,3 +7,7 @@ coverage.out
 
 # Docker files
 docker-compose.yml
+
+# Dumps 
+*.sql
+*.dump

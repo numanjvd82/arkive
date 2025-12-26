@@ -125,6 +125,13 @@ func WebSignupPost(svc *auth.Service) gin.HandlerFunc {
 			form.ConfirmPassword,
 		)
 		if len(validationErrors) > 0 {
+			if validation.FieldError(validationErrors, "email") == auth.ErrEmailExists.Error() {
+				c.Redirect(http.StatusSeeOther, "/signup/success")
+				return
+			} else if validation.FieldError(validationErrors, "brand_name") == auth.ErrBrandNameExists.Error() {
+				c.Redirect(http.StatusSeeOther, "/signup/success")
+				return
+			}
 			web.Render(c, pages.SignupPage(pages.SignupPageProps{
 				Errors:    validationErrors,
 				BrandName: strings.TrimSpace(form.BrandName),
@@ -137,7 +144,13 @@ func WebSignupPost(svc *auth.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.Redirect(http.StatusSeeOther, "/login")
+		c.Redirect(http.StatusSeeOther, "/signup/success")
+	}
+}
+
+func WebSignupSuccess() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		web.Render(c, pages.SignupSuccessPage())
 	}
 }
 

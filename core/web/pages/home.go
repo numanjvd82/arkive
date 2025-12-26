@@ -49,7 +49,6 @@ func homeHeader() g.Node {
 			),
 			h.Div(
 				h.Class("nav-actions"),
-				h.A(h.Class("button secondary"), h.Href("/login"), g.Text("Login")),
 				h.A(h.Class("button primary"), h.Href("/signup"), g.Text("Create account")),
 			),
 		),

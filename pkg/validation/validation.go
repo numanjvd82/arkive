@@ -31,9 +31,18 @@ func FieldError(errors Errors, key string) string {
 	return errors[key]
 }
 
-func PasswordError(password string) string {
+type PasswordIssue string
+
+const (
+	PasswordTooShort      PasswordIssue = "too_short"
+	PasswordMissingLower  PasswordIssue = "missing_lower"
+	PasswordMissingUpper  PasswordIssue = "missing_upper"
+	PasswordMissingSymbol PasswordIssue = "missing_symbol"
+)
+
+func PasswordIssueFor(password string) PasswordIssue {
 	if len(password) < 8 {
-		return "Password must be at least 8 characters."
+		return PasswordTooShort
 	}
 
 	hasLower := false
@@ -52,13 +61,13 @@ func PasswordError(password string) string {
 	}
 
 	if !hasLower {
-		return "Password must include a lowercase letter."
+		return PasswordMissingLower
 	}
 	if !hasUpper {
-		return "Password must include an uppercase letter."
+		return PasswordMissingUpper
 	}
 	if !hasSymbol {
-		return "Password must include a symbol."
+		return PasswordMissingSymbol
 	}
 
 	return ""

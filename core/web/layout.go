@@ -23,7 +23,7 @@ func Layout(data LayoutData, content ...g.Node) g.Node {
 	headNodes := []g.Node{
 		h.Meta(h.Charset("utf-8")),
 		h.Meta(h.Name("viewport"), h.Content("width=device-width, initial-scale=1")),
-		h.Title(pageTitle),
+		h.TitleEl(g.Text(pageTitle)),
 		h.Link(h.Rel("stylesheet"), h.Href("/static/reset.css")),
 		h.Link(h.Rel("stylesheet"), h.Href("/static/globals.css")),
 		h.Link(h.Rel("stylesheet"), h.Href("/static/components.css")),
