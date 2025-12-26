@@ -90,38 +90,6 @@
   margin-bottom: 18px;
 }
 
-.hero-offer {
-  margin: 20px 0 8px;
-  padding: 16px 18px;
-  border-radius: 18px;
-  border: 1px solid rgba(107, 209, 230, 0.4);
-  background: rgba(29, 34, 49, 0.85);
-  color: var(--accent-strong);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
-}
-
-.offer-tag {
-  display: inline-flex;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: rgba(107, 209, 230, 0.2);
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 10px;
-}
-
-[data-theme="light"] .hero-offer {
-  background: var(--surface-strong);
-  border-color: var(--border);
-  color: var(--text);
-}
-
-[data-theme="light"] .offer-tag {
-  background: rgba(58, 155, 176, 0.18);
-  color: var(--text);
-}
-
 .hero-actions {
   display: flex;
   flex-wrap: wrap;

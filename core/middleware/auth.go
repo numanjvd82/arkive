@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"arkive/core/services/auth"
+	appcontext "arkive/pkg/context"
 )
 
 func RequireAccessToken(svc *auth.Service) gin.HandlerFunc {
@@ -27,6 +28,22 @@ func RequireAccessToken(svc *auth.Service) gin.HandlerFunc {
 			return
 		}
 		c.Set("user_id", userID)
+		c.Next()
+	}
+}
+
+func RequireSessionRedirect(svc *auth.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		_, ok, err := appcontext.LoadUser(c, svc)
+		if err != nil {
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+		if !ok {
+			c.Redirect(http.StatusSeeOther, "/login")
+			c.Abort()
+			return
+		}
 		c.Next()
 	}
 }

@@ -49,6 +49,7 @@ func homeHeader() g.Node {
 			),
 			h.Div(
 				h.Class("nav-actions"),
+				h.A(h.Class("button secondary"), h.Href("/login"), g.Text("Log in")),
 				h.A(h.Class("button primary"), h.Href("/signup"), g.Text("Create account")),
 			),
 		),
@@ -65,11 +66,6 @@ func homeHero() g.Node {
 				h.Span(h.Class("eyebrow"), g.Text("Share with freedom")),
 				h.H1(g.Text("Fast, secure file sharing with zero friction.")),
 				h.P(g.Text("Arkive gives you 2GB free storage with unlimited retention. Share links instantly, add passwords, and let anyone download—no account required.")),
-				h.Div(
-					h.Class("hero-offer"),
-					h.Span(h.Class("offer-tag"), g.Text("Limited offer")),
-					h.P(g.Text("Create an account from Jan 1–7, 2026 and get an extra 3GB bonus on top of your 2GB free space.")),
-				),
 				h.Div(
 					h.Class("hero-actions"),
 					h.A(h.Class("button primary"), h.Href("/signup"), g.Text("Claim free space")),
@@ -230,7 +226,7 @@ func homeCTA() g.Node {
 				h.Div(
 					h.Class("cta-copy"),
 					h.Span(h.Class("eyebrow"), g.Text("Start free")),
-					h.H2(g.Text("2GB free today. 5GB total during launch week.")),
+					h.H2(g.Text("2GB free today. Share instantly.")),
 					h.P(g.Text("Create your account and start sharing instantly. No limits on retention, no friction for recipients.")),
 				),
 				h.Div(

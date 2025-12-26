@@ -27,15 +27,15 @@ func Load() (Config, error) {
 		return Config{}, errors.New("JWT_SECRET is required")
 	}
 
-	accessTTL, err := parseDurationEnv("ACCESS_TOKEN_TTL", "15m")
+	accessTTL, err := parseDurationEnv("ACCESS_TOKEN_TTL")
 	if err != nil {
 		return Config{}, err
 	}
-	refreshTTL, err := parseDurationEnv("REFRESH_TOKEN_TTL", "720h")
+	refreshTTL, err := parseDurationEnv("REFRESH_TOKEN_TTL")
 	if err != nil {
 		return Config{}, err
 	}
-	sessionTTL, err := parseDurationEnv("SESSION_TTL", "168h")
+	sessionTTL, err := parseDurationEnv("SESSION_TTL")
 	if err != nil {
 		return Config{}, err
 	}
@@ -61,10 +61,10 @@ func Load() (Config, error) {
 	}, nil
 }
 
-func parseDurationEnv(key, fallback string) (time.Duration, error) {
+func parseDurationEnv(key string) (time.Duration, error) {
 	value := os.Getenv(key)
 	if value == "" {
-		value = fallback
+		return 0, errors.New(key + " is required")
 	}
 	return time.ParseDuration(value)
 }

@@ -31,8 +31,11 @@ func New(db database.PgPool, cfg config.Config) *gin.Engine {
 	r.POST("/login", handlers.WebLoginPost(authService))
 	r.GET("/signup", handlers.WebSignupGet(authService))
 	r.POST("/signup", handlers.WebSignupPost(authService))
-	r.GET("/dashboard", handlers.WebDashboard(authService))
-	r.POST("/logout", handlers.WebLogout(authService))
+
+	protected := r.Group("/")
+	protected.Use(middleware.RequireSessionRedirect(authService))
+	protected.GET("/dashboard", handlers.WebDashboard())
+	protected.POST("/logout", handlers.WebLogout(authService))
 
 	api := r.Group("/api")
 	{

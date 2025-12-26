@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-
 	"arkive/core/database"
 )
 
@@ -39,12 +37,9 @@ func (r *Repository) GetSessionByID(ctx context.Context, db database.PgExecutor,
 	var expiresAt time.Time
 	query := `SELECT user_id, expires_at
 		FROM sessions
-		WHERE id = $1`
+		WHERE id = $1 AND expires_at > now()`
 	if err := db.QueryRow(ctx, query, sessionID).Scan(&userID, &expiresAt); err != nil {
 		return "", time.Time{}, err
-	}
-	if expiresAt.Before(time.Now()) {
-		return "", time.Time{}, pgx.ErrNoRows
 	}
 	return userID, expiresAt, nil
 }
