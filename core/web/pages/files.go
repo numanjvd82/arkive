@@ -13,7 +13,7 @@ import (
 	"arkive/core/web/components"
 )
 
-func FilesPage(files []models.File) web.Page {
+func FilesPage(files []models.File, multipartThreshold int64) web.Page {
 	return web.Page{
 		Title: "Arkive · Files",
 		CSS:   []string{"/web/pages/files.css"},
@@ -27,7 +27,7 @@ func FilesPage(files []models.File) web.Page {
 					h.Div(
 						h.Class("files-title"),
 						h.H1(g.Text("Pending uploads")),
-						h.P(g.Text("Resume from the same device and browser session.")),
+						h.P(g.Text("Resume any pending upload from here.")),
 					),
 					components.Button(components.ButtonProps{
 						Text:    "Back to dashboard",
@@ -40,72 +40,12 @@ func FilesPage(files []models.File) web.Page {
 					components.Card(components.CardProps{
 						Title: "Resume instructions",
 						Body: []g.Node{
-							h.P(g.Text("To resume, select the same file again below. Resume only works from the same device and browser that started the upload. Do not clear the cache or localStorage.")),
-							components.UploadInput(components.UploadInputProps{
-								ID:       "upload-file",
-								Name:     "file",
-								Label:    "Choose the same file",
-								Helper:   "Max 1GB. Files over 200MB use multipart chunks.",
-								Required: true,
+							h.P(g.Text("Select the same file again to resume. The app will reconnect to the existing upload and continue.")),
+							components.UploadControls(components.UploadControlsProps{
+								InputLabel:    "Choose the same file",
+								InputHelper:   "Max 1GB. Files over 200MB use multipart chunks.",
+								InputRequired: true,
 							}),
-							h.Div(
-								h.Class("upload-actions"),
-								h.Button(
-									h.Class("button primary"),
-									h.Type("button"),
-									g.Attr("id", "upload-start"),
-									g.Text("Start upload"),
-								),
-								h.Button(
-									h.Class("icon-button"),
-									h.Type("button"),
-									g.Attr("id", "upload-pause"),
-									g.Attr("disabled", "disabled"),
-									components.Icon(components.IconProps{
-										Name:       "pause",
-										Size:       "md",
-										Title:      "Pause upload",
-										AriaLabel:  "Pause upload",
-										Decorative: false,
-									}),
-								),
-								h.Button(
-									h.Class("icon-button"),
-									h.Type("button"),
-									g.Attr("id", "upload-resume"),
-									g.Attr("disabled", "disabled"),
-									components.Icon(components.IconProps{
-										Name:       "play",
-										Size:       "md",
-										Title:      "Resume upload",
-										AriaLabel:  "Resume upload",
-										Decorative: false,
-									}),
-								),
-								h.Button(
-									h.Class("icon-button"),
-									h.Type("button"),
-									g.Attr("id", "upload-abort"),
-									g.Attr("disabled", "disabled"),
-									components.Icon(components.IconProps{
-										Name:       "x",
-										Size:       "md",
-										Title:      "Abort upload",
-										AriaLabel:  "Abort upload",
-										Decorative: false,
-									}),
-								),
-							),
-							components.ProgressBar(components.ProgressBarProps{
-								ID:    "upload-progress",
-								Value: 0,
-								Label: "Progress",
-							}),
-							h.P(
-								h.Class("upload-status"),
-								g.Attr("id", "upload-status"),
-								g.Text("No uploads yet."),
-							),
 						},
 					}),
 				),
@@ -115,7 +55,7 @@ func FilesPage(files []models.File) web.Page {
 						Title:    "Uploads in progress",
 						Subtitle: "Only pending and uploading items are shown.",
 						Body: []g.Node{
-							renderPendingList(files),
+							renderPendingList(files, multipartThreshold),
 						},
 					}),
 				),
@@ -124,23 +64,41 @@ func FilesPage(files []models.File) web.Page {
 	}
 }
 
-func renderPendingList(files []models.File) g.Node {
+func renderPendingList(files []models.File, multipartThreshold int64) g.Node {
 	if len(files) == 0 {
 		return h.P(h.Class("files-empty"), g.Text("No pending uploads right now."))
 	}
 
 	rows := make([]g.Node, 0, len(files))
 	for _, file := range files {
+		canResume := file.SizeBytes > multipartThreshold
+		if !canResume {
+			continue
+		}
 		rows = append(rows, h.Div(
 			h.Class("files-row"),
+			g.Attr("data-file-id", file.ID),
 			h.Div(
 				h.Class("files-meta"),
 				h.Span(h.Class("files-name"), g.Text(file.Filename)),
 				h.Span(h.Class("files-sub"), g.Text(fmt.Sprintf("%s • %s", formatBytes(file.SizeBytes), titleCase(file.Status)))),
+				h.Span(h.Class("files-resume"), g.Text("Resume by selecting the same file again.")),
 			),
 			h.Div(
 				h.Class("files-actions"),
 				h.Span(h.Class("files-time"), g.Text(formatTime(file.UpdatedAt))),
+				h.Button(
+					h.Class("icon-button"),
+					g.Attr("type", "button"),
+					g.Attr("data-resume-id", file.ID),
+					components.Icon(components.IconProps{
+						Name:       "play",
+						Size:       "md",
+						Title:      "Resume upload",
+						AriaLabel:  "Resume upload",
+						Decorative: false,
+					}),
+				),
 				h.Button(
 					h.Class("icon-button danger file-abort"),
 					g.Attr("type", "button"),
@@ -157,6 +115,9 @@ func renderPendingList(files []models.File) g.Node {
 		))
 	}
 
+	if len(rows) == 0 {
+		return h.P(h.Class("files-empty"), g.Text("No multipart uploads to resume right now."))
+	}
 	return h.Div(h.Class("files-rows"), g.Group(rows))
 }
 

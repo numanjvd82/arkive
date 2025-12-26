@@ -28,3 +28,19 @@ type StoredPart struct {
 	ETag       string `json:"etag"`
 	Size       int64  `json:"size"`
 }
+
+type ResumePart struct {
+	PartNumber int32  `json:"partNumber"`
+	ETag       string `json:"etag"`
+	Size       int64  `json:"size"`
+}
+
+type MultipartResumeResponse struct {
+	FileID        string       `json:"fileId"`
+	MultipartID   string       `json:"multipartId"`
+	Filename      string       `json:"filename"`
+	SizeBytes     int64        `json:"sizeBytes"`
+	ChunkSize     int          `json:"chunkSize"`
+	TotalParts    int          `json:"totalParts"`
+	UploadedParts []ResumePart `json:"uploadedParts"`
+}

@@ -11,6 +11,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+
+	"arkive/pkg/SafePtr"
 )
 
 type Config struct {
@@ -199,6 +201,31 @@ func (c *Client) AbortMultipartUpload(ctx context.Context, key string, uploadID 
 	return err
 }
 
+func (c *Client) ListParts(ctx context.Context, key string, uploadID string) ([]types.Part, error) {
+	if key == "" {
+		return nil, errors.New("key is required")
+	}
+	if uploadID == "" {
+		return nil, errors.New("uploadID is required")
+	}
+
+	input := &s3.ListPartsInput{
+		Bucket:   aws.String(c.bucket),
+		Key:      aws.String(key),
+		UploadId: aws.String(uploadID),
+	}
+	pager := s3.NewListPartsPaginator(c.s3, input)
+	parts := make([]types.Part, 0)
+	for pager.HasMorePages() {
+		page, err := pager.NextPage(ctx)
+		if err != nil {
+			return nil, err
+		}
+		parts = append(parts, page.Parts...)
+	}
+	return parts, nil
+}
+
 func (c *Client) HeadObjectSize(ctx context.Context, key string) (int64, error) {
 	if key == "" {
 		return 0, errors.New("key is required")
@@ -212,7 +239,7 @@ func (c *Client) HeadObjectSize(ctx context.Context, key string) (int64, error) 
 		return 0, err
 	}
 
-	return out.ContentLength, nil
+	return SafePtr.Int64(out.ContentLength), nil
 }
 
 func (c *Client) DeleteObject(ctx context.Context, key string) error {

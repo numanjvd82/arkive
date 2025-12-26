@@ -81,16 +81,39 @@
 
   function saveState(signature, state) {
     localStorage.setItem("mp:" + signature, JSON.stringify(state));
+    if (state && state.fileId) {
+      localStorage.setItem("mp:file:" + state.fileId, signature);
+    }
   }
 
   function clearState(signature) {
+    var state = loadState(signature);
+    if (state && state.fileId) {
+      localStorage.removeItem("mp:file:" + state.fileId);
+    }
     localStorage.removeItem("mp:" + signature);
   }
 
+  function clearStateForFile(fileId) {
+    if (!fileId) {
+      return;
+    }
+    var signature = localStorage.getItem("mp:file:" + fileId);
+    if (signature) {
+      clearState(signature);
+    } else {
+      localStorage.removeItem("mp:file:" + fileId);
+    }
+  }
+
   async function api(path, body, method) {
+    var headers = { "Content-Type": "application/json" };
+    if (method === "GET") {
+      headers = {};
+    }
     var res = await fetch(path, {
       method: method || "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: headers,
       body: body ? JSON.stringify(body) : undefined
     });
     if (res.status === 204) {
@@ -135,6 +158,27 @@
       multipartId: multipartId,
       partNumber: partNumber
     });
+  }
+
+  function resumeMultipart(fileId) {
+    return api("/api/uploads/multipart/resume?fileId=" + encodeURIComponent(fileId), null, "GET");
+  }
+
+  function setSelectedResumeFileId(fileId) {
+    if (!fileId) {
+      localStorage.removeItem("mp:resume-file");
+      return;
+    }
+    localStorage.setItem("mp:resume-file", fileId);
+    setStatus("Selected a pending upload. Now choose the same file to resume.");
+  }
+
+  function getSelectedResumeFileId() {
+    return localStorage.getItem("mp:resume-file");
+  }
+
+  function clearSelectedResumeFileId() {
+    localStorage.removeItem("mp:resume-file");
   }
 
   function completeMultipart(multipartId, parts) {
@@ -186,6 +230,48 @@
     return tryUpload();
   }
 
+  function buildUploadedPartsFromMap(file, chunkSize, uploadedMap) {
+    var parts = [];
+    var bytes = 0;
+    var numbers = Array.from(uploadedMap.keys()).sort(function(a, b) { return a - b; });
+    for (var i = 0; i < numbers.length; i++) {
+      var partNumber = numbers[i];
+      var startByte = (partNumber - 1) * chunkSize;
+      var endByte = Math.min(startByte + chunkSize, file.size);
+      var size = Math.max(0, endByte - startByte);
+      parts.push({ partNumber: partNumber, etag: uploadedMap.get(partNumber), size: size });
+      bytes += size;
+    }
+    return { parts: parts, bytes: bytes };
+  }
+
+  async function uploadPartsByNumber(multipartId, chunkSize, file, parts, uploadedMap, uploadedBytes, signature, fileId, totalParts, maxRetries) {
+    var queue = parts.slice();
+    queue.sort(function(a, b) { return a - b; });
+
+    for (var i = 0; i < queue.length; i++) {
+      var partNumber = queue[i];
+      if (uploadedMap.has(partNumber)) {
+        continue;
+      }
+      var startByte = (partNumber - 1) * chunkSize;
+      var endByte = Math.min(startByte + chunkSize, file.size);
+      var chunk = file.slice(startByte, endByte);
+      var result = await uploadPartWithRetry(multipartId, partNumber, chunk, maxRetries);
+      uploadedMap.set(partNumber, result.etag);
+      uploadedBytes += chunk.size;
+    }
+    var rebuilt = buildUploadedPartsFromMap(file, chunkSize, uploadedMap);
+    saveState(signature, {
+      fileId: fileId,
+      multipartId: multipartId,
+      chunkSize: chunkSize,
+      totalParts: totalParts,
+      uploadedParts: rebuilt.parts
+    });
+    return { uploadedParts: rebuilt.parts, uploadedBytes: rebuilt.bytes };
+  }
+
   async function uploadMultipart(file) {
     var signature = fileSignature(file);
     var existing = loadState(signature);
@@ -193,10 +279,64 @@
 
     async function initSession() {
       if (existing && existing.multipartId && existing.chunkSize && existing.totalParts) {
-        return existing;
+        if (existing.fileId) {
+          try {
+            var resumedExisting = await resumeMultipart(existing.fileId);
+            if (resumedExisting.filename && resumedExisting.sizeBytes) {
+              if (resumedExisting.filename !== file.name || resumedExisting.sizeBytes !== file.size) {
+                clearState(signature);
+                existing = null;
+                setStatus("Could not resume this upload. Starting a new upload.");
+                throw new Error("Resume file mismatch");
+              }
+            }
+            var resumedState = {
+              fileId: resumedExisting.fileId,
+              multipartId: resumedExisting.multipartId,
+              chunkSize: resumedExisting.chunkSize,
+              totalParts: resumedExisting.totalParts,
+              uploadedParts: resumedExisting.uploadedParts || []
+            };
+            saveState(signature, resumedState);
+            return resumedState;
+          } catch (_) {
+            clearState(signature);
+            existing = null;
+            setStatus("Could not resume this upload. Starting a new upload.");
+          }
+        }
+        if (existing) {
+          return existing;
+        }
+      }
+      var resumeFileId = getSelectedResumeFileId();
+      if (resumeFileId) {
+        try {
+          var resumed = await resumeMultipart(resumeFileId);
+          if (resumed.filename && resumed.sizeBytes) {
+            if (resumed.filename !== file.name || resumed.sizeBytes !== file.size) {
+              clearSelectedResumeFileId();
+              setStatus("Selected upload does not match this file. Choose the same file used to start the upload.");
+              throw new Error("Resume file mismatch");
+            }
+          }
+          var resumedState_1 = {
+            fileId: resumed.fileId,
+            multipartId: resumed.multipartId,
+            chunkSize: resumed.chunkSize,
+            totalParts: resumed.totalParts,
+            uploadedParts: resumed.uploadedParts || []
+          };
+          saveState(signature, resumedState_1);
+          clearSelectedResumeFileId();
+          return resumedState_1;
+        } catch (_) {
+          clearSelectedResumeFileId();
+        }
       }
       var resp = await startMultipart(file);
       var state = {
+        fileId: resp.fileId,
         multipartId: resp.multipartId,
         chunkSize: resp.chunkSize,
         totalParts: resp.totalParts,
@@ -210,9 +350,17 @@
     var multipartId = state.multipartId;
     var chunkSize = state.chunkSize;
     var totalParts = state.totalParts;
-    var uploadedParts = state.uploadedParts || [];
-    var uploadedMap = new Map(uploadedParts.map(function(p) { return [p.partNumber, p.etag]; }));
-    var uploadedBytes = uploadedParts.reduce(function(sum, p) { return sum + p.size; }, 0);
+    var uploadedMap = new Map((state.uploadedParts || []).map(function(p) { return [p.partNumber, p.etag]; }));
+    var rebuilt = buildUploadedPartsFromMap(file, chunkSize, uploadedMap);
+    var uploadedParts = rebuilt.parts;
+    var uploadedBytes = rebuilt.bytes;
+    saveState(signature, {
+      fileId: state.fileId,
+      multipartId: multipartId,
+      chunkSize: chunkSize,
+      totalParts: totalParts,
+      uploadedParts: uploadedParts
+    });
 
     active = { type: "multipart", multipartId: multipartId, signature: signature, cancel: function() { canceled = true; } };
     setProgress((uploadedBytes / file.size) * 100);
@@ -241,6 +389,7 @@
         uploadedBytes += chunk.size;
         uploadedParts.push({ partNumber: partNumber, etag: result.etag, size: chunk.size });
         saveState(signature, {
+          fileId: state.fileId,
           multipartId: multipartId,
           chunkSize: chunkSize,
           totalParts: totalParts,
@@ -265,7 +414,23 @@
       .map(function(p) { return { partNumber: p.partNumber, etag: p.etag }; })
       .sort(function(a, b) { return a.partNumber - b.partNumber; });
 
-    await completeMultipart(multipartId, parts);
+    try {
+      await completeMultipart(multipartId, parts);
+    } catch (err) {
+      var missingParts = err && err.status === 409 && err.data && err.data.missingParts ? err.data.missingParts : null;
+      if (!missingParts || !missingParts.length) {
+        throw err;
+      }
+      setStatus("Recovering missing parts...");
+      var recovered = await uploadPartsByNumber(multipartId, chunkSize, file, missingParts, uploadedMap, uploadedBytes, signature, state.fileId, totalParts, 5);
+      uploadedParts = recovered.uploadedParts;
+      uploadedBytes = recovered.uploadedBytes;
+      setProgress((uploadedBytes / file.size) * 100);
+      parts = Array.from(uploadedMap.entries())
+        .map(function(entry) { return { partNumber: entry[0], etag: entry[1] }; })
+        .sort(function(a, b) { return a.partNumber - b.partNumber; });
+      await completeMultipart(multipartId, parts);
+    }
     clearState(signature);
     setProgress(100);
     setStatus("Upload complete: " + file.name);
@@ -334,6 +499,9 @@
       return;
     }
     var uploader = file.size > MULTIPART_THRESHOLD ? uploadMultipart : uploadSingle;
+    if (uploader === uploadSingle) {
+      clearSelectedResumeFileId();
+    }
 
     uploader(file)
       .catch(function() {})
@@ -432,10 +600,39 @@
             if (row) {
               row.remove();
             }
+            clearStateForFile(fileId);
           })
           .catch(function() {
             button.disabled = false;
+            setStatus("Abort failed. Try again.");
           });
+      });
+    });
+  }
+
+  var fileRows = document.querySelectorAll(".files-row");
+  if (fileRows.length) {
+    fileRows.forEach(function(row) {
+      var fileId = row.getAttribute("data-file-id");
+      var resume = row.querySelector(".files-resume");
+      if (!resume || !fileId) {
+        return;
+      }
+      if (localStorage.getItem("mp:file:" + fileId)) {
+        resume.textContent = "Resume ready on this device.";
+      }
+    });
+  }
+
+  var resumeButtons = document.querySelectorAll("[data-resume-id]");
+  if (resumeButtons.length) {
+    resumeButtons.forEach(function(button) {
+      button.addEventListener("click", function() {
+        var fileId = button.getAttribute("data-resume-id");
+        if (!fileId) {
+          return;
+        }
+        setSelectedResumeFileId(fileId);
       });
     });
   }

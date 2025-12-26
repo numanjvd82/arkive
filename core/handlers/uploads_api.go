@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -47,6 +48,10 @@ type uploadAbortRequest struct {
 	FileID string `json:"fileId"`
 }
 
+type multipartResumeRequest struct {
+	FileID string `form:"fileId"`
+}
+
 func APIMultipartStart(svc *uploads.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req multipartStartRequest
@@ -82,6 +87,47 @@ func APIMultipartStart(svc *uploads.Service) gin.HandlerFunc {
 			"objectKey":   resp.ObjectKey,
 			"chunkSize":   resp.ChunkSize,
 			"totalParts":  resp.TotalParts,
+		})
+	}
+}
+
+func APIMultipartResume(svc *uploads.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req multipartResumeRequest
+		if err := c.ShouldBindQuery(&req); err != nil || req.FileID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			return
+		}
+
+		userID, ok := c.Get("user_id")
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			return
+		}
+
+		resp, err := svc.ResumeMultipart(c.Request.Context(), userID.(string), req.FileID)
+		if err != nil {
+			switch err {
+			case uploads.ErrUnauthorized:
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			case uploads.ErrNotFound:
+				c.JSON(http.StatusNotFound, gin.H{"error": "upload not found"})
+			case uploads.ErrInvalidInput:
+				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			default:
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "resume failed"})
+			}
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"fileId":        resp.FileID,
+			"multipartId":   resp.MultipartID,
+			"filename":      resp.Filename,
+			"sizeBytes":     resp.SizeBytes,
+			"chunkSize":     resp.ChunkSize,
+			"totalParts":    resp.TotalParts,
+			"uploadedParts": resp.UploadedParts,
 		})
 	}
 }
@@ -172,14 +218,26 @@ func APIMultipartComplete(svc *uploads.Service) gin.HandlerFunc {
 		}
 
 		if err := svc.CompleteMultipart(c.Request.Context(), userID.(string), req.MultipartID, req.Parts); err != nil {
+			var missingErr uploads.MissingPartsError
 			switch err {
 			case uploads.ErrUnauthorized:
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 			case uploads.ErrNotFound:
 				c.JSON(http.StatusNotFound, gin.H{"error": "upload not found"})
+			case uploads.ErrQuotaExceeded:
+				c.JSON(http.StatusForbidden, gin.H{"error": "quota exceeded"})
+			case uploads.ErrFileTooLarge:
+				c.JSON(http.StatusBadRequest, gin.H{"error": "file is too large"})
 			case uploads.ErrInvalidInput, uploads.ErrPartsRequired:
 				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
 			default:
+				if errors.As(err, &missingErr) {
+					c.JSON(http.StatusConflict, gin.H{
+						"error":        "missing parts",
+						"missingParts": missingErr.Missing,
+					})
+					return
+				}
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "complete failed"})
 			}
 			return
@@ -241,6 +299,10 @@ func APISingleComplete(svc *uploads.Service) gin.HandlerFunc {
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 			case uploads.ErrNotFound:
 				c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+			case uploads.ErrQuotaExceeded:
+				c.JSON(http.StatusForbidden, gin.H{"error": "quota exceeded"})
+			case uploads.ErrFileTooLarge:
+				c.JSON(http.StatusBadRequest, gin.H{"error": "file is too large"})
 			case uploads.ErrInvalidInput:
 				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
 			default:

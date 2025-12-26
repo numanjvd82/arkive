@@ -41,79 +41,23 @@ func DashboardPage() web.Page {
 				h.Section(
 					h.Class("dashboard-hero"),
 					h.H1(g.Text("Welcome back.")),
-					h.P(g.Text("Drag in a file to start a resumable, direct-to-R2 upload.")),
+					h.P(g.Text("Start a direct-to-R2 upload. Resume from the Files page anytime.")),
 				),
 				h.Section(
 					h.Class("dashboard-upload"),
 					components.Card(components.CardProps{
 						Title:    "Upload files",
-						Subtitle: "Multipart uploads go straight to R2 with automatic resume.",
+						Subtitle: "Multipart uploads go straight to R2. Resume from the Files page if needed.",
 						Class:    "upload-card",
 						Body: []g.Node{
-							components.UploadInput(components.UploadInputProps{
-								ID:       "upload-file",
-								Name:     "file",
-								Label:    "Choose a file",
-								Helper:   "Max 1GB. Files over 500MB use multipart chunks.",
-								Required: true,
-							}),
-							h.Div(
-								h.Class("upload-actions"),
-								h.Button(
-									h.Class("button primary"),
-									h.Type("button"),
-									g.Attr("id", "upload-start"),
-									g.Text("Start upload"),
-								),
-								h.Button(
-									h.Class("icon-button"),
-									h.Type("button"),
-									g.Attr("id", "upload-pause"),
-									g.Attr("disabled", "disabled"),
-									components.Icon(components.IconProps{
-										Name:       "pause",
-										Size:       "md",
-										Title:      "Pause upload",
-										AriaLabel:  "Pause upload",
-										Decorative: false,
-									}),
-								),
-								h.Button(
-									h.Class("icon-button"),
-									h.Type("button"),
-									g.Attr("id", "upload-resume"),
-									g.Attr("disabled", "disabled"),
-									components.Icon(components.IconProps{
-										Name:       "play",
-										Size:       "md",
-										Title:      "Resume upload",
-										AriaLabel:  "Resume upload",
-										Decorative: false,
-									}),
-								),
-								h.Button(
-									h.Class("icon-button"),
-									h.Type("button"),
-									g.Attr("id", "upload-abort"),
-									g.Attr("disabled", "disabled"),
-									components.Icon(components.IconProps{
-										Name:       "x",
-										Size:       "md",
-										Title:      "Abort upload",
-										AriaLabel:  "Abort upload",
-										Decorative: false,
-									}),
-								),
-							),
-							components.ProgressBar(components.ProgressBarProps{
-								ID:    "upload-progress",
-								Value: 0,
-								Label: "Progress",
+							components.UploadControls(components.UploadControlsProps{
+								InputLabel:    "Choose a file",
+								InputHelper:   "Max 1GB. Files over 200MB use multipart chunks.",
+								InputRequired: true,
 							}),
 							h.P(
 								h.Class("upload-status"),
-								g.Attr("id", "upload-status"),
-								g.Text("No uploads yet."),
+								g.Text("Need to resume? Open Files to continue any pending upload."),
 							),
 						},
 					}),

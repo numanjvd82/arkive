@@ -19,3 +19,11 @@ var (
 	ErrPartNumberInvalid = errors.New("part number is invalid")
 	ErrPartsRequired     = errors.New("parts are required")
 )
+
+type MissingPartsError struct {
+	Missing []int32
+}
+
+func (e MissingPartsError) Error() string {
+	return "missing parts"
+}

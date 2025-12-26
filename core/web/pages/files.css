@@ -78,6 +78,11 @@
   font-size: 0.9rem;
 }
 
+.files-resume {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
 .files-time {
   color: var(--muted);
   font-size: 0.85rem;

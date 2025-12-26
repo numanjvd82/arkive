@@ -96,3 +96,100 @@ func ProgressBar(props ProgressBarProps) g.Node {
 		),
 	)
 }
+
+type UploadControlsProps struct {
+	InputID       string
+	InputName     string
+	InputLabel    string
+	InputHelper   string
+	StatusText    string
+	StartLabel    string
+	InputRequired bool
+}
+
+func UploadControls(props UploadControlsProps) g.Node {
+	inputID := props.InputID
+	if inputID == "" {
+		inputID = "upload-file"
+	}
+	inputName := props.InputName
+	if inputName == "" {
+		inputName = "file"
+	}
+	startLabel := props.StartLabel
+	if startLabel == "" {
+		startLabel = "Start upload"
+	}
+	statusText := props.StatusText
+	if statusText == "" {
+		statusText = "No uploads yet."
+	}
+
+	return g.Group([]g.Node{
+		UploadInput(UploadInputProps{
+			ID:       inputID,
+			Name:     inputName,
+			Label:    props.InputLabel,
+			Helper:   props.InputHelper,
+			Required: props.InputRequired,
+		}),
+		h.Div(
+			h.Class("upload-actions"),
+			h.Button(
+				h.Class("button primary"),
+				h.Type("button"),
+				g.Attr("id", "upload-start"),
+				g.Text(startLabel),
+			),
+			h.Button(
+				h.Class("icon-button"),
+				h.Type("button"),
+				g.Attr("id", "upload-pause"),
+				g.Attr("disabled", "disabled"),
+				Icon(IconProps{
+					Name:       "pause",
+					Size:       "md",
+					Title:      "Pause upload",
+					AriaLabel:  "Pause upload",
+					Decorative: false,
+				}),
+			),
+			h.Button(
+				h.Class("icon-button"),
+				h.Type("button"),
+				g.Attr("id", "upload-resume"),
+				g.Attr("disabled", "disabled"),
+				Icon(IconProps{
+					Name:       "play",
+					Size:       "md",
+					Title:      "Resume upload",
+					AriaLabel:  "Resume upload",
+					Decorative: false,
+				}),
+			),
+			h.Button(
+				h.Class("icon-button"),
+				h.Type("button"),
+				g.Attr("id", "upload-abort"),
+				g.Attr("disabled", "disabled"),
+				Icon(IconProps{
+					Name:       "x",
+					Size:       "md",
+					Title:      "Abort upload",
+					AriaLabel:  "Abort upload",
+					Decorative: false,
+				}),
+			),
+		),
+		ProgressBar(ProgressBarProps{
+			ID:    "upload-progress",
+			Value: 0,
+			Label: "Progress",
+		}),
+		h.P(
+			h.Class("upload-status"),
+			g.Attr("id", "upload-status"),
+			g.Text(statusText),
+		),
+	})
+}

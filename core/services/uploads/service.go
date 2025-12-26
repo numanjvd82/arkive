@@ -16,6 +16,7 @@ import (
 	filerepo "arkive/core/repositories/files"
 	storagerepo "arkive/core/repositories/storage"
 	uploadrepo "arkive/core/repositories/uploads"
+	"arkive/pkg/SafePtr"
 	"arkive/pkg/storage"
 	"arkive/pkg/storage/r2"
 	"arkive/pkg/validation"
@@ -77,15 +78,12 @@ func NewService(
 	}
 }
 
-func (s *Service) StartMultipart(ctx context.Context, userID, filename string, sizeBytes int64, contentType string) (models.MultipartStartResponse, validation.Errors, error) {
-	userID = strings.TrimSpace(userID)
-	filename = strings.TrimSpace(filename)
-	contentType = strings.TrimSpace(contentType)
+func validateStartInput(userID, filename string, sizeBytes int64, requiresMultipart bool) (validation.Errors, error) {
 	validationErrors := validation.New()
-	if userID == "" {
-		return models.MultipartStartResponse{}, nil, ErrUnauthorized
+	if strings.TrimSpace(userID) == "" {
+		return nil, ErrUnauthorized
 	}
-	if filename == "" {
+	if strings.TrimSpace(filename) == "" {
 		validationErrors.Add("filename", ErrFilenameRequired.Error())
 	}
 	if sizeBytes <= 0 {
@@ -95,12 +93,154 @@ func (s *Service) StartMultipart(ctx context.Context, userID, filename string, s
 		switch {
 		case sizeBytes > MaxFileSizeBytes:
 			validationErrors.Add("size", ErrFileTooLarge.Error())
-		case sizeBytes <= MultipartThresholdBytes:
+		case requiresMultipart && sizeBytes <= MultipartThresholdBytes:
 			validationErrors.Add("size", ErrFileTooSmall.Error())
+		case !requiresMultipart && sizeBytes > MultipartThresholdBytes:
+			validationErrors.Add("size", ErrMultipartRequired.Error())
 		}
 	}
 	if validationErrors.HasAny() {
-		return models.MultipartStartResponse{}, validationErrors, nil
+		return validationErrors, nil
+	}
+	return nil, nil
+}
+
+func (s *Service) beginUploadTx(ctx context.Context, userID, objectKey, filename, contentType string, sizeBytes int64) (pgx.Tx, models.File, validation.Errors, error) {
+	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return nil, models.File{}, nil, err
+	}
+
+	reserved, err := s.storageRepo.ReserveStorage(ctx, tx, userID, sizeBytes)
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		return nil, models.File{}, nil, err
+	}
+	if !reserved {
+		_ = tx.Rollback(ctx)
+		validationErrors := validation.New()
+		validationErrors.Add("size", ErrQuotaExceeded.Error())
+		return nil, models.File{}, validationErrors, nil
+	}
+
+	file, err := s.fileRepo.CreateFile(ctx, tx, models.File{
+		UserID:      userID,
+		Bucket:      s.bucket,
+		ObjectKey:   objectKey,
+		Filename:    filename,
+		ContentType: contentType,
+		SizeBytes:   sizeBytes,
+		Status:      FileStatusUploading,
+	})
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		return nil, models.File{}, nil, err
+	}
+
+	return tx, file, nil, nil
+}
+
+func (s *Service) finalizeFileCompletion(ctx context.Context, tx pgx.Tx, userID string, file models.File, actualSize int64) error {
+	if actualSize <= 0 {
+		return ErrUploadFailed
+	}
+	if actualSize > MaxFileSizeBytes {
+		return ErrFileTooLarge
+	}
+
+	if err := s.fileRepo.UpdateFileSize(ctx, tx, file.ID, actualSize); err != nil {
+		return err
+	}
+	if err := s.fileRepo.UpdateFileStatus(ctx, tx, file.ID, FileStatusComplete); err != nil {
+		return err
+	}
+
+	if actualSize > file.SizeBytes {
+		extra := actualSize - file.SizeBytes
+		reserved, err := s.storageRepo.ReserveStorage(ctx, tx, userID, extra)
+		if err != nil {
+			return err
+		}
+		if !reserved {
+			return ErrQuotaExceeded
+		}
+	}
+
+	committed, err := s.storageRepo.CommitStorage(ctx, tx, userID, actualSize)
+	if err != nil {
+		return err
+	}
+	if !committed {
+		return ErrUploadFailed
+	}
+
+	if actualSize < file.SizeBytes {
+		extra := file.SizeBytes - actualSize
+		released, err := s.storageRepo.ReleaseReservedStorage(ctx, tx, userID, extra)
+		if err != nil {
+			return err
+		}
+		if !released {
+			return ErrUploadFailed
+		}
+	}
+
+	return nil
+}
+
+func (s *Service) markUploadFailed(ctx context.Context, userID, fileID string, sizeBytes int64) {
+	_ = s.fileRepo.UpdateFileStatus(ctx, s.db, fileID, FileStatusFailed)
+	_, _ = s.storageRepo.ReleaseReservedStorage(ctx, s.db, userID, sizeBytes)
+}
+
+func buildCompletedFromList(listed []types.Part, totalParts int) ([]types.CompletedPart, []models.StoredPart, []int32) {
+	partsByNumber := make(map[int32]types.Part, len(listed))
+	for _, part := range listed {
+		number := SafePtr.Int32(part.PartNumber)
+		etag := SafePtr.String(part.ETag)
+		if number <= 0 || number > int32(totalParts) || strings.TrimSpace(etag) == "" {
+			continue
+		}
+		partsByNumber[number] = part
+	}
+
+	missing := make([]int32, 0)
+	for i := 1; i <= totalParts; i++ {
+		if _, ok := partsByNumber[int32(i)]; !ok {
+			missing = append(missing, int32(i))
+		}
+	}
+	if len(missing) > 0 {
+		return nil, nil, missing
+	}
+
+	completed := make([]types.CompletedPart, 0, totalParts)
+	stored := make([]models.StoredPart, 0, totalParts)
+	for i := 1; i <= totalParts; i++ {
+		part := partsByNumber[int32(i)]
+		number := int32(i)
+		etag := strings.TrimSpace(SafePtr.String(part.ETag))
+		completed = append(completed, types.CompletedPart{
+			PartNumber: &number,
+			ETag:       &etag,
+		})
+		stored = append(stored, models.StoredPart{
+			PartNumber: number,
+			ETag:       etag,
+			Size:       SafePtr.Int64(part.Size),
+		})
+	}
+
+	return completed, stored, nil
+}
+
+func (s *Service) StartMultipart(ctx context.Context, userID, filename string, sizeBytes int64, contentType string) (models.MultipartStartResponse, validation.Errors, error) {
+	userID = strings.TrimSpace(userID)
+	filename = strings.TrimSpace(filename)
+	contentType = strings.TrimSpace(contentType)
+	validationErrors, err := validateStartInput(userID, filename, sizeBytes, true)
+	if err != nil || (validationErrors != nil && validationErrors.HasAny()) {
+		return models.MultipartStartResponse{}, validationErrors, err
 	}
 
 	chunkSize := storage.ChooseChunkSize(sizeBytes, MaxFileSizeBytes)
@@ -116,38 +256,10 @@ func (s *Service) StartMultipart(ctx context.Context, userID, filename string, s
 		return models.MultipartStartResponse{}, nil, err
 	}
 
-	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
-	if err != nil {
+	tx, file, validationErrors, err := s.beginUploadTx(ctx, userID, objectKey, filename, contentType, sizeBytes)
+	if err != nil || (validationErrors != nil && validationErrors.HasAny()) {
 		_ = s.r2.AbortMultipartUpload(ctx, objectKey, uploadID)
-		return models.MultipartStartResponse{}, nil, err
-	}
-
-	reserved, err := s.storageRepo.ReserveStorage(ctx, tx, userID, sizeBytes)
-	if err != nil {
-		_ = tx.Rollback(ctx)
-		_ = s.r2.AbortMultipartUpload(ctx, objectKey, uploadID)
-		return models.MultipartStartResponse{}, nil, err
-	}
-	if !reserved {
-		_ = tx.Rollback(ctx)
-		_ = s.r2.AbortMultipartUpload(ctx, objectKey, uploadID)
-		validationErrors.Add("size", ErrQuotaExceeded.Error())
-		return models.MultipartStartResponse{}, validationErrors, nil
-	}
-
-	file, err := s.fileRepo.CreateFile(ctx, tx, models.File{
-		UserID:      userID,
-		Bucket:      s.bucket,
-		ObjectKey:   objectKey,
-		Filename:    filename,
-		ContentType: contentType,
-		SizeBytes:   sizeBytes,
-		Status:      FileStatusUploading,
-	})
-	if err != nil {
-		_ = tx.Rollback(ctx)
-		_ = s.r2.AbortMultipartUpload(ctx, objectKey, uploadID)
-		return models.MultipartStartResponse{}, nil, err
+		return models.MultipartStartResponse{}, validationErrors, err
 	}
 
 	multipart, err := s.uploadRepo.CreateMultipart(ctx, tx, models.MultipartUpload{
@@ -184,26 +296,9 @@ func (s *Service) StartSingleUpload(ctx context.Context, userID, filename string
 	userID = strings.TrimSpace(userID)
 	filename = strings.TrimSpace(filename)
 	contentType = strings.TrimSpace(contentType)
-	validationErrors := validation.New()
-	if userID == "" {
-		return models.SingleStartResponse{}, nil, ErrUnauthorized
-	}
-	if filename == "" {
-		validationErrors.Add("filename", ErrFilenameRequired.Error())
-	}
-	if sizeBytes <= 0 {
-		validationErrors.Add("size", ErrFileSizeRequired.Error())
-	}
-	if sizeBytes > 0 {
-		switch {
-		case sizeBytes > MaxFileSizeBytes:
-			validationErrors.Add("size", ErrFileTooLarge.Error())
-		case sizeBytes > MultipartThresholdBytes:
-			validationErrors.Add("size", ErrMultipartRequired.Error())
-		}
-	}
-	if validationErrors.HasAny() {
-		return models.SingleStartResponse{}, validationErrors, nil
+	validationErrors, err := validateStartInput(userID, filename, sizeBytes, false)
+	if err != nil || (validationErrors != nil && validationErrors.HasAny()) {
+		return models.SingleStartResponse{}, validationErrors, err
 	}
 
 	objectKey, err := storage.BuildObjectKey(userID)
@@ -216,34 +311,9 @@ func (s *Service) StartSingleUpload(ctx context.Context, userID, filename string
 		return models.SingleStartResponse{}, nil, err
 	}
 
-	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
-	if err != nil {
-		return models.SingleStartResponse{}, nil, err
-	}
-
-	reserved, err := s.storageRepo.ReserveStorage(ctx, tx, userID, sizeBytes)
-	if err != nil {
-		_ = tx.Rollback(ctx)
-		return models.SingleStartResponse{}, nil, err
-	}
-	if !reserved {
-		_ = tx.Rollback(ctx)
-		validationErrors.Add("size", ErrQuotaExceeded.Error())
-		return models.SingleStartResponse{}, validationErrors, nil
-	}
-
-	file, err := s.fileRepo.CreateFile(ctx, tx, models.File{
-		UserID:      userID,
-		Bucket:      s.bucket,
-		ObjectKey:   objectKey,
-		Filename:    filename,
-		ContentType: contentType,
-		SizeBytes:   sizeBytes,
-		Status:      FileStatusUploading,
-	})
-	if err != nil {
-		_ = tx.Rollback(ctx)
-		return models.SingleStartResponse{}, nil, err
+	tx, file, validationErrors, err := s.beginUploadTx(ctx, userID, objectKey, filename, contentType, sizeBytes)
+	if err != nil || (validationErrors != nil && validationErrors.HasAny()) {
+		return models.SingleStartResponse{}, validationErrors, err
 	}
 
 	if err := tx.Commit(ctx); err != nil {
@@ -312,16 +382,11 @@ func (s *Service) CompleteMultipart(ctx context.Context, userID, multipartID str
 	if upload.Status == MultipartStatusCompleted || upload.Status == MultipartStatusAborted {
 		return ErrInvalidInput
 	}
-	if len(parts) != upload.TotalParts {
-		return ErrInvalidInput
-	}
 
-	type dedupeKey struct {
-		PartNumber int32
-	}
-	seen := map[dedupeKey]bool{}
+	seen := make(map[int32]bool, len(parts))
 	completed := make([]types.CompletedPart, 0, len(parts))
 	stored := make([]models.StoredPart, 0, len(parts))
+	needsList := len(parts) != upload.TotalParts
 	for _, part := range parts {
 		if part.PartNumber <= 0 || strings.TrimSpace(part.ETag) == "" {
 			return ErrInvalidInput
@@ -329,11 +394,11 @@ func (s *Service) CompleteMultipart(ctx context.Context, userID, multipartID str
 		if part.PartNumber > int32(upload.TotalParts) {
 			return ErrInvalidInput
 		}
-		key := dedupeKey{PartNumber: part.PartNumber}
-		if seen[key] {
-			return ErrInvalidInput
+		if seen[part.PartNumber] {
+			needsList = true
+			continue
 		}
-		seen[key] = true
+		seen[part.PartNumber] = true
 		etag := strings.TrimSpace(part.ETag)
 		completed = append(completed, types.CompletedPart{
 			PartNumber: &part.PartNumber,
@@ -346,6 +411,22 @@ func (s *Service) CompleteMultipart(ctx context.Context, userID, multipartID str
 		})
 	}
 
+	if len(seen) != upload.TotalParts {
+		needsList = true
+	}
+
+	if needsList {
+		listed, err := s.r2.ListParts(ctx, upload.ObjectKey, upload.UploadID)
+		if err != nil {
+			return err
+		}
+		var missing []int32
+		completed, stored, missing = buildCompletedFromList(listed, upload.TotalParts)
+		if len(missing) > 0 {
+			return MissingPartsError{Missing: missing}
+		}
+	}
+
 	sort.Slice(completed, func(i, j int) bool {
 		if completed[i].PartNumber == nil || completed[j].PartNumber == nil {
 			return false
@@ -355,16 +436,26 @@ func (s *Service) CompleteMultipart(ctx context.Context, userID, multipartID str
 
 	if err := s.r2.CompleteMultipartUpload(ctx, upload.ObjectKey, upload.UploadID, completed); err != nil {
 		_ = s.uploadRepo.TouchMultipart(ctx, s.db, multipartID, MultipartStatusFailed)
-		_ = s.fileRepo.UpdateFileStatus(ctx, s.db, upload.FileID, FileStatusFailed)
 		file, fileErr := s.fileRepo.GetFileByID(ctx, s.db, upload.FileID)
 		if fileErr == nil {
-			_, _ = s.storageRepo.ReleaseReservedStorage(ctx, s.db, userID, file.SizeBytes)
+			s.markUploadFailed(ctx, userID, file.ID, file.SizeBytes)
 		}
 		return err
 	}
 
 	storedJSON, err := json.Marshal(stored)
 	if err != nil {
+		return err
+	}
+
+	actualSize, err := s.r2.HeadObjectSize(ctx, upload.ObjectKey)
+	if err != nil {
+		_ = s.uploadRepo.TouchMultipart(ctx, s.db, multipartID, MultipartStatusFailed)
+		file, fileErr := s.fileRepo.GetFileByID(ctx, s.db, upload.FileID)
+		if fileErr == nil {
+			s.markUploadFailed(ctx, userID, file.ID, file.SizeBytes)
+		}
+		_ = s.r2.DeleteObject(ctx, upload.ObjectKey)
 		return err
 	}
 
@@ -377,26 +468,24 @@ func (s *Service) CompleteMultipart(ctx context.Context, userID, multipartID str
 		_ = tx.Rollback(ctx)
 		return err
 	}
-	if err := s.fileRepo.UpdateFileStatus(ctx, tx, upload.FileID, FileStatusComplete); err != nil {
-		_ = tx.Rollback(ctx)
-		return err
-	}
 	file, err := s.fileRepo.GetFileByID(ctx, tx, upload.FileID)
 	if err != nil {
 		_ = tx.Rollback(ctx)
 		return err
 	}
-	committed, err := s.storageRepo.CommitStorage(ctx, tx, userID, file.SizeBytes)
-	if err != nil {
+	if err := s.finalizeFileCompletion(ctx, tx, userID, file, actualSize); err != nil {
 		_ = tx.Rollback(ctx)
+		_ = s.uploadRepo.TouchMultipart(ctx, s.db, multipartID, MultipartStatusFailed)
+		s.markUploadFailed(ctx, userID, file.ID, file.SizeBytes)
+		_ = s.r2.DeleteObject(ctx, upload.ObjectKey)
 		return err
 	}
-	if !committed {
-		_ = tx.Rollback(ctx)
-		return ErrUploadFailed
+
+	if err := tx.Commit(ctx); err != nil {
+		return err
 	}
 
-	return tx.Commit(ctx)
+	return nil
 }
 
 func (s *Service) AbortMultipart(ctx context.Context, userID, multipartID string) error {
@@ -415,6 +504,9 @@ func (s *Service) AbortMultipart(ctx context.Context, userID, multipartID string
 			return ErrNotFound
 		}
 		return err
+	}
+	if upload.Status == MultipartStatusCompleted || upload.Status == MultipartStatusAborted {
+		return ErrInvalidInput
 	}
 
 	if err := s.r2.AbortMultipartUpload(ctx, upload.ObjectKey, upload.UploadID); err != nil {
@@ -461,40 +553,40 @@ func (s *Service) CompleteSingleUpload(ctx context.Context, userID, fileID strin
 		return ErrInvalidInput
 	}
 
-	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
+	file, err := s.fileRepo.GetFileForUser(ctx, s.db, fileID, userID)
 	if err != nil {
-		return err
-	}
-
-	file, err := s.fileRepo.GetFileForUser(ctx, tx, fileID, userID)
-	if err != nil {
-		_ = tx.Rollback(ctx)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
 		}
 		return err
 	}
 	if file.Status == FileStatusComplete || file.Status == FileStatusAborted {
-		_ = tx.Rollback(ctx)
 		return ErrInvalidInput
 	}
 
-	if err := s.fileRepo.UpdateFileStatus(ctx, tx, fileID, FileStatusComplete); err != nil {
-		_ = tx.Rollback(ctx)
-		return err
-	}
-
-	committed, err := s.storageRepo.CommitStorage(ctx, tx, userID, file.SizeBytes)
+	actualSize, err := s.r2.HeadObjectSize(ctx, file.ObjectKey)
 	if err != nil {
-		_ = tx.Rollback(ctx)
+		s.markUploadFailed(ctx, userID, file.ID, file.SizeBytes)
+		_ = s.r2.DeleteObject(ctx, file.ObjectKey)
 		return err
 	}
-	if !committed {
-		_ = tx.Rollback(ctx)
-		return ErrUploadFailed
+
+	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
 	}
 
-	return tx.Commit(ctx)
+	if err := s.finalizeFileCompletion(ctx, tx, userID, file, actualSize); err != nil {
+		_ = tx.Rollback(ctx)
+		s.markUploadFailed(ctx, userID, file.ID, file.SizeBytes)
+		_ = s.r2.DeleteObject(ctx, file.ObjectKey)
+		return err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *Service) AbortSingleUpload(ctx context.Context, userID, fileID string) error {
@@ -519,6 +611,10 @@ func (s *Service) AbortSingleUpload(ctx context.Context, userID, fileID string) 
 			return ErrNotFound
 		}
 		return err
+	}
+	if file.Status == FileStatusComplete || file.Status == FileStatusAborted {
+		_ = tx.Rollback(ctx)
+		return ErrInvalidInput
 	}
 
 	if err := s.fileRepo.UpdateFileStatus(ctx, tx, fileID, FileStatusAborted); err != nil {
@@ -594,4 +690,67 @@ func (s *Service) ListPendingUploads(ctx context.Context, userID string) ([]mode
 		return nil, ErrUnauthorized
 	}
 	return s.fileRepo.ListPendingForUser(ctx, s.db, userID)
+}
+
+func (s *Service) ResumeMultipart(ctx context.Context, userID, fileID string) (models.MultipartResumeResponse, error) {
+	userID = strings.TrimSpace(userID)
+	fileID = strings.TrimSpace(fileID)
+	if userID == "" {
+		return models.MultipartResumeResponse{}, ErrUnauthorized
+	}
+	if fileID == "" {
+		return models.MultipartResumeResponse{}, ErrInvalidInput
+	}
+
+	upload, err := s.uploadRepo.GetMultipartForFile(ctx, s.db, fileID, userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.MultipartResumeResponse{}, ErrNotFound
+		}
+		return models.MultipartResumeResponse{}, err
+	}
+	if upload.Status == MultipartStatusCompleted || upload.Status == MultipartStatusAborted {
+		return models.MultipartResumeResponse{}, ErrInvalidInput
+	}
+
+	file, err := s.fileRepo.GetFileForUser(ctx, s.db, fileID, userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.MultipartResumeResponse{}, ErrNotFound
+		}
+		return models.MultipartResumeResponse{}, err
+	}
+
+	if err := s.uploadRepo.TouchMultipart(ctx, s.db, upload.ID, MultipartStatusUploading); err != nil {
+		return models.MultipartResumeResponse{}, err
+	}
+
+	listed, err := s.r2.ListParts(ctx, upload.ObjectKey, upload.UploadID)
+	if err != nil {
+		return models.MultipartResumeResponse{}, err
+	}
+
+	resumeParts := make([]models.ResumePart, 0, len(listed))
+	for _, part := range listed {
+		number := SafePtr.Int32(part.PartNumber)
+		etag := strings.TrimSpace(SafePtr.String(part.ETag))
+		if number <= 0 || number > int32(upload.TotalParts) || etag == "" {
+			continue
+		}
+		resumeParts = append(resumeParts, models.ResumePart{
+			PartNumber: number,
+			ETag:       etag,
+			Size:       SafePtr.Int64(part.Size),
+		})
+	}
+
+	return models.MultipartResumeResponse{
+		FileID:        upload.FileID,
+		MultipartID:   upload.ID,
+		Filename:      file.Filename,
+		SizeBytes:     file.SizeBytes,
+		ChunkSize:     upload.ChunkSize,
+		TotalParts:    upload.TotalParts,
+		UploadedParts: resumeParts,
+	}, nil
 }

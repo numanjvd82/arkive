@@ -32,6 +32,6 @@ func WebFiles(uploadService *uploads.Service) gin.HandlerFunc {
 			return
 		}
 
-		web.Render(c, pages.FilesPage(files))
+		web.Render(c, pages.FilesPage(files, uploads.MultipartThresholdBytes))
 	}
 }
