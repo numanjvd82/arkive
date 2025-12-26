@@ -24,10 +24,18 @@ func DashboardPage() web.Page {
 						h.Span(h.Class("logo-dot")),
 						h.Span(h.Class("logo-text"), g.Text("Arkive")),
 					),
-					h.Form(
-						h.Method("post"),
-						h.Action("/logout"),
-						h.Button(h.Class("button secondary"), h.Type("submit"), g.Text("Logout")),
+					h.Div(
+						h.Class("dashboard-actions"),
+						components.Button(components.ButtonProps{
+							Text:    "Files",
+							Href:    "/files",
+							Variant: "secondary",
+						}),
+						h.Form(
+							h.Method("post"),
+							h.Action("/logout"),
+							h.Button(h.Class("button secondary"), h.Type("submit"), g.Text("Logout")),
+						),
 					),
 				),
 				h.Section(
@@ -46,7 +54,7 @@ func DashboardPage() web.Page {
 								ID:       "upload-file",
 								Name:     "file",
 								Label:    "Choose a file",
-								Helper:   "We will split it into 10MB chunks (25MB for very large files).",
+								Helper:   "Max 1GB. Files over 500MB use multipart chunks.",
 								Required: true,
 							}),
 							h.Div(
@@ -58,11 +66,43 @@ func DashboardPage() web.Page {
 									g.Text("Start upload"),
 								),
 								h.Button(
-									h.Class("button secondary"),
+									h.Class("icon-button"),
+									h.Type("button"),
+									g.Attr("id", "upload-pause"),
+									g.Attr("disabled", "disabled"),
+									components.Icon(components.IconProps{
+										Name:       "pause",
+										Size:       "md",
+										Title:      "Pause upload",
+										AriaLabel:  "Pause upload",
+										Decorative: false,
+									}),
+								),
+								h.Button(
+									h.Class("icon-button"),
+									h.Type("button"),
+									g.Attr("id", "upload-resume"),
+									g.Attr("disabled", "disabled"),
+									components.Icon(components.IconProps{
+										Name:       "play",
+										Size:       "md",
+										Title:      "Resume upload",
+										AriaLabel:  "Resume upload",
+										Decorative: false,
+									}),
+								),
+								h.Button(
+									h.Class("icon-button"),
 									h.Type("button"),
 									g.Attr("id", "upload-abort"),
 									g.Attr("disabled", "disabled"),
-									g.Text("Abort"),
+									components.Icon(components.IconProps{
+										Name:       "x",
+										Size:       "md",
+										Title:      "Abort upload",
+										AriaLabel:  "Abort upload",
+										Decorative: false,
+									}),
 								),
 							),
 							components.ProgressBar(components.ProgressBarProps{

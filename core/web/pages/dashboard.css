@@ -16,6 +16,12 @@
   gap: 10px;
 }
 
+.dashboard-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .dashboard-hero h1 {
   font-size: clamp(2rem, 3.6vw, 3rem);
   margin-bottom: 10px;

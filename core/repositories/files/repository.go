@@ -95,42 +95,38 @@ func (r *Repository) GetFileForUser(ctx context.Context, db database.PgExecutor,
 	return file, nil
 }
 
-func (r *Repository) CreateShare(ctx context.Context, db database.PgExecutor, share models.FileShare) (models.FileShare, error) {
-	var created models.FileShare
-	query := `INSERT INTO file_shares (file_id, token_hash, expires_at)
-		VALUES ($1, $2, $3)
-		RETURNING id, file_id, token_hash, expires_at, created_at, updated_at`
-	if err := db.QueryRow(ctx, query,
-		share.FileID,
-		share.TokenHash,
-		share.ExpiresAt,
-	).Scan(
-		&created.ID,
-		&created.FileID,
-		&created.TokenHash,
-		&created.ExpiresAt,
-		&created.CreatedAt,
-		&created.UpdatedAt,
-	); err != nil {
-		return models.FileShare{}, err
+func (r *Repository) ListPendingForUser(ctx context.Context, db database.PgExecutor, userID string) ([]models.File, error) {
+	query := `SELECT id, user_id, bucket, object_key, filename, content_type, size_bytes, status, created_at, updated_at
+		FROM files
+		WHERE user_id = $1 AND status IN ('pending', 'uploading')
+		ORDER BY created_at DESC`
+	rows, err := db.Query(ctx, query, userID)
+	if err != nil {
+		return nil, err
 	}
-	return created, nil
-}
+	defer rows.Close()
 
-func (r *Repository) GetShareByTokenHash(ctx context.Context, db database.PgExecutor, tokenHash []byte) (models.FileShare, error) {
-	var share models.FileShare
-	query := `SELECT id, file_id, token_hash, expires_at, created_at, updated_at
-		FROM file_shares
-		WHERE token_hash = $1`
-	if err := db.QueryRow(ctx, query, tokenHash).Scan(
-		&share.ID,
-		&share.FileID,
-		&share.TokenHash,
-		&share.ExpiresAt,
-		&share.CreatedAt,
-		&share.UpdatedAt,
-	); err != nil {
-		return models.FileShare{}, err
+	var files []models.File
+	for rows.Next() {
+		var file models.File
+		if err := rows.Scan(
+			&file.ID,
+			&file.UserID,
+			&file.Bucket,
+			&file.ObjectKey,
+			&file.Filename,
+			&file.ContentType,
+			&file.SizeBytes,
+			&file.Status,
+			&file.CreatedAt,
+			&file.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		files = append(files, file)
 	}
-	return share, nil
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+	return files, nil
 }

@@ -3,10 +3,14 @@ package uploads
 import "errors"
 
 var (
-	ErrInvalidInput = errors.New("invalid input")
-	ErrNotFound     = errors.New("not found")
-	ErrUnauthorized = errors.New("unauthorized")
-	ErrUploadFailed = errors.New("upload failed")
+	ErrInvalidInput      = errors.New("invalid input")
+	ErrNotFound          = errors.New("not found")
+	ErrUnauthorized      = errors.New("unauthorized")
+	ErrUploadFailed      = errors.New("upload failed")
+	ErrQuotaExceeded     = errors.New("quota exceeded")
+	ErrFileTooLarge      = errors.New("file is too large")
+	ErrFileTooSmall      = errors.New("file is too small")
+	ErrMultipartRequired = errors.New("multipart upload required")
 )
 
 var (

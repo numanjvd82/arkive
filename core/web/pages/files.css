@@ -1,0 +1,108 @@
+.files-page {
+  padding: 48px 0 90px;
+}
+
+.files-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.files-title h1 {
+  font-size: clamp(2rem, 3.2vw, 2.8rem);
+  margin-bottom: 6px;
+}
+
+.files-title p {
+  color: var(--muted);
+  max-width: 520px;
+}
+
+.files-instructions {
+  margin-top: 8px;
+}
+
+.files-list {
+  margin-top: 18px;
+}
+
+.files-instructions .card {
+  padding: 20px;
+}
+
+.files-instructions .form-field {
+  margin-bottom: 10px;
+}
+
+.files-instructions .upload-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.files-instructions .upload-status {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.files-rows {
+  display: grid;
+  gap: 12px;
+}
+
+.files-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface-strong);
+}
+
+.files-meta {
+  display: grid;
+  gap: 4px;
+}
+
+.files-name {
+  font-weight: 600;
+}
+
+.files-sub {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.files-time {
+  color: var(--muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.files-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.files-actions .icon-button {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.files-actions .icon {
+  width: 18px;
+  height: 18px;
+}
+
+.files-empty {
+  margin: 0;
+  color: var(--muted);
+}

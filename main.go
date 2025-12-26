@@ -9,6 +9,7 @@ import (
 	"arkive/core/config"
 	"arkive/core/database"
 	filerepo "arkive/core/repositories/files"
+	storagerepo "arkive/core/repositories/storage"
 	uploadrepo "arkive/core/repositories/uploads"
 	"arkive/core/router"
 	"arkive/core/services/uploads"
@@ -55,25 +56,11 @@ func main() {
 		log.Fatalf("r2 client failed: %v", err)
 	}
 
-	uploadService := uploads.NewService(db, filerepo.New(), uploadrepo.New(), r2Client, uploads.Config{
+	uploadService := uploads.NewService(db, storagerepo.New(), filerepo.New(), uploadrepo.New(), r2Client, uploads.Config{
 		Bucket:         cfg.R2Bucket,
 		UploadExpires:  15 * time.Minute,
 		DownloadExpire: 1 * time.Minute,
 	})
-
-	go func() {
-		ticker := time.NewTicker(6 * time.Hour)
-		defer ticker.Stop()
-		for {
-			cleaned, err := uploadService.CleanupStaleMultipart(context.Background(), 24*time.Hour)
-			if err != nil {
-				log.Printf("multipart cleanup failed: %v", err)
-			} else if cleaned > 0 {
-				log.Printf("multipart cleanup: aborted %d uploads", cleaned)
-			}
-			<-ticker.C
-		}
-	}()
 
 	if strings.EqualFold(cfg.Env, "dev") {
 		gin.SetMode(gin.DebugMode)

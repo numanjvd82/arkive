@@ -1,0 +1,30 @@
+package models
+
+import "time"
+
+type MultipartStartResponse struct {
+	FileID      string
+	MultipartID string
+	ObjectKey   string
+	ChunkSize   int
+	TotalParts  int
+}
+
+type SingleStartResponse struct {
+	FileID    string
+	ObjectKey string
+	UploadURL string
+	ExpiresAt time.Time
+}
+
+type CompletedPartInput struct {
+	PartNumber int32  `json:"partNumber"`
+	ETag       string `json:"etag"`
+	Size       int64  `json:"size,omitempty"`
+}
+
+type StoredPart struct {
+	PartNumber int32  `json:"part"`
+	ETag       string `json:"etag"`
+	Size       int64  `json:"size"`
+}

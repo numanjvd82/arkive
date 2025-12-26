@@ -2,7 +2,6 @@ package uploadrepo
 
 import (
 	"context"
-	"time"
 
 	"arkive/core/database"
 	"arkive/core/models"
@@ -70,6 +69,30 @@ func (r *Repository) GetMultipartForUser(ctx context.Context, db database.PgExec
 	return upload, nil
 }
 
+func (r *Repository) GetMultipartForFile(ctx context.Context, db database.PgExecutor, fileID, userID string) (models.MultipartUpload, error) {
+	var upload models.MultipartUpload
+	query := `SELECT m.id, m.file_id, m.upload_id, m.bucket, m.object_key, m.chunk_size, m.total_parts, m.uploaded_parts, m.status, m.created_at, m.updated_at
+		FROM multipart_uploads m
+		JOIN files f ON f.id = m.file_id
+		WHERE m.file_id = $1 AND f.user_id = $2`
+	if err := db.QueryRow(ctx, query, fileID, userID).Scan(
+		&upload.ID,
+		&upload.FileID,
+		&upload.UploadID,
+		&upload.Bucket,
+		&upload.ObjectKey,
+		&upload.ChunkSize,
+		&upload.TotalParts,
+		&upload.UploadedParts,
+		&upload.Status,
+		&upload.CreatedAt,
+		&upload.UpdatedAt,
+	); err != nil {
+		return models.MultipartUpload{}, err
+	}
+	return upload, nil
+}
+
 func (r *Repository) UpdateMultipart(ctx context.Context, db database.PgExecutor, multipartID, status string, uploadedParts []byte) error {
 	query := `UPDATE multipart_uploads
 		SET status = $2, uploaded_parts = $3, updated_at = now()
@@ -84,40 +107,4 @@ func (r *Repository) TouchMultipart(ctx context.Context, db database.PgExecutor,
 		WHERE id = $1`
 	_, err := db.Exec(ctx, query, multipartID, status)
 	return err
-}
-
-func (r *Repository) ListStaleMultipart(ctx context.Context, db database.PgExecutor, olderThan time.Time) ([]models.MultipartUpload, error) {
-	query := `SELECT id, file_id, upload_id, bucket, object_key, chunk_size, total_parts, uploaded_parts, status, created_at, updated_at
-		FROM multipart_uploads
-		WHERE status IN ('initiated', 'uploading') AND updated_at < $1`
-	rows, err := db.Query(ctx, query, olderThan)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var uploads []models.MultipartUpload
-	for rows.Next() {
-		var upload models.MultipartUpload
-		if err := rows.Scan(
-			&upload.ID,
-			&upload.FileID,
-			&upload.UploadID,
-			&upload.Bucket,
-			&upload.ObjectKey,
-			&upload.ChunkSize,
-			&upload.TotalParts,
-			&upload.UploadedParts,
-			&upload.Status,
-			&upload.CreatedAt,
-			&upload.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		uploads = append(uploads, upload)
-	}
-	if rows.Err() != nil {
-		return nil, rows.Err()
-	}
-	return uploads, nil
 }

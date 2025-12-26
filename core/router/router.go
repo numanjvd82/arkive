@@ -28,11 +28,11 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 	r.POST("/login", handlers.WebLoginPost(authService))
 	r.GET("/signup", handlers.WebSignupGet(authService))
 	r.POST("/signup", handlers.WebSignupPost(authService))
-	r.GET("/share/:token", handlers.ShareDownload(uploadService))
 
 	protected := r.Group("/")
 	protected.Use(middleware.RequireSessionRedirect(authService))
 	protected.GET("/dashboard", handlers.WebDashboard())
+	protected.GET("/files", handlers.WebFiles(uploadService))
 	protected.POST("/logout", handlers.WebLogout(authService))
 
 	api := r.Group("/api")
@@ -44,6 +44,10 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 	apiUploads := api.Group("/uploads")
 	apiUploads.Use(middleware.RequireSessionJSON(authService))
 	{
+		apiUploads.POST("/abort", handlers.APIUploadAbort(uploadService))
+		apiUploads.POST("/single/start", handlers.APISingleStart(uploadService))
+		apiUploads.POST("/single/complete", handlers.APISingleComplete(uploadService))
+		apiUploads.POST("/single/abort", handlers.APISingleAbort(uploadService))
 		apiUploads.POST("/multipart/start", handlers.APIMultipartStart(uploadService))
 		apiUploads.POST("/multipart/part-url", handlers.APIMultipartPartURL(uploadService))
 		apiUploads.POST("/multipart/complete", handlers.APIMultipartComplete(uploadService))
@@ -53,7 +57,6 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 	apiFiles := api.Group("/files")
 	apiFiles.Use(middleware.RequireSessionJSON(authService))
 	{
-		apiFiles.POST("/:id/share", handlers.APIShareCreate(uploadService))
 		apiFiles.GET("/:id/download", handlers.APIDownloadFile(uploadService))
 	}
 
