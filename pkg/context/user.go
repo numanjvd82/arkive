@@ -31,3 +31,12 @@ func LoadUser(c *gin.Context, svc *auth.Service) (models.User, bool, error) {
 	c.Set(UserKey, user)
 	return user, true, nil
 }
+
+func UserFromContext(c *gin.Context) (models.User, bool) {
+	userValue, ok := c.Get(UserKey)
+	if !ok {
+		return models.User{}, false
+	}
+	user, ok := userValue.(models.User)
+	return user, ok
+}

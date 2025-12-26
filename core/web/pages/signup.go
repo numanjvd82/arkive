@@ -10,6 +10,7 @@ import (
 )
 
 type SignupPageProps struct {
+	Ctx       PageContext
 	Errors    validation.Errors
 	BrandName string
 	Email     string

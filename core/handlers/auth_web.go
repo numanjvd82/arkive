@@ -24,7 +24,7 @@ func WebLoginGet(svc *auth.Service) gin.HandlerFunc {
 			return
 		}
 
-		webPage := pages.LoginPage(pages.LoginPageProps{})
+		webPage := pages.LoginPage(pages.LoginPageProps{Ctx: pages.PageContext{}})
 		web.Render(c, webPage)
 	}
 }
@@ -39,7 +39,7 @@ func WebSignupGet(svc *auth.Service) gin.HandlerFunc {
 			return
 		}
 
-		webPage := pages.SignupPage(pages.SignupPageProps{})
+		webPage := pages.SignupPage(pages.SignupPageProps{Ctx: pages.PageContext{}})
 		web.Render(c, webPage)
 	}
 }
@@ -62,6 +62,7 @@ func WebLoginPost(svc *auth.Service) gin.HandlerFunc {
 		var form loginForm
 		if err := c.ShouldBind(&form); err != nil {
 			web.Render(c, pages.LoginPage(pages.LoginPageProps{
+				Ctx: pages.PageContext{},
 				Errors: validation.Errors{
 					validation.GeneralKey: "Please fill out the form.",
 				},
@@ -73,6 +74,7 @@ func WebLoginPost(svc *auth.Service) gin.HandlerFunc {
 		sessionID, expiresAt, validationErrors, err := svc.WebLogin(c.Request.Context(), form.Email, form.Password)
 		if len(validationErrors) > 0 {
 			web.Render(c, pages.LoginPage(pages.LoginPageProps{
+				Ctx:    pages.PageContext{},
 				Errors: validationErrors,
 				Email:  strings.TrimSpace(form.Email),
 			}))
@@ -108,6 +110,7 @@ func WebSignupPost(svc *auth.Service) gin.HandlerFunc {
 		var form signupForm
 		if err := c.ShouldBind(&form); err != nil {
 			web.Render(c, pages.SignupPage(pages.SignupPageProps{
+				Ctx: pages.PageContext{},
 				Errors: validation.Errors{
 					validation.GeneralKey: "Please fill out the form.",
 				},
@@ -126,6 +129,7 @@ func WebSignupPost(svc *auth.Service) gin.HandlerFunc {
 		)
 		if len(validationErrors) > 0 {
 			web.Render(c, pages.SignupPage(pages.SignupPageProps{
+				Ctx:       pages.PageContext{},
 				Errors:    validationErrors,
 				BrandName: strings.TrimSpace(form.BrandName),
 				Email:     strings.TrimSpace(form.Email),

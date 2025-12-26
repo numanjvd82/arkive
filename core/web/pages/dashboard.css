@@ -10,6 +10,38 @@
   margin-bottom: 32px;
 }
 
+.dashboard-quota {
+  margin-bottom: 32px;
+}
+
+.quota-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.quota-label {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.quota-value {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.quota-progress {
+  margin-top: 0;
+}
+
+.dashboard-quota .progress {
+  margin-top: 0;
+}
+
 .dashboard-brand {
   display: inline-flex;
   align-items: center;

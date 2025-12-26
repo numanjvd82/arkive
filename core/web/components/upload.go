@@ -93,6 +93,7 @@ func ProgressBar(props ProgressBarProps) g.Node {
 				g.Attr("aria-valuemax", "100"),
 				g.Attr("aria-valuenow", strconv.Itoa(value)),
 			),
+			h.Span(h.Class("progress-percent"), g.Text(strconv.Itoa(value)+"%")),
 		),
 	)
 }

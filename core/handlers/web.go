@@ -9,6 +9,6 @@ import (
 
 func WebHome() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		web.Render(c, pages.HomePage())
+		web.Render(c, pages.HomePage(pages.HomePageProps{Ctx: pages.PageContext{}}))
 	}
 }

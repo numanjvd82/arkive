@@ -8,7 +8,12 @@ import (
 	"arkive/core/web/components"
 )
 
-func ForbiddenPage() web.Page {
+type ForbiddenPageProps struct {
+	Ctx PageContext
+}
+
+func ForbiddenPage(props ForbiddenPageProps) web.Page {
+	_ = props
 	return web.Page{
 		Title: "Arkive · Forbidden",
 		CSS:   []string{"/web/pages/forbidden.css"},

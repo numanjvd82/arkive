@@ -11,9 +11,16 @@ import (
 	"arkive/core/models"
 	"arkive/core/web"
 	"arkive/core/web/components"
+	"arkive/pkg/format"
 )
 
-func FilesPage(files []models.File, multipartThreshold int64) web.Page {
+type FilesPageProps struct {
+	Ctx                PageContext
+	Files              []models.File
+	MultipartThreshold int64
+}
+
+func FilesPage(props FilesPageProps) web.Page {
 	return web.Page{
 		Title: "Arkive · Files",
 		CSS:   []string{"/web/pages/files.css"},
@@ -55,7 +62,7 @@ func FilesPage(files []models.File, multipartThreshold int64) web.Page {
 						Title:    "Uploads in progress",
 						Subtitle: "Only pending and uploading items are shown.",
 						Body: []g.Node{
-							renderPendingList(files, multipartThreshold),
+							renderPendingList(props.Files, props.MultipartThreshold),
 						},
 					}),
 				),
@@ -81,7 +88,7 @@ func renderPendingList(files []models.File, multipartThreshold int64) g.Node {
 			h.Div(
 				h.Class("files-meta"),
 				h.Span(h.Class("files-name"), g.Text(file.Filename)),
-				h.Span(h.Class("files-sub"), g.Text(fmt.Sprintf("%s • %s", formatBytes(file.SizeBytes), titleCase(file.Status)))),
+				h.Span(h.Class("files-sub"), g.Text(fmt.Sprintf("%s • %s", format.Bytes(file.SizeBytes), titleCase(file.Status)))),
 				h.Span(h.Class("files-resume"), g.Text("Resume by selecting the same file again.")),
 			),
 			h.Div(
@@ -119,27 +126,6 @@ func renderPendingList(files []models.File, multipartThreshold int64) g.Node {
 		return h.P(h.Class("files-empty"), g.Text("No multipart uploads to resume right now."))
 	}
 	return h.Div(h.Class("files-rows"), g.Group(rows))
-}
-
-func formatBytes(size int64) string {
-	if size <= 0 {
-		return "0 B"
-	}
-	const (
-		KB = 1024
-		MB = 1024 * KB
-		GB = 1024 * MB
-	)
-	if size >= GB {
-		return fmt.Sprintf("%.2f GB", float64(size)/float64(GB))
-	}
-	if size >= MB {
-		return fmt.Sprintf("%.1f MB", float64(size)/float64(MB))
-	}
-	if size >= KB {
-		return fmt.Sprintf("%.1f KB", float64(size)/float64(KB))
-	}
-	return fmt.Sprintf("%d B", size)
 }
 
 func formatTime(value time.Time) string {

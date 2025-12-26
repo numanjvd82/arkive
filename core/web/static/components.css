@@ -245,7 +245,7 @@
 .progress-track {
   position: relative;
   width: 100%;
-  height: 12px;
+  height: 18px;
   border-radius: 999px;
   background: var(--surface-strong);
   overflow: hidden;
@@ -257,6 +257,16 @@
   background: linear-gradient(90deg, var(--accent-cool), var(--accent));
   box-shadow: 0 0 16px rgba(107, 209, 230, 0.35);
   transition: width 0.2s ease;
+}
+
+.progress-percent {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
 }
 
 .icon-button {

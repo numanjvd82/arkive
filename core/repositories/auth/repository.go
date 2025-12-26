@@ -39,10 +39,25 @@ func (r *Repository) GetUserByEmail(ctx context.Context, db database.PgExecutor,
 
 func (r *Repository) GetUserByID(ctx context.Context, db database.PgExecutor, userID string) (models.User, error) {
 	var user models.User
-	query := `SELECT id, brand_name, email
+	query := `SELECT id, brand_name, email, quota_bytes, used_bytes, reserved_bytes,
+			is_email_verified, is_banned, ban_reason, last_login_at, last_ip, created_at, updated_at
 		FROM users
 		WHERE id = $1`
-	if err := db.QueryRow(ctx, query, userID).Scan(&user.ID, &user.BrandName, &user.Email); err != nil {
+	if err := db.QueryRow(ctx, query, userID).Scan(
+		&user.ID,
+		&user.BrandName,
+		&user.Email,
+		&user.QuotaBytes,
+		&user.UsedBytes,
+		&user.ReservedBytes,
+		&user.IsEmailVerified,
+		&user.IsBanned,
+		&user.BanReason,
+		&user.LastLoginAt,
+		&user.LastIP,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+	); err != nil {
 		return models.User{}, err
 	}
 	return user, nil

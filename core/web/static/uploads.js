@@ -12,6 +12,7 @@
   }
 
   var progressBar = progress.querySelector(".progress-bar");
+  var progressPercent = progress.querySelector(".progress-percent");
   var active = null;
   var paused = false;
   var resumeWaiters = [];
@@ -27,6 +28,9 @@
     if (progressBar) {
       progressBar.style.width = clamped + "%";
       progressBar.setAttribute("aria-valuenow", String(clamped));
+    }
+    if (progressPercent) {
+      progressPercent.textContent = clamped + "%";
     }
   }
 
@@ -449,14 +453,7 @@
       updatePauseButtons();
 
       try {
-        var res = await fetch(resp.uploadUrl, {
-          method: "PUT",
-          body: file,
-          signal: controller.signal
-        });
-        if (!res.ok) {
-          throw new Error("Upload failed: " + res.status);
-        }
+        await uploadSingleWithProgress(resp.uploadUrl, file, controller);
         await completeSingle(resp.fileId);
         setProgress(100);
         setStatus("Upload complete: " + file.name);
@@ -478,6 +475,40 @@
       setStatus("Upload failed. " + (message_2 || (err && err.message ? err.message : "Try again.")));
       throw err;
     }
+  }
+
+  function uploadSingleWithProgress(url, file, controller) {
+    return new Promise(function(resolve, reject) {
+      var xhr = new XMLHttpRequest();
+      xhr.open("PUT", url, true);
+      xhr.upload.onprogress = function(evt) {
+        if (!evt.lengthComputable) {
+          return;
+        }
+        setProgress((evt.loaded / file.size) * 100);
+      };
+      xhr.onload = function() {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve();
+          return;
+        }
+        reject(new Error("Upload failed: " + xhr.status));
+      };
+      xhr.onerror = function() {
+        reject(new Error("Upload failed."));
+      };
+      xhr.onabort = function() {
+        var err = new Error("Upload aborted");
+        err.name = "AbortError";
+        reject(err);
+      };
+      if (controller && controller.signal) {
+        controller.signal.addEventListener("abort", function() {
+          xhr.abort();
+        });
+      }
+      xhr.send(file);
+    });
   }
 
   startButton.addEventListener("click", function() {

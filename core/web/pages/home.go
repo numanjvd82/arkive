@@ -7,7 +7,12 @@ import (
 	"arkive/core/web"
 )
 
-func HomePage() web.Page {
+type HomePageProps struct {
+	Ctx PageContext
+}
+
+func HomePage(props HomePageProps) web.Page {
+	_ = props
 	return web.Page{
 		Title:   "Arkive · Share with freedom",
 		CSS:     []string{"/web/pages/home.css"},

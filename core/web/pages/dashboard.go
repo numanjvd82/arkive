@@ -1,14 +1,44 @@
 package pages
 
 import (
+	"fmt"
+	"math"
+
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
 
 	"arkive/core/web"
 	"arkive/core/web/components"
+	"arkive/pkg/format"
 )
 
-func DashboardPage() web.Page {
+type DashboardPageProps struct {
+	Ctx PageContext
+}
+
+func DashboardPage(props DashboardPageProps) web.Page {
+	var usedBytes int64
+	var reservedBytes int64
+	var quotaBytes int64
+	if props.Ctx.User != nil {
+		usedBytes = props.Ctx.User.UsedBytes
+		reservedBytes = props.Ctx.User.ReservedBytes
+		quotaBytes = props.Ctx.User.QuotaBytes
+	}
+
+	totalUsed := usedBytes + reservedBytes
+	percent := 0
+	if quotaBytes > 0 {
+		percent = int(math.Round(float64(totalUsed) * 100 / float64(quotaBytes)))
+		if percent < 0 {
+			percent = 0
+		}
+		if percent > 100 {
+			percent = 100
+		}
+	}
+	quotaLabel := fmt.Sprintf("%s / %s", format.Bytes(totalUsed), format.Bytes(quotaBytes))
+
 	return web.Page{
 		Title: "Arkive · Dashboard",
 		CSS:   []string{"/web/pages/dashboard.css"},
@@ -36,6 +66,20 @@ func DashboardPage() web.Page {
 							h.Action("/logout"),
 							h.Button(h.Class("button secondary"), h.Type("submit"), g.Text("Logout")),
 						),
+					),
+				),
+				h.Section(
+					h.Class("dashboard-quota"),
+					h.Div(
+						h.Class("quota-meta"),
+						h.Span(h.Class("quota-label"), g.Text("Storage used")),
+						h.Span(h.Class("quota-value"), g.Text(quotaLabel)),
+					),
+					h.Div(
+						h.Class("quota-progress"),
+						components.ProgressBar(components.ProgressBarProps{
+							Value: percent,
+						}),
 					),
 				),
 				h.Section(

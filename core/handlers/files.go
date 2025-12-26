@@ -5,7 +5,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"arkive/core/models"
 	"arkive/core/services/uploads"
 	"arkive/core/web"
 	"arkive/core/web/pages"
@@ -14,13 +13,7 @@ import (
 
 func WebFiles(uploadService *uploads.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userValue, ok := c.Get(appcontext.UserKey)
-		if !ok {
-			c.Redirect(http.StatusSeeOther, "/login")
-			return
-		}
-
-		user, ok := userValue.(models.User)
+		user, ok := appcontext.UserFromContext(c)
 		if !ok || user.ID == "" {
 			c.Redirect(http.StatusSeeOther, "/login")
 			return
@@ -32,6 +25,10 @@ func WebFiles(uploadService *uploads.Service) gin.HandlerFunc {
 			return
 		}
 
-		web.Render(c, pages.FilesPage(files, uploads.MultipartThresholdBytes))
+		web.Render(c, pages.FilesPage(pages.FilesPageProps{
+			Ctx:                pages.ContextWithUser(user),
+			Files:              files,
+			MultipartThreshold: uploads.MultipartThresholdBytes,
+		}))
 	}
 }

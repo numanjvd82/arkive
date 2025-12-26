@@ -10,6 +10,7 @@ import (
 )
 
 type LoginPageProps struct {
+	Ctx    PageContext
 	Errors validation.Errors
 	Email  string
 }
