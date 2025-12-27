@@ -21,7 +21,8 @@ type FilesPageProps struct {
 func FilesPage(props FilesPageProps) web.Page {
 	return web.Page{
 		Title: "Arkive · Files",
-		CSS:   []string{"/web/pages/files.css"},
+		CSS:   []string{"/web/pages/files.css", "/static/dialog.css"},
+		JS:    []string{"/static/dialog.js", "/static/files.js"},
 		Body: h.Main(
 			h.Class("files-page"),
 			h.Div(
@@ -55,6 +56,27 @@ func FilesPage(props FilesPageProps) web.Page {
 					),
 				),
 			),
+			components.Dialog(components.DialogProps{
+				BackdropID: "file-delete-backdrop",
+				TitleID:    "file-delete-title",
+				Title:      "Delete file?",
+				Body:       h.P(g.Attr("id", "file-delete-meta"), g.Text("This will permanently delete the file. This action cannot be undone.")),
+				Actions: h.Div(
+					h.Class("dialog-actions"),
+					h.Button(
+						h.Class("button secondary"),
+						h.Type("button"),
+						g.Attr("id", "file-delete-cancel"),
+						g.Text("Cancel"),
+					),
+					h.Button(
+						h.Class("button danger"),
+						h.Type("button"),
+						g.Attr("id", "file-delete-confirm"),
+						g.Text("Delete"),
+					),
+				),
+			}),
 		),
 	}
 }
@@ -68,6 +90,7 @@ func renderCompletedList(files []models.File) g.Node {
 	for _, file := range files {
 		rows = append(rows, h.Div(
 			h.Class("files-row"),
+			g.Attr("data-file-row", file.ID),
 			h.Div(
 				h.Class("files-meta"),
 				h.Span(h.Class("files-name"), g.Text(file.Filename)),
@@ -75,6 +98,38 @@ func renderCompletedList(files []models.File) g.Node {
 			),
 			h.Div(
 				h.Class("files-actions"),
+				h.Div(
+					h.Class("files-action-buttons"),
+					h.Button(
+						h.Class("button secondary"),
+						h.Type("button"),
+						g.Attr("data-file-action", "share"),
+						g.Attr("data-file-id", file.ID),
+						g.Text("Share"),
+					),
+					h.Button(
+						h.Class("button secondary"),
+						h.Type("button"),
+						g.Attr("data-file-action", "view"),
+						g.Attr("data-file-id", file.ID),
+						g.Text("View"),
+					),
+					h.Button(
+						h.Class("button secondary"),
+						h.Type("button"),
+						g.Attr("data-file-action", "download"),
+						g.Attr("data-file-id", file.ID),
+						g.Text("Download"),
+					),
+					h.Button(
+						h.Class("button danger"),
+						h.Type("button"),
+						g.Attr("data-file-action", "delete"),
+						g.Attr("data-file-id", file.ID),
+						g.Attr("data-file-name", file.Filename),
+						g.Text("Delete"),
+					),
+				),
 				h.Span(h.Class("files-time"), g.Text(formatTime(file.UpdatedAt))),
 			),
 		))

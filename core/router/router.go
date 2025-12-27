@@ -54,6 +54,7 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 	apiFiles.Use(middleware.RequireSessionJSON(authService))
 	{
 		apiFiles.GET("/:id/download", handlers.APIDownloadFile(uploadService))
+		apiFiles.DELETE("/:id", handlers.APIDeleteFile(uploadService))
 	}
 
 	return r

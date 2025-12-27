@@ -211,3 +211,15 @@ func (r *Repository) ListCompletedForUser(ctx context.Context, db database.PgExe
 	}
 	return files, nil
 }
+
+func (r *Repository) DeleteFileForUser(ctx context.Context, db database.PgExecutor, fileID, userID string) (bool, error) {
+	query := `DELETE FROM
+		files
+	WHERE
+		id = $1 AND user_id = $2`
+	tag, err := db.Exec(ctx, query, fileID, userID)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() > 0, nil
+}

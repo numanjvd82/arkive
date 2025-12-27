@@ -4,7 +4,9 @@
 
 .upload-dropzone {
   display: flex;
+  justify-content: center;
   align-items: center;
+  height: 400px;
   gap: 16px;
   padding: 18px;
   border-radius: 18px;

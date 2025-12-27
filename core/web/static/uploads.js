@@ -158,14 +158,22 @@
       return;
     }
     confirmMeta.textContent = file.name + " • " + formatBytes(file.size);
-    confirmBackdrop.classList.remove("is-hidden");
+    if (window.Dialog && window.Dialog.open) {
+      window.Dialog.open("upload-confirm-backdrop");
+    } else {
+      confirmBackdrop.classList.remove("is-hidden");
+    }
   }
 
   function closeConfirmDialog() {
     if (!confirmBackdrop) {
       return;
     }
-    confirmBackdrop.classList.add("is-hidden");
+    if (window.Dialog && window.Dialog.close) {
+      window.Dialog.close("upload-confirm-backdrop");
+    } else {
+      confirmBackdrop.classList.add("is-hidden");
+    }
   }
 
   function updatePauseButtons() {
@@ -938,18 +946,6 @@
       closeConfirmDialog();
     });
   }
-  if (confirmBackdrop) {
-    confirmBackdrop.addEventListener("click", function(event) {
-      if (event.target === confirmBackdrop) {
-        closeConfirmDialog();
-      }
-    });
-  }
-  document.addEventListener("keydown", function(event) {
-    if (event.key === "Escape") {
-      closeConfirmDialog();
-    }
-  });
 
   if (dropzone) {
     dropzone.addEventListener("click", function() {

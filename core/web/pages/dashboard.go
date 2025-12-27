@@ -39,13 +39,12 @@ func DashboardPage(props DashboardPageProps) web.Page {
 	}
 	quotaLabel := fmt.Sprintf("%s / %s", format.Bytes(totalUsed), format.Bytes(quotaBytes))
 	usedLabel := format.Bytes(usedBytes)
-	reservedLabel := format.Bytes(reservedBytes)
 	limitLabel := format.Bytes(quotaBytes)
 
 	return web.Page{
 		Title: "Arkive · Dashboard",
 		CSS:   []string{"/web/pages/dashboard.css", "/web/pages/upload.css", "/static/dialog.css", "/static/tooltip.css"},
-		JS:    []string{"/static/uploads.js"},
+		JS:    []string{"/static/dialog.js", "/static/uploads.js"},
 		Body: h.Main(
 			h.Class("dashboard"),
 			h.Div(
@@ -94,7 +93,7 @@ func DashboardPage(props DashboardPageProps) web.Page {
 								Class:    "storage-tooltip",
 								IconName: "info",
 								IconSize: "18",
-								Tooltip:  fmt.Sprintf("Used: %s\nReserved: %s\nLimit: %s", usedLabel, reservedLabel, limitLabel),
+								Tooltip:  fmt.Sprintf("Used: %s\nLimit: %s", usedLabel, limitLabel),
 							}),
 						),
 						components.ProgressBar(components.ProgressBarProps{

@@ -371,7 +371,7 @@ func (s *Service) NextUpload(ctx context.Context, userID, uploadID string, uploa
 
 	upload, err := s.uploadRepo.GetMultipartForUser(ctx, s.db, uploadID, userID)
 	if err == nil {
-		return s.nextMultipart(ctx, userID, upload, uploadedParts)
+		return s.nextMultipart(ctx, upload, uploadedParts)
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return models.UploadNextResponse{}, err
@@ -379,7 +379,7 @@ func (s *Service) NextUpload(ctx context.Context, userID, uploadID string, uploa
 
 	upload, err = s.uploadRepo.GetMultipartForFile(ctx, s.db, uploadID, userID)
 	if err == nil {
-		return s.nextMultipart(ctx, userID, upload, uploadedParts)
+		return s.nextMultipart(ctx, upload, uploadedParts)
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return models.UploadNextResponse{}, err
@@ -412,7 +412,7 @@ func (s *Service) NextUpload(ctx context.Context, userID, uploadID string, uploa
 	}, nil
 }
 
-func (s *Service) nextMultipart(ctx context.Context, userID string, upload models.MultipartUpload, uploadedParts []int32) (models.UploadNextResponse, error) {
+func (s *Service) nextMultipart(ctx context.Context, upload models.MultipartUpload, uploadedParts []int32) (models.UploadNextResponse, error) {
 	if upload.Status == MultipartStatusCompleted {
 		return models.UploadNextResponse{}, ErrNoNextPart
 	}
@@ -935,6 +935,61 @@ func (s *Service) PresignDownload(ctx context.Context, userID, fileID string) (s
 	}
 
 	return s.r2.PresignDownload(ctx, file.ObjectKey, s.downloadExpire)
+}
+
+func (s *Service) DeleteFile(ctx context.Context, userID, fileID string) error {
+	userID = strings.TrimSpace(userID)
+	fileID = strings.TrimSpace(fileID)
+	if userID == "" {
+		return ErrUnauthorized
+	}
+	if fileID == "" {
+		return ErrInvalidInput
+	}
+
+	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+
+	file, err := s.fileRepo.GetFileForUser(ctx, tx, fileID, userID)
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		}
+		return err
+	}
+
+	switch file.Status {
+	case FileStatusComplete:
+		if err := s.storageRepo.DecreaseUsedStorage(ctx, tx, userID, file.SizeBytes); err != nil {
+			_ = tx.Rollback(ctx)
+			return err
+		}
+	case FileStatusPending, FileStatusUploading:
+		if err := s.storageRepo.DecreaseReservedStorage(ctx, tx, userID, file.SizeBytes); err != nil {
+			_ = tx.Rollback(ctx)
+			return err
+		}
+	}
+
+	deleted, err := s.fileRepo.DeleteFileForUser(ctx, tx, fileID, userID)
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		return err
+	}
+	if !deleted {
+		_ = tx.Rollback(ctx)
+		return ErrNotFound
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	_ = s.r2.DeleteObject(ctx, file.ObjectKey)
+	return nil
 }
 
 func (s *Service) ListPendingUploads(ctx context.Context, userID string) ([]models.File, error) {

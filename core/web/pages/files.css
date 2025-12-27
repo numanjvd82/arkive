@@ -113,7 +113,26 @@
 .files-actions {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
+}
+
+.files-action-buttons {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.files-actions .button {
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  border-radius: 999px;
+}
+
+.files-actions .button.danger {
+  color: var(--danger);
+  border-color: rgba(255, 92, 92, 0.4);
+  background: rgba(255, 92, 92, 0.08);
 }
 
 .files-actions .icon-button {
@@ -152,6 +171,7 @@
 
   .files-actions {
     width: 100%;
-    justify-content: space-between;
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
