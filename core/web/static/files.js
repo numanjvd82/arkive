@@ -67,6 +67,7 @@
       if (!fileId) {
         return;
       }
+      const popup = window.open("", "_blank", "noopener");
       button.disabled = true;
       fetch("/api/files/" + encodeURIComponent(fileId) + "/download", {
         method: "GET",
@@ -82,7 +83,11 @@
           if (!payload || !payload.url) {
             throw new Error("Download failed");
           }
-          window.open(payload.url, "_blank", "noopener");
+          if (popup && !popup.closed) {
+            popup.location.href = payload.url;
+          } else {
+            window.location.href = payload.url;
+          }
         })
         .catch(function() {
           window.alert("Download failed. Try again.");
@@ -119,6 +124,8 @@
         })
         .catch(function() {
           window.alert("Delete failed. Try again.");
+        })
+        .finally(function() {
           confirmButton.disabled = false;
         });
     });

@@ -933,6 +933,12 @@ func (s *Service) PresignDownload(ctx context.Context, userID, fileID string) (s
 		}
 		return "", err
 	}
+	if file.Status != FileStatusComplete {
+		if file.Status == FileStatusFailed || file.Status == FileStatusAborted {
+			return "", ErrUploadCancelled
+		}
+		return "", ErrNotFound
+	}
 
 	return s.r2.PresignDownload(ctx, file.ObjectKey, file.Filename, "attachment", s.downloadExpire)
 }
@@ -968,10 +974,8 @@ func (s *Service) DeleteFile(ctx context.Context, userID, fileID string) error {
 			return err
 		}
 	case FileStatusPending, FileStatusUploading:
-		if err := s.storageRepo.DecreaseReservedStorage(ctx, tx, userID, file.SizeBytes); err != nil {
-			_ = tx.Rollback(ctx)
-			return err
-		}
+		_ = tx.Rollback(ctx)
+		return ErrUploadCancelled
 	}
 
 	deleted, err := s.fileRepo.DeleteFileForUser(ctx, tx, fileID, userID)

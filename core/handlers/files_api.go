@@ -21,6 +21,8 @@ func APIDeleteFile(svc *uploads.Service) gin.HandlerFunc {
 			switch err {
 			case uploads.ErrUnauthorized:
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			case uploads.ErrUploadCancelled:
+				c.JSON(http.StatusConflict, gin.H{"error": "upload in progress"})
 			case uploads.ErrNotFound:
 				c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
 			case uploads.ErrInvalidInput:
