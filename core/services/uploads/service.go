@@ -934,7 +934,7 @@ func (s *Service) PresignDownload(ctx context.Context, userID, fileID string) (s
 		return "", err
 	}
 
-	return s.r2.PresignDownload(ctx, file.ObjectKey, s.downloadExpire)
+	return s.r2.PresignDownload(ctx, file.ObjectKey, file.Filename, "attachment", s.downloadExpire)
 }
 
 func (s *Service) DeleteFile(ctx context.Context, userID, fileID string) error {

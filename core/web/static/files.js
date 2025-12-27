@@ -1,5 +1,6 @@
 (function() {
   const deleteButtons = document.querySelectorAll("[data-file-action='delete']");
+  const downloadButtons = document.querySelectorAll("[data-file-action='download']");
   const backdrop = document.getElementById("file-delete-backdrop");
   const meta = document.getElementById("file-delete-meta");
   const cancelButton = document.getElementById("file-delete-cancel");
@@ -7,7 +8,9 @@
   let pendingDelete = null;
 
   if (!deleteButtons.length) {
-    return;
+    if (!downloadButtons.length) {
+      return;
+    }
   }
 
   function removeRow(fileId) {
@@ -55,6 +58,38 @@
       }
       const filename = button.getAttribute("data-file-name") || "";
       openDialog(fileId, filename);
+    });
+  });
+
+  downloadButtons.forEach(function(button) {
+    button.addEventListener("click", function() {
+      const fileId = button.getAttribute("data-file-id");
+      if (!fileId) {
+        return;
+      }
+      button.disabled = true;
+      fetch("/api/files/" + encodeURIComponent(fileId) + "/download", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" }
+      })
+        .then(function(res) {
+          if (!res.ok) {
+            throw new Error("Download failed");
+          }
+          return res.json();
+        })
+        .then(function(payload) {
+          if (!payload || !payload.url) {
+            throw new Error("Download failed");
+          }
+          window.open(payload.url, "_blank", "noopener");
+        })
+        .catch(function() {
+          window.alert("Download failed. Try again.");
+        })
+        .finally(function() {
+          button.disabled = false;
+        });
     });
   });
 

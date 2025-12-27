@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 
 	"arkive/pkg/SafePtr"
+	"arkive/pkg/header"
 )
 
 type Config struct {
@@ -90,7 +91,7 @@ func (c *Client) PresignUpload(ctx context.Context, key string, contentType stri
 	return out.URL, nil
 }
 
-func (c *Client) PresignDownload(ctx context.Context, key string, expires time.Duration) (string, error) {
+func (c *Client) PresignDownload(ctx context.Context, key string, filename string, disposition string, expires time.Duration) (string, error) {
 	if key == "" {
 		return "", errors.New("key is required")
 	}
@@ -98,6 +99,10 @@ func (c *Client) PresignDownload(ctx context.Context, key string, expires time.D
 	input := &s3.GetObjectInput{
 		Bucket: aws.String(c.bucket),
 		Key:    aws.String(key),
+	}
+	contentDisposition := header.BuildContentDisposition(filename, disposition)
+	if contentDisposition != "" {
+		input.ResponseContentDisposition = aws.String(contentDisposition)
 	}
 
 	opts := []func(*s3.PresignOptions){}
