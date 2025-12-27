@@ -295,6 +295,34 @@ func (s *Service) StartMultipart(ctx context.Context, userID, filename string, s
 	}, nil, nil
 }
 
+func (s *Service) StartUpload(ctx context.Context, userID, filename string, sizeBytes int64, contentType string) (models.UploadStartResponse, validation.Errors, error) {
+	if sizeBytes > MultipartThresholdBytes {
+		resp, validationErrors, err := s.StartMultipart(ctx, userID, filename, sizeBytes, contentType)
+		if err != nil || (validationErrors != nil && validationErrors.HasAny()) {
+			return models.UploadStartResponse{}, validationErrors, err
+		}
+		return models.UploadStartResponse{
+			UploadID:   resp.MultipartID,
+			FileID:     resp.FileID,
+			ObjectKey:  resp.ObjectKey,
+			Mode:       "multipart",
+			ChunkSize:  resp.ChunkSize,
+			TotalParts: resp.TotalParts,
+		}, nil, nil
+	}
+	resp, validationErrors, err := s.StartSingleUpload(ctx, userID, filename, sizeBytes, contentType)
+	if err != nil || (validationErrors != nil && validationErrors.HasAny()) {
+		return models.UploadStartResponse{}, validationErrors, err
+	}
+	return models.UploadStartResponse{
+		UploadID:  resp.FileID,
+		FileID:    resp.FileID,
+		ObjectKey: resp.ObjectKey,
+		Mode:      "single",
+		UploadURL: resp.UploadURL,
+	}, nil, nil
+}
+
 func (s *Service) StartSingleUpload(ctx context.Context, userID, filename string, sizeBytes int64, contentType string) (models.SingleStartResponse, validation.Errors, error) {
 	userID = strings.TrimSpace(userID)
 	filename = strings.TrimSpace(filename)
@@ -331,6 +359,129 @@ func (s *Service) StartSingleUpload(ctx context.Context, userID, filename string
 	}, nil, nil
 }
 
+func (s *Service) NextUpload(ctx context.Context, userID, uploadID string, uploadedParts []int32) (models.UploadNextResponse, error) {
+	userID = strings.TrimSpace(userID)
+	uploadID = strings.TrimSpace(uploadID)
+	if userID == "" {
+		return models.UploadNextResponse{}, ErrUnauthorized
+	}
+	if uploadID == "" {
+		return models.UploadNextResponse{}, ErrInvalidInput
+	}
+
+	upload, err := s.uploadRepo.GetMultipartForUser(ctx, s.db, uploadID, userID)
+	if err == nil {
+		return s.nextMultipart(ctx, userID, upload, uploadedParts)
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return models.UploadNextResponse{}, err
+	}
+
+	upload, err = s.uploadRepo.GetMultipartForFile(ctx, s.db, uploadID, userID)
+	if err == nil {
+		return s.nextMultipart(ctx, userID, upload, uploadedParts)
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return models.UploadNextResponse{}, err
+	}
+
+	file, err := s.fileRepo.GetFileForUser(ctx, s.db, uploadID, userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.UploadNextResponse{}, ErrNotFound
+		}
+		return models.UploadNextResponse{}, err
+	}
+	if file.Status == FileStatusComplete {
+		return models.UploadNextResponse{}, ErrNoNextPart
+	}
+	if file.Status == FileStatusAborted || file.Status == FileStatusFailed {
+		return models.UploadNextResponse{}, ErrUploadCancelled
+	}
+
+	uploadURL, err := s.r2.PresignUpload(ctx, file.ObjectKey, file.ContentType, s.uploadExpires)
+	if err != nil {
+		return models.UploadNextResponse{}, err
+	}
+
+	return models.UploadNextResponse{
+		UploadID: uploadID,
+		FileID:   file.ID,
+		Mode:     "single",
+		URL:      uploadURL,
+	}, nil
+}
+
+func (s *Service) nextMultipart(ctx context.Context, userID string, upload models.MultipartUpload, uploadedParts []int32) (models.UploadNextResponse, error) {
+	if upload.Status == MultipartStatusCompleted {
+		return models.UploadNextResponse{}, ErrNoNextPart
+	}
+	if upload.Status == MultipartStatusAborted || upload.Status == MultipartStatusFailed {
+		return models.UploadNextResponse{}, ErrUploadCancelled
+	}
+
+	partsByNumber := make(map[int32]bool, len(uploadedParts))
+	for _, number := range uploadedParts {
+		if number <= 0 || number > int32(upload.TotalParts) {
+			continue
+		}
+		partsByNumber[number] = true
+	}
+
+	resumeParts := make([]models.ResumePart, 0)
+	listed, listErr := s.r2.ListParts(ctx, upload.ObjectKey, upload.UploadID)
+	if listErr == nil {
+		partsByNumber = make(map[int32]bool, len(listed))
+		resumeParts = make([]models.ResumePart, 0, len(listed))
+		for _, part := range listed {
+			number := SafePtr.Int32(part.PartNumber)
+			etag := strings.TrimSpace(SafePtr.String(part.ETag))
+			if number <= 0 || number > int32(upload.TotalParts) || etag == "" {
+				continue
+			}
+			partsByNumber[number] = true
+			resumeParts = append(resumeParts, models.ResumePart{
+				PartNumber: number,
+				ETag:       etag,
+				Size:       SafePtr.Int64(part.Size),
+			})
+		}
+	}
+
+	var nextPart int32
+	for i := 1; i <= upload.TotalParts; i++ {
+		partNumber := int32(i)
+		if !partsByNumber[partNumber] {
+			nextPart = partNumber
+			break
+		}
+	}
+	if nextPart == 0 {
+		return models.UploadNextResponse{}, ErrNoNextPart
+	}
+
+	_, err := s.uploadRepo.UpdateMultipartStatusIf(ctx, s.db, upload.ID, MultipartStatusUploading, []string{MultipartStatusInitiated})
+	if err != nil {
+		return models.UploadNextResponse{}, err
+	}
+
+	url, err := s.r2.PresignUploadPart(ctx, upload.ObjectKey, upload.UploadID, nextPart, s.uploadExpires)
+	if err != nil {
+		return models.UploadNextResponse{}, err
+	}
+
+	return models.UploadNextResponse{
+		UploadID:      upload.ID,
+		FileID:        upload.FileID,
+		Mode:          "multipart",
+		NextPart:      nextPart,
+		URL:           url,
+		ChunkSize:     upload.ChunkSize,
+		TotalParts:    upload.TotalParts,
+		UploadedParts: resumeParts,
+	}, nil
+}
+
 func (s *Service) PresignPart(ctx context.Context, userID, multipartID string, partNumber int32) (string, error) {
 	userID = strings.TrimSpace(userID)
 	multipartID = strings.TrimSpace(multipartID)
@@ -362,6 +513,64 @@ func (s *Service) PresignPart(ctx context.Context, userID, multipartID string, p
 	return s.r2.PresignUploadPart(ctx, upload.ObjectKey, upload.UploadID, partNumber, s.uploadExpires)
 }
 
+func (s *Service) CompleteUpload(ctx context.Context, userID, uploadID string, parts []models.CompletedPartInput) error {
+	userID = strings.TrimSpace(userID)
+	uploadID = strings.TrimSpace(uploadID)
+	if userID == "" {
+		return ErrUnauthorized
+	}
+	if uploadID == "" {
+		return ErrInvalidInput
+	}
+
+	upload, err := s.uploadRepo.GetMultipartForUser(ctx, s.db, uploadID, userID)
+	if err == nil {
+		return s.CompleteMultipart(ctx, userID, upload.ID, parts)
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return err
+	}
+
+	upload, err = s.uploadRepo.GetMultipartForFile(ctx, s.db, uploadID, userID)
+	if err == nil {
+		return s.CompleteMultipart(ctx, userID, upload.ID, parts)
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return err
+	}
+
+	return s.CompleteSingleUpload(ctx, userID, uploadID)
+}
+
+func (s *Service) CancelUpload(ctx context.Context, userID, uploadID string) error {
+	userID = strings.TrimSpace(userID)
+	uploadID = strings.TrimSpace(uploadID)
+	if userID == "" {
+		return ErrUnauthorized
+	}
+	if uploadID == "" {
+		return ErrInvalidInput
+	}
+
+	upload, err := s.uploadRepo.GetMultipartForUser(ctx, s.db, uploadID, userID)
+	if err == nil {
+		return s.AbortMultipart(ctx, userID, upload.ID)
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return err
+	}
+
+	upload, err = s.uploadRepo.GetMultipartForFile(ctx, s.db, uploadID, userID)
+	if err == nil {
+		return s.AbortMultipart(ctx, userID, upload.ID)
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return err
+	}
+
+	return s.AbortSingleUpload(ctx, userID, uploadID)
+}
+
 func (s *Service) CompleteMultipart(ctx context.Context, userID, multipartID string, parts []models.CompletedPartInput) error {
 	userID = strings.TrimSpace(userID)
 	multipartID = strings.TrimSpace(multipartID)
@@ -386,7 +595,7 @@ func (s *Service) CompleteMultipart(ctx context.Context, userID, multipartID str
 		return nil
 	}
 	if upload.Status == MultipartStatusAborted || upload.Status == MultipartStatusFailed {
-		return ErrInvalidInput
+		return ErrUploadCancelled
 	}
 
 	seen := make(map[int32]bool, len(parts))
@@ -481,8 +690,8 @@ func (s *Service) CompleteMultipart(ctx context.Context, userID, multipartID str
 		if fetchErr == nil && current.Status == MultipartStatusCompleted {
 			return nil
 		}
-		if fetchErr == nil && current.Status == MultipartStatusAborted {
-			return ErrInvalidInput
+		if fetchErr == nil && (current.Status == MultipartStatusAborted || current.Status == MultipartStatusFailed) {
+			return ErrUploadCancelled
 		}
 		return ErrInvalidInput
 	}
@@ -595,7 +804,7 @@ func (s *Service) CompleteSingleUpload(ctx context.Context, userID, fileID strin
 		return nil
 	}
 	if file.Status == FileStatusAborted || file.Status == FileStatusFailed {
-		return ErrInvalidInput
+		return ErrUploadCancelled
 	}
 
 	actualSize, err := s.r2.HeadObjectSize(ctx, file.ObjectKey)

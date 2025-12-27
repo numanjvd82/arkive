@@ -10,6 +10,27 @@ type MultipartStartResponse struct {
 	TotalParts  int
 }
 
+type UploadStartResponse struct {
+	UploadID   string
+	FileID     string
+	ObjectKey  string
+	Mode       string
+	ChunkSize  int
+	TotalParts int
+	UploadURL  string
+}
+
+type UploadNextResponse struct {
+	UploadID      string
+	FileID        string
+	Mode          string
+	NextPart      int32
+	URL           string
+	ChunkSize     int
+	TotalParts    int
+	UploadedParts []ResumePart
+}
+
 type SingleStartResponse struct {
 	FileID    string
 	ObjectKey string

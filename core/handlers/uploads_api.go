@@ -10,51 +10,23 @@ import (
 	"arkive/core/services/uploads"
 )
 
-type multipartStartRequest struct {
+type uploadStartRequest struct {
 	Filename    string `json:"filename"`
 	Size        int64  `json:"size"`
 	ContentType string `json:"contentType"`
 }
 
-type multipartPartURLRequest struct {
-	MultipartID string `json:"multipartId"`
-	PartNumber  int32  `json:"partNumber"`
+type uploadNextRequest struct {
+	UploadedParts []int32 `json:"uploadedParts"`
 }
 
-type multipartCompleteRequest struct {
-	MultipartID string                      `json:"multipartId"`
-	Parts       []models.CompletedPartInput `json:"parts"`
+type uploadCompleteRequest struct {
+	Parts []models.CompletedPartInput `json:"parts"`
 }
 
-type multipartAbortRequest struct {
-	MultipartID string `json:"multipartId"`
-}
-
-type singleStartRequest struct {
-	Filename    string `json:"filename"`
-	Size        int64  `json:"size"`
-	ContentType string `json:"contentType"`
-}
-
-type singleCompleteRequest struct {
-	FileID string `json:"fileId"`
-}
-
-type singleAbortRequest struct {
-	FileID string `json:"fileId"`
-}
-
-type uploadAbortRequest struct {
-	FileID string `json:"fileId"`
-}
-
-type multipartResumeRequest struct {
-	FileID string `form:"fileId"`
-}
-
-func APIMultipartStart(svc *uploads.Service) gin.HandlerFunc {
+func APIUploadStart(svc *uploads.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req multipartStartRequest
+		var req uploadStartRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
 			return
@@ -66,87 +38,7 @@ func APIMultipartStart(svc *uploads.Service) gin.HandlerFunc {
 			return
 		}
 
-		resp, validationErrors, err := svc.StartMultipart(c.Request.Context(), userID.(string), req.Filename, req.Size, req.ContentType)
-		if err != nil {
-			switch err {
-			case uploads.ErrUnauthorized:
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-			default:
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "multipart start failed"})
-			}
-			return
-		}
-		if validationErrors != nil && validationErrors.HasAny() {
-			c.JSON(http.StatusBadRequest, gin.H{"errors": validationErrors})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{
-			"fileId":      resp.FileID,
-			"multipartId": resp.MultipartID,
-			"objectKey":   resp.ObjectKey,
-			"chunkSize":   resp.ChunkSize,
-			"totalParts":  resp.TotalParts,
-		})
-	}
-}
-
-func APIMultipartResume(svc *uploads.Service) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var req multipartResumeRequest
-		if err := c.ShouldBindQuery(&req); err != nil || req.FileID == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
-			return
-		}
-
-		userID, ok := c.Get("user_id")
-		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-			return
-		}
-
-		resp, err := svc.ResumeMultipart(c.Request.Context(), userID.(string), req.FileID)
-		if err != nil {
-			switch err {
-			case uploads.ErrUnauthorized:
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-			case uploads.ErrNotFound:
-				c.JSON(http.StatusNotFound, gin.H{"error": "upload not found"})
-			case uploads.ErrInvalidInput:
-				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
-			default:
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "resume failed"})
-			}
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{
-			"fileId":        resp.FileID,
-			"multipartId":   resp.MultipartID,
-			"filename":      resp.Filename,
-			"sizeBytes":     resp.SizeBytes,
-			"chunkSize":     resp.ChunkSize,
-			"totalParts":    resp.TotalParts,
-			"uploadedParts": resp.UploadedParts,
-		})
-	}
-}
-
-func APISingleStart(svc *uploads.Service) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var req singleStartRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
-			return
-		}
-
-		userID, ok := c.Get("user_id")
-		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-			return
-		}
-
-		resp, validationErrors, err := svc.StartSingleUpload(c.Request.Context(), userID.(string), req.Filename, req.Size, req.ContentType)
+		resp, validationErrors, err := svc.StartUpload(c.Request.Context(), userID.(string), req.Filename, req.Size, req.ContentType)
 		if err != nil {
 			switch err {
 			case uploads.ErrUnauthorized:
@@ -162,17 +54,26 @@ func APISingleStart(svc *uploads.Service) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"fileId":    resp.FileID,
-			"objectKey": resp.ObjectKey,
-			"uploadUrl": resp.UploadURL,
-			"expiresAt": resp.ExpiresAt,
+			"uploadId":   resp.UploadID,
+			"fileId":     resp.FileID,
+			"objectKey":  resp.ObjectKey,
+			"mode":       resp.Mode,
+			"chunkSize":  resp.ChunkSize,
+			"totalParts": resp.TotalParts,
+			"uploadUrl":  resp.UploadURL,
 		})
 	}
 }
 
-func APIMultipartPartURL(svc *uploads.Service) gin.HandlerFunc {
+func APIUploadNext(svc *uploads.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req multipartPartURLRequest
+		uploadID := c.Param("id")
+		if uploadID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			return
+		}
+
+		var req uploadNextRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
 			return
@@ -184,28 +85,47 @@ func APIMultipartPartURL(svc *uploads.Service) gin.HandlerFunc {
 			return
 		}
 
-		url, err := svc.PresignPart(c.Request.Context(), userID.(string), req.MultipartID, req.PartNumber)
+		resp, err := svc.NextUpload(c.Request.Context(), userID.(string), uploadID, req.UploadedParts)
 		if err != nil {
 			switch err {
 			case uploads.ErrUnauthorized:
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 			case uploads.ErrNotFound:
 				c.JSON(http.StatusNotFound, gin.H{"error": "upload not found"})
+			case uploads.ErrUploadCancelled:
+				c.JSON(http.StatusConflict, gin.H{"error": "upload cancelled"})
 			case uploads.ErrInvalidInput:
 				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			case uploads.ErrNoNextPart:
+				c.Status(http.StatusNoContent)
 			default:
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "part url failed"})
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "next failed"})
 			}
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"url": url})
+		c.JSON(http.StatusOK, gin.H{
+			"uploadId":      resp.UploadID,
+			"fileId":        resp.FileID,
+			"mode":          resp.Mode,
+			"nextPart":      resp.NextPart,
+			"url":           resp.URL,
+			"chunkSize":     resp.ChunkSize,
+			"totalParts":    resp.TotalParts,
+			"uploadedParts": resp.UploadedParts,
+		})
 	}
 }
 
-func APIMultipartComplete(svc *uploads.Service) gin.HandlerFunc {
+func APIUploadComplete(svc *uploads.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req multipartCompleteRequest
+		uploadID := c.Param("id")
+		if uploadID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			return
+		}
+
+		var req uploadCompleteRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
 			return
@@ -217,13 +137,15 @@ func APIMultipartComplete(svc *uploads.Service) gin.HandlerFunc {
 			return
 		}
 
-		if err := svc.CompleteMultipart(c.Request.Context(), userID.(string), req.MultipartID, req.Parts); err != nil {
+		if err := svc.CompleteUpload(c.Request.Context(), userID.(string), uploadID, req.Parts); err != nil {
 			var missingErr uploads.MissingPartsError
 			switch err {
 			case uploads.ErrUnauthorized:
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 			case uploads.ErrNotFound:
 				c.JSON(http.StatusNotFound, gin.H{"error": "upload not found"})
+			case uploads.ErrUploadCancelled:
+				c.JSON(http.StatusConflict, gin.H{"error": "upload cancelled"})
 			case uploads.ErrQuotaExceeded:
 				c.JSON(http.StatusForbidden, gin.H{"error": "quota exceeded"})
 			case uploads.ErrFileTooLarge:
@@ -247,10 +169,10 @@ func APIMultipartComplete(svc *uploads.Service) gin.HandlerFunc {
 	}
 }
 
-func APIMultipartAbort(svc *uploads.Service) gin.HandlerFunc {
+func APIUploadCancel(svc *uploads.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req multipartAbortRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
+		uploadID := c.Param("id")
+		if uploadID == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
 			return
 		}
@@ -261,7 +183,7 @@ func APIMultipartAbort(svc *uploads.Service) gin.HandlerFunc {
 			return
 		}
 
-		if err := svc.AbortMultipart(c.Request.Context(), userID.(string), req.MultipartID); err != nil {
+		if err := svc.CancelUpload(c.Request.Context(), userID.(string), uploadID); err != nil {
 			switch err {
 			case uploads.ErrUnauthorized:
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
@@ -270,107 +192,7 @@ func APIMultipartAbort(svc *uploads.Service) gin.HandlerFunc {
 			case uploads.ErrInvalidInput:
 				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
 			default:
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "abort failed"})
-			}
-			return
-		}
-
-		c.Status(http.StatusNoContent)
-	}
-}
-
-func APISingleComplete(svc *uploads.Service) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var req singleCompleteRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
-			return
-		}
-
-		userID, ok := c.Get("user_id")
-		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-			return
-		}
-
-		if err := svc.CompleteSingleUpload(c.Request.Context(), userID.(string), req.FileID); err != nil {
-			switch err {
-			case uploads.ErrUnauthorized:
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-			case uploads.ErrNotFound:
-				c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
-			case uploads.ErrQuotaExceeded:
-				c.JSON(http.StatusForbidden, gin.H{"error": "quota exceeded"})
-			case uploads.ErrFileTooLarge:
-				c.JSON(http.StatusBadRequest, gin.H{"error": "file is too large"})
-			case uploads.ErrInvalidInput:
-				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
-			default:
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "complete failed"})
-			}
-			return
-		}
-
-		c.Status(http.StatusNoContent)
-	}
-}
-
-func APISingleAbort(svc *uploads.Service) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var req singleAbortRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
-			return
-		}
-
-		userID, ok := c.Get("user_id")
-		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-			return
-		}
-
-		if err := svc.AbortSingleUpload(c.Request.Context(), userID.(string), req.FileID); err != nil {
-			switch err {
-			case uploads.ErrUnauthorized:
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-			case uploads.ErrNotFound:
-				c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
-			case uploads.ErrInvalidInput:
-				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
-			default:
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "abort failed"})
-			}
-			return
-		}
-
-		c.Status(http.StatusNoContent)
-	}
-}
-
-func APIUploadAbort(svc *uploads.Service) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var req uploadAbortRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
-			return
-		}
-
-		userID, ok := c.Get("user_id")
-		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-			return
-		}
-
-		if err := svc.AbortUploadByFile(c.Request.Context(), userID.(string), req.FileID); err != nil {
-			switch err {
-			case uploads.ErrUnauthorized:
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-			case uploads.ErrNotFound:
-				c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
-			case uploads.ErrInvalidInput:
-				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
-			default:
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "abort failed"})
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "cancel failed"})
 			}
 			return
 		}

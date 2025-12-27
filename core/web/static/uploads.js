@@ -96,7 +96,6 @@
     }
     const stored = {
       uploadId: state.uploadId,
-      multipartId: state.multipartId,
       fileId: state.fileId,
       mode: state.mode,
       chunkSize: state.chunkSize,
@@ -178,39 +177,18 @@
     return data;
   }
 
-  function startMultipart(file) {
-    return api("/api/uploads/multipart/start", {
+  function startUpload(file) {
+    return api("/api/uploads/start", {
       filename: file.name,
       size: file.size,
       contentType: file.type || "application/octet-stream"
     });
   }
 
-  function startSingle(file) {
-    return api("/api/uploads/single/start", {
-      filename: file.name,
-      size: file.size,
-      contentType: file.type || "application/octet-stream"
+  function nextUpload(uploadId, uploadedParts) {
+    return api("/api/uploads/" + encodeURIComponent(uploadId) + "/next", {
+      uploadedParts: uploadedParts || []
     });
-  }
-
-  function completeSingle(fileId) {
-    return api("/api/uploads/single/complete", { fileId: fileId });
-  }
-
-  function abortSingle(fileId) {
-    return api("/api/uploads/single/abort", { fileId: fileId });
-  }
-
-  function partURL(multipartId, partNumber) {
-    return api("/api/uploads/multipart/part-url", {
-      multipartId: multipartId,
-      partNumber: partNumber
-    });
-  }
-
-  function resumeMultipart(fileId) {
-    return api("/api/uploads/multipart/resume?fileId=" + encodeURIComponent(fileId), null, "GET");
   }
 
   function setSelectedResumeFileId(fileId) {
@@ -230,30 +208,23 @@
     localStorage.removeItem("upload:resume-file");
   }
 
-  function completeMultipart(multipartId, parts) {
-    return api("/api/uploads/multipart/complete", {
-      multipartId: multipartId,
-      parts: parts
+  function completeUpload(uploadId, parts) {
+    return api("/api/uploads/" + encodeURIComponent(uploadId) + "/complete", {
+      parts: parts || []
     });
   }
 
-  function abortMultipart(multipartId) {
-    return api("/api/uploads/multipart/abort", {
-      multipartId: multipartId
-    });
+  function cancelUpload(uploadId) {
+    return api("/api/uploads/" + encodeURIComponent(uploadId) + "/cancel", {});
   }
 
-  function abortByFileId(fileId) {
-    return api("/api/uploads/abort", { fileId: fileId });
-  }
-
-  async function cleanupFailure(fileId, signature) {
+  async function cleanupFailure(uploadId, signature) {
     clearSelectedResumeFileId();
     if (signature) {
       clearState(signature);
     }
-    if (fileId) {
-      clearStateForFile(fileId);
+    if (uploadId) {
+      clearStateForFile(uploadId);
     }
     if (active && active.cancel) {
       active.cancel();
@@ -262,34 +233,60 @@
     setPaused(false);
     setProgress(0);
     updatePauseButtons();
-    if (!fileId) {
+    if (!uploadId) {
       return;
     }
     try {
-      await abortByFileId(fileId);
+      await cancelUpload(uploadId);
     } catch (_) {}
   }
 
-  function uploadPartWithRetry(multipartId, partNumber, chunk, maxRetries) {
+  function uploadNextPartWithRetry(uploadId, chunkSize, file, uploadedMap, maxRetries) {
     let attempt = 0;
 
     function tryUpload() {
       attempt++;
-      return partURL(multipartId, partNumber)
+      return nextUpload(uploadId, Array.from(uploadedMap.keys()))
         .then(function(res) {
-          return fetch(res.url, { method: "PUT", body: chunk });
-        })
-        .then(function(res) {
-          if (!res.ok) {
-            throw new Error("Upload failed: " + res.status);
+          if (!res || !res.nextPart || !res.url) {
+            const err = new Error("No next part");
+            err.noNext = true;
+            if (res && res.uploadedParts) {
+              err.uploadedParts = res.uploadedParts;
+            }
+            throw err;
           }
-          const etag = res.headers.get("ETag");
-          if (!etag) {
-            throw new Error("Missing ETag");
+          if (res.uploadedParts && res.uploadedParts.length) {
+            res.uploadedParts.forEach(function(part) {
+              if (part && part.partNumber && part.etag) {
+                uploadedMap.set(part.partNumber, part.etag);
+              }
+            });
           }
-          return { etag: etag };
+          const partNumber = res.nextPart;
+          const startByte = (partNumber - 1) * chunkSize;
+          const endByte = Math.min(startByte + chunkSize, file.size);
+          const chunk = file.slice(startByte, endByte);
+          return fetch(res.url, { method: "PUT", body: chunk })
+            .then(function(uploadRes) {
+              if (!uploadRes.ok) {
+                throw new Error("Upload failed: " + uploadRes.status);
+              }
+              const etag = uploadRes.headers.get("ETag");
+              if (!etag) {
+                throw new Error("Missing ETag");
+              }
+              return { partNumber: partNumber, etag: etag, size: chunk.size };
+            });
         })
         .catch(function(err) {
+          if (err && err.status === 409) {
+            err.cancelled = true;
+            throw err;
+          }
+          if (err && err.noNext) {
+            throw err;
+          }
           if (attempt >= maxRetries) {
             throw err;
           }
@@ -317,33 +314,28 @@
     return { parts: parts, bytes: bytes };
   }
 
-  async function uploadPartsByNumber(multipartId, chunkSize, file, parts, uploadedMap, uploadedBytes, signature, fileId, totalParts, maxRetries) {
-    const queue = parts.slice();
-    queue.sort(function(a, b) { return a - b; });
-
-    for (let i = 0; i < queue.length; i++) {
-      const partNumber = queue[i];
-      if (uploadedMap.has(partNumber)) {
-        continue;
+  async function recoverMissingParts(uploadId, chunkSize, file, uploadedMap, signature, fileId, totalParts) {
+    while (uploadedMap.size < totalParts) {
+      try {
+        const result = await uploadNextPartWithRetry(uploadId, chunkSize, file, uploadedMap, 5);
+        uploadedMap.set(result.partNumber, result.etag);
+        const rebuilt = buildUploadedPartsFromMap(file, chunkSize, uploadedMap);
+        saveState(signature, {
+          uploadId: uploadId,
+          fileId: fileId,
+          mode: "multipart",
+          chunkSize: chunkSize,
+          totalParts: totalParts,
+          uploadedParts: rebuilt.parts
+        });
+        setProgress((rebuilt.bytes / file.size) * 100);
+      } catch (err) {
+        if (err && err.noNext) {
+          break;
+        }
+        throw err;
       }
-      const startByte = (partNumber - 1) * chunkSize;
-      const endByte = Math.min(startByte + chunkSize, file.size);
-      const chunk = file.slice(startByte, endByte);
-      const result = await uploadPartWithRetry(multipartId, partNumber, chunk, maxRetries);
-      uploadedMap.set(partNumber, result.etag);
-      uploadedBytes += chunk.size;
     }
-    const rebuilt = buildUploadedPartsFromMap(file, chunkSize, uploadedMap);
-    saveState(signature, {
-      uploadId: multipartId,
-      multipartId: multipartId,
-      fileId: fileId,
-      mode: "multipart",
-      chunkSize: chunkSize,
-      totalParts: totalParts,
-      uploadedParts: rebuilt.parts
-    });
-    return { uploadedParts: rebuilt.parts, uploadedBytes: rebuilt.bytes };
   }
 
   async function uploadMultipart(file) {
@@ -353,75 +345,38 @@
     let state = null;
 
     async function initSession() {
-      if (existing && existing.mode === "multipart" && (existing.multipartId || existing.uploadId) && existing.chunkSize && existing.totalParts) {
-        const existingUploadId = existing.multipartId || existing.uploadId;
-        if (existing.fileId) {
-          try {
-            const resumedExisting = await resumeMultipart(existing.fileId);
-            if (resumedExisting.filename && resumedExisting.sizeBytes) {
-              if (resumedExisting.filename !== file.name || resumedExisting.sizeBytes !== file.size) {
-                clearState(signature);
-                existing = null;
-                setStatus("Could not resume this upload. Starting a new upload.");
-                throw new Error("Resume file mismatch");
-              }
-            }
-            const resumedState = {
-              uploadId: resumedExisting.multipartId,
-              fileId: resumedExisting.fileId,
-              multipartId: resumedExisting.multipartId,
-              chunkSize: resumedExisting.chunkSize,
-              totalParts: resumedExisting.totalParts,
-              uploadedParts: resumedExisting.uploadedParts || [],
-              mode: "multipart"
-            };
-            saveState(signature, resumedState);
-            return resumedState;
-          } catch (_) {
-            clearState(signature);
-            existing = null;
-            setStatus("Could not resume this upload. Starting a new upload.");
-          }
-        }
-        if (existing) {
-          existing.uploadId = existingUploadId;
-          existing.multipartId = existingUploadId;
-          existing.mode = "multipart";
-          return existing;
-        }
+      if (existing && existing.mode === "multipart" && existing.uploadId && existing.chunkSize && existing.totalParts) {
+        return existing;
       }
       const resumeFileId = getSelectedResumeFileId();
       if (resumeFileId) {
         try {
-          const resumed = await resumeMultipart(resumeFileId);
-          if (resumed.filename && resumed.sizeBytes) {
-            if (resumed.filename !== file.name || resumed.sizeBytes !== file.size) {
-              clearSelectedResumeFileId();
-              setStatus("Selected upload does not match this file. Choose the same file used to start the upload.");
-              throw new Error("Resume file mismatch");
-            }
+          const next = await nextUpload(resumeFileId, []);
+          if (!next || next.mode !== "multipart") {
+            throw new Error("Resume file mismatch");
           }
-          const resumedState_1 = {
-            uploadId: resumed.multipartId,
-            fileId: resumed.fileId,
-            multipartId: resumed.multipartId,
-            chunkSize: resumed.chunkSize,
-            totalParts: resumed.totalParts,
-            uploadedParts: resumed.uploadedParts || [],
+          const resumedState = {
+            uploadId: next.uploadId || resumeFileId,
+            fileId: next.fileId,
+            chunkSize: next.chunkSize,
+            totalParts: next.totalParts,
+            uploadedParts: next.uploadedParts || [],
             mode: "multipart"
           };
-          saveState(signature, resumedState_1);
+          saveState(signature, resumedState);
           clearSelectedResumeFileId();
-          return resumedState_1;
+          return resumedState;
         } catch (_) {
           clearSelectedResumeFileId();
         }
       }
-      const resp = await startMultipart(file);
+      const resp = await startUpload(file);
+      if (resp.mode !== "multipart") {
+        throw new Error("Expected multipart upload");
+      }
       const state = {
-        uploadId: resp.multipartId,
+        uploadId: resp.uploadId,
         fileId: resp.fileId,
-        multipartId: resp.multipartId,
         chunkSize: resp.chunkSize,
         totalParts: resp.totalParts,
         uploadedParts: [],
@@ -433,67 +388,64 @@
 
     try {
       state = await initSession();
-      const multipartId = state.multipartId;
+      const uploadId = state.uploadId;
       const chunkSize = state.chunkSize;
       const totalParts = state.totalParts;
       const uploadedMap = new Map((state.uploadedParts || []).map(function(p) { return [p.partNumber, p.etag]; }));
       const rebuilt = buildUploadedPartsFromMap(file, chunkSize, uploadedMap);
-      let uploadedParts = rebuilt.parts;
-      let uploadedBytes = rebuilt.bytes;
       saveState(signature, {
-        uploadId: multipartId,
-        multipartId: multipartId,
+        uploadId: uploadId,
         fileId: state.fileId,
         mode: "multipart",
         chunkSize: chunkSize,
         totalParts: totalParts,
-        uploadedParts: uploadedParts
+        uploadedParts: rebuilt.parts
       });
 
       active = {
         mode: "multipart",
-        uploadId: multipartId,
-        multipartId: multipartId,
+        uploadId: uploadId,
         signature: signature,
         fileId: state.fileId,
         cancel: function() { canceled = true; }
       };
-      setProgress((uploadedBytes / file.size) * 100);
+      setProgress((rebuilt.bytes / file.size) * 100);
       setStatus("Uploading " + file.name + "...");
       updatePauseButtons();
 
-      for (let partNumber = 1; partNumber <= totalParts; partNumber++) {
+      while (uploadedMap.size < totalParts) {
         if (canceled) {
           return;
-        }
-        if (uploadedMap.has(partNumber)) {
-          continue;
         }
         await waitForResume();
         if (canceled) {
           return;
         }
 
-        const startByte = (partNumber - 1) * chunkSize;
-        const endByte = Math.min(startByte + chunkSize, file.size);
-        const chunk = file.slice(startByte, endByte);
-
         try {
-          const result = await uploadPartWithRetry(multipartId, partNumber, chunk, 5);
-          uploadedMap.set(partNumber, result.etag);
-          uploadedBytes += chunk.size;
-          uploadedParts.push({ partNumber: partNumber, etag: result.etag, size: chunk.size });
+          const result = await uploadNextPartWithRetry(uploadId, chunkSize, file, uploadedMap, 5);
+          uploadedMap.set(result.partNumber, result.etag);
+          const updated = buildUploadedPartsFromMap(file, chunkSize, uploadedMap);
           saveState(signature, {
-            uploadId: multipartId,
-            multipartId: multipartId,
+            uploadId: uploadId,
             fileId: state.fileId,
             mode: "multipart",
             chunkSize: chunkSize,
             totalParts: totalParts,
-            uploadedParts: uploadedParts
+            uploadedParts: updated.parts
           });
-          setProgress((uploadedBytes / file.size) * 100);
+          setProgress((updated.bytes / file.size) * 100);
         } catch (err) {
+          if (err && err.cancelled) {
+            clearState(signature);
+            setStatus("Upload cancelled.");
+            active = null;
+            setPaused(false);
+            return;
+          }
+          if (err && err.noNext) {
+            break;
+          }
           if (err && err.status === 404 && existing) {
             clearState(signature);
           }
@@ -507,26 +459,25 @@
         return;
       }
 
-      let parts = uploadedParts
-        .map(function(p) { return { partNumber: p.partNumber, etag: p.etag }; })
+      let parts = Array.from(uploadedMap.entries())
+        .map(function(entry) { return { partNumber: entry[0], etag: entry[1] }; })
         .sort(function(a, b) { return a.partNumber - b.partNumber; });
 
       try {
-        await completeMultipart(multipartId, parts);
+        await completeUpload(uploadId, parts);
       } catch (err) {
         const missingParts = err && err.status === 409 && err.data && err.data.missingParts ? err.data.missingParts : null;
         if (!missingParts || !missingParts.length) {
           throw err;
         }
         setStatus("Recovering missing parts...");
-        const recovered = await uploadPartsByNumber(multipartId, chunkSize, file, missingParts, uploadedMap, uploadedBytes, signature, state.fileId, totalParts, 5);
-        uploadedParts = recovered.uploadedParts;
-        uploadedBytes = recovered.uploadedBytes;
-        setProgress((uploadedBytes / file.size) * 100);
+        await recoverMissingParts(uploadId, chunkSize, file, uploadedMap, signature, state.fileId, totalParts);
+        const refreshed = buildUploadedPartsFromMap(file, chunkSize, uploadedMap);
+        setProgress((refreshed.bytes / file.size) * 100);
         parts = Array.from(uploadedMap.entries())
           .map(function(entry) { return { partNumber: entry[0], etag: entry[1] }; })
           .sort(function(a, b) { return a.partNumber - b.partNumber; });
-        await completeMultipart(multipartId, parts);
+        await completeUpload(uploadId, parts);
       }
       clearState(signature);
       setProgress(100);
@@ -542,26 +493,48 @@
 
   async function uploadSingle(file) {
     const controller = new AbortController();
-    let fileId = null;
+    let uploadId = null;
     const signature = fileSignature(file);
 
     try {
-      const resp = await startSingle(file);
-      fileId = resp.fileId;
+      const resp = await startUpload(file);
+      if (resp.mode !== "single") {
+        throw new Error("Expected single upload");
+      }
+      uploadId = resp.uploadId;
       saveState(signature, {
-        uploadId: resp.fileId,
+        uploadId: resp.uploadId,
         fileId: resp.fileId,
         mode: "single",
         uploadedParts: []
       });
-      active = { mode: "single", uploadId: resp.fileId, fileId: resp.fileId, controller: controller, signature: signature };
+      active = { mode: "single", uploadId: resp.uploadId, fileId: resp.fileId, controller: controller, signature: signature };
       setProgress(0);
       setStatus("Uploading " + file.name + "...");
       updatePauseButtons();
 
       try {
-        await uploadSingleWithProgress(resp.uploadUrl, file, controller);
-        await completeSingle(resp.fileId);
+        let uploadUrl = resp.uploadUrl;
+        if (!uploadUrl) {
+          try {
+            const next = await nextUpload(resp.uploadId, []);
+            uploadUrl = next ? next.url : "";
+          } catch (err) {
+            if (err && err.status === 409) {
+              clearState(signature);
+              setStatus("Upload cancelled.");
+              active = null;
+              setPaused(false);
+              return;
+            }
+            throw err;
+          }
+        }
+        if (!uploadUrl) {
+          throw new Error("Upload URL missing");
+        }
+        await uploadSingleWithProgress(uploadUrl, file, controller);
+        await completeUpload(resp.uploadId, []);
         clearState(signature);
         setProgress(100);
         setStatus("Upload complete: " + file.name);
@@ -572,14 +545,14 @@
           return;
         }
         const message = err && err.data && err.data.errors && err.data.errors.size ? err.data.errors.size : null;
-        await cleanupFailure(resp.fileId, signature);
-        fileId = null;
+        await cleanupFailure(resp.uploadId, signature);
+        uploadId = null;
         setStatus("Upload failed. " + (message || (err && err.message ? err.message : "Try again.")));
         throw err;
       }
     } catch (err) {
       const message_2 = err && err.data && err.data.errors && err.data.errors.size ? err.data.errors.size : null;
-      await cleanupFailure(fileId, signature);
+      await cleanupFailure(uploadId, signature);
       setStatus("Upload failed. " + (message_2 || (err && err.message ? err.message : "Try again.")));
       throw err;
     }
@@ -689,7 +662,7 @@
         if (active.controller) {
           active.controller.abort();
         }
-        abortSingle(active.fileId)
+        cancelUpload(active.uploadId)
           .then(function() {
             setStatus("Upload aborted.");
             setProgress(0);
@@ -712,7 +685,7 @@
       if (active.cancel) {
         active.cancel();
       }
-      abortMultipart(active.multipartId)
+      cancelUpload(active.uploadId)
         .then(function() {
           if (active && active.signature) {
             clearState(active.signature);
@@ -741,7 +714,7 @@
           return;
         }
         button.disabled = true;
-        abortByFileId(fileId)
+        cancelUpload(fileId)
           .then(function() {
             const row = button.closest(".files-row");
             if (row) {
