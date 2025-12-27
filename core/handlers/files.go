@@ -19,16 +19,15 @@ func WebFiles(uploadService *uploads.Service) gin.HandlerFunc {
 			return
 		}
 
-		files, err := uploadService.ListPendingUploads(c.Request.Context(), user.ID)
+		files, err := uploadService.ListCompletedUploads(c.Request.Context(), user.ID)
 		if err != nil {
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
 
 		web.Render(c, pages.FilesPage(pages.FilesPageProps{
-			Ctx:                pages.ContextWithUser(user),
-			Files:              files,
-			MultipartThreshold: uploads.MultipartThresholdBytes,
+			Ctx:   pages.ContextWithUser(user),
+			Files: files,
 		}))
 	}
 }

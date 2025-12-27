@@ -46,8 +46,50 @@
 
 .dashboard-panels {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 24px;
+}
+
+.upload-resume-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 24px;
+  padding: 16px 20px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: linear-gradient(120deg, rgba(255, 221, 158, 0.18), rgba(117, 216, 232, 0.18));
+}
+
+.upload-resume-banner.is-hidden {
+  display: none;
+}
+
+.resume-content {
+  display: grid;
+  gap: 6px;
+}
+
+.resume-title {
+  font-weight: 600;
+}
+
+.resume-meta {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.resume-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.resume-actions {
+  display: inline-flex;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .panel {
@@ -73,66 +115,16 @@
   color: var(--muted);
 }
 
-.quota-summary {
+.storage-header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 8px;
 }
 
-.quota-title {
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-size: 0.75rem;
-  color: var(--muted);
-}
-
-.quota-value {
-  font-weight: 600;
-  color: var(--text);
-}
-
-.quota-panel .progress {
-  margin-top: 10px;
-}
-
-.quota-breakdown {
-  margin-top: 16px;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.quota-stat {
-  padding: 12px 14px;
-  border-radius: 14px;
-  border: 1px solid var(--border);
-  background: var(--bg-soft);
-}
-
-.stat-label {
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-size: 0.7rem;
-  color: var(--muted);
-}
-
-.stat-value {
-  display: block;
-  margin-top: 6px;
-  font-size: 1.05rem;
-  font-weight: 600;
-}
 
 .upload-panel .upload-actions {
   gap: 10px;
-}
-
-.upload-hint {
-  margin: 8px 0 0;
-  color: var(--muted);
-  font-size: 0.9rem;
 }
 
 .dashboard .button,
@@ -160,7 +152,8 @@
 }
 
 @media (max-width: 720px) {
-  .quota-breakdown {
-    grid-template-columns: 1fr;
+  .upload-resume-banner {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

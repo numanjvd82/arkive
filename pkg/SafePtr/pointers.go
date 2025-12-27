@@ -7,6 +7,13 @@ func String(value *string) string {
 	return *value
 }
 
+func Int(value *int) int {
+	if value == nil {
+		return 0
+	}
+	return *value
+}
+
 func Int32(value *int32) int32 {
 	if value == nil {
 		return 0

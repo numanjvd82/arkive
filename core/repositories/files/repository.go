@@ -171,3 +171,43 @@ func (r *Repository) ListPendingForUser(ctx context.Context, db database.PgExecu
 	}
 	return files, nil
 }
+
+func (r *Repository) ListCompletedForUser(ctx context.Context, db database.PgExecutor, userID string) ([]models.File, error) {
+	query := `SELECT
+		id, user_id, bucket, object_key, filename, content_type, size_bytes, status, created_at, updated_at
+	FROM
+		files
+	WHERE
+		user_id = $1 AND status = 'complete'
+	ORDER BY
+		created_at DESC`
+	rows, err := db.Query(ctx, query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var files []models.File
+	for rows.Next() {
+		var file models.File
+		if err := rows.Scan(
+			&file.ID,
+			&file.UserID,
+			&file.Bucket,
+			&file.ObjectKey,
+			&file.Filename,
+			&file.ContentType,
+			&file.SizeBytes,
+			&file.Status,
+			&file.CreatedAt,
+			&file.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		files = append(files, file)
+	}
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+	return files, nil
+}

@@ -945,6 +945,14 @@ func (s *Service) ListPendingUploads(ctx context.Context, userID string) ([]mode
 	return s.fileRepo.ListPendingForUser(ctx, s.db, userID)
 }
 
+func (s *Service) ListCompletedUploads(ctx context.Context, userID string) ([]models.File, error) {
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return nil, ErrUnauthorized
+	}
+	return s.fileRepo.ListCompletedForUser(ctx, s.db, userID)
+}
+
 func (s *Service) ResumeMultipart(ctx context.Context, userID, fileID string) (models.MultipartResumeResponse, error) {
 	userID = strings.TrimSpace(userID)
 	fileID = strings.TrimSpace(fileID)

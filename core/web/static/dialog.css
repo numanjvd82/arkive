@@ -1,0 +1,37 @@
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 15, 20, 0.55);
+  display: grid;
+  place-items: center;
+  z-index: 40;
+}
+
+.dialog-backdrop.is-hidden {
+  display: none;
+}
+
+.dialog {
+  width: min(420px, 92vw);
+  background: var(--surface);
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  padding: 20px;
+  display: grid;
+  gap: 12px;
+}
+
+.dialog h3 {
+  margin: 0;
+}
+
+.dialog p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}

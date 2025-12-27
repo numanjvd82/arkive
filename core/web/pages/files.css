@@ -46,7 +46,7 @@
 
 .files-panels {
   display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 24px;
   align-items: start;
 }
@@ -72,10 +72,6 @@
 .panel-header p {
   margin: 0;
   color: var(--muted);
-}
-
-.files-resume .upload-actions {
-  gap: 10px;
 }
 
 .files-rows {
@@ -139,19 +135,6 @@
 
 .files-page .button,
 .files-page .icon-button {
-  box-shadow: none;
-}
-
-.files-page .form-input {
-  background: var(--bg-soft);
-  box-shadow: none;
-}
-
-.files-page .progress-track {
-  background: var(--bg-soft);
-}
-
-.files-page .progress-bar {
   box-shadow: none;
 }
 

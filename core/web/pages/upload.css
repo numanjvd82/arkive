@@ -1,0 +1,127 @@
+.upload-panel {
+  width: 100%;
+}
+
+.upload-dropzone {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px dashed var(--border);
+  background: var(--bg-soft);
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.upload-dropzone.is-active {
+  border-color: rgba(107, 209, 230, 0.6);
+  background: rgba(107, 209, 230, 0.08);
+}
+
+.dropzone-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: rgba(107, 209, 230, 0.18);
+  display: grid;
+  place-items: center;
+  font-size: 1.2rem;
+  color: var(--text);
+}
+
+.dropzone-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.dropzone-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.dropzone-browse {
+  color: var(--accent, #3dbed1);
+  text-decoration: underline;
+}
+
+.dropzone-sub {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.upload-chip {
+  margin-top: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-soft);
+  font-size: 0.9rem;
+}
+
+.upload-chip.is-hidden {
+  display: none;
+}
+
+.chip-name {
+  font-weight: 600;
+}
+
+.chip-size {
+  color: var(--muted);
+}
+
+.chip-clear {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.upload-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.upload-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.upload-controls.is-hidden {
+  display: none;
+}
+
+.upload-controls .button.danger {
+  border-color: rgba(255, 92, 92, 0.5);
+  color: var(--danger);
+  background: rgba(255, 92, 92, 0.08);
+}
+
+.upload-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.upload-meta-title {
+  font-weight: 600;
+  color: var(--text);
+}
+
+
+.is-hidden {
+  display: none;
+}

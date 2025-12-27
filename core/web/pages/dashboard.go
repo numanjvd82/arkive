@@ -44,7 +44,7 @@ func DashboardPage(props DashboardPageProps) web.Page {
 
 	return web.Page{
 		Title: "Arkive · Dashboard",
-		CSS:   []string{"/web/pages/dashboard.css"},
+		CSS:   []string{"/web/pages/dashboard.css", "/web/pages/upload.css", "/static/dialog.css", "/static/tooltip.css"},
 		JS:    []string{"/static/uploads.js"},
 		Body: h.Main(
 			h.Class("dashboard"),
@@ -71,58 +71,39 @@ func DashboardPage(props DashboardPageProps) web.Page {
 						),
 					),
 				),
+				components.UploadResumeBanner(components.UploadResumeBannerProps{}),
 				h.Section(
 					h.Class("dashboard-panels"),
-					h.Section(
-						h.Class("panel quota-panel"),
-						h.Div(
-							h.Class("panel-header"),
-							h.H2(g.Text("Storage")),
-							h.P(g.Text("Track usage across active and in-progress uploads.")),
-						),
-						h.Div(
-							h.Class("quota-summary"),
-							h.Span(h.Class("quota-title"), g.Text("Storage used")),
-							h.Span(h.Class("quota-value"), g.Text(quotaLabel)),
-						),
-						components.ProgressBar(components.ProgressBarProps{
-							Value: percent,
-							Label: "Usage",
-						}),
-						h.Div(
-							h.Class("quota-breakdown"),
-							quotaStat("Used", usedLabel),
-							quotaStat("Reserved", reservedLabel),
-							quotaStat("Limit", limitLabel),
-						),
-					),
 					h.Section(
 						h.Class("panel upload-panel"),
 						h.Div(
 							h.Class("panel-header"),
-							h.H2(g.Text("Start an upload")),
-							h.P(g.Text("Uploads go straight to R2. Pause or resume when needed.")),
+							h.H2(g.Text("Upload")),
+							h.P(g.Text("Fast, resumable uploads with a single click.")),
 						),
 						components.UploadControls(components.UploadControlsProps{
-							InputLabel:    "Choose a file",
-							InputHelper:   "Up to 1GB. Files over 200MB use multipart chunks.",
 							InputRequired: true,
 						}),
-						h.P(
-							h.Class("upload-hint"),
-							g.Text("Need to resume? Open Files to continue a pending upload."),
+					),
+					h.Section(
+						h.Class("panel storage-panel"),
+						h.Div(
+							h.Class("panel-header storage-header"),
+							h.H2(g.Text("Storage")),
+							components.Tooltip(components.TooltipProps{
+								Class:    "storage-tooltip",
+								IconName: "info",
+								IconSize: "18",
+								Tooltip:  fmt.Sprintf("Used: %s\nReserved: %s\nLimit: %s", usedLabel, reservedLabel, limitLabel),
+							}),
 						),
+						components.ProgressBar(components.ProgressBarProps{
+							Value: percent,
+							Label: "Used " + quotaLabel,
+						}),
 					),
 				),
 			),
 		),
 	}
-}
-
-func quotaStat(label, value string) g.Node {
-	return h.Div(
-		h.Class("quota-stat"),
-		h.Span(h.Class("stat-label"), g.Text(label)),
-		h.Span(h.Class("stat-value"), g.Text(value)),
-	)
 }
