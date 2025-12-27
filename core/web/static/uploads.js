@@ -202,6 +202,29 @@
     return api("/api/uploads/abort", { fileId: fileId });
   }
 
+  async function cleanupFailure(fileId, signature) {
+    clearSelectedResumeFileId();
+    if (signature) {
+      clearState(signature);
+    }
+    if (fileId) {
+      clearStateForFile(fileId);
+    }
+    if (active && active.cancel) {
+      active.cancel();
+    }
+    active = null;
+    setPaused(false);
+    setProgress(0);
+    updatePauseButtons();
+    if (!fileId) {
+      return;
+    }
+    try {
+      await abortByFileId(fileId);
+    } catch (_) {}
+  }
+
   function uploadPartWithRetry(multipartId, partNumber, chunk, maxRetries) {
     var attempt = 0;
 
@@ -280,6 +303,7 @@
     var signature = fileSignature(file);
     var existing = loadState(signature);
     var canceled = false;
+    var state = null;
 
     async function initSession() {
       if (existing && existing.multipartId && existing.chunkSize && existing.totalParts) {
@@ -350,103 +374,117 @@
       return state;
     }
 
-    var state = await initSession();
-    var multipartId = state.multipartId;
-    var chunkSize = state.chunkSize;
-    var totalParts = state.totalParts;
-    var uploadedMap = new Map((state.uploadedParts || []).map(function(p) { return [p.partNumber, p.etag]; }));
-    var rebuilt = buildUploadedPartsFromMap(file, chunkSize, uploadedMap);
-    var uploadedParts = rebuilt.parts;
-    var uploadedBytes = rebuilt.bytes;
-    saveState(signature, {
-      fileId: state.fileId,
-      multipartId: multipartId,
-      chunkSize: chunkSize,
-      totalParts: totalParts,
-      uploadedParts: uploadedParts
-    });
+    try {
+      state = await initSession();
+      var multipartId = state.multipartId;
+      var chunkSize = state.chunkSize;
+      var totalParts = state.totalParts;
+      var uploadedMap = new Map((state.uploadedParts || []).map(function(p) { return [p.partNumber, p.etag]; }));
+      var rebuilt = buildUploadedPartsFromMap(file, chunkSize, uploadedMap);
+      var uploadedParts = rebuilt.parts;
+      var uploadedBytes = rebuilt.bytes;
+      saveState(signature, {
+        fileId: state.fileId,
+        multipartId: multipartId,
+        chunkSize: chunkSize,
+        totalParts: totalParts,
+        uploadedParts: uploadedParts
+      });
 
-    active = { type: "multipart", multipartId: multipartId, signature: signature, cancel: function() { canceled = true; } };
-    setProgress((uploadedBytes / file.size) * 100);
-    setStatus("Uploading " + file.name + "...");
-    updatePauseButtons();
+      active = {
+        type: "multipart",
+        multipartId: multipartId,
+        signature: signature,
+        fileId: state.fileId,
+        cancel: function() { canceled = true; }
+      };
+      setProgress((uploadedBytes / file.size) * 100);
+      setStatus("Uploading " + file.name + "...");
+      updatePauseButtons();
 
-    for (var partNumber = 1; partNumber <= totalParts; partNumber++) {
+      for (var partNumber = 1; partNumber <= totalParts; partNumber++) {
+        if (canceled) {
+          return;
+        }
+        if (uploadedMap.has(partNumber)) {
+          continue;
+        }
+        await waitForResume();
+        if (canceled) {
+          return;
+        }
+
+        var startByte = (partNumber - 1) * chunkSize;
+        var endByte = Math.min(startByte + chunkSize, file.size);
+        var chunk = file.slice(startByte, endByte);
+
+        try {
+          var result = await uploadPartWithRetry(multipartId, partNumber, chunk, 5);
+          uploadedMap.set(partNumber, result.etag);
+          uploadedBytes += chunk.size;
+          uploadedParts.push({ partNumber: partNumber, etag: result.etag, size: chunk.size });
+          saveState(signature, {
+            fileId: state.fileId,
+            multipartId: multipartId,
+            chunkSize: chunkSize,
+            totalParts: totalParts,
+            uploadedParts: uploadedParts
+          });
+          setProgress((uploadedBytes / file.size) * 100);
+        } catch (err) {
+          if (err && err.status === 404 && existing) {
+            clearState(signature);
+          }
+          var message = err && err.data && err.data.errors && err.data.errors.size ? err.data.errors.size : null;
+          setStatus("Upload failed. " + (message || (err && err.message ? err.message : "Try again.")));
+          throw err;
+        }
+      }
+
       if (canceled) {
         return;
       }
-      if (uploadedMap.has(partNumber)) {
-        continue;
-      }
-      await waitForResume();
-      if (canceled) {
-        return;
-      }
 
-      var startByte = (partNumber - 1) * chunkSize;
-      var endByte = Math.min(startByte + chunkSize, file.size);
-      var chunk = file.slice(startByte, endByte);
+      var parts = uploadedParts
+        .map(function(p) { return { partNumber: p.partNumber, etag: p.etag }; })
+        .sort(function(a, b) { return a.partNumber - b.partNumber; });
 
       try {
-        var result = await uploadPartWithRetry(multipartId, partNumber, chunk, 5);
-        uploadedMap.set(partNumber, result.etag);
-        uploadedBytes += chunk.size;
-        uploadedParts.push({ partNumber: partNumber, etag: result.etag, size: chunk.size });
-        saveState(signature, {
-          fileId: state.fileId,
-          multipartId: multipartId,
-          chunkSize: chunkSize,
-          totalParts: totalParts,
-          uploadedParts: uploadedParts
-        });
-        setProgress((uploadedBytes / file.size) * 100);
+        await completeMultipart(multipartId, parts);
       } catch (err) {
-        if (err && err.status === 404 && existing) {
-          clearState(signature);
+        var missingParts = err && err.status === 409 && err.data && err.data.missingParts ? err.data.missingParts : null;
+        if (!missingParts || !missingParts.length) {
+          throw err;
         }
-        var message = err && err.data && err.data.errors && err.data.errors.size ? err.data.errors.size : null;
-        setStatus("Upload failed. " + (message || (err && err.message ? err.message : "Try again.")));
-        throw err;
+        setStatus("Recovering missing parts...");
+        var recovered = await uploadPartsByNumber(multipartId, chunkSize, file, missingParts, uploadedMap, uploadedBytes, signature, state.fileId, totalParts, 5);
+        uploadedParts = recovered.uploadedParts;
+        uploadedBytes = recovered.uploadedBytes;
+        setProgress((uploadedBytes / file.size) * 100);
+        parts = Array.from(uploadedMap.entries())
+          .map(function(entry) { return { partNumber: entry[0], etag: entry[1] }; })
+          .sort(function(a, b) { return a.partNumber - b.partNumber; });
+        await completeMultipart(multipartId, parts);
       }
-    }
-
-    if (canceled) {
-      return;
-    }
-
-    var parts = uploadedParts
-      .map(function(p) { return { partNumber: p.partNumber, etag: p.etag }; })
-      .sort(function(a, b) { return a.partNumber - b.partNumber; });
-
-    try {
-      await completeMultipart(multipartId, parts);
+      clearState(signature);
+      setProgress(100);
+      setStatus("Upload complete: " + file.name);
+      active = null;
+      setPaused(false);
     } catch (err) {
-      var missingParts = err && err.status === 409 && err.data && err.data.missingParts ? err.data.missingParts : null;
-      if (!missingParts || !missingParts.length) {
-        throw err;
-      }
-      setStatus("Recovering missing parts...");
-      var recovered = await uploadPartsByNumber(multipartId, chunkSize, file, missingParts, uploadedMap, uploadedBytes, signature, state.fileId, totalParts, 5);
-      uploadedParts = recovered.uploadedParts;
-      uploadedBytes = recovered.uploadedBytes;
-      setProgress((uploadedBytes / file.size) * 100);
-      parts = Array.from(uploadedMap.entries())
-        .map(function(entry) { return { partNumber: entry[0], etag: entry[1] }; })
-        .sort(function(a, b) { return a.partNumber - b.partNumber; });
-      await completeMultipart(multipartId, parts);
+      var fileId = state && state.fileId ? state.fileId : (existing && existing.fileId ? existing.fileId : null);
+      await cleanupFailure(fileId, signature);
+      throw err;
     }
-    clearState(signature);
-    setProgress(100);
-    setStatus("Upload complete: " + file.name);
-    active = null;
-    setPaused(false);
   }
 
   async function uploadSingle(file) {
     var controller = new AbortController();
+    var fileId = null;
 
     try {
       var resp = await startSingle(file);
+      fileId = resp.fileId;
       active = { type: "single", fileId: resp.fileId, controller: controller };
       setProgress(0);
       setStatus("Uploading " + file.name + "...");
@@ -463,15 +501,15 @@
         if (err && err.name === "AbortError") {
           return;
         }
-        try {
-          await abortSingle(resp.fileId);
-        } catch (_) {}
         var message = err && err.data && err.data.errors && err.data.errors.size ? err.data.errors.size : null;
+        await cleanupFailure(resp.fileId, "");
+        fileId = null;
         setStatus("Upload failed. " + (message || (err && err.message ? err.message : "Try again.")));
         throw err;
       }
     } catch (err) {
       var message_2 = err && err.data && err.data.errors && err.data.errors.size ? err.data.errors.size : null;
+      await cleanupFailure(fileId, "");
       setStatus("Upload failed. " + (message_2 || (err && err.message ? err.message : "Try again.")));
       throw err;
     }

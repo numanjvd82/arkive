@@ -30,41 +30,45 @@ func FilesPage(props FilesPageProps) web.Page {
 			h.Div(
 				h.Class("container"),
 				h.Div(
-					h.Class("files-header"),
+					h.Class("page-header"),
 					h.Div(
-						h.Class("files-title"),
-						h.H1(g.Text("Pending uploads")),
-						h.P(g.Text("Resume any pending upload from here.")),
+						h.Class("page-title"),
+						h.H1(g.Text("Files")),
+						h.P(g.Text("Resume multipart uploads and manage in-progress transfers.")),
 					),
-					components.Button(components.ButtonProps{
-						Text:    "Back to dashboard",
-						Href:    "/dashboard",
-						Variant: "secondary",
-					}),
+					h.Div(
+						h.Class("page-actions"),
+						components.Button(components.ButtonProps{
+							Text:    "Back to dashboard",
+							Href:    "/dashboard",
+							Variant: "secondary",
+						}),
+					),
 				),
 				h.Section(
-					h.Class("files-instructions"),
-					components.Card(components.CardProps{
-						Title: "Resume instructions",
-						Body: []g.Node{
-							h.P(g.Text("Select the same file again to resume. The app will reconnect to the existing upload and continue.")),
-							components.UploadControls(components.UploadControlsProps{
-								InputLabel:    "Choose the same file",
-								InputHelper:   "Max 1GB. Files over 200MB use multipart chunks.",
-								InputRequired: true,
-							}),
-						},
-					}),
-				),
-				h.Section(
-					h.Class("files-list"),
-					components.Card(components.CardProps{
-						Title:    "Uploads in progress",
-						Subtitle: "Only pending and uploading items are shown.",
-						Body: []g.Node{
-							renderPendingList(props.Files, props.MultipartThreshold),
-						},
-					}),
+					h.Class("files-panels"),
+					h.Section(
+						h.Class("panel files-resume"),
+						h.Div(
+							h.Class("panel-header"),
+							h.H2(g.Text("Resume an upload")),
+							h.P(g.Text("Select the same file to reconnect and keep uploading.")),
+						),
+						components.UploadControls(components.UploadControlsProps{
+							InputLabel:    "Choose the same file",
+							InputHelper:   "Up to 1GB. Files over 200MB use multipart chunks.",
+							InputRequired: true,
+						}),
+					),
+					h.Section(
+						h.Class("panel files-list"),
+						h.Div(
+							h.Class("panel-header"),
+							h.H2(g.Text("Pending uploads")),
+							h.P(g.Text("Only multipart uploads in progress are listed here.")),
+						),
+						renderPendingList(props.Files, props.MultipartThreshold),
+					),
 				),
 			),
 		),
@@ -89,7 +93,6 @@ func renderPendingList(files []models.File, multipartThreshold int64) g.Node {
 				h.Class("files-meta"),
 				h.Span(h.Class("files-name"), g.Text(file.Filename)),
 				h.Span(h.Class("files-sub"), g.Text(fmt.Sprintf("%s • %s", format.Bytes(file.SizeBytes), titleCase(file.Status)))),
-				h.Span(h.Class("files-resume"), g.Text("Resume by selecting the same file again.")),
 			),
 			h.Div(
 				h.Class("files-actions"),

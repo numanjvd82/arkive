@@ -38,6 +38,9 @@ func DashboardPage(props DashboardPageProps) web.Page {
 		}
 	}
 	quotaLabel := fmt.Sprintf("%s / %s", format.Bytes(totalUsed), format.Bytes(quotaBytes))
+	usedLabel := format.Bytes(usedBytes)
+	reservedLabel := format.Bytes(reservedBytes)
+	limitLabel := format.Bytes(quotaBytes)
 
 	return web.Page{
 		Title: "Arkive · Dashboard",
@@ -48,14 +51,14 @@ func DashboardPage(props DashboardPageProps) web.Page {
 			h.Div(
 				h.Class("container"),
 				h.Div(
-					h.Class("dashboard-header"),
+					h.Class("page-header"),
 					h.Div(
-						h.Class("dashboard-brand"),
-						h.Span(h.Class("logo-dot")),
-						h.Span(h.Class("logo-text"), g.Text("Arkive")),
+						h.Class("page-title"),
+						h.H1(g.Text("Dashboard")),
+						h.P(g.Text("Quick access to storage, uploads, and ongoing transfers.")),
 					),
 					h.Div(
-						h.Class("dashboard-actions"),
+						h.Class("page-actions"),
 						components.Button(components.ButtonProps{
 							Text:    "Files",
 							Href:    "/files",
@@ -69,58 +72,57 @@ func DashboardPage(props DashboardPageProps) web.Page {
 					),
 				),
 				h.Section(
-					h.Class("dashboard-quota"),
-					h.Div(
-						h.Class("quota-meta"),
-						h.Span(h.Class("quota-label"), g.Text("Storage used")),
-						h.Span(h.Class("quota-value"), g.Text(quotaLabel)),
-					),
-					h.Div(
-						h.Class("quota-progress"),
+					h.Class("dashboard-panels"),
+					h.Section(
+						h.Class("panel quota-panel"),
+						h.Div(
+							h.Class("panel-header"),
+							h.H2(g.Text("Storage")),
+							h.P(g.Text("Track usage across active and in-progress uploads.")),
+						),
+						h.Div(
+							h.Class("quota-summary"),
+							h.Span(h.Class("quota-title"), g.Text("Storage used")),
+							h.Span(h.Class("quota-value"), g.Text(quotaLabel)),
+						),
 						components.ProgressBar(components.ProgressBarProps{
 							Value: percent,
+							Label: "Usage",
 						}),
+						h.Div(
+							h.Class("quota-breakdown"),
+							quotaStat("Used", usedLabel),
+							quotaStat("Reserved", reservedLabel),
+							quotaStat("Limit", limitLabel),
+						),
 					),
-				),
-				h.Section(
-					h.Class("dashboard-hero"),
-					h.H1(g.Text("Welcome back.")),
-					h.P(g.Text("Start a direct-to-R2 upload. Resume from the Files page anytime.")),
-				),
-				h.Section(
-					h.Class("dashboard-upload"),
-					components.Card(components.CardProps{
-						Title:    "Upload files",
-						Subtitle: "Multipart uploads go straight to R2. Resume from the Files page if needed.",
-						Class:    "upload-card",
-						Body: []g.Node{
-							components.UploadControls(components.UploadControlsProps{
-								InputLabel:    "Choose a file",
-								InputHelper:   "Max 1GB. Files over 200MB use multipart chunks.",
-								InputRequired: true,
-							}),
-							h.P(
-								h.Class("upload-status"),
-								g.Text("Need to resume? Open Files to continue any pending upload."),
-							),
-						},
-					}),
-				),
-				h.Div(
-					h.Class("dashboard-grid"),
-					dashboardCard("Collections", "3 active"),
-					dashboardCard("Shared links", "12 saved"),
-					dashboardCard("Last updated", "2 hours ago"),
+					h.Section(
+						h.Class("panel upload-panel"),
+						h.Div(
+							h.Class("panel-header"),
+							h.H2(g.Text("Start an upload")),
+							h.P(g.Text("Uploads go straight to R2. Pause or resume when needed.")),
+						),
+						components.UploadControls(components.UploadControlsProps{
+							InputLabel:    "Choose a file",
+							InputHelper:   "Up to 1GB. Files over 200MB use multipart chunks.",
+							InputRequired: true,
+						}),
+						h.P(
+							h.Class("upload-hint"),
+							g.Text("Need to resume? Open Files to continue a pending upload."),
+						),
+					),
 				),
 			),
 		),
 	}
 }
 
-func dashboardCard(title, body string) g.Node {
+func quotaStat(label, value string) g.Node {
 	return h.Div(
-		h.Class("dashboard-card"),
-		h.Span(h.Class("dashboard-label"), g.Text(title)),
-		h.P(h.Class("dashboard-value"), g.Text(body)),
+		h.Class("quota-stat"),
+		h.Span(h.Class("stat-label"), g.Text(label)),
+		h.Span(h.Class("stat-value"), g.Text(value)),
 	)
 }
