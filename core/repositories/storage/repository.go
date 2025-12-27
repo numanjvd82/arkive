@@ -13,9 +13,12 @@ func New() *Repository {
 }
 
 func (r *Repository) ReserveStorage(ctx context.Context, db database.PgExecutor, userID string, sizeBytes int64) (bool, error) {
-	query := `UPDATE users
-		SET reserved_bytes = reserved_bytes + $2
-		WHERE id = $1 AND used_bytes + reserved_bytes + $2 <= quota_bytes`
+	query := `UPDATE
+		users
+	SET
+		reserved_bytes = reserved_bytes + $2
+	WHERE
+		id = $1 AND used_bytes + reserved_bytes + $2 <= quota_bytes`
 	tag, err := db.Exec(ctx, query, userID, sizeBytes)
 	if err != nil {
 		return false, err
@@ -24,10 +27,13 @@ func (r *Repository) ReserveStorage(ctx context.Context, db database.PgExecutor,
 }
 
 func (r *Repository) CommitStorage(ctx context.Context, db database.PgExecutor, userID string, sizeBytes int64) (bool, error) {
-	query := `UPDATE users
-		SET used_bytes = used_bytes + $2,
-			reserved_bytes = reserved_bytes - $2
-		WHERE id = $1 AND reserved_bytes >= $2`
+	query := `UPDATE
+		users
+	SET
+		used_bytes = used_bytes + $2,
+		reserved_bytes = reserved_bytes - $2
+	WHERE
+		id = $1 AND reserved_bytes >= $2`
 	tag, err := db.Exec(ctx, query, userID, sizeBytes)
 	if err != nil {
 		return false, err
@@ -36,9 +42,12 @@ func (r *Repository) CommitStorage(ctx context.Context, db database.PgExecutor, 
 }
 
 func (r *Repository) ReleaseReservedStorage(ctx context.Context, db database.PgExecutor, userID string, sizeBytes int64) (bool, error) {
-	query := `UPDATE users
-		SET reserved_bytes = reserved_bytes - $2
-		WHERE id = $1 AND reserved_bytes >= $2`
+	query := `UPDATE
+		users
+	SET
+		reserved_bytes = reserved_bytes - $2
+	WHERE
+		id = $1 AND reserved_bytes >= $2`
 	tag, err := db.Exec(ctx, query, userID, sizeBytes)
 	if err != nil {
 		return false, err

@@ -189,7 +189,10 @@ func (s *Service) finalizeFileCompletion(ctx context.Context, tx pgx.Tx, userID 
 }
 
 func (s *Service) markUploadFailed(ctx context.Context, userID, fileID string, sizeBytes int64) {
-	_ = s.fileRepo.UpdateFileStatus(ctx, s.db, fileID, FileStatusFailed)
+	updated, err := s.fileRepo.UpdateFileStatusIf(ctx, s.db, fileID, FileStatusFailed, []string{FileStatusPending, FileStatusUploading})
+	if err != nil || !updated {
+		return
+	}
 	_, _ = s.storageRepo.ReleaseReservedStorage(ctx, s.db, userID, sizeBytes)
 }
 
@@ -379,7 +382,10 @@ func (s *Service) CompleteMultipart(ctx context.Context, userID, multipartID str
 		}
 		return err
 	}
-	if upload.Status == MultipartStatusCompleted || upload.Status == MultipartStatusAborted {
+	if upload.Status == MultipartStatusCompleted {
+		return nil
+	}
+	if upload.Status == MultipartStatusAborted || upload.Status == MultipartStatusFailed {
 		return ErrInvalidInput
 	}
 
@@ -435,7 +441,7 @@ func (s *Service) CompleteMultipart(ctx context.Context, userID, multipartID str
 	})
 
 	if err := s.r2.CompleteMultipartUpload(ctx, upload.ObjectKey, upload.UploadID, completed); err != nil {
-		_ = s.uploadRepo.TouchMultipart(ctx, s.db, multipartID, MultipartStatusFailed)
+		_, _ = s.uploadRepo.UpdateMultipartStatusIf(ctx, s.db, multipartID, MultipartStatusFailed, []string{MultipartStatusInitiated, MultipartStatusUploading})
 		file, fileErr := s.fileRepo.GetFileByID(ctx, s.db, upload.FileID)
 		if fileErr == nil {
 			s.markUploadFailed(ctx, userID, file.ID, file.SizeBytes)
@@ -450,7 +456,7 @@ func (s *Service) CompleteMultipart(ctx context.Context, userID, multipartID str
 
 	actualSize, err := s.r2.HeadObjectSize(ctx, upload.ObjectKey)
 	if err != nil {
-		_ = s.uploadRepo.TouchMultipart(ctx, s.db, multipartID, MultipartStatusFailed)
+		_, _ = s.uploadRepo.UpdateMultipartStatusIf(ctx, s.db, multipartID, MultipartStatusFailed, []string{MultipartStatusInitiated, MultipartStatusUploading})
 		file, fileErr := s.fileRepo.GetFileByID(ctx, s.db, upload.FileID)
 		if fileErr == nil {
 			s.markUploadFailed(ctx, userID, file.ID, file.SizeBytes)
@@ -464,9 +470,21 @@ func (s *Service) CompleteMultipart(ctx context.Context, userID, multipartID str
 		return err
 	}
 
-	if err := s.uploadRepo.UpdateMultipart(ctx, tx, multipartID, MultipartStatusCompleted, storedJSON); err != nil {
+	updated, err := s.uploadRepo.UpdateMultipartIf(ctx, tx, multipartID, MultipartStatusCompleted, storedJSON, []string{MultipartStatusInitiated, MultipartStatusUploading})
+	if err != nil {
 		_ = tx.Rollback(ctx)
 		return err
+	}
+	if !updated {
+		_ = tx.Rollback(ctx)
+		current, fetchErr := s.uploadRepo.GetMultipartForUser(ctx, s.db, multipartID, userID)
+		if fetchErr == nil && current.Status == MultipartStatusCompleted {
+			return nil
+		}
+		if fetchErr == nil && current.Status == MultipartStatusAborted {
+			return ErrInvalidInput
+		}
+		return ErrInvalidInput
 	}
 	file, err := s.fileRepo.GetFileByID(ctx, tx, upload.FileID)
 	if err != nil {
@@ -475,7 +493,7 @@ func (s *Service) CompleteMultipart(ctx context.Context, userID, multipartID str
 	}
 	if err := s.finalizeFileCompletion(ctx, tx, userID, file, actualSize); err != nil {
 		_ = tx.Rollback(ctx)
-		_ = s.uploadRepo.TouchMultipart(ctx, s.db, multipartID, MultipartStatusFailed)
+		_, _ = s.uploadRepo.UpdateMultipartStatusIf(ctx, s.db, multipartID, MultipartStatusFailed, []string{MultipartStatusInitiated, MultipartStatusUploading})
 		s.markUploadFailed(ctx, userID, file.ID, file.SizeBytes)
 		_ = s.r2.DeleteObject(ctx, upload.ObjectKey)
 		return err
@@ -505,30 +523,43 @@ func (s *Service) AbortMultipart(ctx context.Context, userID, multipartID string
 		}
 		return err
 	}
-	if upload.Status == MultipartStatusCompleted || upload.Status == MultipartStatusAborted {
-		return ErrInvalidInput
+	if upload.Status == MultipartStatusCompleted || upload.Status == MultipartStatusAborted || upload.Status == MultipartStatusFailed {
+		return nil
 	}
 
-	if err := s.r2.AbortMultipartUpload(ctx, upload.ObjectKey, upload.UploadID); err != nil {
-		return err
-	}
+	_ = s.r2.AbortMultipartUpload(ctx, upload.ObjectKey, upload.UploadID)
+	_ = s.r2.DeleteObject(ctx, upload.ObjectKey)
 
 	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		return err
-	}
-	if err := s.uploadRepo.UpdateMultipart(ctx, tx, multipartID, MultipartStatusAborted, upload.UploadedParts); err != nil {
-		_ = tx.Rollback(ctx)
-		return err
-	}
-	if err := s.fileRepo.UpdateFileStatus(ctx, tx, upload.FileID, FileStatusAborted); err != nil {
-		_ = tx.Rollback(ctx)
 		return err
 	}
 	file, err := s.fileRepo.GetFileByID(ctx, tx, upload.FileID)
 	if err != nil {
 		_ = tx.Rollback(ctx)
 		return err
+	}
+	if file.Status == FileStatusComplete || file.Status == FileStatusAborted || file.Status == FileStatusFailed {
+		_ = tx.Rollback(ctx)
+		return nil
+	}
+	updatedMultipart, err := s.uploadRepo.UpdateMultipartIf(ctx, tx, multipartID, MultipartStatusAborted, upload.UploadedParts, []string{MultipartStatusInitiated, MultipartStatusUploading})
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		return err
+	}
+	if !updatedMultipart {
+		_ = tx.Rollback(ctx)
+		return nil
+	}
+	updatedFile, err := s.fileRepo.UpdateFileStatusIf(ctx, tx, upload.FileID, FileStatusAborted, []string{FileStatusPending, FileStatusUploading})
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		return err
+	}
+	if !updatedFile {
+		_ = tx.Rollback(ctx)
+		return nil
 	}
 	released, err := s.storageRepo.ReleaseReservedStorage(ctx, tx, userID, file.SizeBytes)
 	if err != nil {
@@ -560,7 +591,10 @@ func (s *Service) CompleteSingleUpload(ctx context.Context, userID, fileID strin
 		}
 		return err
 	}
-	if file.Status == FileStatusComplete || file.Status == FileStatusAborted {
+	if file.Status == FileStatusComplete {
+		return nil
+	}
+	if file.Status == FileStatusAborted || file.Status == FileStatusFailed {
 		return ErrInvalidInput
 	}
 
@@ -612,14 +646,19 @@ func (s *Service) AbortSingleUpload(ctx context.Context, userID, fileID string) 
 		}
 		return err
 	}
-	if file.Status == FileStatusComplete || file.Status == FileStatusAborted {
+	if file.Status == FileStatusComplete || file.Status == FileStatusAborted || file.Status == FileStatusFailed {
 		_ = tx.Rollback(ctx)
-		return ErrInvalidInput
+		return nil
 	}
 
-	if err := s.fileRepo.UpdateFileStatus(ctx, tx, fileID, FileStatusAborted); err != nil {
+	updated, err := s.fileRepo.UpdateFileStatusIf(ctx, tx, fileID, FileStatusAborted, []string{FileStatusPending, FileStatusUploading})
+	if err != nil {
 		_ = tx.Rollback(ctx)
 		return err
+	}
+	if !updated {
+		_ = tx.Rollback(ctx)
+		return nil
 	}
 
 	released, err := s.storageRepo.ReleaseReservedStorage(ctx, tx, userID, file.SizeBytes)
@@ -632,7 +671,12 @@ func (s *Service) AbortSingleUpload(ctx context.Context, userID, fileID string) 
 		return ErrUploadFailed
 	}
 
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	_ = s.r2.DeleteObject(ctx, file.ObjectKey)
+	return nil
 }
 
 func (s *Service) AbortUploadByFile(ctx context.Context, userID, fileID string) error {
