@@ -10,40 +10,43 @@ import (
 	"arkive/core/models"
 )
 
-func (s *Service) GetFileForView(ctx context.Context, userID, fileID string) (models.File, string, error) {
+func (s *Service) GetFileForDisplay(ctx context.Context, userID, fileID string) (models.File, error) {
 	userID = strings.TrimSpace(userID)
 	fileID = strings.TrimSpace(fileID)
 	if userID == "" {
-		return models.File{}, "", ErrUnauthorized
+		return models.File{}, ErrUnauthorized
 	}
 	if fileID == "" {
-		return models.File{}, "", ErrInvalidInput
+		return models.File{}, ErrInvalidInput
 	}
 
 	file, err := s.fileRepo.GetFileForUser(ctx, s.db, fileID, userID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return models.File{}, "", ErrNotFound
+			return models.File{}, ErrNotFound
 		}
-		return models.File{}, "", err
+		return models.File{}, err
 	}
 
 	if file.Status != FileStatusComplete {
 		if file.Status == FileStatusFailed || file.Status == FileStatusAborted {
-			return models.File{}, "", ErrUploadCancelled
+			return models.File{}, ErrUploadCancelled
 		}
-		return models.File{}, "", ErrNotFound
+		return models.File{}, ErrNotFound
 	}
 
-	viewURL := ""
-	if isViewableContentType(file.ContentType) {
-		viewURL, err = s.r2.PresignDownload(ctx, file.ObjectKey, file.Filename, "inline", s.downloadExpire)
-		if err != nil {
-			return models.File{}, "", err
-		}
-	}
+	return file, nil
+}
 
-	return file, viewURL, nil
+func (s *Service) PresignView(ctx context.Context, userID, fileID string) (string, error) {
+	file, err := s.GetFileForDisplay(ctx, userID, fileID)
+	if err != nil {
+		return "", err
+	}
+	if !isViewableContentType(file.ContentType) {
+		return "", ErrInvalidInput
+	}
+	return s.r2.PresignDownload(ctx, file.ObjectKey, file.Filename, "inline", s.downloadExpire)
 }
 
 func isViewableContentType(contentType string) bool {

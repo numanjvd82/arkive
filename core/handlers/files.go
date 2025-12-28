@@ -47,7 +47,7 @@ func WebFileView(uploadService *uploads.Service) gin.HandlerFunc {
 			return
 		}
 
-		file, viewURL, err := uploadService.GetFileForView(c.Request.Context(), user.ID, fileID)
+		file, err := uploadService.GetFileForDisplay(c.Request.Context(), user.ID, fileID)
 		if err != nil {
 			switch err {
 			case uploads.ErrNotFound, uploads.ErrUploadCancelled:
@@ -63,6 +63,11 @@ func WebFileView(uploadService *uploads.Service) gin.HandlerFunc {
 		contentType := strings.ToLower(strings.TrimSpace(file.ContentType))
 		isImage := strings.HasPrefix(contentType, "image/")
 		isVideo := strings.HasPrefix(contentType, "video/")
+
+		viewURL := ""
+		if isImage || isVideo {
+			viewURL = "/api/files/" + file.ID + "/media"
+		}
 
 		web.Render(c, pages.MediaViewPage(pages.MediaViewPageProps{
 			Ctx:      pages.ContextWithUser(user),

@@ -228,3 +228,31 @@ func APIDownloadFile(svc *uploads.Service) gin.HandlerFunc {
 		c.JSON(http.StatusOK, gin.H{"url": url})
 	}
 }
+
+func APIMediaRedirect(svc *uploads.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		fileID := c.Param("id")
+		userID, ok := c.Get("user_id")
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			return
+		}
+
+		url, err := svc.PresignView(c.Request.Context(), userID.(string), fileID)
+		if err != nil {
+			switch err {
+			case uploads.ErrUnauthorized:
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			case uploads.ErrNotFound:
+				c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+			case uploads.ErrInvalidInput:
+				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			default:
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "media failed"})
+			}
+			return
+		}
+
+		c.Redirect(http.StatusFound, url)
+	}
+}
