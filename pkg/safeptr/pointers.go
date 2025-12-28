@@ -1,4 +1,4 @@
-package SafePtr
+package safeptr
 
 func String(value *string) string {
 	if value == nil {

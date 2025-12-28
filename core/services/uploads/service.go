@@ -16,7 +16,7 @@ import (
 	filerepo "arkive/core/repositories/files"
 	storagerepo "arkive/core/repositories/storage"
 	uploadrepo "arkive/core/repositories/uploads"
-	"arkive/pkg/SafePtr"
+	"arkive/pkg/safeptr"
 	"arkive/pkg/storage"
 	"arkive/pkg/storage/r2"
 	"arkive/pkg/validation"
@@ -199,8 +199,8 @@ func (s *Service) markUploadFailed(ctx context.Context, userID, fileID string, s
 func buildCompletedFromList(listed []types.Part, totalParts int) ([]types.CompletedPart, []models.StoredPart, []int32) {
 	partsByNumber := make(map[int32]types.Part, len(listed))
 	for _, part := range listed {
-		number := SafePtr.Int32(part.PartNumber)
-		etag := SafePtr.String(part.ETag)
+		number := safeptr.Int32(part.PartNumber)
+		etag := safeptr.String(part.ETag)
 		if number <= 0 || number > int32(totalParts) || strings.TrimSpace(etag) == "" {
 			continue
 		}
@@ -222,7 +222,7 @@ func buildCompletedFromList(listed []types.Part, totalParts int) ([]types.Comple
 	for i := 1; i <= totalParts; i++ {
 		part := partsByNumber[int32(i)]
 		number := int32(i)
-		etag := strings.TrimSpace(SafePtr.String(part.ETag))
+		etag := strings.TrimSpace(safeptr.String(part.ETag))
 		completed = append(completed, types.CompletedPart{
 			PartNumber: &number,
 			ETag:       &etag,
@@ -230,7 +230,7 @@ func buildCompletedFromList(listed []types.Part, totalParts int) ([]types.Comple
 		stored = append(stored, models.StoredPart{
 			PartNumber: number,
 			ETag:       etag,
-			Size:       SafePtr.Int64(part.Size),
+			Size:       safeptr.Int64(part.Size),
 		})
 	}
 
@@ -434,8 +434,8 @@ func (s *Service) nextMultipart(ctx context.Context, upload models.MultipartUplo
 		partsByNumber = make(map[int32]bool, len(listed))
 		resumeParts = make([]models.ResumePart, 0, len(listed))
 		for _, part := range listed {
-			number := SafePtr.Int32(part.PartNumber)
-			etag := strings.TrimSpace(SafePtr.String(part.ETag))
+			number := safeptr.Int32(part.PartNumber)
+			etag := strings.TrimSpace(safeptr.String(part.ETag))
 			if number <= 0 || number > int32(upload.TotalParts) || etag == "" {
 				continue
 			}
@@ -443,7 +443,7 @@ func (s *Service) nextMultipart(ctx context.Context, upload models.MultipartUplo
 			resumeParts = append(resumeParts, models.ResumePart{
 				PartNumber: number,
 				ETag:       etag,
-				Size:       SafePtr.Int64(part.Size),
+				Size:       safeptr.Int64(part.Size),
 			})
 		}
 	}
@@ -1052,15 +1052,15 @@ func (s *Service) ResumeMultipart(ctx context.Context, userID, fileID string) (m
 
 	resumeParts := make([]models.ResumePart, 0, len(listed))
 	for _, part := range listed {
-		number := SafePtr.Int32(part.PartNumber)
-		etag := strings.TrimSpace(SafePtr.String(part.ETag))
+		number := safeptr.Int32(part.PartNumber)
+		etag := strings.TrimSpace(safeptr.String(part.ETag))
 		if number <= 0 || number > int32(upload.TotalParts) || etag == "" {
 			continue
 		}
 		resumeParts = append(resumeParts, models.ResumePart{
 			PartNumber: number,
 			ETag:       etag,
-			Size:       SafePtr.Int64(part.Size),
+			Size:       safeptr.Int64(part.Size),
 		})
 	}
 

@@ -12,7 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 
-	"arkive/pkg/SafePtr"
+	"arkive/pkg/safeptr"
 	"arkive/pkg/header"
 )
 
@@ -244,7 +244,7 @@ func (c *Client) HeadObjectSize(ctx context.Context, key string) (int64, error) 
 		return 0, err
 	}
 
-	return SafePtr.Int64(out.ContentLength), nil
+	return safeptr.Int64(out.ContentLength), nil
 }
 
 func (c *Client) DeleteObject(ctx context.Context, key string) error {
