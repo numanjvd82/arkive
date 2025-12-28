@@ -1,0 +1,131 @@
+.dashboard-sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: min(280px, 86vw);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 24px;
+  padding: 20px 18px 24px;
+  border-radius: 0 22px 22px 0;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: none;
+  transform: translateX(-110%);
+  transition: transform 0.28s ease;
+  z-index: 20;
+}
+
+.sidebar-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 12, 20, 0.4);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 10;
+}
+
+body.sidebar-open .sidebar-scrim {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+body.sidebar-open .dashboard-sidebar {
+  transform: translateX(0);
+}
+
+body.sidebar-open {
+  overflow: hidden;
+}
+
+.sidebar-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sidebar-brand {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 700;
+  text-transform: lowercase;
+}
+
+.sidebar-close {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.sidebar-close:hover {
+  color: var(--text);
+}
+
+.sidebar-links {
+  display: grid;
+  gap: 8px;
+}
+
+.sidebar-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  color: var(--muted);
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.sidebar-link:hover {
+  color: var(--text);
+  background: var(--bg-soft);
+  border-color: var(--border);
+}
+
+.sidebar-link.is-active {
+  color: var(--text);
+  background: var(--bg-soft);
+  border-color: var(--border);
+  font-weight: 600;
+}
+
+.sidebar-footer {
+  display: grid;
+  gap: 12px;
+}
+
+.sidebar-theme,
+.sidebar-logout {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.sidebar-logout {
+  text-transform: none;
+  letter-spacing: 0.02em;
+  font-size: 0.9rem;
+  color: var(--danger);
+  border-color: rgba(255, 92, 92, 0.35);
+  background: rgba(255, 92, 92, 0.08);
+}
+
+.sidebar-toggle {
+  min-width: 88px;
+}

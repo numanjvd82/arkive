@@ -14,6 +14,8 @@ type UploadInputProps struct {
 	Required bool
 }
 
+const UploadInputCSS = "/web/components/upload_input.css"
+
 func UploadInput(props UploadInputProps) g.Node {
 	id := props.ID
 	if id == "" {
@@ -42,20 +44,23 @@ func UploadInput(props UploadInputProps) g.Node {
 		)
 	}
 
-	return h.Div(
-		h.Class("form-field"),
-		h.Label(
-			h.Class("form-label"),
-			h.For(id),
-			g.Text(props.Label),
-		),
-		input,
-		g.If(props.Helper != "",
-			h.P(
-				h.Class("form-subtitle"),
-				h.ID(helperID),
-				g.Text(props.Helper),
+	return g.Group([]g.Node{
+		InlineStyle(UploadInputCSS),
+		h.Div(
+			h.Class("form-field"),
+			h.Label(
+				h.Class("form-label"),
+				h.For(id),
+				g.Text(props.Label),
+			),
+			input,
+			g.If(props.Helper != "",
+				h.P(
+					h.Class("form-subtitle"),
+					h.ID(helperID),
+					g.Text(props.Helper),
+				),
 			),
 		),
-	)
+	})
 }

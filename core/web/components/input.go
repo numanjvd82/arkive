@@ -26,6 +26,8 @@ type InputProps struct {
 	HasError    bool
 }
 
+const InputCSS = "/web/components/input.css"
+
 func InputField(props InputProps) g.Node {
 	inputType := props.Type
 	if inputType == "" {
@@ -75,8 +77,9 @@ func InputField(props InputProps) g.Node {
 		h.Class(inputClasses),
 	)
 
+	var node g.Node
 	if inputType == "password" {
-		return h.Div(
+		node = h.Div(
 			h.Class("form-field"),
 			h.Label(
 				h.Class("form-label"),
@@ -127,30 +130,35 @@ func InputField(props InputProps) g.Node {
 				),
 			),
 		)
+	} else {
+		node = h.Div(
+			h.Class("form-field"),
+			h.Label(
+				h.Class("form-label"),
+				g.Attr("for", id),
+				g.Text(props.Label),
+			),
+			g.If(
+				props.Description != "",
+				h.P(
+					h.Class("form-subtitle"),
+					g.Text(props.Description),
+				),
+			),
+			input,
+			g.If(
+				props.HelperText != "",
+				h.P(
+					h.Class("form-helper"),
+					g.Attr("id", helperID),
+					g.Text(props.HelperText),
+				),
+			),
+		)
 	}
 
-	return h.Div(
-		h.Class("form-field"),
-		h.Label(
-			h.Class("form-label"),
-			g.Attr("for", id),
-			g.Text(props.Label),
-		),
-		g.If(
-			props.Description != "",
-			h.P(
-				h.Class("form-subtitle"),
-				g.Text(props.Description),
-			),
-		),
-		input,
-		g.If(
-			props.HelperText != "",
-			h.P(
-				h.Class("form-helper"),
-				g.Attr("id", helperID),
-				g.Text(props.HelperText),
-			),
-		),
-	)
+	return g.Group([]g.Node{
+		InlineStyle(InputCSS),
+		node,
+	})
 }

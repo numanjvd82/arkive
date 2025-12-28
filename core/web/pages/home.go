@@ -5,6 +5,7 @@ import (
 	h "maragu.dev/gomponents/html"
 
 	"arkive/core/web"
+	"arkive/core/web/components"
 )
 
 type HomePageProps struct {
@@ -36,15 +37,10 @@ func homeHeader() g.Node {
 		h.Class("site-header"),
 		h.Div(
 			h.Class("container nav"),
-			h.A(
-				h.Class("nav-brand"),
-				h.Href("/"),
-				h.Span(
-					h.Class("brand-mark"),
-					h.Span(h.Class("brand-core")),
-				),
-				h.Span(h.Class("logo-text"), g.Text("arkive.sh")),
-			),
+			components.BrandLogo(components.BrandLogoProps{
+				Href:  "/",
+				Class: "nav-brand",
+			}),
 			h.Nav(
 				h.Class("nav-links"),
 				h.A(h.Href("#features"), g.Text("Features")),

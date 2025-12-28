@@ -1,0 +1,22 @@
+.card {
+  padding: 22px;
+  border-radius: 22px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.card-header {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.card-header h3 {
+  font-size: 1.2rem;
+}
+
+.card-header p {
+  color: var(--muted);
+  font-size: 0.95rem;
+}

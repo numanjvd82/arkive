@@ -14,6 +14,8 @@ type CardProps struct {
 	Body     []g.Node
 }
 
+const CardCSS = "/web/components/card.css"
+
 func Card(props CardProps) g.Node {
 	classValue := "card"
 	if strings.TrimSpace(props.Class) != "" {
@@ -35,8 +37,11 @@ func Card(props CardProps) g.Node {
 		))
 	}
 
-	return h.Div(
-		h.Class(classValue),
-		g.Group(children),
-	)
+	return g.Group([]g.Node{
+		InlineStyle(CardCSS),
+		h.Div(
+			h.Class(classValue),
+			g.Group(children),
+		),
+	})
 }

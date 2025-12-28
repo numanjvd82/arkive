@@ -21,8 +21,8 @@ type FilesPageProps struct {
 func FilesPage(props FilesPageProps) web.Page {
 	return web.Page{
 		Title: "Arkive · Files",
-		CSS:   []string{"/web/pages/files.css", "/static/dialog.css"},
-		JS:    []string{"/static/dialog.js", "/static/files.js"},
+		CSS:   []string{"/web/pages/files.css"},
+		JS:    []string{"/static/files.js"},
 		Body: h.Main(
 			h.Class("files-page"),
 			h.Div(

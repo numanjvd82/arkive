@@ -14,6 +14,8 @@ type ButtonProps struct {
 	Class   string
 }
 
+const ButtonCSS = "/web/components/button.css"
+
 func Button(props ButtonProps) g.Node {
 	classes := c.Classes{
 		"button": true,
@@ -28,11 +30,14 @@ func Button(props ButtonProps) g.Node {
 	}
 
 	if props.Href != "" {
-		return h.A(
-			h.Class(classes.String()),
-			h.Href(props.Href),
-			g.Text(props.Text),
-		)
+		return g.Group([]g.Node{
+			InlineStyle(ButtonCSS),
+			h.A(
+				h.Class(classes.String()),
+				h.Href(props.Href),
+				g.Text(props.Text),
+			),
+		})
 	}
 
 	buttonType := props.Type
@@ -40,9 +45,12 @@ func Button(props ButtonProps) g.Node {
 		buttonType = "button"
 	}
 
-	return h.Button(
-		h.Class(classes.String()),
-		g.Attr("type", buttonType),
-		g.Text(props.Text),
-	)
+	return g.Group([]g.Node{
+		InlineStyle(ButtonCSS),
+		h.Button(
+			h.Class(classes.String()),
+			g.Attr("type", buttonType),
+			g.Text(props.Text),
+		),
+	})
 }

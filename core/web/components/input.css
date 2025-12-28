@@ -1,0 +1,109 @@
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.form-label {
+  font-size: 0.9rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.form-subtitle {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.form-input {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface-strong);
+  color: var(--text);
+  font-size: 1rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 16px 26px rgba(7, 9, 15, 0.22);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-input.is-invalid {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px rgba(255, 92, 92, 0.2);
+}
+
+.form-input::placeholder {
+  color: var(--muted);
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--accent-cool);
+  box-shadow: 0 0 0 3px rgba(107, 209, 230, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.form-helper {
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.85rem;
+}
+
+.form-error {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 92, 92, 0.12);
+  color: var(--danger);
+  font-size: 0.9rem;
+}
+
+.password-wrapper {
+  position: relative;
+}
+
+.password-input {
+  padding-right: 54px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  border: none;
+  color: var(--muted);
+  padding: 6px;
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.password-toggle .icon {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
+.password-toggle .icon-eye,
+.password-toggle .icon-eye-off {
+  display: inline-flex;
+}
+
+.password-toggle .icon-eye-off {
+  display: none;
+}
+
+.password-toggle[data-visible="true"] .icon-eye {
+  display: none;
+}
+
+.password-toggle[data-visible="true"] .icon-eye-off {
+  display: block;
+}

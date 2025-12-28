@@ -1,0 +1,17 @@
+.site-nav {
+  padding: 24px 0;
+}
+
+.nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.nav-brand {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 700;
+  text-transform: lowercase;
+}

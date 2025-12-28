@@ -1,0 +1,14 @@
+.upload-input {
+  padding: 12px;
+  cursor: pointer;
+}
+
+.upload-input::file-selector-button {
+  margin-right: 12px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+}

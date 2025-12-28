@@ -43,8 +43,7 @@ func DashboardPage(props DashboardPageProps) web.Page {
 
 	return web.Page{
 		Title:   "Arkive · Dashboard",
-		CSS:     []string{"/web/pages/dashboard.css", "/web/pages/upload.css", "/static/dialog.css", "/static/tooltip.css"},
-		JS:      []string{"/static/dialog.js", "/static/uploads.js", "/static/sidebar.js"},
+		CSS:     []string{"/web/pages/dashboard.css"},
 		HideNav: true,
 		Body: h.Main(
 			h.Class("dashboard"),

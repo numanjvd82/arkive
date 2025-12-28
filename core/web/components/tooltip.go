@@ -14,6 +14,8 @@ type TooltipProps struct {
 	IconSize string
 }
 
+const TooltipCSS = "/web/components/tooltip.css"
+
 func Tooltip(props TooltipProps) g.Node {
 	className := "tooltip-icon"
 	if props.Class != "" {
@@ -31,11 +33,14 @@ func Tooltip(props TooltipProps) g.Node {
 
 	return g.If(
 		props.Tooltip != "",
-		h.Span(
-			h.Class(className),
-			g.If(props.ID != "", g.Attr("id", props.ID)),
-			g.If(props.Tooltip != "", g.Attr("data-tooltip", props.Tooltip)),
-			content,
-		),
+		g.Group([]g.Node{
+			InlineStyle(TooltipCSS),
+			h.Span(
+				h.Class(className),
+				g.If(props.ID != "", g.Attr("id", props.ID)),
+				g.If(props.Tooltip != "", g.Attr("data-tooltip", props.Tooltip)),
+				content,
+			),
+		}),
 	)
 }

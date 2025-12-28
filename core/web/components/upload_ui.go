@@ -18,6 +18,9 @@ type UploadResumeBannerProps struct {
 	ID string
 }
 
+const UploadUICSS = "/web/components/upload_ui.css"
+const UploadUIJS = "/web/components/uploads.js"
+
 func UploadControls(props UploadControlsProps) g.Node {
 	inputID := props.InputID
 	if inputID == "" {
@@ -33,6 +36,8 @@ func UploadControls(props UploadControlsProps) g.Node {
 	}
 
 	return g.Group([]g.Node{
+		InlineStyle(UploadUICSS),
+		InlineScript(UploadUIJS),
 		h.Div(
 			h.Class("upload-dropzone"),
 			g.Attr("id", "upload-dropzone"),
@@ -156,32 +161,35 @@ func UploadResumeBanner(props UploadResumeBannerProps) g.Node {
 		id = "upload-resume-banner"
 	}
 
-	return h.Div(
-		h.Class("upload-resume-banner is-hidden"),
-		g.Attr("id", id),
+	return g.Group([]g.Node{
+		InlineStyle(UploadUICSS),
 		h.Div(
-			h.Class("resume-content"),
-			h.Span(h.Class("resume-title"), g.Text("Upload paused")),
-			h.Span(h.Class("resume-meta"), g.Attr("id", "resume-banner-meta")),
-			h.P(
-				h.Class("resume-note"),
-				g.Text("To resume, select the same file again. Your browser requires this."),
+			h.Class("upload-resume-banner is-hidden"),
+			g.Attr("id", id),
+			h.Div(
+				h.Class("resume-content"),
+				h.Span(h.Class("resume-title"), g.Text("Upload paused")),
+				h.Span(h.Class("resume-meta"), g.Attr("id", "resume-banner-meta")),
+				h.P(
+					h.Class("resume-note"),
+					g.Text("To resume, select the same file again. Your browser requires this."),
+				),
+			),
+			h.Div(
+				h.Class("resume-actions"),
+				h.Button(
+					h.Class("button primary"),
+					h.Type("button"),
+					g.Attr("id", "resume-banner-resume"),
+					g.Text("Resume"),
+				),
+				h.Button(
+					h.Class("button secondary"),
+					h.Type("button"),
+					g.Attr("id", "resume-banner-cancel"),
+					g.Text("Cancel"),
+				),
 			),
 		),
-		h.Div(
-			h.Class("resume-actions"),
-			h.Button(
-				h.Class("button primary"),
-				h.Type("button"),
-				g.Attr("id", "resume-banner-resume"),
-				g.Text("Resume"),
-			),
-			h.Button(
-				h.Class("button secondary"),
-				h.Type("button"),
-				g.Attr("id", "resume-banner-cancel"),
-				g.Text("Cancel"),
-			),
-		),
-	)
+	})
 }
