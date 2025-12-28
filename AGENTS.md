@@ -40,4 +40,4 @@
 ## Recent Updates
 - Added `pkg/validation` for reusable validation helpers and error maps.
 - Auth signup checks uniqueness via repo lookups (`GetUserByEmail`, `GetUserByBrandName`) before insert.
-- Review `UPLOADS_TODO.md` and suggest next steps when that implementation is being discussed.
+- Review `TODO.md` and suggest next steps when that implementation is being discussed.
