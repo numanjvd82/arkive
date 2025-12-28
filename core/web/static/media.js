@@ -32,7 +32,7 @@
         }
       })
       .catch(function() {
-        window.alert("Download failed. Try again.");
+        window.Toast.error("Download failed. Try again.");
       })
       .finally(function() {
         downloadButton.disabled = false;

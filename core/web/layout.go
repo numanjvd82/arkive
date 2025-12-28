@@ -27,6 +27,7 @@ func Layout(data LayoutData, content ...g.Node) g.Node {
 		h.Link(h.Rel("stylesheet"), h.Href("/static/reset.css")),
 		h.Link(h.Rel("stylesheet"), h.Href("/static/globals.css")),
 		components.InlineStyle(components.ButtonCSS),
+		components.InlineStyle(components.ToastCSS),
 		h.Link(h.Rel("icon"), h.Type("image/x-icon"), h.Href("/static/assets/images/favicon.ico")),
 		h.Link(h.Rel("icon"), h.Type("image/png"), g.Attr("sizes", "32x32"), h.Href("/static/assets/images/favicon-32x32.png")),
 		h.Link(h.Rel("icon"), h.Type("image/png"), g.Attr("sizes", "16x16"), h.Href("/static/assets/images/favicon-16x16.png")),
@@ -37,6 +38,7 @@ func Layout(data LayoutData, content ...g.Node) g.Node {
 		headNodes = append(headNodes, h.Link(h.Rel("stylesheet"), h.Href(css)))
 	}
 	headNodes = append(headNodes, h.Script(h.Src("/static/global.js"), h.Defer()))
+	headNodes = append(headNodes, components.InlineScript(components.ToastJS))
 	for _, src := range data.JS {
 		headNodes = append(headNodes, h.Script(h.Src(src), h.Defer()))
 	}
@@ -47,6 +49,7 @@ func Layout(data LayoutData, content ...g.Node) g.Node {
 		h.Body(
 			g.If(!data.HideNav, components.Nav()),
 			g.Group(content),
+			components.ToastHost(),
 		),
 	))
 }

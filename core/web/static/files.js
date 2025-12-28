@@ -83,7 +83,8 @@
           closeDialog();
         })
         .catch(function() {
-          window.alert("Delete failed. Try again.");
+          window.Toast.error("Delete failed. Try again.");
+          closeDialog();
         })
         .finally(function() {
           confirmButton.disabled = false;
