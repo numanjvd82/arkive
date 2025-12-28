@@ -135,6 +135,13 @@
   background: rgba(255, 92, 92, 0.08);
 }
 
+.files-actions .button.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+}
+
 .files-actions .icon-button {
   width: 36px;
   height: 36px;

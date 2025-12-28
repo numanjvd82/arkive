@@ -2,6 +2,7 @@ package pages
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	g "maragu.dev/gomponents"
@@ -88,6 +89,7 @@ func renderCompletedList(files []models.File) g.Node {
 
 	rows := make([]g.Node, 0, len(files))
 	for _, file := range files {
+		previewable := isPreviewableContentType(file.ContentType)
 		rows = append(rows, h.Div(
 			h.Class("files-row"),
 			g.Attr("data-file-row", file.ID),
@@ -107,20 +109,19 @@ func renderCompletedList(files []models.File) g.Node {
 						g.Attr("data-file-id", file.ID),
 						g.Text("Share"),
 					),
-					h.Button(
-						h.Class("button secondary"),
+					g.If(!previewable, h.Button(
+						h.Class("button secondary is-disabled"),
 						h.Type("button"),
+						g.Attr("disabled", "disabled"),
+						g.Text("View"),
+					)),
+					g.If(previewable, h.A(
+						h.Class("button secondary"),
+						h.Href(fmt.Sprintf("/files/%s/view", file.ID)),
 						g.Attr("data-file-action", "view"),
 						g.Attr("data-file-id", file.ID),
 						g.Text("View"),
-					),
-					h.Button(
-						h.Class("button secondary"),
-						h.Type("button"),
-						g.Attr("data-file-action", "download"),
-						g.Attr("data-file-id", file.ID),
-						g.Text("Download"),
-					),
+					)),
 					h.Button(
 						h.Class("button danger"),
 						h.Type("button"),
@@ -143,4 +144,9 @@ func formatTime(value time.Time) string {
 		return ""
 	}
 	return value.Format("Jan 2, 2006 15:04")
+}
+
+func isPreviewableContentType(contentType string) bool {
+	contentType = strings.TrimSpace(strings.ToLower(contentType))
+	return strings.HasPrefix(contentType, "image/") || strings.HasPrefix(contentType, "video/")
 }

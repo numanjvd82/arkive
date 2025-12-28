@@ -1,0 +1,168 @@
+package pages
+
+import (
+	"fmt"
+	"strings"
+
+	g "maragu.dev/gomponents"
+	h "maragu.dev/gomponents/html"
+
+	"arkive/core/models"
+	"arkive/core/web"
+	"arkive/core/web/components"
+	"arkive/pkg/format"
+)
+
+type MediaViewPageProps struct {
+	Ctx      PageContext
+	File     models.File
+	ViewURL  string
+	IsImage  bool
+	IsVideo  bool
+	Viewable bool
+}
+
+func MediaViewPage(props MediaViewPageProps) web.Page {
+	file := props.File
+	contentType := strings.TrimSpace(file.ContentType)
+	headerChips := []g.Node{
+		h.Span(h.Class("chip"), g.Text(format.Bytes(file.SizeBytes))),
+	}
+	if contentType != "" {
+		headerChips = append(headerChips, h.Span(h.Class("chip chip-muted"), g.Text(contentType)))
+	}
+	if !file.UpdatedAt.IsZero() {
+		headerChips = append(headerChips, h.Span(h.Class("chip chip-muted"), g.Text(formatTime(file.UpdatedAt))))
+	}
+
+	return web.Page{
+		Title: fmt.Sprintf("Arkive · %s", file.Filename),
+		CSS:   []string{"/web/pages/media.css"},
+		JS:    []string{"/static/media.js"},
+		Body: h.Main(
+			h.Class("media-view"),
+			h.Div(
+				h.Class("container"),
+				h.Section(
+					h.Class("media-header"),
+					h.Div(
+						h.Class("media-title"),
+						h.P(h.Class("media-eyebrow"), g.Text("Media preview")),
+						h.H1(g.Text(file.Filename)),
+						h.Div(h.Class("media-chips"), g.Group(headerChips)),
+					),
+					h.Div(
+						h.Class("media-actions"),
+						h.Button(
+							h.Class("button secondary"),
+							g.Attr("type", "button"),
+							g.Attr("data-download-id", file.ID),
+							g.Text("Download"),
+						),
+						components.Button(components.ButtonProps{
+							Text:    "Back to files",
+							Href:    "/files",
+							Variant: "secondary",
+						}),
+					),
+				),
+				h.Section(
+					h.Class("media-shell"),
+					h.Div(
+						h.Class("media-main"),
+						h.Div(
+							h.Class("media-frame"),
+							h.Div(
+								h.Class("media-frame-inner"),
+								renderMedia(props),
+							),
+						),
+						g.If(!props.Viewable, h.Div(
+							h.Class("media-alert"),
+							h.Span(g.Text("Preview available for images and videos only.")),
+						)),
+						g.If(props.Viewable && props.ViewURL == "", h.Div(
+							h.Class("media-alert"),
+							h.Span(g.Text("Preview link is unavailable. Try again later.")),
+						)),
+					),
+					h.Aside(
+						h.Class("media-sidebar"),
+						h.Div(
+							h.Class("media-panel"),
+							h.H3(g.Text("Details")),
+							h.Div(
+								h.Class("media-meta"),
+								metaRow("Filename", file.Filename),
+								metaRow("Type", fallbackText(contentType, "Unknown")),
+								metaRow("Size", format.Bytes(file.SizeBytes)),
+								metaRow("Updated", fallbackText(formatTime(file.UpdatedAt), "Not available")),
+							),
+						),
+						h.Div(
+							h.Class("media-panel ad-slot"),
+							h.P(h.Class("ad-label"), g.Text("Sponsored")),
+							h.Div(
+								h.Class("ad-body"),
+								h.Strong(g.Text("Your brand here")),
+								h.P(g.Text("Reserve this space for product launches and creator campaigns.")),
+								h.Button(
+									h.Class("button primary"),
+									g.Attr("type", "button"),
+									g.Text("View rates"),
+								),
+							),
+						),
+						h.Div(
+							h.Class("media-panel ad-slot compact"),
+							h.P(h.Class("ad-label"), g.Text("Ad slot")),
+							h.P(g.Text("300x250 or 728x90 placements supported.")),
+						),
+					),
+				),
+			),
+		),
+	}
+}
+
+func renderMedia(props MediaViewPageProps) g.Node {
+	if props.Viewable && props.ViewURL != "" {
+		switch {
+		case props.IsVideo:
+			return h.Video(
+				h.Class("media-video"),
+				h.Controls(),
+				g.Attr("playsinline", "playsinline"),
+				g.Attr("src", props.ViewURL),
+			)
+		case props.IsImage:
+			return h.Img(
+				h.Class("media-image"),
+				h.Src(props.ViewURL),
+				h.Alt(props.File.Filename),
+				g.Attr("loading", "lazy"),
+			)
+		}
+	}
+
+	return h.Div(
+		h.Class("media-placeholder"),
+		h.Span(g.Text("Preview unavailable")),
+		h.P(g.Text("Download the file to view it locally.")),
+	)
+}
+
+func metaRow(label, value string) g.Node {
+	return h.Div(
+		h.Class("meta-row"),
+		h.Span(h.Class("meta-label"), g.Text(label)),
+		h.Span(h.Class("meta-value"), g.Text(value)),
+	)
+}
+
+func fallbackText(value, fallback string) string {
+	if strings.TrimSpace(value) == "" {
+		return fallback
+	}
+	return value
+}
