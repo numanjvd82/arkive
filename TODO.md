@@ -6,3 +6,5 @@
 - Automated tests for multipart edge cases (concurrent abort/complete, resume after partial failure, R2 transient errors).
 - Integrity checks after completion (verify size/hash matches expected, fail if mismatch).
 - Strategy for private/public view and download expiry (stable media URLs, refresh flow, tokenized CDN).
+- Alert component for inline form and page messaging.
+- Add Cloudflare analytics script to main production layout.

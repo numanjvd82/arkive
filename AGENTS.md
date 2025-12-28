@@ -19,6 +19,7 @@
 - Handlers parse form inputs into structs before calling services.
 - Validation errors are returned as a `validation.Errors` map and rendered inline in forms.
 - Validation error messages live in `core/services*/errors.go` and are referenced from services. That way we have full control over wording and can reuse messages across services.
+- Prefer modern JS: use `const`/`let` instead of `var`.
 
 ## Potential Improvements
 - **Modularization**: Consider splitting large services into smaller, focused modules.
