@@ -9,5 +9,4 @@ coverage.out
 docker-compose.yml
 
 # Dumps 
-*.sql
 *.dump
