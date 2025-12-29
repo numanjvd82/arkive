@@ -37,7 +37,7 @@ const (
 )
 
 const (
-	MaxFileSizeBytes        int64 = 1 * 1024 * 1024 * 1024
+	MaxFileSizeBytes        int64 = 5 * 1024 * 1024 * 1024
 	MultipartThresholdBytes int64 = 200 * 1024 * 1024
 )
 

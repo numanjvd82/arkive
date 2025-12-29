@@ -31,7 +31,7 @@
   let resumeWaiters = [];
   let selectedFile = null;
   let transferStats = null;
-  const MAX_FILE_SIZE = 1024 * 1024 * 1024;
+  const MAX_FILE_SIZE = 5 * 1024 * 1024 * 1024;
   const MULTIPART_THRESHOLD = 200 * 1024 * 1024;
 
   function setStatus(message) {
@@ -925,7 +925,7 @@
       return;
     }
     if (file.size > MAX_FILE_SIZE) {
-      setStatus("File exceeds the 1GB limit.");
+      setStatus("File exceeds the 5GB limit.");
       return;
     }
     transferStats = null;

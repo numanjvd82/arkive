@@ -13,7 +13,7 @@ CREATE TABLE users (
   password_hash     TEXT NOT NULL,                      -- bcrypt/argon2 hash (never store raw password)
 
   -- Storage accounting
-  quota_bytes       bigint NOT NULL DEFAULT 2147483648, -- 2 GB default (change as you like)
+  quota_bytes       bigint NOT NULL DEFAULT 5368709120, -- 5 GB default (change as you like)
   used_bytes        bigint NOT NULL DEFAULT 0,
   reserved_bytes    bigint NOT NULL DEFAULT 0,          -- for "upload initiated" but not completed
 
