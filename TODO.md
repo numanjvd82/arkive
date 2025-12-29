@@ -8,4 +8,7 @@
 - Strategy for private/public view and download expiry (stable media URLs, refresh flow, tokenized CDN).
 - Alert component for inline form and page messaging.
 - Add Cloudflare analytics script to main production layout.
+- Refactor media view page (components, helpers) for better structure and maintainability.
+
+## Done
 - Install `ffprobe` on the server for video metadata extraction.
