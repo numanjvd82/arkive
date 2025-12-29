@@ -38,6 +38,20 @@
     status.textContent = message;
   }
 
+  function toastUploadSuccess(filename) {
+    const message = filename ? filename + " is ready to share." : "Your file is ready to share.";
+    window.Toast.success(message, { title: "Uploaded" });
+  }
+
+  function toastUploadInfo(message, title) {
+    window.Toast.info(message, { title: title || "Upload" });
+  }
+
+  function toastUploadError(detail) {
+    const message = detail ? "Upload failed. " + detail : "Upload failed. Try again.";
+    window.Toast.error(message, { title: "Upload failed" });
+  }
+
   function setProgress(percent) {
     const clamped = Math.max(0, Math.min(100, Math.round(percent)));
     if (progressBar) {
@@ -622,6 +636,7 @@
           if (err && err.cancelled) {
             clearState(signature);
             setStatus("Upload cancelled.");
+            toastUploadInfo("Upload cancelled.", "Cancelled");
             active = null;
             setPaused(false);
             return;
@@ -671,11 +686,14 @@
         metaDetail.textContent = "Complete";
         metaTooltip.setAttribute("data-tooltip", "100% • Done");
       }
+      toastUploadSuccess(file.name);
       active = null;
       setPaused(false);
     } catch (err) {
       const uploadId = state && state.uploadId ? state.uploadId : (existing && existing.uploadId ? existing.uploadId : null);
       await cleanupFailure(uploadId, signature);
+      const detail = err && err.data && err.data.errors && err.data.errors.size ? err.data.errors.size : (err && err.message ? err.message : "");
+      toastUploadError(detail);
       throw err;
     }
   }
@@ -734,6 +752,7 @@
           metaDetail.textContent = "Complete";
           metaTooltip.setAttribute("data-tooltip", "100% • Done");
         }
+        toastUploadSuccess(file.name);
         active = null;
         setPaused(false);
       } catch (err) {
@@ -749,6 +768,8 @@
     } catch (err) {
       const message_2 = err && err.data && err.data.errors && err.data.errors.size ? err.data.errors.size : null;
       await cleanupFailure(uploadId, signature);
+      const detail = message_2 || (err && err.message ? err.message : "");
+      toastUploadError(detail);
       setStatus("Upload failed. " + (message_2 || (err && err.message ? err.message : "Try again.")));
       throw err;
     }
@@ -1044,6 +1065,7 @@
         cancelUpload(active.uploadId)
           .then(function() {
             setStatus("Upload aborted.");
+            toastUploadInfo("Upload aborted.", "Cancelled");
             setProgress(0);
             if (active && active.signature) {
               clearState(active.signature);
@@ -1071,6 +1093,7 @@
             clearState(active.signature);
           }
           setStatus("Upload aborted.");
+          toastUploadInfo("Upload aborted.", "Cancelled");
           setProgress(0);
           clearMeta();
           active = null;
@@ -1110,6 +1133,7 @@
         .then(function() {
           clearStateByUploadId(uploadId);
           setStatus("Upload cancelled.");
+          toastUploadInfo("Upload cancelled.", "Cancelled");
           clearMeta();
           updateResumeBanner();
         })

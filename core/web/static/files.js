@@ -81,6 +81,7 @@
           }
           removeRow(pendingDelete);
           closeDialog();
+          window.Toast.success("File deleted.", { title: "Deleted" });
         })
         .catch(function() {
           window.Toast.error("Delete failed. Try again.");
