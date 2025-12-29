@@ -39,8 +39,15 @@ func MediaViewPage(props MediaViewPageProps) web.Page {
 
 	return web.Page{
 		Title: fmt.Sprintf("Arkive · %s", file.Filename),
-		CSS:   []string{"/web/pages/media.css"},
-		JS:    []string{"/static/media.js"},
+		CSS: []string{
+			"https://cdn.plyr.io/3.7.8/plyr.css",
+			"/web/pages/media.css",
+		},
+		JS: []string{
+			"https://cdn.plyr.io/3.7.8/plyr.polyfilled.js",
+			"/static/plyr.js",
+			"/static/media.js",
+		},
 		Body: h.Main(
 			h.Class("media-view"),
 			h.Div(
@@ -133,7 +140,7 @@ func renderMedia(props MediaViewPageProps) g.Node {
 		switch {
 		case props.IsVideo:
 			nodes := []g.Node{
-				h.Class("media-video"),
+				h.Class("media-video plyr"),
 				h.Controls(),
 				g.Attr("playsinline", "playsinline"),
 				g.Attr("data-video-element", "true"),
