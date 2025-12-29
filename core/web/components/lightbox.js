@@ -67,14 +67,19 @@
     requestTransform();
   }
 
+  let prevHtmlOverflow = "";
+  let prevBodyOverflow = "";
+
   function disableScroll() {
+    prevHtmlOverflow = document.documentElement.style.overflow || "";
+    prevBodyOverflow = document.body.style.overflow || "";
     document.documentElement.style.overflow = "hidden";
     document.body.style.overflow = "hidden";
   }
 
   function enableScroll() {
-    document.documentElement.style.overflow = "";
-    document.body.style.overflow = "";
+    document.documentElement.style.overflow = prevHtmlOverflow;
+    document.body.style.overflow = prevBodyOverflow;
   }
 
   function setInteractiveQuality(on) {
@@ -137,7 +142,10 @@
       imageEl.src = fullSrc;
 
       // if full-res fails to load, fallback
-      imageEl.onerror = () => (imageEl.src = prev);
+      imageEl.onerror = () => {
+        imageEl.src = prev;
+        imageEl.onerror = null;
+      };
     }
   }
 
@@ -146,6 +154,7 @@
 
     fullSrc = src;
     previewSrc = "";
+    imageEl.onerror = null;
 
     imageEl.src = "";
     imageEl.alt = title || "";
@@ -160,6 +169,7 @@
     previewSrc = await makePreview(src, 2000);
     imageEl.src = previewSrc;
     imageEl.decoding = "async";
+    updateZoomButtons();
   }
 
   function closeLightbox() {

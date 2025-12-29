@@ -146,14 +146,25 @@ func renderMedia(props MediaViewPageProps) g.Node {
 			}
 			return h.Video(nodes...)
 		case props.IsImage:
-			return h.Img(
-				h.Class("media-image"),
-				h.Src(props.ViewURL),
-				h.Alt(props.File.Filename),
-				g.Attr("data-lightbox-trigger", "true"),
-				g.Attr("data-lightbox-src", props.ViewURL),
-				g.Attr("data-lightbox-title", props.File.Filename),
-				g.Attr("loading", "lazy"),
+			return h.Div(
+				h.Class("media-image-wrap"),
+				h.Img(
+					h.Class("media-image"),
+					h.Src(props.ViewURL),
+					h.Alt(props.File.Filename),
+					g.Attr("data-lightbox-trigger", "true"),
+					g.Attr("data-lightbox-src", props.ViewURL),
+					g.Attr("data-lightbox-title", props.File.Filename),
+					g.Attr("loading", "lazy"),
+				),
+				h.Button(
+					h.Class("media-fullscreen-button"),
+					g.Attr("type", "button"),
+					g.Attr("aria-label", "Open full screen"),
+					g.Attr("data-lightbox-src", props.ViewURL),
+					g.Attr("data-lightbox-title", props.File.Filename),
+					components.Icon(components.IconProps{Name: "fullscreen", Size: "18", Decorative: true}),
+				),
 			)
 		}
 	}

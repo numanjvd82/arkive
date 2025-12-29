@@ -24,6 +24,7 @@
   pointer-events: none;
 }
 
+
 .media-view .container {
   position: relative;
   z-index: 1;
@@ -160,49 +161,44 @@
   background: #0b0d14;
 }
 
+.media-image-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
 .media-image {
   cursor: zoom-in;
 }
 
-.media-frame-inner.is-image::after {
-  content: "";
+.media-fullscreen-button {
   position: absolute;
   right: 16px;
   bottom: 16px;
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   border-radius: 14px;
-  border: 1px solid transparent;
-  background: var(--accent);
+  border: 1px solid var(--border);
+  background: var(--surface-strong);
+  color: var(--text);
+  display: grid;
+  place-items: center;
   opacity: 0;
   transform: translateY(6px);
   transition: opacity 0.2s ease, transform 0.2s ease;
-  pointer-events: none;
+  cursor: pointer;
 }
 
-.media-frame-inner.is-image::before {
-  content: "";
-  position: absolute;
-  right: 28px;
-  bottom: 28px;
-  width: 18px;
-  height: 18px;
-  border: 2px solid var(--accent-ink);
-  border-radius: 6px;
-  opacity: 0;
-  transform: translateY(6px);
-  transition: opacity 0.2s ease, transform 0.2s ease;
-  pointer-events: none;
-}
-
-.media-frame-inner.is-image:hover::after,
-.media-frame-inner.is-image:hover::before {
+.media-frame-inner.is-image:hover .media-fullscreen-button {
   opacity: 1;
   transform: translateY(0);
 }
 
-.media-frame-inner.is-image::before {
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.05);
+@media (hover: none) {
+  .media-fullscreen-button {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .media-placeholder {
