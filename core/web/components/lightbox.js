@@ -19,16 +19,10 @@
   const maxZoom = 3;
 
   // Interaction state
-  let interacting = false;
   let settleTimer = null;
 
   // For pinch/pan
   const pointers = new Map();
-  let startZoom = 1;
-  let startOffsetX = 0;
-  let startOffsetY = 0;
-  let startDist = 0;
-  let startMid = { x: 0, y: 0 };
 
   // Full-res swap
   let fullSrc = "";
