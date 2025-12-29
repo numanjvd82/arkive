@@ -1,15 +1,19 @@
 (function() {
   const downloadButton = document.querySelector("[data-download-id]");
-  if (!downloadButton) {
-    return;
-  }
+  const playButton = document.querySelector("[data-video-action='play']");
+  const videoEl = document.querySelector("[data-video-element='true']");
 
-  downloadButton.addEventListener("click", function() {
-    const fileId = downloadButton.getAttribute("data-download-id");
-    if (!fileId) {
+  function bindDownload() {
+    if (!downloadButton) {
       return;
     }
-    const popup = window.open("", "_blank", "noopener");
+
+    downloadButton.addEventListener("click", function() {
+      const fileId = downloadButton.getAttribute("data-download-id");
+      if (!fileId) {
+        return;
+      }
+      const popup = window.open("", "_blank", "noopener");
     downloadButton.disabled = true;
     fetch("/api/files/" + encodeURIComponent(fileId) + "/download", {
       method: "GET",
@@ -37,5 +41,30 @@
       .finally(function() {
         downloadButton.disabled = false;
       });
-  });
+    });
+  }
+
+  function bindPlay() {
+    if (!playButton || !videoEl) {
+      return;
+    }
+    playButton.addEventListener("click", function() {
+      const src = videoEl.getAttribute("data-video-src");
+      if (!src) {
+        return;
+      }
+      if (!videoEl.getAttribute("src")) {
+        videoEl.setAttribute("src", src);
+      }
+      videoEl.play().catch(function() {});
+      playButton.disabled = true;
+    });
+  }
+
+  if (!downloadButton && !playButton) {
+    return;
+  }
+
+  bindDownload();
+  bindPlay();
 })();

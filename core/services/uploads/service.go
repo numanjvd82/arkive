@@ -711,7 +711,7 @@ func (s *Service) CompleteMultipart(ctx context.Context, userID, multipartID str
 	if err := tx.Commit(ctx); err != nil {
 		return err
 	}
-
+	s.scheduleVideoMetadata(file)
 	return nil
 }
 
@@ -829,6 +829,7 @@ func (s *Service) CompleteSingleUpload(ctx context.Context, userID, fileID strin
 	if err := tx.Commit(ctx); err != nil {
 		return err
 	}
+	s.scheduleVideoMetadata(file)
 	return nil
 }
 

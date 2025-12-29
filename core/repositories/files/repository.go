@@ -20,7 +20,9 @@ func (r *Repository) CreateFile(ctx context.Context, db database.PgExecutor, fil
 	VALUES
 		($1, $2, $3, $4, $5, $6, $7)
 	RETURNING
-		id, user_id, bucket, object_key, filename, content_type, size_bytes, status, created_at, updated_at`
+		id, user_id, bucket, object_key, filename, content_type, size_bytes,
+		video_width, video_height, video_duration_seconds,
+		status, created_at, updated_at`
 	if err := db.QueryRow(ctx, query,
 		file.UserID,
 		file.Bucket,
@@ -37,6 +39,9 @@ func (r *Repository) CreateFile(ctx context.Context, db database.PgExecutor, fil
 		&created.Filename,
 		&created.ContentType,
 		&created.SizeBytes,
+		&created.VideoWidth,
+		&created.VideoHeight,
+		&created.VideoDurationSeconds,
 		&created.Status,
 		&created.CreatedAt,
 		&created.UpdatedAt,
@@ -82,10 +87,26 @@ func (r *Repository) UpdateFileSize(ctx context.Context, db database.PgExecutor,
 	return err
 }
 
+func (r *Repository) UpdateVideoMetadata(ctx context.Context, db database.PgExecutor, fileID string, width, height int, durationSeconds int64) error {
+	query := `UPDATE
+		files
+	SET
+		video_width = $2,
+		video_height = $3,
+		video_duration_seconds = $4,
+		updated_at = now()
+	WHERE
+		id = $1`
+	_, err := db.Exec(ctx, query, fileID, width, height, durationSeconds)
+	return err
+}
+
 func (r *Repository) GetFileByID(ctx context.Context, db database.PgExecutor, fileID string) (models.File, error) {
 	var file models.File
 	query := `SELECT
-		id, user_id, bucket, object_key, filename, content_type, size_bytes, status, created_at, updated_at
+		id, user_id, bucket, object_key, filename, content_type, size_bytes,
+		video_width, video_height, video_duration_seconds,
+		status, created_at, updated_at
 	FROM
 		files
 	WHERE
@@ -98,6 +119,9 @@ func (r *Repository) GetFileByID(ctx context.Context, db database.PgExecutor, fi
 		&file.Filename,
 		&file.ContentType,
 		&file.SizeBytes,
+		&file.VideoWidth,
+		&file.VideoHeight,
+		&file.VideoDurationSeconds,
 		&file.Status,
 		&file.CreatedAt,
 		&file.UpdatedAt,
@@ -110,7 +134,9 @@ func (r *Repository) GetFileByID(ctx context.Context, db database.PgExecutor, fi
 func (r *Repository) GetFileForUser(ctx context.Context, db database.PgExecutor, fileID, userID string) (models.File, error) {
 	var file models.File
 	query := `SELECT
-		id, user_id, bucket, object_key, filename, content_type, size_bytes, status, created_at, updated_at
+		id, user_id, bucket, object_key, filename, content_type, size_bytes,
+		video_width, video_height, video_duration_seconds,
+		status, created_at, updated_at
 	FROM
 		files
 	WHERE
@@ -123,6 +149,9 @@ func (r *Repository) GetFileForUser(ctx context.Context, db database.PgExecutor,
 		&file.Filename,
 		&file.ContentType,
 		&file.SizeBytes,
+		&file.VideoWidth,
+		&file.VideoHeight,
+		&file.VideoDurationSeconds,
 		&file.Status,
 		&file.CreatedAt,
 		&file.UpdatedAt,
@@ -134,7 +163,9 @@ func (r *Repository) GetFileForUser(ctx context.Context, db database.PgExecutor,
 
 func (r *Repository) ListPendingForUser(ctx context.Context, db database.PgExecutor, userID string) ([]models.File, error) {
 	query := `SELECT
-		id, user_id, bucket, object_key, filename, content_type, size_bytes, status, created_at, updated_at
+		id, user_id, bucket, object_key, filename, content_type, size_bytes,
+		video_width, video_height, video_duration_seconds,
+		status, created_at, updated_at
 	FROM
 		files
 	WHERE
@@ -158,6 +189,9 @@ func (r *Repository) ListPendingForUser(ctx context.Context, db database.PgExecu
 			&file.Filename,
 			&file.ContentType,
 			&file.SizeBytes,
+			&file.VideoWidth,
+			&file.VideoHeight,
+			&file.VideoDurationSeconds,
 			&file.Status,
 			&file.CreatedAt,
 			&file.UpdatedAt,
@@ -174,7 +208,9 @@ func (r *Repository) ListPendingForUser(ctx context.Context, db database.PgExecu
 
 func (r *Repository) ListCompletedForUser(ctx context.Context, db database.PgExecutor, userID string) ([]models.File, error) {
 	query := `SELECT
-		id, user_id, bucket, object_key, filename, content_type, size_bytes, status, created_at, updated_at
+		id, user_id, bucket, object_key, filename, content_type, size_bytes,
+		video_width, video_height, video_duration_seconds,
+		status, created_at, updated_at
 	FROM
 		files
 	WHERE
@@ -198,6 +234,9 @@ func (r *Repository) ListCompletedForUser(ctx context.Context, db database.PgExe
 			&file.Filename,
 			&file.ContentType,
 			&file.SizeBytes,
+			&file.VideoWidth,
+			&file.VideoHeight,
+			&file.VideoDurationSeconds,
 			&file.Status,
 			&file.CreatedAt,
 			&file.UpdatedAt,

@@ -142,6 +142,11 @@
   color: var(--muted);
 }
 
+.media-alert.is-warning {
+  border-color: color-mix(in srgb, var(--warning) 45%, transparent);
+  color: var(--text);
+}
+
 .media-sidebar {
   display: grid;
   gap: 16px;

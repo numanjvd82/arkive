@@ -10,6 +10,7 @@ import (
 	"arkive/core/web"
 	"arkive/core/web/pages"
 	appcontext "arkive/pkg/context"
+	"arkive/pkg/video"
 )
 
 func WebFiles(uploadService *uploads.Service) gin.HandlerFunc {
@@ -63,6 +64,12 @@ func WebFileView(uploadService *uploads.Service) gin.HandlerFunc {
 		contentType := strings.ToLower(strings.TrimSpace(file.ContentType))
 		isImage := strings.HasPrefix(contentType, "image/")
 		isVideo := strings.HasPrefix(contentType, "video/")
+		largeVideo := isVideo && video.IsLarge(
+			file.SizeBytes,
+			file.VideoDurationSeconds,
+			file.VideoWidth,
+			file.VideoHeight,
+		)
 
 		viewURL := ""
 		if isImage || isVideo {
@@ -76,6 +83,7 @@ func WebFileView(uploadService *uploads.Service) gin.HandlerFunc {
 			IsImage:  isImage,
 			IsVideo:  isVideo,
 			Viewable: isImage || isVideo,
+			Large:    largeVideo,
 		}))
 	}
 }

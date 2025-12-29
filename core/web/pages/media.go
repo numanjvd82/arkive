@@ -11,6 +11,7 @@ import (
 	"arkive/core/web"
 	"arkive/core/web/components"
 	"arkive/pkg/format"
+	"arkive/pkg/video"
 )
 
 type MediaViewPageProps struct {
@@ -20,6 +21,7 @@ type MediaViewPageProps struct {
 	IsImage  bool
 	IsVideo  bool
 	Viewable bool
+	Large    bool
 }
 
 func MediaViewPage(props MediaViewPageProps) web.Page {
@@ -53,12 +55,7 @@ func MediaViewPage(props MediaViewPageProps) web.Page {
 					),
 					h.Div(
 						h.Class("media-actions"),
-						h.Button(
-							h.Class("button secondary"),
-							g.Attr("type", "button"),
-							g.Attr("data-download-id", file.ID),
-							g.Text("Download"),
-						),
+						renderMediaActions(file.ID, props),
 						components.Button(components.ButtonProps{
 							Text:    "Back to files",
 							Href:    "/files",
@@ -70,6 +67,10 @@ func MediaViewPage(props MediaViewPageProps) web.Page {
 					h.Class("media-shell"),
 					h.Div(
 						h.Class("media-main"),
+						g.If(props.IsVideo && props.Large, h.Div(
+							h.Class("media-alert is-warning"),
+							h.Span(g.Text("This video is very large. Streaming may be slow. Download recommended.")),
+						)),
 						h.Div(
 							h.Class("media-frame"),
 							h.Div(
@@ -96,6 +97,8 @@ func MediaViewPage(props MediaViewPageProps) web.Page {
 								metaRow("Filename", file.Filename),
 								metaRow("Type", fallbackText(contentType, "Unknown")),
 								metaRow("Size", format.Bytes(file.SizeBytes)),
+								metaRow("Resolution", video.FormatResolution(file.VideoWidth, file.VideoHeight, props.IsVideo)),
+								metaRow("Duration", video.FormatDuration(file.VideoDurationSeconds, props.IsVideo)),
 								metaRow("Updated", fallbackText(formatTime(file.UpdatedAt), "Not available")),
 							),
 						),
@@ -129,12 +132,18 @@ func renderMedia(props MediaViewPageProps) g.Node {
 	if props.Viewable && props.ViewURL != "" {
 		switch {
 		case props.IsVideo:
-			return h.Video(
+			nodes := []g.Node{
 				h.Class("media-video"),
 				h.Controls(),
 				g.Attr("playsinline", "playsinline"),
-				g.Attr("src", props.ViewURL),
-			)
+				g.Attr("data-video-element", "true"),
+			}
+			if props.Large {
+				nodes = append(nodes, h.Preload("none"), g.Attr("data-video-src", props.ViewURL))
+			} else {
+				nodes = append(nodes, g.Attr("src", props.ViewURL))
+			}
+			return h.Video(nodes...)
 		case props.IsImage:
 			return h.Img(
 				h.Class("media-image"),
@@ -150,6 +159,30 @@ func renderMedia(props MediaViewPageProps) g.Node {
 		h.Span(g.Text("Preview unavailable")),
 		h.P(g.Text("Download the file to view it locally.")),
 	)
+}
+
+func renderMediaActions(fileID string, props MediaViewPageProps) g.Node {
+	downloadClass := "button secondary"
+	if props.IsVideo && props.Large {
+		downloadClass = "button primary"
+	}
+	nodes := []g.Node{
+		h.Button(
+			h.Class(downloadClass),
+			g.Attr("type", "button"),
+			g.Attr("data-download-id", fileID),
+			g.Text("Download"),
+		),
+	}
+	if props.IsVideo && props.Large && props.ViewURL != "" {
+		nodes = append(nodes, h.Button(
+			h.Class("button secondary"),
+			g.Attr("type", "button"),
+			g.Attr("data-video-action", "play"),
+			g.Text("Play (may buffer)"),
+		))
+	}
+	return g.Group(nodes)
 }
 
 func metaRow(label, value string) g.Node {
