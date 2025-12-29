@@ -8,3 +8,4 @@
 - Strategy for private/public view and download expiry (stable media URLs, refresh flow, tokenized CDN).
 - Alert component for inline form and page messaging.
 - Add Cloudflare analytics script to main production layout.
+- Install `ffprobe` on the server for video metadata extraction.
