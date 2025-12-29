@@ -39,15 +39,8 @@ func MediaViewPage(props MediaViewPageProps) web.Page {
 
 	return web.Page{
 		Title: fmt.Sprintf("Arkive · %s", file.Filename),
-		CSS: []string{
-			"https://cdn.plyr.io/3.7.8/plyr.css",
-			"/web/pages/media.css",
-		},
-		JS: []string{
-			"https://cdn.plyr.io/3.7.8/plyr.polyfilled.js",
-			"/static/plyr.js",
-			"/static/media.js",
-		},
+		CSS:   buildMediaCSS(props),
+		JS:    buildMediaJS(props),
 		Body: h.Main(
 			h.Class("media-view"),
 			h.Div(
@@ -81,7 +74,7 @@ func MediaViewPage(props MediaViewPageProps) web.Page {
 						h.Div(
 							h.Class("media-frame"),
 							h.Div(
-								h.Class("media-frame-inner"),
+								h.Class(mediaFrameClass(props)),
 								renderMedia(props),
 							),
 						),
@@ -131,6 +124,7 @@ func MediaViewPage(props MediaViewPageProps) web.Page {
 					),
 				),
 			),
+			g.If(props.IsImage, components.Lightbox()),
 		),
 	}
 }
@@ -156,6 +150,9 @@ func renderMedia(props MediaViewPageProps) g.Node {
 				h.Class("media-image"),
 				h.Src(props.ViewURL),
 				h.Alt(props.File.Filename),
+				g.Attr("data-lightbox-trigger", "true"),
+				g.Attr("data-lightbox-src", props.ViewURL),
+				g.Attr("data-lightbox-title", props.File.Filename),
 				g.Attr("loading", "lazy"),
 			)
 		}
@@ -166,6 +163,33 @@ func renderMedia(props MediaViewPageProps) g.Node {
 		h.Span(g.Text("Preview unavailable")),
 		h.P(g.Text("Download the file to view it locally.")),
 	)
+}
+
+func mediaFrameClass(props MediaViewPageProps) string {
+	className := "media-frame-inner"
+	if props.IsImage {
+		className += " is-image"
+	}
+	return className
+}
+
+func buildMediaCSS(props MediaViewPageProps) []string {
+	css := []string{"/web/pages/media.css"}
+	if props.IsVideo {
+		css = append([]string{"https://cdn.plyr.io/3.7.8/plyr.css"}, css...)
+	}
+	return css
+}
+
+func buildMediaJS(props MediaViewPageProps) []string {
+	js := []string{"/static/media.js"}
+	if props.IsVideo {
+		js = append([]string{
+			"https://cdn.plyr.io/3.7.8/plyr.polyfilled.js",
+			"/static/plyr.js",
+		}, js...)
+	}
+	return js
 }
 
 func renderMediaActions(fileID string, props MediaViewPageProps) g.Node {
