@@ -10,7 +10,12 @@ CREATE TABLE users (
   -- What you collect
   brand_name        TEXT UNIQUE NOT NULL,               -- username / brand name
   email             citext UNIQUE NOT NULL,                    -- case-insensitive email
-  password_hash     TEXT NOT NULL,                      -- bcrypt/argon2 hash (never store raw password)
+  password_hash          TEXT,                               -- bcrypt/argon2 hash (never store raw password)
+  google_sub             TEXT UNIQUE,                        -- google user id
+  google_given_name      TEXT,
+  google_family_name     TEXT,
+  google_email_verified  boolean NOT NULL DEFAULT false,
+  google_picture_url     TEXT,
 
   -- Storage accounting
   quota_bytes       bigint NOT NULL DEFAULT 5368709120, -- 5 GB default (change as you like)

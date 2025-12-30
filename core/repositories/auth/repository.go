@@ -28,9 +28,9 @@ func (r *Repository) CreateUser(ctx context.Context, db database.PgExecutor, bra
 	return user, nil
 }
 
-func (r *Repository) GetUserByEmail(ctx context.Context, db database.PgExecutor, email string) (models.User, string, error) {
+func (r *Repository) GetUserByEmail(ctx context.Context, db database.PgExecutor, email string) (models.User, *string, error) {
 	var user models.User
-	var hash string
+	var hash *string
 	query := `SELECT
 		id, brand_name, email, password_hash
 	FROM
@@ -38,7 +38,7 @@ func (r *Repository) GetUserByEmail(ctx context.Context, db database.PgExecutor,
 	WHERE
 		email = $1`
 	if err := db.QueryRow(ctx, query, email).Scan(&user.ID, &user.BrandName, &user.Email, &hash); err != nil {
-		return models.User{}, "", err
+		return models.User{}, nil, err
 	}
 	return user, hash, nil
 }
@@ -81,6 +81,34 @@ func (r *Repository) GetUserByBrandName(ctx context.Context, db database.PgExecu
 	WHERE
 		brand_name = $1`
 	if err := db.QueryRow(ctx, query, brandName).Scan(&user.ID, &user.BrandName, &user.Email); err != nil {
+		return models.User{}, err
+	}
+	return user, nil
+}
+
+func (r *Repository) GetUserByGoogleSub(ctx context.Context, db database.PgExecutor, sub string) (models.User, error) {
+	var user models.User
+	query := `SELECT
+		id, brand_name, email
+	FROM
+		users
+	WHERE
+		google_sub = $1`
+	if err := db.QueryRow(ctx, query, sub).Scan(&user.ID, &user.BrandName, &user.Email); err != nil {
+		return models.User{}, err
+	}
+	return user, nil
+}
+
+func (r *Repository) CreateUserWithGoogleProfile(ctx context.Context, db database.PgExecutor, brandName, email, sub, givenName, familyName string, emailVerified bool, pictureURL string) (models.User, error) {
+	var user models.User
+	query := `INSERT INTO users
+		(brand_name, email, password_hash, google_sub, google_given_name, google_family_name, google_email_verified, google_picture_url)
+	VALUES
+		($1, $2, $3, $4, $5, $6, $7, $8)
+	RETURNING
+		id, brand_name, email`
+	if err := db.QueryRow(ctx, query, brandName, email, nil, sub, givenName, familyName, emailVerified, pictureURL).Scan(&user.ID, &user.BrandName, &user.Email); err != nil {
 		return models.User{}, err
 	}
 	return user, nil

@@ -18,7 +18,8 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 	r := gin.Default()
 
 	authService := auth.NewService(db, authrepo.New(), sessionrepo.New(), auth.Config{
-		SessionTTL: cfg.SessionTTL,
+		SessionTTL:     cfg.SessionTTL,
+		GoogleClientID: cfg.GoogleClientID,
 	})
 
 	r.StaticFS("/static", web.StaticFS("static"))
@@ -28,6 +29,7 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 	r.POST("/login", handlers.WebLoginPost(authService))
 	r.GET("/signup", handlers.WebSignupGet(authService))
 	r.POST("/signup", handlers.WebSignupPost(authService))
+	r.POST("/auth/google", handlers.WebGoogleLogin(authService))
 
 	protected := r.Group("/")
 	protected.Use(middleware.RequireSessionRedirect(authService))

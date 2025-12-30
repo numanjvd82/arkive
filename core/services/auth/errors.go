@@ -3,11 +3,16 @@ package auth
 import "errors"
 
 var (
-	ErrInvalidCredentials  = errors.New("invalid credentials")
-	ErrInvalidInput        = errors.New("invalid input")
-	ErrEmailExists         = errors.New("email already exists")
-	ErrBrandNameExists     = errors.New("brand name already exists")
-	ErrSessionNotFound     = errors.New("session not found")
+	ErrInvalidCredentials        = errors.New("invalid credentials")
+	ErrInvalidInput              = errors.New("invalid input")
+	ErrEmailExists               = errors.New("email already exists")
+	ErrBrandNameExists           = errors.New("brand name already exists")
+	ErrSessionNotFound           = errors.New("session not found")
+	ErrGoogleTokenInvalid        = errors.New("google token is invalid")
+	ErrGoogleEmailNotVerified    = errors.New("google email is not verified")
+	ErrGoogleClientNotConfigured = errors.New("google client id is not configured")
+	ErrGoogleEmailHasPassword    = errors.New("this email already has a password account")
+	ErrLoginUseGoogle            = errors.New("log in with google")
 
 	ErrEmailRequired           = errors.New("email is required")
 	ErrPasswordRequired        = errors.New("password is required")

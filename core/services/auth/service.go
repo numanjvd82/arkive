@@ -2,7 +2,11 @@ package auth
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -13,18 +17,21 @@ import (
 	"arkive/core/models"
 	authrepo "arkive/core/repositories/auth"
 	sessionrepo "arkive/core/repositories/session"
+	"arkive/pkg/tokens"
 	"arkive/pkg/validation"
 )
 
 type Service struct {
-	db          database.PgPool
-	authRepo    *authrepo.Repository
-	sessionRepo *sessionrepo.Repository
-	sessionTTL  time.Duration
+	db             database.PgPool
+	authRepo       *authrepo.Repository
+	sessionRepo    *sessionrepo.Repository
+	sessionTTL     time.Duration
+	googleClientID string
 }
 
 type Config struct {
-	SessionTTL time.Duration
+	SessionTTL     time.Duration
+	GoogleClientID string
 }
 
 func NewService(
@@ -34,10 +41,11 @@ func NewService(
 	cfg Config,
 ) *Service {
 	return &Service{
-		db:          db,
-		authRepo:    authRepo,
-		sessionRepo: sessionRepo,
-		sessionTTL:  cfg.SessionTTL,
+		db:             db,
+		authRepo:       authRepo,
+		sessionRepo:    sessionRepo,
+		sessionTTL:     cfg.SessionTTL,
+		googleClientID: cfg.GoogleClientID,
 	}
 }
 
@@ -66,6 +74,11 @@ func (s *Service) WebLogin(ctx context.Context, email, password string) (string,
 		if errors.Is(err, ErrInvalidCredentials) {
 			validationErrors := validation.New()
 			validationErrors.Add(validation.GeneralKey, ErrLoginInvalid.Error())
+			return "", time.Time{}, validationErrors, nil
+		}
+		if errors.Is(err, ErrLoginUseGoogle) {
+			validationErrors := validation.New()
+			validationErrors.Add(validation.GeneralKey, ErrLoginUseGoogle.Error())
 			return "", time.Time{}, validationErrors, nil
 		}
 		return "", time.Time{}, nil, err
@@ -236,11 +249,186 @@ func (s *Service) authenticateUser(ctx context.Context, email, password string) 
 		return models.User{}, err
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)); err != nil {
+	if hash == nil || *hash == "" {
+		return models.User{}, ErrLoginUseGoogle
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(*hash), []byte(password)); err != nil {
 		return models.User{}, ErrInvalidCredentials
 	}
 
 	return user, nil
+}
+
+func (s *Service) WebGoogleLogin(ctx context.Context, credential string) (string, time.Time, error) {
+	credential = strings.TrimSpace(credential)
+	if credential == "" {
+		return "", time.Time{}, ErrInvalidInput
+	}
+	if s.googleClientID == "" {
+		return "", time.Time{}, ErrGoogleClientNotConfigured
+	}
+
+	payload, err := s.fetchGoogleTokenInfo(ctx, credential)
+	if err != nil {
+		return "", time.Time{}, ErrGoogleTokenInvalid
+	}
+
+	email := strings.TrimSpace(payload.Email)
+	sub := strings.TrimSpace(payload.Sub)
+	givenName := strings.TrimSpace(payload.GivenName)
+	familyName := strings.TrimSpace(payload.FamilyName)
+	pictureURL := strings.TrimSpace(payload.PictureURL)
+	emailVerified := payload.EmailVerified
+
+	if email == "" || sub == "" {
+		return "", time.Time{}, ErrGoogleTokenInvalid
+	}
+	if !emailVerified {
+		return "", time.Time{}, ErrGoogleEmailNotVerified
+	}
+
+	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return "", time.Time{}, err
+	}
+
+	user, err := s.authRepo.GetUserByGoogleSub(ctx, tx, sub)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		_ = tx.Rollback(ctx)
+		return "", time.Time{}, err
+	}
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		_, _, err := s.authRepo.GetUserByEmail(ctx, tx, email)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			_ = tx.Rollback(ctx)
+			return "", time.Time{}, err
+		}
+
+		if !errors.Is(err, pgx.ErrNoRows) {
+			_ = tx.Rollback(ctx)
+			return "", time.Time{}, ErrGoogleEmailHasPassword
+		}
+
+		displayName := strings.TrimSpace(strings.Join([]string{givenName, familyName}, " "))
+		brandName, err := s.uniqueBrandName(ctx, tx, displayName, email)
+		if err != nil {
+			_ = tx.Rollback(ctx)
+			return "", time.Time{}, err
+		}
+
+		user, err = s.authRepo.CreateUserWithGoogleProfile(ctx, tx, brandName, email, sub, givenName, familyName, emailVerified, pictureURL)
+		if err != nil {
+			_ = tx.Rollback(ctx)
+			return "", time.Time{}, err
+		}
+	}
+
+	sessionID, expiresAt, err := s.createSession(ctx, tx, user.ID)
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		return "", time.Time{}, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return "", time.Time{}, err
+	}
+
+	return sessionID, expiresAt, nil
+}
+
+type googleTokenInfo struct {
+	Aud           string `json:"aud"`
+	Sub           string `json:"sub"`
+	Email         string `json:"email"`
+	GivenName     string `json:"given_name"`
+	FamilyName    string `json:"family_name"`
+	PictureURL    string `json:"picture"`
+	EmailVerified bool   `json:"-"`
+}
+
+func (s *Service) fetchGoogleTokenInfo(ctx context.Context, credential string) (googleTokenInfo, error) {
+	values := url.Values{}
+	values.Set("id_token", credential)
+	endpoint := "https://oauth2.googleapis.com/tokeninfo?" + values.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return googleTokenInfo{}, err
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return googleTokenInfo{}, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return googleTokenInfo{}, ErrGoogleTokenInvalid
+	}
+
+	var raw struct {
+		Aud           string      `json:"aud"`
+		Sub           string      `json:"sub"`
+		Email         string      `json:"email"`
+		GivenName     string      `json:"given_name"`
+		FamilyName    string      `json:"family_name"`
+		PictureURL    string      `json:"picture"`
+		EmailVerified interface{} `json:"email_verified"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
+		return googleTokenInfo{}, err
+	}
+
+	if raw.Aud != s.googleClientID {
+		return googleTokenInfo{}, ErrGoogleTokenInvalid
+	}
+
+	verified := false
+	switch value := raw.EmailVerified.(type) {
+	case bool:
+		verified = value
+	case string:
+		verified = strings.EqualFold(value, "true")
+	}
+
+	return googleTokenInfo{
+		Aud:           raw.Aud,
+		Sub:           raw.Sub,
+		Email:         raw.Email,
+		GivenName:     raw.GivenName,
+		FamilyName:    raw.FamilyName,
+		PictureURL:    raw.PictureURL,
+		EmailVerified: verified,
+	}, nil
+}
+
+func (s *Service) uniqueBrandName(ctx context.Context, db database.PgExecutor, name, email string) (string, error) {
+	base := strings.TrimSpace(name)
+	if base == "" {
+		base = strings.TrimSpace(strings.Split(email, "@")[0])
+	}
+	if base == "" {
+		base = "Arkive"
+	}
+
+	candidate := base
+	for i := 0; i < 5; i++ {
+		if _, err := s.authRepo.GetUserByBrandName(ctx, db, candidate); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return candidate, nil
+			}
+			return "", err
+		}
+		candidate = fmt.Sprintf("%s-%d", base, i+2)
+	}
+
+	token, _, err := tokens.Generate()
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s-%s", base, token[:6]), nil
 }
 
 func (s *Service) createSession(ctx context.Context, db database.PgExecutor, userID string) (string, time.Time, error) {
@@ -250,4 +438,8 @@ func (s *Service) createSession(ctx context.Context, db database.PgExecutor, use
 		return "", time.Time{}, err
 	}
 	return sessionID, expiresAt, nil
+}
+
+func (s *Service) GoogleClientID() string {
+	return s.googleClientID
 }
