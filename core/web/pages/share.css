@@ -1,0 +1,159 @@
+.share-page {
+  min-height: 100vh;
+  padding: 80px 24px;
+  display: grid;
+  place-items: center;
+  position: relative;
+  background: radial-gradient(520px 240px at 10% 0%, rgba(107, 209, 230, 0.16), transparent 65%),
+    radial-gradient(520px 240px at 90% 15%, rgba(243, 180, 108, 0.16), transparent 65%),
+    var(--bg);
+}
+
+.share-card {
+  width: min(520px, 92vw);
+  background: var(--surface);
+  border-radius: 22px;
+  border: 1px solid var(--border);
+  padding: 28px;
+  display: grid;
+  gap: 20px;
+  box-shadow: var(--shadow);
+}
+
+.share-header h1 {
+  margin: 8px 0;
+  font-size: clamp(1.6rem, 2.6vw, 2.1rem);
+}
+
+.share-eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin: 0;
+}
+
+.share-subtitle {
+  margin: 0;
+  color: var(--muted);
+}
+
+.share-file-meta {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+}
+
+.share-form {
+  display: grid;
+  gap: 14px;
+}
+
+.share-submit {
+  width: 100%;
+}
+
+.share-view {
+  padding: 72px 24px;
+}
+
+.share-view-card {
+  gap: 24px;
+}
+
+.share-view.is-cinema .share-card {
+  width: min(960px, 92vw);
+}
+
+.share-view.is-cinema .share-preview {
+  min-height: 520px;
+}
+
+.share-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.share-badge {
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(107, 209, 230, 0.12);
+  border: 1px solid rgba(107, 209, 230, 0.3);
+  color: var(--text);
+  font-size: 0.85rem;
+}
+
+.share-link-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.share-link-panel .button {
+  width: 100%;
+}
+
+.share-link-hint {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.share-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.share-download {
+  width: 100%;
+}
+
+.share-preview {
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: var(--bg-soft);
+  padding: 14px;
+  display: grid;
+  place-items: center;
+  min-height: 220px;
+  text-align: center;
+  gap: 8px;
+}
+
+.share-preview img,
+.share-preview video {
+  width: 100%;
+  border-radius: 14px;
+}
+
+.share-preview video {
+  background: #000;
+}
+
+.share-preview-placeholder {
+  color: var(--muted);
+}
+
+.meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.9rem;
+}
+
+.meta-label {
+  color: var(--muted);
+}
+
+.meta-value {
+  font-weight: 600;
+  color: var(--text);
+  text-align: right;
+}

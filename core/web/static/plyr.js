@@ -41,7 +41,7 @@
     });
   }
 
-  const mediaView = document.querySelector(".media-view");
+  const mediaView = document.querySelector(".media-view, .share-view");
   const controls = player.elements && player.elements.controls ? player.elements.controls : null;
   let cinemaToggle = null;
   if (controls) {
