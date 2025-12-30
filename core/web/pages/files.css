@@ -104,6 +104,30 @@
   font-size: 0.9rem;
 }
 
+.files-share {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--muted);
+  flex-wrap: wrap;
+}
+
+.files-share-label {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.7rem;
+}
+
+.files-share-status {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.files-share-expiry {
+  color: var(--muted);
+}
+
 .files-time {
   color: var(--muted);
   font-size: 0.85rem;
@@ -164,6 +188,106 @@
   box-shadow: none;
 }
 
+.share-dialog {
+  display: grid;
+  gap: 16px;
+}
+
+.share-dialog-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 32px;
+  height: 32px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.share-dialog-close .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.share-subtitle {
+  margin: 0;
+  color: var(--muted);
+}
+
+.share-link-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.share-link-field {
+  display: grid;
+  gap: 8px;
+}
+
+.share-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.share-status-value {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.share-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.share-expiry-custom {
+  display: none;
+  margin-top: 10px;
+}
+
+.share-expiry-custom.is-visible {
+  display: block;
+}
+
+.share-password-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+}
+
+.share-password-field {
+  display: none;
+  margin-top: 10px;
+}
+
+.share-password-field.is-visible {
+  display: block;
+}
+
+.share-error {
+  display: none;
+}
+
+.share-error.is-visible {
+  display: block;
+}
+
+.share-dialog-actions {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 @media (max-width: 960px) {
   .files-panels {
     grid-template-columns: 1fr;
@@ -180,5 +304,9 @@
     width: 100%;
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .share-link-row {
+    grid-template-columns: 1fr;
   }
 }

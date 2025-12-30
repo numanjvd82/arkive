@@ -24,6 +24,13 @@
   box-shadow: none;
 }
 
+.button.danger {
+  color: var(--danger);
+  border-color: rgba(255, 92, 92, 0.4);
+  background: rgba(255, 92, 92, 0.08);
+  box-shadow: none;
+}
+
 .theme-toggle {
   text-transform: uppercase;
   letter-spacing: 0.12em;
