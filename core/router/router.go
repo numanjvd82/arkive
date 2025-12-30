@@ -29,8 +29,16 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 	r.StaticFS("/static", web.StaticFS("static"))
 	r.StaticFS("/web/pages", web.StaticFS("pages"))
 	r.GET("/", handlers.WebHome())
-	r.GET("/s/:token", handlers.PublicShareView(shareService, uploadService))
-	r.POST("/s/:token", handlers.PublicShareUnlock(shareService, uploadService))
+	r.GET("/s/:token", middleware.RateLimit(middleware.RateLimitConfig{
+		RequestsPerMinute: 30,
+		Burst:             60,
+		KeyPrefix:         "share:public:get",
+	}), handlers.PublicShareView(shareService, uploadService))
+	r.POST("/s/:token", middleware.RateLimit(middleware.RateLimitConfig{
+		RequestsPerMinute: 30,
+		Burst:             60,
+		KeyPrefix:         "share:public:post",
+	}), handlers.PublicShareUnlock(shareService, uploadService))
 	r.GET("/login", handlers.WebLoginGet(authService))
 	r.POST("/login", handlers.WebLoginPost(authService))
 	r.GET("/signup", handlers.WebSignupGet(authService))
@@ -53,28 +61,88 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 	apiUploads := api.Group("/uploads")
 	apiUploads.Use(middleware.RequireSessionJSON(authService))
 	{
-		apiUploads.POST("/start", handlers.APIUploadStart(uploadService))
-		apiUploads.POST("/:id/next", handlers.APIUploadNext(uploadService))
-		apiUploads.POST("/:id/complete", handlers.APIUploadComplete(uploadService))
-		apiUploads.POST("/:id/cancel", handlers.APIUploadCancel(uploadService))
+		apiUploads.POST("/start", middleware.RateLimit(middleware.RateLimitConfig{
+			RequestsPerMinute: 6,
+			Burst:             10,
+			KeyPrefix:         "upload:start",
+			SkipPremium:       true,
+		}), handlers.APIUploadStart(uploadService))
+		apiUploads.POST("/:id/next", middleware.RateLimit(middleware.RateLimitConfig{
+			RequestsPerMinute: 120,
+			Burst:             240,
+			KeyPrefix:         "upload:next",
+			SkipPremium:       true,
+		}), handlers.APIUploadNext(uploadService))
+		apiUploads.POST("/:id/complete", middleware.RateLimit(middleware.RateLimitConfig{
+			RequestsPerMinute: 30,
+			Burst:             60,
+			KeyPrefix:         "upload:complete",
+			SkipPremium:       true,
+		}), handlers.APIUploadComplete(uploadService))
+		apiUploads.POST("/:id/cancel", middleware.RateLimit(middleware.RateLimitConfig{
+			RequestsPerMinute: 30,
+			Burst:             60,
+			KeyPrefix:         "upload:cancel",
+			SkipPremium:       true,
+		}), handlers.APIUploadCancel(uploadService))
 	}
 
 	apiFiles := api.Group("/files")
 	apiFiles.Use(middleware.RequireSessionJSON(authService))
 	{
-		apiFiles.GET("/:id/share", handlers.APIGetShareForFile(shareService))
-		apiFiles.GET("/:id/download", handlers.APIDownloadFile(uploadService))
-		apiFiles.GET("/:id/media", handlers.APIMediaRedirect(uploadService))
-		apiFiles.DELETE("/:id", handlers.APIDeleteFile(uploadService))
-		apiFiles.POST("/:id/share", handlers.APICreateShare(shareService))
+		apiFiles.GET("/:id/share", middleware.RateLimit(middleware.RateLimitConfig{
+			RequestsPerMinute: 60,
+			Burst:             120,
+			KeyPrefix:         "share:get",
+			SkipPremium:       true,
+		}), handlers.APIGetShareForFile(shareService))
+		apiFiles.GET("/:id/download", middleware.RateLimit(middleware.RateLimitConfig{
+			RequestsPerMinute: 120,
+			Burst:             240,
+			KeyPrefix:         "file:download",
+			SkipPremium:       true,
+		}), handlers.APIDownloadFile(uploadService))
+		apiFiles.GET("/:id/media", middleware.RateLimit(middleware.RateLimitConfig{
+			RequestsPerMinute: 120,
+			Burst:             240,
+			KeyPrefix:         "file:media",
+			SkipPremium:       true,
+		}), handlers.APIMediaRedirect(uploadService))
+		apiFiles.DELETE("/:id", middleware.RateLimit(middleware.RateLimitConfig{
+			RequestsPerMinute: 30,
+			Burst:             60,
+			KeyPrefix:         "file:delete",
+			SkipPremium:       true,
+		}), handlers.APIDeleteFile(uploadService))
+		apiFiles.POST("/:id/share", middleware.RateLimit(middleware.RateLimitConfig{
+			RequestsPerMinute: 10,
+			Burst:             20,
+			KeyPrefix:         "share:create",
+			SkipPremium:       true,
+		}), handlers.APICreateShare(shareService))
 	}
 
 	apiShares := api.Group("/shares")
 	apiShares.Use(middleware.RequireSessionJSON(authService))
 	{
-		apiShares.POST("/:id/revoke", handlers.APIRevokeShare(shareService))
-		apiShares.PATCH("/:id", handlers.APIUpdateShare(shareService))
-		apiShares.DELETE("/:id", handlers.APIDeleteShare(shareService))
+		apiShares.POST("/:id/revoke", middleware.RateLimit(middleware.RateLimitConfig{
+			RequestsPerMinute: 20,
+			Burst:             40,
+			KeyPrefix:         "share:revoke",
+			SkipPremium:       true,
+		}), handlers.APIRevokeShare(shareService))
+		apiShares.PATCH("/:id", middleware.RateLimit(middleware.RateLimitConfig{
+			RequestsPerMinute: 20,
+			Burst:             40,
+			KeyPrefix:         "share:update",
+			SkipPremium:       true,
+		}), handlers.APIUpdateShare(shareService))
+		apiShares.DELETE("/:id", middleware.RateLimit(middleware.RateLimitConfig{
+			RequestsPerMinute: 20,
+			Burst:             40,
+			KeyPrefix:         "share:delete",
+			SkipPremium:       true,
+		}), handlers.APIDeleteShare(shareService))
 	}
 
 	return r
