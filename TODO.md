@@ -5,6 +5,11 @@
 - Upload lifecycle metrics/logging (start/part/complete/abort/fail counters and durations).
 - Automated tests for multipart edge cases (concurrent abort/complete, resume after partial failure, R2 transient errors).
 - Integrity checks after completion (verify size/hash matches expected, fail if mismatch).
+- Extract image metadata via `ffprobe` and store it alongside files.
+- Generate video thumbnails during processing.
+- Generate image thumbnails during processing.
+- Multi-file and folder upload UI (queue, progress per item, folder support).
+- Rate limiting for upload endpoints and background media processing.
 - Strategy for private/public view and download expiry (stable media URLs, refresh flow, tokenized CDN).
 - Alert component for inline form and page messaging.
 - Add Cloudflare analytics script to main production layout.

@@ -358,7 +358,8 @@ func (s *Service) fetchGoogleTokenInfo(ctx context.Context, credential string) (
 		return googleTokenInfo{}, err
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
 	if err != nil {
 		return googleTokenInfo{}, err
 	}
