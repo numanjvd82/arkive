@@ -10,15 +10,21 @@ import (
 )
 
 type LoginPageProps struct {
-	Ctx    PageContext
-	Errors validation.Errors
-	Email  string
+	Ctx            PageContext
+	Errors         validation.Errors
+	Email          string
+	GoogleClientID string
 }
 
 func LoginPage(props LoginPageProps) web.Page {
+	js := []string{}
+	if props.GoogleClientID != "" {
+		js = append(js, "/static/auth_google.js")
+	}
 	return web.Page{
 		Title: "Arkive · Login",
 		CSS:   []string{"/web/pages/login.css"},
+		JS:    js,
 		Body:  loginBody(props),
 	}
 }
@@ -71,6 +77,7 @@ func loginBody(props LoginPageProps) g.Node {
 							Class:   "auth-submit",
 						}),
 					),
+					googleAuthSection(props.GoogleClientID),
 				},
 			}),
 		),

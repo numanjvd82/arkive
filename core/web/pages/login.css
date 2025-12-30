@@ -24,3 +24,15 @@
 .auth-submit {
   width: 100%;
 }
+
+.auth-oauth {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.auth-oauth-button {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
