@@ -46,7 +46,7 @@ func (r *Repository) GetUserByEmail(ctx context.Context, db database.PgExecutor,
 func (r *Repository) GetUserByID(ctx context.Context, db database.PgExecutor, userID string) (models.User, error) {
 	var user models.User
 	query := `SELECT
-		id, brand_name, email, quota_bytes, used_bytes, reserved_bytes,
+		id, brand_name, email, quota_bytes, used_bytes, reserved_bytes, is_premium,
 		is_email_verified, is_banned, ban_reason, last_login_at, last_ip, created_at, updated_at
 	FROM
 		users
@@ -59,6 +59,7 @@ func (r *Repository) GetUserByID(ctx context.Context, db database.PgExecutor, us
 		&user.QuotaBytes,
 		&user.UsedBytes,
 		&user.ReservedBytes,
+		&user.IsPremium,
 		&user.IsEmailVerified,
 		&user.IsBanned,
 		&user.BanReason,
