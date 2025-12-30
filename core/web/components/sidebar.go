@@ -46,11 +46,6 @@ func DashboardSidebar() g.Node {
 					h.Href("#upload-panel"),
 					g.Text("Uploads"),
 				),
-				h.A(
-					h.Class("sidebar-link"),
-					h.Href("#storage-panel"),
-					g.Text("Storage"),
-				),
 			),
 			h.Div(
 				h.Class("sidebar-footer"),

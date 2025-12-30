@@ -925,7 +925,7 @@
       return;
     }
     if (file.size > MAX_FILE_SIZE) {
-      setStatus("File exceeds the 5GB limit.");
+    setStatus("File exceeds the maximum upload size.");
       return;
     }
     transferStats = null;

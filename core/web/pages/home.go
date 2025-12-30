@@ -66,15 +66,15 @@ func homeHero() g.Node {
 				h.Class("hero-copy"),
 				h.Span(h.Class("eyebrow"), g.Text("Share with freedom")),
 				h.H1(g.Text("Fast, secure file sharing with zero friction.")),
-				h.P(g.Text("Arkive gives you 5GB free storage with unlimited retention. Share links instantly, add passwords, and let anyone download—no account required.")),
+				h.P(g.Text("Arkive gives you unlimited storage with unlimited retention. Share links instantly, add passwords, and let anyone download—no account required.")),
 				h.Div(
 					h.Class("hero-actions"),
-					h.A(h.Class("button primary"), h.Href("/signup"), g.Text("Claim free space")),
+					h.A(h.Class("button primary"), h.Href("/signup"), g.Text("Start sharing")),
 					h.A(h.Class("button secondary"), h.Href("#features"), g.Text("See features")),
 				),
 				h.Div(
 					h.Class("hero-stats"),
-					statItem("5GB", "free storage"),
+					statItem("Unlimited", "storage"),
 					statItem("0", "expiry limits"),
 					statItem("No login", "for shared links"),
 				),
@@ -155,7 +155,7 @@ func homeSharing() g.Node {
 					h.Class("panel-card"),
 					h.P(h.Class("card-title"), g.Text("Preview")),
 					h.H3(g.Text("Campaign assets.zip")),
-					h.P(g.Text("1.2 GB · Ready to download")),
+					h.P(g.Text("Ready to download")),
 					h.Div(
 						h.Class("panel-tags"),
 						h.Span(h.Class("tag"), g.Text("Password on")),
@@ -210,7 +210,7 @@ func homeRoadmap() g.Node {
 				h.Class("roadmap-grid"),
 				roadmapCard("Affiliate program", "Earn well for every creator you bring."),
 				roadmapCard("Mobile apps", "Android and iOS apps with instant sharing."),
-				roadmapCard("Premium membership", "More storage, advanced controls, and priority support."),
+				roadmapCard("Premium membership", "Advanced controls and priority support."),
 				roadmapCard("Open source", "Public repo and community contributions."),
 			),
 		),
@@ -227,7 +227,7 @@ func homeCTA() g.Node {
 				h.Div(
 					h.Class("cta-copy"),
 					h.Span(h.Class("eyebrow"), g.Text("Start free")),
-					h.H2(g.Text("5GB free today. Share instantly.")),
+					h.H2(g.Text("Unlimited storage today. Share instantly.")),
 					h.P(g.Text("Create your account and start sharing instantly. No limits on retention, no friction for recipients.")),
 				),
 				h.Div(
