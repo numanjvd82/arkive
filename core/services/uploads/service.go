@@ -42,20 +42,22 @@ const (
 )
 
 type Service struct {
-	db             database.PgPool
-	storageRepo    *storagerepo.Repository
-	fileRepo       *filerepo.Repository
-	uploadRepo     *uploadrepo.Repository
-	r2             *r2.Client
-	bucket         string
-	uploadExpires  time.Duration
-	downloadExpire time.Duration
+	db                  database.PgPool
+	storageRepo         *storagerepo.Repository
+	fileRepo            *filerepo.Repository
+	uploadRepo          *uploadrepo.Repository
+	r2                  *r2.Client
+	bucket              string
+	uploadExpires       time.Duration
+	downloadExpire      time.Duration
+	shareDownloadExpire time.Duration
 }
 
 type Config struct {
-	Bucket         string
-	UploadExpires  time.Duration
-	DownloadExpire time.Duration
+	Bucket              string
+	UploadExpires       time.Duration
+	DownloadExpire      time.Duration
+	ShareDownloadExpire time.Duration
 }
 
 func NewService(
@@ -67,14 +69,15 @@ func NewService(
 	cfg Config,
 ) *Service {
 	return &Service{
-		db:             db,
-		storageRepo:    storageRepo,
-		fileRepo:       fileRepo,
-		uploadRepo:     uploadRepo,
-		r2:             r2Client,
-		bucket:         cfg.Bucket,
-		uploadExpires:  cfg.UploadExpires,
-		downloadExpire: cfg.DownloadExpire,
+		db:                  db,
+		storageRepo:         storageRepo,
+		fileRepo:            fileRepo,
+		uploadRepo:          uploadRepo,
+		r2:                  r2Client,
+		bucket:              cfg.Bucket,
+		uploadExpires:       cfg.UploadExpires,
+		downloadExpire:      cfg.DownloadExpire,
+		shareDownloadExpire: cfg.ShareDownloadExpire,
 	}
 }
 

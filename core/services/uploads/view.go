@@ -111,7 +111,11 @@ func (s *Service) PresignShareViewForFile(ctx context.Context, file models.File)
 }
 
 func (s *Service) PresignShareDownloadForFile(ctx context.Context, file models.File) (string, error) {
-	return s.r2.PresignDownload(ctx, file.ObjectKey, file.Filename, "attachment", s.downloadExpire)
+	expiry := s.shareDownloadExpire
+	if expiry <= 0 {
+		expiry = s.downloadExpire
+	}
+	return s.r2.PresignDownload(ctx, file.ObjectKey, file.Filename, "attachment", expiry)
 }
 
 func isViewableContentType(contentType string) bool {

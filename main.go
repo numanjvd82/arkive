@@ -57,9 +57,10 @@ func main() {
 	}
 
 	uploadService := uploads.NewService(db, storagerepo.New(), filerepo.New(), uploadrepo.New(), r2Client, uploads.Config{
-		Bucket:         cfg.R2Bucket,
-		UploadExpires:  15 * time.Minute,
-		DownloadExpire: 3 * time.Hour,
+		Bucket:              cfg.R2Bucket,
+		UploadExpires:       15 * time.Minute,
+		DownloadExpire:      3 * time.Hour,
+		ShareDownloadExpire: 30 * time.Minute,
 	})
 
 	if strings.EqualFold(cfg.Env, "dev") {
