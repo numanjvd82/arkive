@@ -49,6 +49,71 @@ func (s *Service) PresignView(ctx context.Context, userID, fileID string) (strin
 	return s.r2.PresignDownload(ctx, file.ObjectKey, file.Filename, "inline", s.downloadExpire)
 }
 
+func (s *Service) GetFileForShare(ctx context.Context, fileID string) (models.File, error) {
+	fileID = strings.TrimSpace(fileID)
+	if fileID == "" {
+		return models.File{}, ErrInvalidInput
+	}
+
+	file, err := s.fileRepo.GetFileByID(ctx, s.db, fileID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.File{}, ErrNotFound
+		}
+		return models.File{}, err
+	}
+
+	if file.Status != FileStatusComplete {
+		if file.Status == FileStatusFailed || file.Status == FileStatusAborted {
+			return models.File{}, ErrUploadCancelled
+		}
+		return models.File{}, ErrNotFound
+	}
+
+	return file, nil
+}
+
+func (s *Service) PresignShare(ctx context.Context, fileID string) (string, error) {
+	file, err := s.GetFileForShare(ctx, fileID)
+	if err != nil {
+		return "", err
+	}
+
+	disposition := "attachment"
+	if isViewableContentType(file.ContentType) {
+		disposition = "inline"
+	}
+
+	return s.r2.PresignDownload(ctx, file.ObjectKey, file.Filename, disposition, s.downloadExpire)
+}
+
+func (s *Service) PresignShareView(ctx context.Context, fileID string) (string, error) {
+	file, err := s.GetFileForShare(ctx, fileID)
+	if err != nil {
+		return "", err
+	}
+	return s.PresignShareViewForFile(ctx, file)
+}
+
+func (s *Service) PresignShareDownload(ctx context.Context, fileID string) (string, error) {
+	file, err := s.GetFileForShare(ctx, fileID)
+	if err != nil {
+		return "", err
+	}
+	return s.PresignShareDownloadForFile(ctx, file)
+}
+
+func (s *Service) PresignShareViewForFile(ctx context.Context, file models.File) (string, error) {
+	if !isViewableContentType(file.ContentType) {
+		return "", ErrInvalidInput
+	}
+	return s.r2.PresignDownload(ctx, file.ObjectKey, file.Filename, "inline", s.downloadExpire)
+}
+
+func (s *Service) PresignShareDownloadForFile(ctx context.Context, file models.File) (string, error) {
+	return s.r2.PresignDownload(ctx, file.ObjectKey, file.Filename, "attachment", s.downloadExpire)
+}
+
 func isViewableContentType(contentType string) bool {
 	contentType = strings.TrimSpace(strings.ToLower(contentType))
 	return strings.HasPrefix(contentType, "image/") || strings.HasPrefix(contentType, "video/")
