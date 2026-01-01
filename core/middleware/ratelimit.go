@@ -17,6 +17,8 @@ import (
 type RateLimitConfig struct {
 	RequestsPerMinute int
 	Burst             int
+	PremiumRPM        int
+	PremiumBurst      int
 	KeyPrefix         string
 	SkipPremium       bool
 }
@@ -130,19 +132,25 @@ func RateLimit(cfg RateLimitConfig) gin.HandlerFunc {
 		}
 
 		key := buildRateLimitKey(c, cfg.KeyPrefix, user.ID, ok)
-		ratePerSec := float64(cfg.RequestsPerMinute) / 60
-		burst := float64(cfg.Burst)
-		if burst <= 0 {
-			burst = float64(cfg.RequestsPerMinute)
+		requestsPerMinute := cfg.RequestsPerMinute
+		burst := cfg.Burst
+		if ok && user.IsPremium && cfg.PremiumRPM > 0 {
+			requestsPerMinute = cfg.PremiumRPM
+			burst = cfg.PremiumBurst
+		}
+		ratePerSec := float64(requestsPerMinute) / 60
+		burstPerSec := float64(burst)
+		if burstPerSec <= 0 {
+			burstPerSec = float64(requestsPerMinute)
 		}
 		store := ipRateLimiter
 		if ok && strings.TrimSpace(user.ID) != "" {
 			store = userRateLimiter
 		}
-		if !store.allow(key, ratePerSec, burst) {
+		if !store.allow(key, ratePerSec, burstPerSec) {
 			retryAfter := 60
-			if cfg.RequestsPerMinute > 0 {
-				retryAfter = int(math.Ceil(60.0 / float64(cfg.RequestsPerMinute)))
+			if requestsPerMinute > 0 {
+				retryAfter = int(math.Ceil(60.0 / float64(requestsPerMinute)))
 				if retryAfter < 1 {
 					retryAfter = 1
 				}

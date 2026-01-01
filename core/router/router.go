@@ -62,28 +62,28 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 	apiUploads.Use(middleware.RequireSessionJSON(authService))
 	{
 		apiUploads.POST("/start", middleware.RateLimit(middleware.RateLimitConfig{
-			RequestsPerMinute: 1,
-			Burst:             1,
+			RequestsPerMinute: 6,
+			Burst:             10,
+			PremiumRPM:        30,
+			PremiumBurst:      60,
 			KeyPrefix:         "upload:start",
-			SkipPremium:       true,
 		}), handlers.APIUploadStart(uploadService))
 		apiUploads.POST("/:id/next", middleware.RateLimit(middleware.RateLimitConfig{
-			RequestsPerMinute: 2,
-			Burst:             2,
+			RequestsPerMinute: 120,
+			Burst:             240,
+			PremiumRPM:        600,
+			PremiumBurst:      1200,
 			KeyPrefix:         "upload:next",
-			SkipPremium:       true,
 		}), handlers.APIUploadNext(uploadService))
 		apiUploads.POST("/:id/complete", middleware.RateLimit(middleware.RateLimitConfig{
-			RequestsPerMinute: 2,
-			Burst:             2,
+			RequestsPerMinute: 10,
+			Burst:             20,
 			KeyPrefix:         "upload:complete",
-			SkipPremium:       true,
 		}), handlers.APIUploadComplete(uploadService))
 		apiUploads.POST("/:id/cancel", middleware.RateLimit(middleware.RateLimitConfig{
-			RequestsPerMinute: 2,
-			Burst:             2,
+			RequestsPerMinute: 10,
+			Burst:             20,
 			KeyPrefix:         "upload:cancel",
-			SkipPremium:       true,
 		}), handlers.APIUploadCancel(uploadService))
 	}
 
@@ -91,34 +91,33 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 	apiFiles.Use(middleware.RequireSessionJSON(authService))
 	{
 		apiFiles.GET("/:id/share", middleware.RateLimit(middleware.RateLimitConfig{
-			RequestsPerMinute: 2,
-			Burst:             2,
+			RequestsPerMinute: 60,
+			Burst:             120,
 			KeyPrefix:         "share:get",
-			SkipPremium:       true,
 		}), handlers.APIGetShareForFile(shareService))
 		apiFiles.GET("/:id/download", middleware.RateLimit(middleware.RateLimitConfig{
-			RequestsPerMinute: 2,
-			Burst:             2,
+			RequestsPerMinute: 120,
+			Burst:             240,
+			PremiumRPM:        600,
+			PremiumBurst:      1200,
 			KeyPrefix:         "file:download",
-			SkipPremium:       true,
 		}), handlers.APIDownloadFile(uploadService))
 		apiFiles.GET("/:id/media", middleware.RateLimit(middleware.RateLimitConfig{
-			RequestsPerMinute: 2,
-			Burst:             2,
+			RequestsPerMinute: 120,
+			Burst:             240,
+			PremiumRPM:        600,
+			PremiumBurst:      1200,
 			KeyPrefix:         "file:media",
-			SkipPremium:       true,
 		}), handlers.APIMediaRedirect(uploadService))
 		apiFiles.DELETE("/:id", middleware.RateLimit(middleware.RateLimitConfig{
-			RequestsPerMinute: 1,
-			Burst:             1,
+			RequestsPerMinute: 30,
+			Burst:             60,
 			KeyPrefix:         "file:delete",
-			SkipPremium:       true,
 		}), handlers.APIDeleteFile(uploadService))
 		apiFiles.POST("/:id/share", middleware.RateLimit(middleware.RateLimitConfig{
-			RequestsPerMinute: 1,
-			Burst:             1,
+			RequestsPerMinute: 10,
+			Burst:             20,
 			KeyPrefix:         "share:create",
-			SkipPremium:       true,
 		}), handlers.APICreateShare(shareService))
 	}
 
@@ -126,22 +125,19 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 	apiShares.Use(middleware.RequireSessionJSON(authService))
 	{
 		apiShares.POST("/:id/revoke", middleware.RateLimit(middleware.RateLimitConfig{
-			RequestsPerMinute: 1,
-			Burst:             1,
+			RequestsPerMinute: 20,
+			Burst:             40,
 			KeyPrefix:         "share:revoke",
-			SkipPremium:       true,
 		}), handlers.APIRevokeShare(shareService))
 		apiShares.PATCH("/:id", middleware.RateLimit(middleware.RateLimitConfig{
-			RequestsPerMinute: 1,
-			Burst:             1,
+			RequestsPerMinute: 20,
+			Burst:             40,
 			KeyPrefix:         "share:update",
-			SkipPremium:       true,
 		}), handlers.APIUpdateShare(shareService))
 		apiShares.DELETE("/:id", middleware.RateLimit(middleware.RateLimitConfig{
-			RequestsPerMinute: 1,
-			Burst:             1,
+			RequestsPerMinute: 20,
+			Burst:             40,
 			KeyPrefix:         "share:delete",
-			SkipPremium:       true,
 		}), handlers.APIDeleteShare(shareService))
 	}
 
