@@ -120,6 +120,9 @@ window.Toast = {
     showToast(message, Object.assign({}, options, { type: "success" }));
   },
   error(message, options) {
+    if (window.RateLimit && window.RateLimit.isActive && window.RateLimit.isActive() && !(options && options.allowRateLimit)) {
+      return;
+    }
     showToast(message, Object.assign({}, options, { type: "error" }));
   },
   warning(message, options) {

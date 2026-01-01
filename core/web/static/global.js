@@ -80,3 +80,49 @@
     });
   });
 })();
+
+(function() {
+  if (!window.fetch) {
+    return;
+  }
+  var originalFetch = window.fetch;
+  var lastToastAt = 0;
+  var rateLimitState = window.RateLimit || {};
+  rateLimitState.until = rateLimitState.until || 0;
+  rateLimitState.isActive = function() {
+    return Date.now() < rateLimitState.until;
+  };
+  rateLimitState.setLimited = function(seconds) {
+    var waitSeconds = typeof seconds === "number" && seconds > 0 ? seconds : 60;
+    var now = Date.now();
+    rateLimitState.until = Math.max(rateLimitState.until, now + waitSeconds * 1000);
+  };
+  window.RateLimit = rateLimitState;
+
+  window.fetch = async function() {
+    const res = await originalFetch.apply(this, arguments);
+    if (!res || res.status !== 429) {
+      return res;
+    }
+    var retryHeader = res.headers ? res.headers.get("Retry-After") : null;
+    var limitedHeader = res.headers ? res.headers.get("X-Rate-Limited") : null;
+    if (!retryHeader && !limitedHeader) {
+      return res;
+    }
+    var retrySeconds = retryHeader ? parseInt(retryHeader, 10) : NaN;
+    if (!isFinite(retrySeconds) || retrySeconds <= 0) {
+      retrySeconds = 60;
+    }
+    rateLimitState.setLimited(retrySeconds);
+    var now = Date.now();
+    if (window.Toast && now - lastToastAt > 30000) {
+      window.Toast.warning("Too many requests. Try again in a minute.", { title: "Slow down" });
+      lastToastAt = now;
+    }
+    var err = new Error("Rate limited");
+    err.status = 429;
+    err.rateLimited = true;
+    err.retryAfter = retrySeconds;
+    throw err;
+  };
+})();

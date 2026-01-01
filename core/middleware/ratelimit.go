@@ -1,7 +1,9 @@
 package middleware
 
 import (
+	"math"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -138,6 +140,15 @@ func RateLimit(cfg RateLimitConfig) gin.HandlerFunc {
 			store = userRateLimiter
 		}
 		if !store.allow(key, ratePerSec, burst) {
+			retryAfter := 60
+			if cfg.RequestsPerMinute > 0 {
+				retryAfter = int(math.Ceil(60.0 / float64(cfg.RequestsPerMinute)))
+				if retryAfter < 1 {
+					retryAfter = 1
+				}
+			}
+			c.Header("Retry-After", strconv.Itoa(retryAfter))
+			c.Header("X-Rate-Limited", "true")
 			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{"error": "try again shortly"})
 			return
 		}
