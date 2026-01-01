@@ -97,7 +97,7 @@ func FilesPage(props FilesPageProps) web.Page {
 								Decorative: true,
 							}),
 						),
-						h.P(h.Class("share-subtitle"), g.Text("Create a shareable link in one click. Update settings anytime.")),
+						h.P(h.Class("share-subtitle"), g.Text("Link is generated instantly. Changes save automatically.")),
 						h.Div(
 							h.Class("share-link-row"),
 							h.Div(
@@ -125,8 +125,12 @@ func FilesPage(props FilesPageProps) web.Page {
 						),
 						h.Div(
 							h.Class("share-status"),
-							h.Span(h.Class("share-status-label"), g.Text("Status")),
-							h.Span(h.Class("share-status-value"), g.Attr("id", "share-status"), g.Text("Preparing")),
+							h.Div(
+								h.Class("share-status-main"),
+								h.Span(h.Class("share-status-label"), g.Text("Status")),
+								h.Span(h.Class("share-status-value"), g.Attr("id", "share-status"), g.Text("Preparing")),
+							),
+							h.Span(h.Class("share-save-state"), g.Attr("id", "share-save-state"), g.Text("")),
 						),
 						h.Div(
 							h.Class("share-options"),
@@ -216,13 +220,7 @@ func FilesPage(props FilesPageProps) web.Page {
 					Actions: h.Div(
 						h.Class("dialog-actions share-dialog-actions"),
 						h.Button(
-							h.Class("button primary"),
-							h.Type("button"),
-							g.Attr("id", "share-confirm-button"),
-							g.Text("Confirm"),
-						),
-						h.Button(
-							h.Class("button danger"),
+							h.Class("button secondary"),
 							h.Type("button"),
 							g.Attr("id", "share-reset-button"),
 							g.Text("Reset link"),
@@ -231,13 +229,13 @@ func FilesPage(props FilesPageProps) web.Page {
 							h.Class("button danger"),
 							h.Type("button"),
 							g.Attr("id", "share-revoke-button"),
-							g.Text("Revoke"),
+							g.Text("Revoke access"),
 						),
 						h.Button(
 							h.Class("button danger"),
 							h.Type("button"),
 							g.Attr("id", "share-delete-button"),
-							g.Text("Delete"),
+							g.Text("Delete link"),
 						),
 					),
 				}),
@@ -261,12 +259,6 @@ func renderCompletedList(files []models.File) g.Node {
 				h.Class("files-meta"),
 				h.Span(h.Class("files-name"), g.Text(file.Filename)),
 				h.Span(h.Class("files-sub"), g.Text(fmt.Sprintf("%s • Completed", format.Bytes(file.SizeBytes)))),
-				h.Div(
-					h.Class("files-share"),
-					h.Span(h.Class("files-share-label"), g.Text("Share")),
-					h.Span(h.Class("files-share-status"), g.Attr("data-file-share-status", file.ID), g.Text("Not shared")),
-					h.Span(h.Class("files-share-expiry"), g.Attr("data-file-share-expiry", file.ID), g.Text("")),
-				),
 			),
 			h.Div(
 				h.Class("files-actions"),

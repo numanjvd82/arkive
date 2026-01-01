@@ -119,15 +119,6 @@
   font-size: 0.7rem;
 }
 
-.files-share-status {
-  font-weight: 600;
-  color: var(--text);
-}
-
-.files-share-expiry {
-  color: var(--muted);
-}
-
 .files-time {
   color: var(--muted);
   font-size: 0.85rem;
@@ -234,14 +225,46 @@
 .share-status {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
   font-size: 0.9rem;
   color: var(--muted);
+}
+
+.share-status-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .share-status-value {
   font-weight: 600;
   color: var(--text);
+}
+
+.share-save-state {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-strong);
+  color: var(--muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+}
+
+.share-save-state.is-empty {
+  display: none;
+}
+
+.share-save-state.is-saving {
+  color: var(--accent-cool);
+  border-color: rgba(107, 209, 230, 0.4);
+}
+
+.share-save-state.is-error {
+  color: var(--danger);
+  border-color: rgba(255, 92, 92, 0.4);
 }
 
 .share-options {
