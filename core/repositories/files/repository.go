@@ -2,6 +2,7 @@ package filerepo
 
 import (
 	"context"
+	"time"
 
 	"arkive/core/database"
 	"arkive/core/models"
@@ -16,13 +17,13 @@ func New() *Repository {
 func (r *Repository) CreateFile(ctx context.Context, db database.PgExecutor, file models.File) (models.File, error) {
 	var created models.File
 	query := `INSERT INTO files
-		(user_id, bucket, object_key, filename, content_type, size_bytes, status)
+		(user_id, bucket, object_key, filename, content_type, size_bytes, status, expires_at)
 	VALUES
-		($1, $2, $3, $4, $5, $6, $7)
+		($1, $2, $3, $4, $5, $6, $7, $8)
 	RETURNING
 		id, user_id, bucket, object_key, filename, content_type, size_bytes,
 		video_width, video_height, video_duration_seconds,
-		status, created_at, updated_at`
+		status, created_at, updated_at, expires_at`
 	if err := db.QueryRow(ctx, query,
 		file.UserID,
 		file.Bucket,
@@ -31,6 +32,7 @@ func (r *Repository) CreateFile(ctx context.Context, db database.PgExecutor, fil
 		file.ContentType,
 		file.SizeBytes,
 		file.Status,
+		file.ExpiresAt,
 	).Scan(
 		&created.ID,
 		&created.UserID,
@@ -45,6 +47,7 @@ func (r *Repository) CreateFile(ctx context.Context, db database.PgExecutor, fil
 		&created.Status,
 		&created.CreatedAt,
 		&created.UpdatedAt,
+		&created.ExpiresAt,
 	); err != nil {
 		return models.File{}, err
 	}
@@ -87,6 +90,39 @@ func (r *Repository) UpdateFileSize(ctx context.Context, db database.PgExecutor,
 	return err
 }
 
+func (r *Repository) UpdateFileContentType(ctx context.Context, db database.PgExecutor, fileID, contentType string) error {
+	query := `UPDATE
+		files
+	SET
+		content_type = $2, updated_at = now()
+	WHERE
+		id = $1`
+	_, err := db.Exec(ctx, query, fileID, contentType)
+	return err
+}
+
+func (r *Repository) UpdateFileExpiry(ctx context.Context, db database.PgExecutor, fileID string, expiresAt time.Time) error {
+	query := `UPDATE
+		files
+	SET
+		expires_at = $2, updated_at = now()
+	WHERE
+		id = $1`
+	_, err := db.Exec(ctx, query, fileID, expiresAt)
+	return err
+}
+
+func (r *Repository) ClearFileExpiry(ctx context.Context, db database.PgExecutor, fileID string) error {
+	query := `UPDATE
+		files
+	SET
+		expires_at = NULL, updated_at = now()
+	WHERE
+		id = $1`
+	_, err := db.Exec(ctx, query, fileID)
+	return err
+}
+
 func (r *Repository) UpdateVideoMetadata(ctx context.Context, db database.PgExecutor, fileID string, width, height int, durationSeconds int64) error {
 	query := `UPDATE
 		files
@@ -106,7 +142,7 @@ func (r *Repository) GetFileByID(ctx context.Context, db database.PgExecutor, fi
 	query := `SELECT
 		id, user_id, bucket, object_key, filename, content_type, size_bytes,
 		video_width, video_height, video_duration_seconds,
-		status, created_at, updated_at
+		status, created_at, updated_at, expires_at
 	FROM
 		files
 	WHERE
@@ -125,6 +161,7 @@ func (r *Repository) GetFileByID(ctx context.Context, db database.PgExecutor, fi
 		&file.Status,
 		&file.CreatedAt,
 		&file.UpdatedAt,
+		&file.ExpiresAt,
 	); err != nil {
 		return models.File{}, err
 	}
@@ -136,7 +173,7 @@ func (r *Repository) GetFileForUser(ctx context.Context, db database.PgExecutor,
 	query := `SELECT
 		id, user_id, bucket, object_key, filename, content_type, size_bytes,
 		video_width, video_height, video_duration_seconds,
-		status, created_at, updated_at
+		status, created_at, updated_at, expires_at
 	FROM
 		files
 	WHERE
@@ -155,6 +192,7 @@ func (r *Repository) GetFileForUser(ctx context.Context, db database.PgExecutor,
 		&file.Status,
 		&file.CreatedAt,
 		&file.UpdatedAt,
+		&file.ExpiresAt,
 	); err != nil {
 		return models.File{}, err
 	}
@@ -165,7 +203,7 @@ func (r *Repository) ListPendingForUser(ctx context.Context, db database.PgExecu
 	query := `SELECT
 		id, user_id, bucket, object_key, filename, content_type, size_bytes,
 		video_width, video_height, video_duration_seconds,
-		status, created_at, updated_at
+		status, created_at, updated_at, expires_at
 	FROM
 		files
 	WHERE
@@ -195,6 +233,7 @@ func (r *Repository) ListPendingForUser(ctx context.Context, db database.PgExecu
 			&file.Status,
 			&file.CreatedAt,
 			&file.UpdatedAt,
+			&file.ExpiresAt,
 		); err != nil {
 			return nil, err
 		}
@@ -210,7 +249,7 @@ func (r *Repository) ListCompletedForUser(ctx context.Context, db database.PgExe
 	query := `SELECT
 		id, user_id, bucket, object_key, filename, content_type, size_bytes,
 		video_width, video_height, video_duration_seconds,
-		status, created_at, updated_at
+		status, created_at, updated_at, expires_at
 	FROM
 		files
 	WHERE
@@ -240,6 +279,7 @@ func (r *Repository) ListCompletedForUser(ctx context.Context, db database.PgExe
 			&file.Status,
 			&file.CreatedAt,
 			&file.UpdatedAt,
+			&file.ExpiresAt,
 		); err != nil {
 			return nil, err
 		}
@@ -261,4 +301,52 @@ func (r *Repository) DeleteFileForUser(ctx context.Context, db database.PgExecut
 		return false, err
 	}
 	return tag.RowsAffected() > 0, nil
+}
+
+func (r *Repository) ListExpiredUploads(ctx context.Context, db database.PgExecutor, cutoff time.Time) ([]models.File, error) {
+	query := `SELECT
+		id, user_id, bucket, object_key, filename, content_type, size_bytes,
+		video_width, video_height, video_duration_seconds,
+		status, created_at, updated_at, expires_at
+	FROM
+		files
+	WHERE
+		status IN ('pending', 'uploading')
+		AND expires_at IS NOT NULL
+		AND expires_at <= $1
+	ORDER BY
+		expires_at ASC`
+	rows, err := db.Query(ctx, query, cutoff)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var files []models.File
+	for rows.Next() {
+		var file models.File
+		if err := rows.Scan(
+			&file.ID,
+			&file.UserID,
+			&file.Bucket,
+			&file.ObjectKey,
+			&file.Filename,
+			&file.ContentType,
+			&file.SizeBytes,
+			&file.VideoWidth,
+			&file.VideoHeight,
+			&file.VideoDurationSeconds,
+			&file.Status,
+			&file.CreatedAt,
+			&file.UpdatedAt,
+			&file.ExpiresAt,
+		); err != nil {
+			return nil, err
+		}
+		files = append(files, file)
+	}
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+	return files, nil
 }

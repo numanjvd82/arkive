@@ -12,8 +12,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 
-	"arkive/pkg/safeptr"
 	"arkive/pkg/header"
+	"arkive/pkg/safeptr"
 )
 
 type Config struct {
@@ -245,6 +245,22 @@ func (c *Client) HeadObjectSize(ctx context.Context, key string) (int64, error) 
 	}
 
 	return safeptr.Int64(out.ContentLength), nil
+}
+
+func (c *Client) HeadObjectDetails(ctx context.Context, key string) (int64, string, error) {
+	if key == "" {
+		return 0, "", errors.New("key is required")
+	}
+
+	out, err := c.s3.HeadObject(ctx, &s3.HeadObjectInput{
+		Bucket: aws.String(c.bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return 0, "", err
+	}
+
+	return safeptr.Int64(out.ContentLength), safeptr.String(out.ContentType), nil
 }
 
 func (c *Client) DeleteObject(ctx context.Context, key string) error {

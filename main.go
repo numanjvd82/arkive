@@ -14,6 +14,7 @@ import (
 	"arkive/core/router"
 	"arkive/core/services/uploads"
 	"arkive/migrations"
+	"arkive/pkg/jobs"
 	"arkive/pkg/storage/r2"
 
 	"github.com/gin-gonic/gin"
@@ -62,6 +63,12 @@ func main() {
 		DownloadExpire:      3 * time.Hour,
 		ShareDownloadExpire: 30 * time.Minute,
 	})
+
+	cleanupCron, err := jobs.StartUploadCleanup(uploadService)
+	if err != nil {
+		log.Fatalf("cleanup cron failed: %v", err)
+	}
+	defer cleanupCron.Stop()
 
 	if strings.EqualFold(cfg.Env, "dev") {
 		gin.SetMode(gin.DebugMode)
