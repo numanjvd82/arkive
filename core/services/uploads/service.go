@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"net/http"
 	"sort"
 	"strings"
 	"time"
@@ -111,22 +110,6 @@ func validateStartInput(userID, filename string, sizeBytes int64, requiresMultip
 
 func isExpired(expiresAt time.Time) bool {
 	return !expiresAt.IsZero() && time.Now().After(expiresAt)
-}
-
-func normalizeDetectedContentType(contentType string) string {
-	contentType = strings.ToLower(strings.TrimSpace(contentType))
-	if contentType == "application/octet-stream" || contentType == "" {
-		return ""
-	}
-	return contentType
-}
-
-func detectObjectContentType(ctx context.Context, client *r2.Client, key string) (string, error) {
-	data, err := client.ReadObjectRange(ctx, key, 0, 511)
-	if err != nil {
-		return "", err
-	}
-	return normalizeDetectedContentType(http.DetectContentType(data)), nil
 }
 
 func (s *Service) beginUploadTx(ctx context.Context, userID, objectKey, filename, contentType string, sizeBytes int64) (pgx.Tx, models.File, validation.Errors, error) {
@@ -266,7 +249,11 @@ func buildCompletedFromList(listed []types.Part, totalParts int) ([]types.Comple
 }
 
 func (s *Service) StartMultipart(ctx context.Context, userID, filename string, sizeBytes int64, contentType string) (models.MultipartStartResponse, validation.Errors, error) {
-	userID = strings.TrimSpace(userID)
+	var err error
+	userID, err = validateUserID(userID)
+	if err != nil {
+		return models.MultipartStartResponse{}, nil, err
+	}
 	filename = strings.TrimSpace(filename)
 	contentType = strings.TrimSpace(contentType)
 	validationErrors, err := validateStartInput(userID, filename, sizeBytes, true)
@@ -353,7 +340,11 @@ func (s *Service) StartUpload(ctx context.Context, userID, filename string, size
 }
 
 func (s *Service) StartSingleUpload(ctx context.Context, userID, filename string, sizeBytes int64, contentType string) (models.SingleStartResponse, validation.Errors, error) {
-	userID = strings.TrimSpace(userID)
+	var err error
+	userID, err = validateUserID(userID)
+	if err != nil {
+		return models.SingleStartResponse{}, nil, err
+	}
 	filename = strings.TrimSpace(filename)
 	contentType = strings.TrimSpace(contentType)
 	validationErrors, err := validateStartInput(userID, filename, sizeBytes, false)
@@ -389,54 +380,31 @@ func (s *Service) StartSingleUpload(ctx context.Context, userID, filename string
 }
 
 func (s *Service) NextUpload(ctx context.Context, userID, uploadID string, uploadedParts []int32) (models.UploadNextResponse, error) {
-	userID = strings.TrimSpace(userID)
-	uploadID = strings.TrimSpace(uploadID)
-	if userID == "" {
-		return models.UploadNextResponse{}, ErrUnauthorized
+	var err error
+	userID, err = validateUserID(userID)
+	if err != nil {
+		return models.UploadNextResponse{}, err
 	}
-	if uploadID == "" {
-		return models.UploadNextResponse{}, ErrInvalidInput
-	}
-
-	upload, err := s.uploadRepo.GetMultipartForUser(ctx, s.db, uploadID, userID)
-	if err == nil {
-		file, fileErr := s.fileRepo.GetFileForUser(ctx, s.db, upload.FileID, userID)
-		if fileErr != nil {
-			if errors.Is(fileErr, pgx.ErrNoRows) {
-				return models.UploadNextResponse{}, ErrNotFound
-			}
-			return models.UploadNextResponse{}, fileErr
-		}
-		if isExpired(upload.ExpiresAt) || isExpired(file.ExpiresAt) {
-			_ = s.AbortMultipart(ctx, userID, upload.ID)
-			return models.UploadNextResponse{}, ErrUploadCancelled
-		}
-		return s.nextMultipart(ctx, upload, uploadedParts)
-	}
-	if !errors.Is(err, pgx.ErrNoRows) {
+	uploadID, err = validateUploadID(uploadID)
+	if err != nil {
 		return models.UploadNextResponse{}, err
 	}
 
-	upload, err = s.uploadRepo.GetMultipartForFile(ctx, s.db, uploadID, userID)
-	if err == nil {
-		file, fileErr := s.fileRepo.GetFileForUser(ctx, s.db, upload.FileID, userID)
-		if fileErr != nil {
-			if errors.Is(fileErr, pgx.ErrNoRows) {
-				return models.UploadNextResponse{}, ErrNotFound
-			}
-			return models.UploadNextResponse{}, fileErr
+	upload, file, found, err := s.loadMultipartForUserOrFile(ctx, userID, uploadID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.UploadNextResponse{}, ErrNotFound
 		}
-		if isExpired(upload.ExpiresAt) || isExpired(file.ExpiresAt) {
-			_ = s.AbortMultipart(ctx, userID, upload.ID)
-			return models.UploadNextResponse{}, ErrUploadCancelled
+		return models.UploadNextResponse{}, err
+	}
+	if found {
+		if err := s.ensureNotExpired(ctx, userID, file, &upload); err != nil {
+			return models.UploadNextResponse{}, err
 		}
 		return s.nextMultipart(ctx, upload, uploadedParts)
 	}
-	if !errors.Is(err, pgx.ErrNoRows) {
-		return models.UploadNextResponse{}, err
-	}
 
-	file, err := s.fileRepo.GetFileForUser(ctx, s.db, uploadID, userID)
+	file, err = s.fileRepo.GetFileForUser(ctx, s.db, uploadID, userID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return models.UploadNextResponse{}, ErrNotFound
@@ -449,16 +417,15 @@ func (s *Service) NextUpload(ctx context.Context, userID, uploadID string, uploa
 	if file.Status == FileStatusAborted || file.Status == FileStatusFailed {
 		return models.UploadNextResponse{}, ErrUploadCancelled
 	}
-	if isExpired(file.ExpiresAt) {
-		_ = s.AbortSingleUpload(ctx, userID, file.ID)
-		return models.UploadNextResponse{}, ErrUploadCancelled
+	if err := s.ensureNotExpired(ctx, userID, file, nil); err != nil {
+		return models.UploadNextResponse{}, err
 	}
 
 	uploadURL, err := s.r2.PresignUpload(ctx, file.ObjectKey, file.ContentType, s.uploadExpires)
 	if err != nil {
 		return models.UploadNextResponse{}, err
 	}
-	if err := s.fileRepo.UpdateFileExpiry(ctx, s.db, file.ID, time.Now().Add(s.uploadExpires)); err != nil {
+	if err := s.refreshExpiry(ctx, file.ID, ""); err != nil {
 		return models.UploadNextResponse{}, err
 	}
 
@@ -522,10 +489,7 @@ func (s *Service) nextMultipart(ctx context.Context, upload models.MultipartUplo
 	if err != nil {
 		return models.UploadNextResponse{}, err
 	}
-	if err := s.uploadRepo.UpdateMultipartExpiry(ctx, s.db, upload.ID, time.Now().Add(s.uploadExpires)); err != nil {
-		return models.UploadNextResponse{}, err
-	}
-	if err := s.fileRepo.UpdateFileExpiry(ctx, s.db, upload.FileID, time.Now().Add(s.uploadExpires)); err != nil {
+	if err := s.refreshExpiry(ctx, upload.FileID, upload.ID); err != nil {
 		return models.UploadNextResponse{}, err
 	}
 
@@ -547,12 +511,16 @@ func (s *Service) nextMultipart(ctx context.Context, upload models.MultipartUplo
 }
 
 func (s *Service) PresignPart(ctx context.Context, userID, multipartID string, partNumber int32) (string, error) {
-	userID = strings.TrimSpace(userID)
-	multipartID = strings.TrimSpace(multipartID)
-	if userID == "" {
-		return "", ErrUnauthorized
+	var err error
+	userID, err = validateUserID(userID)
+	if err != nil {
+		return "", err
 	}
-	if multipartID == "" || partNumber <= 0 {
+	multipartID, err = validateUploadID(multipartID)
+	if err != nil {
+		return "", err
+	}
+	if partNumber <= 0 {
 		return "", ErrInvalidInput
 	}
 
@@ -573,10 +541,7 @@ func (s *Service) PresignPart(ctx context.Context, userID, multipartID string, p
 	if err := s.uploadRepo.TouchMultipart(ctx, s.db, multipartID, MultipartStatusUploading); err != nil {
 		return "", err
 	}
-	if err := s.uploadRepo.UpdateMultipartExpiry(ctx, s.db, multipartID, time.Now().Add(s.uploadExpires)); err != nil {
-		return "", err
-	}
-	if err := s.fileRepo.UpdateFileExpiry(ctx, s.db, upload.FileID, time.Now().Add(s.uploadExpires)); err != nil {
+	if err := s.refreshExpiry(ctx, upload.FileID, multipartID); err != nil {
 		return "", err
 	}
 
@@ -584,71 +549,64 @@ func (s *Service) PresignPart(ctx context.Context, userID, multipartID string, p
 }
 
 func (s *Service) CompleteUpload(ctx context.Context, userID, uploadID string, parts []models.CompletedPartInput) error {
-	userID = strings.TrimSpace(userID)
-	uploadID = strings.TrimSpace(uploadID)
-	if userID == "" {
-		return ErrUnauthorized
+	var err error
+	userID, err = validateUserID(userID)
+	if err != nil {
+		return err
 	}
-	if uploadID == "" {
-		return ErrInvalidInput
-	}
-
-	upload, err := s.uploadRepo.GetMultipartForUser(ctx, s.db, uploadID, userID)
-	if err == nil {
-		return s.CompleteMultipart(ctx, userID, upload.ID, parts)
-	}
-	if !errors.Is(err, pgx.ErrNoRows) {
+	uploadID, err = validateUploadID(uploadID)
+	if err != nil {
 		return err
 	}
 
-	upload, err = s.uploadRepo.GetMultipartForFile(ctx, s.db, uploadID, userID)
-	if err == nil {
-		return s.CompleteMultipart(ctx, userID, upload.ID, parts)
-	}
-	if !errors.Is(err, pgx.ErrNoRows) {
+	upload, _, found, err := s.loadMultipartForUserOrFile(ctx, userID, uploadID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		}
 		return err
+	}
+	if found {
+		return s.CompleteMultipart(ctx, userID, upload.ID, parts)
 	}
 
 	return s.CompleteSingleUpload(ctx, userID, uploadID)
 }
 
 func (s *Service) CancelUpload(ctx context.Context, userID, uploadID string) error {
-	userID = strings.TrimSpace(userID)
-	uploadID = strings.TrimSpace(uploadID)
-	if userID == "" {
-		return ErrUnauthorized
+	var err error
+	userID, err = validateUserID(userID)
+	if err != nil {
+		return err
 	}
-	if uploadID == "" {
-		return ErrInvalidInput
-	}
-
-	upload, err := s.uploadRepo.GetMultipartForUser(ctx, s.db, uploadID, userID)
-	if err == nil {
-		return s.AbortMultipart(ctx, userID, upload.ID)
-	}
-	if !errors.Is(err, pgx.ErrNoRows) {
+	uploadID, err = validateUploadID(uploadID)
+	if err != nil {
 		return err
 	}
 
-	upload, err = s.uploadRepo.GetMultipartForFile(ctx, s.db, uploadID, userID)
-	if err == nil {
-		return s.AbortMultipart(ctx, userID, upload.ID)
-	}
-	if !errors.Is(err, pgx.ErrNoRows) {
+	upload, _, found, err := s.loadMultipartForUserOrFile(ctx, userID, uploadID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		}
 		return err
+	}
+	if found {
+		return s.AbortMultipart(ctx, userID, upload.ID)
 	}
 
 	return s.AbortSingleUpload(ctx, userID, uploadID)
 }
 
 func (s *Service) CompleteMultipart(ctx context.Context, userID, multipartID string, parts []models.CompletedPartInput) error {
-	userID = strings.TrimSpace(userID)
-	multipartID = strings.TrimSpace(multipartID)
-	if userID == "" {
-		return ErrUnauthorized
+	var err error
+	userID, err = validateUserID(userID)
+	if err != nil {
+		return err
 	}
-	if multipartID == "" {
-		return ErrInvalidInput
+	multipartID, err = validateUploadID(multipartID)
+	if err != nil {
+		return err
 	}
 	if len(parts) == 0 {
 		return ErrPartsRequired
@@ -680,11 +638,11 @@ func (s *Service) CompleteMultipart(ctx context.Context, userID, multipartID str
 	stored := make([]models.StoredPart, 0, len(parts))
 	needsList := len(parts) != upload.TotalParts
 	for _, part := range parts {
-		if part.PartNumber <= 0 || strings.TrimSpace(part.ETag) == "" {
+		if strings.TrimSpace(part.ETag) == "" {
 			return ErrInvalidInput
 		}
-		if part.PartNumber > int32(upload.TotalParts) {
-			return ErrInvalidInput
+		if err := validatePartNumber(part.PartNumber, upload.TotalParts); err != nil {
+			return err
 		}
 		if seen[part.PartNumber] {
 			needsList = true
@@ -740,17 +698,6 @@ func (s *Service) CompleteMultipart(ctx context.Context, userID, multipartID str
 		return err
 	}
 
-	actualSize, actualContentType, err := s.r2.HeadObjectDetails(ctx, upload.ObjectKey)
-	if err != nil {
-		_, _ = s.uploadRepo.UpdateMultipartStatusIf(ctx, s.db, multipartID, MultipartStatusFailed, []string{MultipartStatusInitiated, MultipartStatusUploading})
-		file, fileErr := s.fileRepo.GetFileByID(ctx, s.db, upload.FileID)
-		if fileErr == nil {
-			s.markUploadFailed(ctx, userID, file.ID, file.SizeBytes)
-		}
-		_ = s.r2.DeleteObject(ctx, upload.ObjectKey)
-		return err
-	}
-
 	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return err
@@ -777,27 +724,13 @@ func (s *Service) CompleteMultipart(ctx context.Context, userID, multipartID str
 		_ = tx.Rollback(ctx)
 		return err
 	}
-	actualContentType = strings.TrimSpace(actualContentType)
-	detectedContentType, detectErr := detectObjectContentType(ctx, s.r2, upload.ObjectKey)
-	if detectErr != nil {
+	actualSize, err := s.resolveAndPersistContentType(ctx, file, upload.ObjectKey, tx)
+	if err != nil {
 		_ = tx.Rollback(ctx)
 		_, _ = s.uploadRepo.UpdateMultipartStatusIf(ctx, s.db, multipartID, MultipartStatusFailed, []string{MultipartStatusInitiated, MultipartStatusUploading})
 		s.markUploadFailed(ctx, userID, file.ID, file.SizeBytes)
 		_ = s.r2.DeleteObject(ctx, upload.ObjectKey)
-		return detectErr
-	}
-	resolvedContentType := normalizeDetectedContentType(actualContentType)
-	if detectedContentType != "" {
-		resolvedContentType = detectedContentType
-	}
-	if resolvedContentType != "" && resolvedContentType != file.ContentType {
-		if err := s.fileRepo.UpdateFileContentType(ctx, tx, file.ID, resolvedContentType); err != nil {
-			_ = tx.Rollback(ctx)
-			_, _ = s.uploadRepo.UpdateMultipartStatusIf(ctx, s.db, multipartID, MultipartStatusFailed, []string{MultipartStatusInitiated, MultipartStatusUploading})
-			s.markUploadFailed(ctx, userID, file.ID, file.SizeBytes)
-			_ = s.r2.DeleteObject(ctx, upload.ObjectKey)
-			return err
-		}
+		return err
 	}
 	if err := s.uploadRepo.ClearMultipartExpiry(ctx, tx, multipartID); err != nil {
 		_ = tx.Rollback(ctx)
@@ -819,13 +752,14 @@ func (s *Service) CompleteMultipart(ctx context.Context, userID, multipartID str
 }
 
 func (s *Service) AbortMultipart(ctx context.Context, userID, multipartID string) error {
-	userID = strings.TrimSpace(userID)
-	multipartID = strings.TrimSpace(multipartID)
-	if userID == "" {
-		return ErrUnauthorized
+	var err error
+	userID, err = validateUserID(userID)
+	if err != nil {
+		return err
 	}
-	if multipartID == "" {
-		return ErrInvalidInput
+	multipartID, err = validateUploadID(multipartID)
+	if err != nil {
+		return err
 	}
 
 	upload, err := s.uploadRepo.GetMultipartForUser(ctx, s.db, multipartID, userID)
@@ -890,13 +824,14 @@ func (s *Service) AbortMultipart(ctx context.Context, userID, multipartID string
 }
 
 func (s *Service) CompleteSingleUpload(ctx context.Context, userID, fileID string) error {
-	userID = strings.TrimSpace(userID)
-	fileID = strings.TrimSpace(fileID)
-	if userID == "" {
-		return ErrUnauthorized
+	var err error
+	userID, err = validateUserID(userID)
+	if err != nil {
+		return err
 	}
-	if fileID == "" {
-		return ErrInvalidInput
+	fileID, err = validateUploadID(fileID)
+	if err != nil {
+		return err
 	}
 
 	file, err := s.fileRepo.GetFileForUser(ctx, s.db, fileID, userID)
@@ -917,37 +852,17 @@ func (s *Service) CompleteSingleUpload(ctx context.Context, userID, fileID strin
 		return ErrUploadCancelled
 	}
 
-	actualSize, actualContentType, err := s.r2.HeadObjectDetails(ctx, file.ObjectKey)
-	if err != nil {
-		s.markUploadFailed(ctx, userID, file.ID, file.SizeBytes)
-		_ = s.r2.DeleteObject(ctx, file.ObjectKey)
-		return err
-	}
-
 	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return err
 	}
 
-	actualContentType = strings.TrimSpace(actualContentType)
-	detectedContentType, detectErr := detectObjectContentType(ctx, s.r2, file.ObjectKey)
-	if detectErr != nil {
+	actualSize, err := s.resolveAndPersistContentType(ctx, file, file.ObjectKey, tx)
+	if err != nil {
 		_ = tx.Rollback(ctx)
 		s.markUploadFailed(ctx, userID, file.ID, file.SizeBytes)
 		_ = s.r2.DeleteObject(ctx, file.ObjectKey)
-		return detectErr
-	}
-	resolvedContentType := normalizeDetectedContentType(actualContentType)
-	if detectedContentType != "" {
-		resolvedContentType = detectedContentType
-	}
-	if resolvedContentType != "" && resolvedContentType != file.ContentType {
-		if err := s.fileRepo.UpdateFileContentType(ctx, tx, file.ID, resolvedContentType); err != nil {
-			_ = tx.Rollback(ctx)
-			s.markUploadFailed(ctx, userID, file.ID, file.SizeBytes)
-			_ = s.r2.DeleteObject(ctx, file.ObjectKey)
-			return err
-		}
+		return err
 	}
 
 	if err := s.finalizeFileCompletion(ctx, tx, userID, file, actualSize); err != nil {
@@ -965,13 +880,14 @@ func (s *Service) CompleteSingleUpload(ctx context.Context, userID, fileID strin
 }
 
 func (s *Service) AbortSingleUpload(ctx context.Context, userID, fileID string) error {
-	userID = strings.TrimSpace(userID)
-	fileID = strings.TrimSpace(fileID)
-	if userID == "" {
-		return ErrUnauthorized
+	var err error
+	userID, err = validateUserID(userID)
+	if err != nil {
+		return err
 	}
-	if fileID == "" {
-		return ErrInvalidInput
+	fileID, err = validateUploadID(fileID)
+	if err != nil {
+		return err
 	}
 
 	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
@@ -1021,16 +937,17 @@ func (s *Service) AbortSingleUpload(ctx context.Context, userID, fileID string) 
 }
 
 func (s *Service) AbortUploadByFile(ctx context.Context, userID, fileID string) error {
-	userID = strings.TrimSpace(userID)
-	fileID = strings.TrimSpace(fileID)
-	if userID == "" {
-		return ErrUnauthorized
+	var err error
+	userID, err = validateUserID(userID)
+	if err != nil {
+		return err
 	}
-	if fileID == "" {
-		return ErrInvalidInput
+	fileID, err = validateUploadID(fileID)
+	if err != nil {
+		return err
 	}
 
-	_, err := s.fileRepo.GetFileForUser(ctx, s.db, fileID, userID)
+	_, err = s.fileRepo.GetFileForUser(ctx, s.db, fileID, userID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
@@ -1049,13 +966,14 @@ func (s *Service) AbortUploadByFile(ctx context.Context, userID, fileID string) 
 }
 
 func (s *Service) PresignDownload(ctx context.Context, userID, fileID string) (string, error) {
-	userID = strings.TrimSpace(userID)
-	fileID = strings.TrimSpace(fileID)
-	if userID == "" {
-		return "", ErrUnauthorized
+	var err error
+	userID, err = validateUserID(userID)
+	if err != nil {
+		return "", err
 	}
-	if fileID == "" {
-		return "", ErrInvalidInput
+	fileID, err = validateUploadID(fileID)
+	if err != nil {
+		return "", err
 	}
 
 	file, err := s.fileRepo.GetFileForUser(ctx, s.db, fileID, userID)
@@ -1076,13 +994,14 @@ func (s *Service) PresignDownload(ctx context.Context, userID, fileID string) (s
 }
 
 func (s *Service) DeleteFile(ctx context.Context, userID, fileID string) error {
-	userID = strings.TrimSpace(userID)
-	fileID = strings.TrimSpace(fileID)
-	if userID == "" {
-		return ErrUnauthorized
+	var err error
+	userID, err = validateUserID(userID)
+	if err != nil {
+		return err
 	}
-	if fileID == "" {
-		return ErrInvalidInput
+	fileID, err = validateUploadID(fileID)
+	if err != nil {
+		return err
 	}
 
 	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
@@ -1129,65 +1048,55 @@ func (s *Service) DeleteFile(ctx context.Context, userID, fileID string) error {
 }
 
 func (s *Service) ListPendingUploads(ctx context.Context, userID string) ([]models.File, error) {
-	userID = strings.TrimSpace(userID)
-	if userID == "" {
-		return nil, ErrUnauthorized
+	var err error
+	userID, err = validateUserID(userID)
+	if err != nil {
+		return nil, err
 	}
 	return s.fileRepo.ListPendingForUser(ctx, s.db, userID)
 }
 
 func (s *Service) ListCompletedUploads(ctx context.Context, userID string) ([]models.File, error) {
-	userID = strings.TrimSpace(userID)
-	if userID == "" {
-		return nil, ErrUnauthorized
+	var err error
+	userID, err = validateUserID(userID)
+	if err != nil {
+		return nil, err
 	}
 	return s.fileRepo.ListCompletedForUser(ctx, s.db, userID)
 }
 
 func (s *Service) ResumeMultipart(ctx context.Context, userID, fileID string) (models.MultipartResumeResponse, error) {
-	userID = strings.TrimSpace(userID)
-	fileID = strings.TrimSpace(fileID)
-	if userID == "" {
-		return models.MultipartResumeResponse{}, ErrUnauthorized
+	var err error
+	userID, err = validateUserID(userID)
+	if err != nil {
+		return models.MultipartResumeResponse{}, err
 	}
-	if fileID == "" {
-		return models.MultipartResumeResponse{}, ErrInvalidInput
+	fileID, err = validateUploadID(fileID)
+	if err != nil {
+		return models.MultipartResumeResponse{}, err
 	}
 
-	upload, err := s.uploadRepo.GetMultipartForFile(ctx, s.db, fileID, userID)
+	upload, file, found, err := s.loadMultipartForUserOrFile(ctx, userID, fileID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return models.MultipartResumeResponse{}, ErrNotFound
 		}
 		return models.MultipartResumeResponse{}, err
+	}
+	if !found {
+		return models.MultipartResumeResponse{}, ErrNotFound
 	}
 	if upload.Status == MultipartStatusCompleted || upload.Status == MultipartStatusAborted {
 		return models.MultipartResumeResponse{}, ErrInvalidInput
 	}
-	if isExpired(upload.ExpiresAt) {
-		_ = s.AbortMultipart(ctx, userID, upload.ID)
-		return models.MultipartResumeResponse{}, ErrUploadCancelled
-	}
-
-	file, err := s.fileRepo.GetFileForUser(ctx, s.db, fileID, userID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return models.MultipartResumeResponse{}, ErrNotFound
-		}
+	if err := s.ensureNotExpired(ctx, userID, file, &upload); err != nil {
 		return models.MultipartResumeResponse{}, err
-	}
-	if isExpired(file.ExpiresAt) {
-		_ = s.AbortMultipart(ctx, userID, upload.ID)
-		return models.MultipartResumeResponse{}, ErrUploadCancelled
 	}
 
 	if err := s.uploadRepo.TouchMultipart(ctx, s.db, upload.ID, MultipartStatusUploading); err != nil {
 		return models.MultipartResumeResponse{}, err
 	}
-	if err := s.uploadRepo.UpdateMultipartExpiry(ctx, s.db, upload.ID, time.Now().Add(s.uploadExpires)); err != nil {
-		return models.MultipartResumeResponse{}, err
-	}
-	if err := s.fileRepo.UpdateFileExpiry(ctx, s.db, upload.FileID, time.Now().Add(s.uploadExpires)); err != nil {
+	if err := s.refreshExpiry(ctx, upload.FileID, upload.ID); err != nil {
 		return models.MultipartResumeResponse{}, err
 	}
 
