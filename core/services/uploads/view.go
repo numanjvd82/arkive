@@ -120,5 +120,12 @@ func (s *Service) PresignShareDownloadForFile(ctx context.Context, file models.F
 
 func isViewableContentType(contentType string) bool {
 	contentType = strings.TrimSpace(strings.ToLower(contentType))
-	return strings.HasPrefix(contentType, "image/") || strings.HasPrefix(contentType, "video/")
+	switch contentType {
+	case "image/jpeg", "image/png", "image/gif", "image/webp":
+		return true
+	case "video/mp4", "video/webm", "video/ogg":
+		return true
+	default:
+		return false
+	}
 }
