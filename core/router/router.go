@@ -60,6 +60,7 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 
 	apiUploads := api.Group("/uploads")
 	apiUploads.Use(middleware.RequireSessionJSON(authService))
+	apiUploads.Use(middleware.LimitBody(2 << 20))
 	{
 		apiUploads.POST("/start", middleware.RateLimit(middleware.RateLimitConfig{
 			RequestsPerMinute: 6,
