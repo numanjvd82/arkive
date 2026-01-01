@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
 	"sort"
 	"strings"
 	"time"
@@ -110,6 +111,22 @@ func validateStartInput(userID, filename string, sizeBytes int64, requiresMultip
 
 func isExpired(expiresAt time.Time) bool {
 	return !expiresAt.IsZero() && time.Now().After(expiresAt)
+}
+
+func normalizeDetectedContentType(contentType string) string {
+	contentType = strings.ToLower(strings.TrimSpace(contentType))
+	if contentType == "application/octet-stream" || contentType == "" {
+		return ""
+	}
+	return contentType
+}
+
+func detectObjectContentType(ctx context.Context, client *r2.Client, key string) (string, error) {
+	data, err := client.ReadObjectRange(ctx, key, 0, 511)
+	if err != nil {
+		return "", err
+	}
+	return normalizeDetectedContentType(http.DetectContentType(data)), nil
 }
 
 func (s *Service) beginUploadTx(ctx context.Context, userID, objectKey, filename, contentType string, sizeBytes int64) (pgx.Tx, models.File, validation.Errors, error) {
@@ -761,8 +778,20 @@ func (s *Service) CompleteMultipart(ctx context.Context, userID, multipartID str
 		return err
 	}
 	actualContentType = strings.TrimSpace(actualContentType)
-	if actualContentType != "" && actualContentType != file.ContentType {
-		if err := s.fileRepo.UpdateFileContentType(ctx, tx, file.ID, actualContentType); err != nil {
+	detectedContentType, detectErr := detectObjectContentType(ctx, s.r2, upload.ObjectKey)
+	if detectErr != nil {
+		_ = tx.Rollback(ctx)
+		_, _ = s.uploadRepo.UpdateMultipartStatusIf(ctx, s.db, multipartID, MultipartStatusFailed, []string{MultipartStatusInitiated, MultipartStatusUploading})
+		s.markUploadFailed(ctx, userID, file.ID, file.SizeBytes)
+		_ = s.r2.DeleteObject(ctx, upload.ObjectKey)
+		return detectErr
+	}
+	resolvedContentType := normalizeDetectedContentType(actualContentType)
+	if detectedContentType != "" {
+		resolvedContentType = detectedContentType
+	}
+	if resolvedContentType != "" && resolvedContentType != file.ContentType {
+		if err := s.fileRepo.UpdateFileContentType(ctx, tx, file.ID, resolvedContentType); err != nil {
 			_ = tx.Rollback(ctx)
 			_, _ = s.uploadRepo.UpdateMultipartStatusIf(ctx, s.db, multipartID, MultipartStatusFailed, []string{MultipartStatusInitiated, MultipartStatusUploading})
 			s.markUploadFailed(ctx, userID, file.ID, file.SizeBytes)
@@ -901,8 +930,19 @@ func (s *Service) CompleteSingleUpload(ctx context.Context, userID, fileID strin
 	}
 
 	actualContentType = strings.TrimSpace(actualContentType)
-	if actualContentType != "" && actualContentType != file.ContentType {
-		if err := s.fileRepo.UpdateFileContentType(ctx, tx, file.ID, actualContentType); err != nil {
+	detectedContentType, detectErr := detectObjectContentType(ctx, s.r2, file.ObjectKey)
+	if detectErr != nil {
+		_ = tx.Rollback(ctx)
+		s.markUploadFailed(ctx, userID, file.ID, file.SizeBytes)
+		_ = s.r2.DeleteObject(ctx, file.ObjectKey)
+		return detectErr
+	}
+	resolvedContentType := normalizeDetectedContentType(actualContentType)
+	if detectedContentType != "" {
+		resolvedContentType = detectedContentType
+	}
+	if resolvedContentType != "" && resolvedContentType != file.ContentType {
+		if err := s.fileRepo.UpdateFileContentType(ctx, tx, file.ID, resolvedContentType); err != nil {
 			_ = tx.Rollback(ctx)
 			s.markUploadFailed(ctx, userID, file.ID, file.SizeBytes)
 			_ = s.r2.DeleteObject(ctx, file.ObjectKey)
