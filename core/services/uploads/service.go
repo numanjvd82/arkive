@@ -16,6 +16,7 @@ import (
 	filerepo "arkive/core/repositories/files"
 	storagerepo "arkive/core/repositories/storage"
 	uploadrepo "arkive/core/repositories/uploads"
+	usagerepo "arkive/core/repositories/usage"
 	"arkive/pkg/safeptr"
 	"arkive/pkg/storage"
 	"arkive/pkg/storage/r2"
@@ -39,7 +40,8 @@ const (
 const (
 	MaxFileSizeBytes        int64 = 10 * 1024 * 1024 * 1024
 	MultipartThresholdBytes int64 = 200 * 1024 * 1024
-	LargeFileThrottleMs           = 3000
+	MonthlyFullSpeedBytes   int64 = 10 * 1024 * 1024 * 1024
+	ThrottledUploadDelayMs        = 40000
 )
 
 type Service struct {
@@ -47,6 +49,7 @@ type Service struct {
 	storageRepo         *storagerepo.Repository
 	fileRepo            *filerepo.Repository
 	uploadRepo          *uploadrepo.Repository
+	usageRepo           *usagerepo.Repository
 	r2                  *r2.Client
 	bucket              string
 	uploadExpires       time.Duration
@@ -66,6 +69,7 @@ func NewService(
 	storageRepo *storagerepo.Repository,
 	fileRepo *filerepo.Repository,
 	uploadRepo *uploadrepo.Repository,
+	usageRepo *usagerepo.Repository,
 	r2Client *r2.Client,
 	cfg Config,
 ) *Service {
@@ -74,6 +78,7 @@ func NewService(
 		storageRepo:         storageRepo,
 		fileRepo:            fileRepo,
 		uploadRepo:          uploadRepo,
+		usageRepo:           usageRepo,
 		r2:                  r2Client,
 		bucket:              cfg.Bucket,
 		uploadExpires:       cfg.UploadExpires,
@@ -82,7 +87,7 @@ func NewService(
 	}
 }
 
-func validateStartInput(userID, filename string, sizeBytes int64, requiresMultipart bool) (validation.Errors, error) {
+func validateStartInput(userID, filename string, sizeBytes int64, requiresMultipart bool, minMultipartSize int64) (validation.Errors, error) {
 	validationErrors := validation.New()
 	if strings.TrimSpace(userID) == "" {
 		return nil, ErrUnauthorized
@@ -97,7 +102,7 @@ func validateStartInput(userID, filename string, sizeBytes int64, requiresMultip
 		switch {
 		case sizeBytes > MaxFileSizeBytes:
 			validationErrors.Add("size", ErrFileTooLarge.Error())
-		case requiresMultipart && sizeBytes <= MultipartThresholdBytes:
+		case requiresMultipart && minMultipartSize > 0 && sizeBytes <= minMultipartSize:
 			validationErrors.Add("size", ErrFileTooSmall.Error())
 		case !requiresMultipart && sizeBytes > MultipartThresholdBytes:
 			validationErrors.Add("size", ErrMultipartRequired.Error())
@@ -113,7 +118,7 @@ func isExpired(expiresAt time.Time) bool {
 	return !expiresAt.IsZero() && time.Now().After(expiresAt)
 }
 
-func (s *Service) beginUploadTx(ctx context.Context, userID, objectKey, filename, contentType string, sizeBytes int64) (pgx.Tx, models.File, validation.Errors, error) {
+func (s *Service) beginUploadTx(ctx context.Context, userID, objectKey, filename, contentType string, sizeBytes int64, throttleMs int) (pgx.Tx, models.File, validation.Errors, error) {
 	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return nil, models.File{}, nil, err
@@ -131,6 +136,11 @@ func (s *Service) beginUploadTx(ctx context.Context, userID, objectKey, filename
 		return nil, models.File{}, validationErrors, nil
 	}
 
+	if err := s.usageRepo.AddUsage(ctx, tx, userID, sizeBytes); err != nil {
+		_ = tx.Rollback(ctx)
+		return nil, models.File{}, nil, err
+	}
+
 	file, err := s.fileRepo.CreateFile(ctx, tx, models.File{
 		UserID:      userID,
 		Bucket:      s.bucket,
@@ -139,6 +149,7 @@ func (s *Service) beginUploadTx(ctx context.Context, userID, objectKey, filename
 		ContentType: contentType,
 		SizeBytes:   sizeBytes,
 		Status:      FileStatusUploading,
+		ThrottleMs:  throttleMs,
 		ExpiresAt:   time.Now().Add(s.uploadExpires),
 	})
 	if err != nil {
@@ -249,7 +260,7 @@ func buildCompletedFromList(listed []types.Part, totalParts int) ([]types.Comple
 	return completed, stored, nil
 }
 
-func (s *Service) StartMultipart(ctx context.Context, userID, filename string, sizeBytes int64, contentType string) (models.MultipartStartResponse, validation.Errors, error) {
+func (s *Service) StartMultipart(ctx context.Context, userID, filename string, sizeBytes int64, contentType string, throttleMs int, minMultipartSize int64) (models.MultipartStartResponse, validation.Errors, error) {
 	var err error
 	userID, err = validateUserID(userID)
 	if err != nil {
@@ -257,7 +268,7 @@ func (s *Service) StartMultipart(ctx context.Context, userID, filename string, s
 	}
 	filename = strings.TrimSpace(filename)
 	contentType = strings.TrimSpace(contentType)
-	validationErrors, err := validateStartInput(userID, filename, sizeBytes, true)
+	validationErrors, err := validateStartInput(userID, filename, sizeBytes, true, minMultipartSize)
 	if err != nil || (validationErrors != nil && validationErrors.HasAny()) {
 		return models.MultipartStartResponse{}, validationErrors, err
 	}
@@ -275,7 +286,7 @@ func (s *Service) StartMultipart(ctx context.Context, userID, filename string, s
 		return models.MultipartStartResponse{}, nil, err
 	}
 
-	tx, file, validationErrors, err := s.beginUploadTx(ctx, userID, objectKey, filename, contentType, sizeBytes)
+	tx, file, validationErrors, err := s.beginUploadTx(ctx, userID, objectKey, filename, contentType, sizeBytes, throttleMs)
 	if err != nil || (validationErrors != nil && validationErrors.HasAny()) {
 		_ = s.r2.AbortMultipartUpload(ctx, objectKey, uploadID)
 		return models.MultipartStartResponse{}, validationErrors, err
@@ -312,9 +323,23 @@ func (s *Service) StartMultipart(ctx context.Context, userID, filename string, s
 	}, nil, nil
 }
 
-func (s *Service) StartUpload(ctx context.Context, userID, filename string, sizeBytes int64, contentType string) (models.UploadStartResponse, validation.Errors, error) {
-	if sizeBytes > MultipartThresholdBytes {
-		resp, validationErrors, err := s.StartMultipart(ctx, userID, filename, sizeBytes, contentType)
+func (s *Service) StartUpload(ctx context.Context, userID, filename string, sizeBytes int64, contentType string, isPremium bool) (models.UploadStartResponse, validation.Errors, error) {
+	var err error
+	userID, err = validateUserID(userID)
+	if err != nil {
+		return models.UploadStartResponse{}, nil, err
+	}
+	throttleMs, forceMultipart, err := s.resolveUploadThrottle(ctx, userID, sizeBytes, isPremium)
+	if err != nil {
+		return models.UploadStartResponse{}, nil, err
+	}
+	minMultipartSize := MultipartThresholdBytes
+	if forceMultipart {
+		minMultipartSize = 0
+	}
+
+	if sizeBytes > MultipartThresholdBytes || forceMultipart {
+		resp, validationErrors, err := s.StartMultipart(ctx, userID, filename, sizeBytes, contentType, throttleMs, minMultipartSize)
 		if err != nil || (validationErrors != nil && validationErrors.HasAny()) {
 			return models.UploadStartResponse{}, validationErrors, err
 		}
@@ -327,7 +352,7 @@ func (s *Service) StartUpload(ctx context.Context, userID, filename string, size
 			TotalParts: resp.TotalParts,
 		}, nil, nil
 	}
-	resp, validationErrors, err := s.StartSingleUpload(ctx, userID, filename, sizeBytes, contentType)
+	resp, validationErrors, err := s.StartSingleUpload(ctx, userID, filename, sizeBytes, contentType, throttleMs)
 	if err != nil || (validationErrors != nil && validationErrors.HasAny()) {
 		return models.UploadStartResponse{}, validationErrors, err
 	}
@@ -340,7 +365,38 @@ func (s *Service) StartUpload(ctx context.Context, userID, filename string, size
 	}, nil, nil
 }
 
-func (s *Service) StartSingleUpload(ctx context.Context, userID, filename string, sizeBytes int64, contentType string) (models.SingleStartResponse, validation.Errors, error) {
+func (s *Service) resolveUploadThrottle(ctx context.Context, userID string, sizeBytes int64, isPremium bool) (int, bool, error) {
+	if isPremium || sizeBytes <= 0 {
+		return 0, false, nil
+	}
+	cutoff := time.Now().Add(-30 * 24 * time.Hour)
+	usedBytes, err := s.usageRepo.SumUsageSince(ctx, s.db, userID, cutoff)
+	if err != nil {
+		return 0, false, err
+	}
+	exceedsMonthly := usedBytes+sizeBytes > MonthlyFullSpeedBytes
+	largeFile := sizeBytes >= MaxFileSizeBytes
+	if exceedsMonthly || largeFile {
+		return ThrottledUploadDelayMs, true, nil
+	}
+	return 0, false, nil
+}
+
+func waitForThrottle(ctx context.Context, throttleMs int) error {
+	if throttleMs <= 0 {
+		return nil
+	}
+	timer := time.NewTimer(time.Duration(throttleMs) * time.Millisecond)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
+}
+
+func (s *Service) StartSingleUpload(ctx context.Context, userID, filename string, sizeBytes int64, contentType string, throttleMs int) (models.SingleStartResponse, validation.Errors, error) {
 	var err error
 	userID, err = validateUserID(userID)
 	if err != nil {
@@ -348,7 +404,7 @@ func (s *Service) StartSingleUpload(ctx context.Context, userID, filename string
 	}
 	filename = strings.TrimSpace(filename)
 	contentType = strings.TrimSpace(contentType)
-	validationErrors, err := validateStartInput(userID, filename, sizeBytes, false)
+	validationErrors, err := validateStartInput(userID, filename, sizeBytes, false, MultipartThresholdBytes)
 	if err != nil || (validationErrors != nil && validationErrors.HasAny()) {
 		return models.SingleStartResponse{}, validationErrors, err
 	}
@@ -363,7 +419,7 @@ func (s *Service) StartSingleUpload(ctx context.Context, userID, filename string
 		return models.SingleStartResponse{}, nil, err
 	}
 
-	tx, file, validationErrors, err := s.beginUploadTx(ctx, userID, objectKey, filename, contentType, sizeBytes)
+	tx, file, validationErrors, err := s.beginUploadTx(ctx, userID, objectKey, filename, contentType, sizeBytes, throttleMs)
 	if err != nil || (validationErrors != nil && validationErrors.HasAny()) {
 		return models.SingleStartResponse{}, validationErrors, err
 	}
@@ -494,6 +550,10 @@ func (s *Service) nextMultipart(ctx context.Context, upload models.MultipartUplo
 		return models.UploadNextResponse{}, err
 	}
 
+	if err := waitForThrottle(ctx, file.ThrottleMs); err != nil {
+		return models.UploadNextResponse{}, err
+	}
+
 	url, err := s.r2.PresignUploadPart(ctx, upload.ObjectKey, upload.UploadID, nextPart, s.uploadExpires)
 	if err != nil {
 		return models.UploadNextResponse{}, err
@@ -508,15 +568,8 @@ func (s *Service) nextMultipart(ctx context.Context, upload models.MultipartUplo
 		ChunkSize:     upload.ChunkSize,
 		TotalParts:    upload.TotalParts,
 		UploadedParts: resumeParts,
-		ThrottleMs:    largeFileThrottleMs(file.SizeBytes),
+		ThrottleMs:    file.ThrottleMs,
 	}, nil
-}
-
-func largeFileThrottleMs(sizeBytes int64) int {
-	if sizeBytes >= MaxFileSizeBytes {
-		return LargeFileThrottleMs
-	}
-	return 0
 }
 
 func (s *Service) PresignPart(ctx context.Context, userID, multipartID string, partNumber int32) (string, error) {

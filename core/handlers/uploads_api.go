@@ -8,6 +8,7 @@ import (
 
 	"arkive/core/models"
 	"arkive/core/services/uploads"
+	appcontext "arkive/pkg/context"
 )
 
 type uploadStartRequest struct {
@@ -38,7 +39,8 @@ func APIUploadStart(svc *uploads.Service) gin.HandlerFunc {
 			return
 		}
 
-		resp, validationErrors, err := svc.StartUpload(c.Request.Context(), userID.(string), req.Filename, req.Size, req.ContentType)
+		user, _ := appcontext.UserFromContext(c)
+		resp, validationErrors, err := svc.StartUpload(c.Request.Context(), userID.(string), req.Filename, req.Size, req.ContentType, user.IsPremium)
 		if err != nil {
 			switch err {
 			case uploads.ErrUnauthorized:

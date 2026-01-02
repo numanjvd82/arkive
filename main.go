@@ -11,6 +11,7 @@ import (
 	filerepo "arkive/core/repositories/files"
 	storagerepo "arkive/core/repositories/storage"
 	uploadrepo "arkive/core/repositories/uploads"
+	usagerepo "arkive/core/repositories/usage"
 	"arkive/core/router"
 	"arkive/core/services/uploads"
 	"arkive/migrations"
@@ -57,7 +58,7 @@ func main() {
 		log.Fatalf("r2 client failed: %v", err)
 	}
 
-	uploadService := uploads.NewService(db, storagerepo.New(), filerepo.New(), uploadrepo.New(), r2Client, uploads.Config{
+	uploadService := uploads.NewService(db, storagerepo.New(), filerepo.New(), uploadrepo.New(), usagerepo.New(), r2Client, uploads.Config{
 		Bucket:              cfg.R2Bucket,
 		UploadExpires:       15 * time.Minute,
 		DownloadExpire:      3 * time.Hour,
