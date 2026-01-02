@@ -37,8 +37,9 @@ const (
 )
 
 const (
-	MaxFileSizeBytes        int64 = 5 * 1024 * 1024 * 1024
+	MaxFileSizeBytes        int64 = 10 * 1024 * 1024 * 1024
 	MultipartThresholdBytes int64 = 200 * 1024 * 1024
+	LargeFileThrottleMs           = 3000
 )
 
 type Service struct {
@@ -401,7 +402,7 @@ func (s *Service) NextUpload(ctx context.Context, userID, uploadID string, uploa
 		if err := s.ensureNotExpired(ctx, userID, file, &upload); err != nil {
 			return models.UploadNextResponse{}, err
 		}
-		return s.nextMultipart(ctx, upload, uploadedParts)
+		return s.nextMultipart(ctx, upload, file, uploadedParts)
 	}
 
 	file, err = s.fileRepo.GetFileForUser(ctx, s.db, uploadID, userID)
@@ -437,7 +438,7 @@ func (s *Service) NextUpload(ctx context.Context, userID, uploadID string, uploa
 	}, nil
 }
 
-func (s *Service) nextMultipart(ctx context.Context, upload models.MultipartUpload, uploadedParts []int32) (models.UploadNextResponse, error) {
+func (s *Service) nextMultipart(ctx context.Context, upload models.MultipartUpload, file models.File, uploadedParts []int32) (models.UploadNextResponse, error) {
 	if upload.Status == MultipartStatusCompleted {
 		return models.UploadNextResponse{}, ErrNoNextPart
 	}
@@ -507,7 +508,15 @@ func (s *Service) nextMultipart(ctx context.Context, upload models.MultipartUplo
 		ChunkSize:     upload.ChunkSize,
 		TotalParts:    upload.TotalParts,
 		UploadedParts: resumeParts,
+		ThrottleMs:    largeFileThrottleMs(file.SizeBytes),
 	}, nil
+}
+
+func largeFileThrottleMs(sizeBytes int64) int {
+	if sizeBytes >= MaxFileSizeBytes {
+		return LargeFileThrottleMs
+	}
+	return 0
 }
 
 func (s *Service) PresignPart(ctx context.Context, userID, multipartID string, partNumber int32) (string, error) {

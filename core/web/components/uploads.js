@@ -31,8 +31,9 @@
   let resumeWaiters = [];
   let selectedFile = null;
   let transferStats = null;
-  const MAX_FILE_SIZE = 5 * 1024 * 1024 * 1024;
+  const MAX_FILE_SIZE = 10 * 1024 * 1024 * 1024;
   const MULTIPART_THRESHOLD = 200 * 1024 * 1024;
+  const LARGE_FILE_THROTTLE_MS = 3000;
 
   function setStatus(message) {
     status.textContent = message;
@@ -138,6 +139,15 @@
     if (transferStats.speed > 0 && totalBytes > 0) {
       transferStats.eta = Math.max(0, (totalBytes - uploadedBytes) / transferStats.speed);
     }
+  }
+
+  function waitForThrottle(ms) {
+    if (!ms || ms <= 0) {
+      return Promise.resolve();
+    }
+    return new Promise(function(resolve) {
+      setTimeout(resolve, ms);
+    });
   }
 
   function setSelectedFile(file, shouldConfirm) {
@@ -452,7 +462,12 @@
               if (!etag) {
                 throw new Error("Missing ETag");
               }
-              return { partNumber: partNumber, etag: etag, size: chunk.size };
+              return {
+                partNumber: partNumber,
+                etag: etag,
+                size: chunk.size,
+                throttleMs: res.throttleMs
+              };
             });
         })
         .catch(function(err) {
@@ -510,6 +525,8 @@
           status: "uploading"
         });
         setProgress((rebuilt.bytes / file.size) * 100);
+        const throttleMs = result.throttleMs || (file.size >= MAX_FILE_SIZE ? LARGE_FILE_THROTTLE_MS : 0);
+        await waitForThrottle(throttleMs);
       } catch (err) {
         if (err && err.noNext) {
           break;
@@ -632,6 +649,8 @@
             status: "uploading"
           });
           setProgress((updated.bytes / file.size) * 100);
+          const throttleMs = result.throttleMs || (file.size >= MAX_FILE_SIZE ? LARGE_FILE_THROTTLE_MS : 0);
+          await waitForThrottle(throttleMs);
         } catch (err) {
           if (err && err.cancelled) {
             clearState(signature);

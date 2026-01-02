@@ -29,6 +29,7 @@ type UploadNextResponse struct {
 	ChunkSize     int
 	TotalParts    int
 	UploadedParts []ResumePart
+	ThrottleMs    int
 }
 
 type SingleStartResponse struct {
