@@ -241,6 +241,9 @@ func (s *Service) authenticateUser(ctx context.Context, email, password string) 
 	if err != nil {
 		return models.User{}, err
 	}
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
 	user, hash, err := s.authRepo.GetUserByEmail(ctx, tx, email)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -255,6 +258,10 @@ func (s *Service) authenticateUser(ctx context.Context, email, password string) 
 
 	if err := bcrypt.CompareHashAndPassword([]byte(*hash), []byte(password)); err != nil {
 		return models.User{}, ErrInvalidCredentials
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return models.User{}, err
 	}
 
 	return user, nil
