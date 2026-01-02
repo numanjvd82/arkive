@@ -21,17 +21,18 @@ with a burst allowance. Premium users receive higher limits (not skipped).
 
 ## Files + Shares (authenticated)
 - `GET /api/files/:id/share`: 60/min, burst 120
-- `POST /api/files/:id/share`: 10/min, burst 20
+- `POST /api/files/:id/share`: 6/min, burst 12
+  - Premium: 30/min, burst 60
 - `DELETE /api/files/:id`: 30/min, burst 60
 - `POST /api/shares/:id/revoke`: 20/min, burst 40
 - `PATCH /api/shares/:id`: 20/min, burst 40
 - `DELETE /api/shares/:id`: 20/min, burst 40
 
 ## Downloads + Media (authenticated)
-- `GET /api/files/:id/download`: 120/min, burst 240
-  - Premium: 600/min, burst 1200
-- `GET /api/files/:id/media`: 120/min, burst 240
-  - Premium: 600/min, burst 1200
+- `GET /api/files/:id/download`: 60/min, burst 120
+  - Premium: 300/min, burst 600
+- `GET /api/files/:id/media`: 60/min, burst 120
+  - Premium: 300/min, burst 600
 
 ## Public Share Pages (anonymous)
 - `GET /s/:token`: 2/min, burst 2

@@ -102,17 +102,17 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 			KeyPrefix:         "share:get",
 		}), handlers.APIGetShareForFile(shareService))
 		apiFiles.GET("/:id/download", middleware.RateLimit(middleware.RateLimitConfig{
-			RequestsPerMinute: 120,
-			Burst:             240,
-			PremiumRPM:        600,
-			PremiumBurst:      1200,
+			RequestsPerMinute: 60,
+			Burst:             120,
+			PremiumRPM:        300,
+			PremiumBurst:      600,
 			KeyPrefix:         "file:download",
 		}), handlers.APIDownloadFile(uploadService))
 		apiFiles.GET("/:id/media", middleware.RateLimit(middleware.RateLimitConfig{
-			RequestsPerMinute: 120,
-			Burst:             240,
-			PremiumRPM:        600,
-			PremiumBurst:      1200,
+			RequestsPerMinute: 60,
+			Burst:             120,
+			PremiumRPM:        300,
+			PremiumBurst:      600,
 			KeyPrefix:         "file:media",
 		}), handlers.APIMediaRedirect(uploadService))
 		apiFiles.DELETE("/:id", middleware.RateLimit(middleware.RateLimitConfig{
@@ -121,8 +121,10 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 			KeyPrefix:         "file:delete",
 		}), handlers.APIDeleteFile(uploadService))
 		apiFiles.POST("/:id/share", middleware.RateLimit(middleware.RateLimitConfig{
-			RequestsPerMinute: 10,
-			Burst:             20,
+			RequestsPerMinute: 6,
+			Burst:             12,
+			PremiumRPM:        30,
+			PremiumBurst:      60,
 			KeyPrefix:         "share:create",
 		}), handlers.APICreateShare(shareService))
 	}
