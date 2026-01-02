@@ -1,0 +1,67 @@
+.cookie-page {
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+.cookie-hero {
+  padding: 96px 0 32px;
+}
+
+.cookie-hero h1 {
+  font-size: clamp(2.2rem, 3.2vw, 3.2rem);
+  margin-bottom: 12px;
+}
+
+.cookie-meta {
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+
+.cookie-intro {
+  max-width: 720px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.cookie-content {
+  padding: 0 0 96px;
+}
+
+.cookie-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow: var(--shadow);
+}
+
+.cookie-section + .cookie-section {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.cookie-section h2 {
+  font-size: 1.35rem;
+  margin-bottom: 12px;
+}
+
+.cookie-section p {
+  color: var(--muted);
+  line-height: 1.7;
+  margin: 10px 0;
+}
+
+.cookie-section a {
+  color: var(--accent-warm);
+}
+
+@media (max-width: 700px) {
+  .cookie-hero {
+    padding: 72px 0 24px;
+  }
+
+  .cookie-card {
+    padding: 24px;
+  }
+}

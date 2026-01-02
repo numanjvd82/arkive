@@ -80,6 +80,16 @@ a {
   text-decoration: none;
 }
 
+.text-link {
+  color: var(--accent-warm);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.text-link:hover {
+  color: var(--accent-cool);
+}
+
 .container {
   width: min(1120px, 92vw);
   margin: 0 auto;

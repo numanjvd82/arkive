@@ -12,3 +12,27 @@ func WebHome() gin.HandlerFunc {
 		web.Render(c, pages.HomePage(pages.HomePageProps{Ctx: pages.PageContext{}}))
 	}
 }
+
+func WebPrivacy() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		web.Render(c, pages.PrivacyPage(pages.PrivacyPageProps{Ctx: pages.PageContext{}}))
+	}
+}
+
+func WebCookie() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		web.Render(c, pages.CookiePage(pages.CookiePageProps{Ctx: pages.PageContext{}}))
+	}
+}
+
+func WebTerms() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		web.Render(c, pages.TermsPage(pages.TermsPageProps{Ctx: pages.PageContext{}}))
+	}
+}
+
+func WebAUP() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		web.Render(c, pages.AUPPage(pages.AUPPageProps{Ctx: pages.PageContext{}}))
+	}
+}

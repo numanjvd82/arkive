@@ -261,6 +261,10 @@ func homeFooter() g.Node {
 				h.Class("footer-links"),
 				h.A(h.Href("/login"), g.Text("Login")),
 				h.A(h.Href("/signup"), g.Text("Create account")),
+				h.A(h.Href("/privacy"), h.Class("text-link"), g.Text("Privacy Policy")),
+				h.A(h.Href("/cookies"), h.Class("text-link"), g.Text("Cookie Policy")),
+				h.A(h.Href("/terms"), h.Class("text-link"), g.Text("Terms of Service")),
+				h.A(h.Href("/aup"), h.Class("text-link"), g.Text("Acceptable Use")),
 			),
 		),
 	)

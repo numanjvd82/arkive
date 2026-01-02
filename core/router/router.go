@@ -29,6 +29,10 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 	r.StaticFS("/static", web.StaticFS("static"))
 	r.StaticFS("/web/pages", web.StaticFS("pages"))
 	r.GET("/", handlers.WebHome())
+	r.GET("/privacy", handlers.WebPrivacy())
+	r.GET("/cookies", handlers.WebCookie())
+	r.GET("/terms", handlers.WebTerms())
+	r.GET("/aup", handlers.WebAUP())
 	r.GET("/s/:token", middleware.RateLimit(middleware.RateLimitConfig{
 		RequestsPerMinute: 2,
 		Burst:             2,

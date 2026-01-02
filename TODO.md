@@ -11,6 +11,12 @@
 - Multi-file and folder upload UI (queue, progress per item, folder support).
 - Alert component for inline form and page messaging.
 - Refactor share UI (dialog + public share view) for clearer components and state management.
+- Add ad provider name to Privacy Policy and Cookie Policy once finalized.
+- Add governing law and dispute venue to Terms of Service after company registration.
+- Add company address and phone to Terms of Service after company registration.
+- Add cross-links between Privacy Policy, Cookie Policy, Terms of Service, and AUP.
+- Add revision dates to Terms of Service and AUP pages.
+- Add rewards disclaimer to Privacy Policy (availability, fraud checks, subject to change).
 
 ## Done
 - Install `ffprobe` on the server for video metadata extraction.
@@ -19,5 +25,3 @@
 - Refactor media view page (components, helpers) for better structure and maintainability.
 - Strategy for private/public view and download expiry (stable media URLs, refresh flow, tokenized CDN).
 - Improve toast visibility and messaging for rate-limited actions across the app.
-
-
