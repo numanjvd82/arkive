@@ -41,7 +41,7 @@ const (
 	MaxFileSizeBytes        int64 = 10 * 1024 * 1024 * 1024
 	MultipartThresholdBytes int64 = 200 * 1024 * 1024
 	MonthlyFullSpeedBytes   int64 = 10 * 1024 * 1024 * 1024
-	ThrottledUploadDelayMs        = 40000
+	ThrottledUploadDelayMs        = 100000
 )
 
 type Service struct {
@@ -411,6 +411,10 @@ func (s *Service) StartSingleUpload(ctx context.Context, userID, filename string
 
 	objectKey, err := storage.BuildObjectKey(userID)
 	if err != nil {
+		return models.SingleStartResponse{}, nil, err
+	}
+
+	if err := waitForThrottle(ctx, throttleMs); err != nil {
 		return models.SingleStartResponse{}, nil, err
 	}
 

@@ -33,7 +33,7 @@
   let transferStats = null;
   const MAX_FILE_SIZE = 10 * 1024 * 1024 * 1024;
   const MULTIPART_THRESHOLD = 200 * 1024 * 1024;
-  const LARGE_FILE_THROTTLE_MS = 40000;
+  const LARGE_FILE_THROTTLE_MS = 100000;
 
   function setStatus(message) {
     status.textContent = message;
@@ -538,7 +538,7 @@
     }
   }
 
-  async function uploadMultipart(file) {
+  async function uploadMultipart(file, initialResponse) {
     const signature = fileSignature(file);
     let existing = loadState(signature);
     let canceled = false;
@@ -572,6 +572,24 @@
         } catch (_) {
           clearSelectedResumeUploadId();
         }
+      }
+      if (initialResponse) {
+        if (initialResponse.mode !== "multipart") {
+          throw new Error("Expected multipart upload");
+        }
+        const nextState = {
+          uploadId: initialResponse.uploadId,
+          fileId: initialResponse.fileId,
+          chunkSize: initialResponse.chunkSize,
+          totalParts: initialResponse.totalParts,
+          uploadedParts: [],
+          mode: "multipart",
+          filename: file.name,
+          sizeBytes: file.size,
+          status: "uploading"
+        };
+        saveState(signature, nextState);
+        return nextState;
       }
       const resp = await startUpload(file);
       if (resp.mode !== "multipart") {
@@ -721,13 +739,13 @@
     }
   }
 
-  async function uploadSingle(file) {
+  async function uploadSingle(file, initialResponse) {
     const controller = new AbortController();
     let uploadId = null;
     const signature = fileSignature(file);
 
     try {
-      const resp = await startUpload(file);
+      const resp = initialResponse || await startUpload(file);
       if (resp.mode !== "single") {
         throw new Error("Expected single upload");
       }
@@ -835,11 +853,18 @@
   }
 
   function uploadFile(file) {
-    if (file.size > MULTIPART_THRESHOLD) {
+    const signature = fileSignature(file);
+    const existing = loadState(signature);
+    if (file.size > MULTIPART_THRESHOLD || (existing && existing.mode === "multipart")) {
       return uploadMultipart(file);
     }
     clearSelectedResumeUploadId();
-    return uploadSingle(file);
+    return startUpload(file).then(function(resp) {
+      if (resp && resp.mode === "multipart") {
+        return uploadMultipart(file, resp);
+      }
+      return uploadSingle(file, resp);
+    });
   }
 
   function getUploadSession(uploadId) {
