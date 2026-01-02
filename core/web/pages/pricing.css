@@ -1,0 +1,112 @@
+.pricing-page {
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+.pricing-hero {
+  padding: 96px 0 32px;
+}
+
+.pricing-hero h1 {
+  font-size: clamp(2.2rem, 3.4vw, 3.4rem);
+  margin-bottom: 12px;
+}
+
+.pricing-meta {
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+
+.pricing-intro {
+  max-width: 760px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.pricing-content {
+  padding: 0 0 96px;
+}
+
+.pricing-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow: var(--shadow);
+}
+
+.pricing-card + .pricing-card {
+  margin-top: 28px;
+}
+
+.pricing-table-wrap {
+  overflow-x: auto;
+}
+
+.pricing-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 640px;
+}
+
+.pricing-table th,
+.pricing-table td {
+  text-align: left;
+  padding: 16px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.pricing-table th {
+  color: var(--accent);
+  font-size: 0.95rem;
+}
+
+.pricing-table thead th {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.pricing-table tr:last-child th,
+.pricing-table tr:last-child td {
+  border-bottom: none;
+}
+
+.fairuse-card h2 {
+  font-size: 1.4rem;
+  margin-bottom: 12px;
+}
+
+.fairuse-intro {
+  color: var(--muted);
+  line-height: 1.7;
+  margin-bottom: 16px;
+}
+
+.fairuse-list {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.fairuse-list li + li {
+  margin-top: 10px;
+}
+
+.fairuse-note {
+  margin-top: 16px;
+  color: var(--accent-warm);
+}
+
+@media (max-width: 800px) {
+  .pricing-hero {
+    padding: 72px 0 24px;
+  }
+
+  .pricing-card {
+    padding: 24px;
+  }
+}

@@ -36,3 +36,9 @@ func WebAUP() gin.HandlerFunc {
 		web.Render(c, pages.AUPPage(pages.AUPPageProps{Ctx: pages.PageContext{}}))
 	}
 }
+
+func WebPricing() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		web.Render(c, pages.PricingPage(pages.PricingPageProps{Ctx: pages.PageContext{}}))
+	}
+}

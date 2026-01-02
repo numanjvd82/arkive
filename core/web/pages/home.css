@@ -77,6 +77,11 @@
   max-width: 520px;
 }
 
+.hero-note {
+  margin-top: 10px;
+  font-size: 0.95rem;
+}
+
 .eyebrow {
   display: inline-flex;
   padding: 6px 14px;

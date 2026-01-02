@@ -43,6 +43,7 @@ func homeHeader() g.Node {
 			}),
 			h.Nav(
 				h.Class("nav-links"),
+				h.A(h.Href("/pricing"), g.Text("Pricing")),
 				h.A(h.Href("#features"), g.Text("Features")),
 				h.A(h.Href("#sharing"), g.Text("Sharing")),
 				h.A(h.Href("#security"), g.Text("Security")),
@@ -67,6 +68,12 @@ func homeHero() g.Node {
 				h.Span(h.Class("eyebrow"), g.Text("Share with freedom")),
 				h.H1(g.Text("Fast, secure file sharing with zero friction.")),
 				h.P(g.Text("Arkive gives you unlimited storage with unlimited retention. Share links instantly, add passwords, and let anyone download—no account required.")),
+				h.P(
+					h.Class("hero-note"),
+					g.Text("Fair use applies. "),
+					h.A(h.Href("/pricing"), h.Class("text-link"), g.Text("See pricing")),
+					g.Text("."),
+				),
 				h.Div(
 					h.Class("hero-actions"),
 					h.A(h.Class("button primary"), h.Href("/signup"), g.Text("Start sharing")),
@@ -252,6 +259,7 @@ func homeFooter() g.Node {
 			),
 			h.Div(
 				h.Class("footer-links"),
+				h.A(h.Href("/pricing"), g.Text("Pricing")),
 				h.A(h.Href("#features"), g.Text("Features")),
 				h.A(h.Href("#sharing"), g.Text("Sharing")),
 				h.A(h.Href("#security"), g.Text("Security")),
