@@ -1,6 +1,9 @@
 # Uploads TODO
 
 ## Not Implemented Yet
+- Abuse safeguards: new account upload limits (age/verification gates) with progressive unlocks.
+- Abuse safeguards: per-token and per-IP limits for public share downloads, with burst control.
+- Abuse safeguards: heuristic detection for upload spikes, repeated failures, and high share churn.
 - Periodic cleanup for stale multipart uploads (database records + R2 uploads/objects).
 - Upload lifecycle metrics/logging (start/part/complete/abort/fail counters and durations).
 - Automated tests for multipart edge cases (concurrent abort/complete, resume after partial failure, R2 transient errors).
