@@ -42,7 +42,7 @@ func main() {
 		log.Fatalf("db ping failed: %v", err)
 	}
 
-	if err := migrations.Run(context.Background(), db, "migrations"); err != nil {
+	if err := migrations.Run(context.Background(), db); err != nil {
 		log.Fatalf("migrations failed: %v", err)
 	}
 

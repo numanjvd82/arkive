@@ -2,16 +2,18 @@ package migrations
 
 import (
 	"context"
+	"embed"
 	"fmt"
 	"io/fs"
-	"os"
-	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+//go:embed *.sql
+var embeddedMigrations embed.FS
 
 type migration struct {
 	version int64
@@ -20,8 +22,8 @@ type migration struct {
 }
 
 // Run applies all pending *.up.sql migrations in order and records them.
-func Run(ctx context.Context, pool *pgxpool.Pool, dir string) error {
-	migrations, err := loadMigrations(dir)
+func Run(ctx context.Context, pool *pgxpool.Pool) error {
+	migrations, err := loadMigrations(embeddedMigrations, ".")
 	if err != nil {
 		return err
 	}
@@ -42,7 +44,7 @@ func Run(ctx context.Context, pool *pgxpool.Pool, dir string) error {
 			continue
 		}
 
-		sqlBytes, err := os.ReadFile(m.path)
+		sqlBytes, err := fs.ReadFile(embeddedMigrations, m.path)
 		if err != nil {
 			return err
 		}
@@ -60,7 +62,7 @@ func Run(ctx context.Context, pool *pgxpool.Pool, dir string) error {
 	return nil
 }
 
-func loadMigrations(dir string) ([]migration, error) {
+func loadMigrations(fsys fs.FS, dir string) ([]migration, error) {
 	var migrations []migration
 	walkFn := func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -85,7 +87,7 @@ func loadMigrations(dir string) ([]migration, error) {
 		return nil
 	}
 
-	if err := filepath.WalkDir(dir, walkFn); err != nil {
+	if err := fs.WalkDir(fsys, dir, walkFn); err != nil {
 		return nil, err
 	}
 
