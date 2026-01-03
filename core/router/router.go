@@ -19,6 +19,7 @@ import (
 
 func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) *gin.Engine {
 	r := gin.Default()
+	r.Use(middleware.ErrorLogger())
 
 	authService := auth.NewService(db, authrepo.New(), sessionrepo.New(), auth.Config{
 		SessionTTL:     cfg.SessionTTL,

@@ -7,12 +7,14 @@ import (
 
 	"arkive/core/services/auth"
 	appcontext "arkive/pkg/context"
+	"arkive/pkg/errs"
 )
 
 func RequireSessionRedirect(svc *auth.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		_, ok, err := appcontext.LoadUser(c, svc)
 		if err != nil {
+			_ = c.Error(errs.WithStack(err))
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
@@ -29,6 +31,7 @@ func RequireSessionJSON(svc *auth.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user, ok, err := appcontext.LoadUser(c, svc)
 		if err != nil {
+			_ = c.Error(errs.WithStack(err))
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "session lookup failed"})
 			return
 		}
