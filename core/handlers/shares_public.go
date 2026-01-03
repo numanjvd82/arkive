@@ -15,6 +15,7 @@ import (
 	"arkive/core/services/uploads"
 	"arkive/core/web"
 	"arkive/core/web/pages"
+	"arkive/pkg/errs"
 )
 
 func PublicShareView(shareService *shares.Service, uploadService *uploads.Service) gin.HandlerFunc {
@@ -31,6 +32,7 @@ func PublicShareView(shareService *shares.Service, uploadService *uploads.Servic
 				c.AbortWithStatus(http.StatusNotFound)
 				return
 			}
+			_ = c.Error(errs.WithStack(err))
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
@@ -52,6 +54,7 @@ func PublicShareView(shareService *shares.Service, uploadService *uploads.Servic
 			case uploads.ErrInvalidInput:
 				c.AbortWithStatus(http.StatusBadRequest)
 			default:
+				_ = c.Error(errs.WithStack(err))
 				c.AbortWithStatus(http.StatusInternalServerError)
 			}
 			return
@@ -83,6 +86,7 @@ func PublicShareUnlock(shareService *shares.Service, uploadService *uploads.Serv
 				c.AbortWithStatus(http.StatusNotFound)
 				return
 			}
+			_ = c.Error(errs.WithStack(err))
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
@@ -104,6 +108,7 @@ func PublicShareUnlock(shareService *shares.Service, uploadService *uploads.Serv
 			case uploads.ErrInvalidInput:
 				c.AbortWithStatus(http.StatusBadRequest)
 			default:
+				_ = c.Error(errs.WithStack(err))
 				c.AbortWithStatus(http.StatusInternalServerError)
 			}
 			return
@@ -139,6 +144,7 @@ func renderShareLanding(c *gin.Context, uploadService *uploads.Service, token st
 		url, err := uploadService.PresignShareViewForFile(c.Request.Context(), file)
 		if err != nil {
 			if err != uploads.ErrInvalidInput {
+				_ = c.Error(errs.WithStack(err))
 				c.AbortWithStatus(http.StatusInternalServerError)
 				return
 			}
@@ -149,6 +155,7 @@ func renderShareLanding(c *gin.Context, uploadService *uploads.Service, token st
 
 	downloadURL, err := uploadService.PresignShareDownloadForFile(c.Request.Context(), file)
 	if err != nil {
+		_ = c.Error(errs.WithStack(err))
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}

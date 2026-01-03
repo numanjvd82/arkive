@@ -9,6 +9,7 @@ import (
 	"arkive/core/models"
 	"arkive/core/services/uploads"
 	appcontext "arkive/pkg/context"
+	"arkive/pkg/errs"
 )
 
 type uploadStartRequest struct {
@@ -46,6 +47,7 @@ func APIUploadStart(svc *uploads.Service) gin.HandlerFunc {
 			case uploads.ErrUnauthorized:
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 			default:
+				_ = c.Error(errs.WithStack(err))
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "upload start failed"})
 			}
 			return
@@ -101,6 +103,7 @@ func APIUploadNext(svc *uploads.Service) gin.HandlerFunc {
 			case uploads.ErrNoNextPart:
 				c.Status(http.StatusNoContent)
 			default:
+				_ = c.Error(errs.WithStack(err))
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "next failed"})
 			}
 			return
@@ -163,6 +166,7 @@ func APIUploadComplete(svc *uploads.Service) gin.HandlerFunc {
 					})
 					return
 				}
+				_ = c.Error(errs.WithStack(err))
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "complete failed"})
 			}
 			return
@@ -195,6 +199,7 @@ func APIUploadCancel(svc *uploads.Service) gin.HandlerFunc {
 			case uploads.ErrInvalidInput:
 				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
 			default:
+				_ = c.Error(errs.WithStack(err))
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "cancel failed"})
 			}
 			return
@@ -223,6 +228,7 @@ func APIDownloadFile(svc *uploads.Service) gin.HandlerFunc {
 			case uploads.ErrInvalidInput:
 				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
 			default:
+				_ = c.Error(errs.WithStack(err))
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "download failed"})
 			}
 			return
@@ -251,6 +257,7 @@ func APIMediaRedirect(svc *uploads.Service) gin.HandlerFunc {
 			case uploads.ErrInvalidInput:
 				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
 			default:
+				_ = c.Error(errs.WithStack(err))
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "media failed"})
 			}
 			return

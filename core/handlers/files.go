@@ -10,6 +10,7 @@ import (
 	"arkive/core/web"
 	"arkive/core/web/pages"
 	appcontext "arkive/pkg/context"
+	"arkive/pkg/errs"
 	"arkive/pkg/video"
 )
 
@@ -23,6 +24,7 @@ func WebFiles(uploadService *uploads.Service) gin.HandlerFunc {
 
 		files, err := uploadService.ListCompletedUploads(c.Request.Context(), user.ID)
 		if err != nil {
+			_ = c.Error(errs.WithStack(err))
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
@@ -56,6 +58,7 @@ func WebFileView(uploadService *uploads.Service) gin.HandlerFunc {
 			case uploads.ErrUnauthorized, uploads.ErrInvalidInput:
 				c.AbortWithStatus(http.StatusBadRequest)
 			default:
+				_ = c.Error(errs.WithStack(err))
 				c.AbortWithStatus(http.StatusInternalServerError)
 			}
 			return

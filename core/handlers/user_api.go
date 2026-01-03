@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"arkive/core/services/auth"
+	"arkive/pkg/errs"
 )
 
 func APIMe(svc *auth.Service) gin.HandlerFunc {
@@ -22,6 +23,7 @@ func APIMe(svc *auth.Service) gin.HandlerFunc {
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 				return
 			}
+			_ = c.Error(errs.WithStack(err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not load user"})
 			return
 		}

@@ -11,12 +11,14 @@ import (
 	"arkive/core/web/pages"
 	appcontext "arkive/pkg/context"
 	"arkive/pkg/cookies"
+	"arkive/pkg/errs"
 	"arkive/pkg/validation"
 )
 
 func WebLoginGet(svc *auth.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if _, ok, err := appcontext.LoadUser(c, svc); err != nil {
+			_ = c.Error(errs.WithStack(err))
 			c.Status(http.StatusInternalServerError)
 			return
 		} else if ok {
@@ -35,6 +37,7 @@ func WebLoginGet(svc *auth.Service) gin.HandlerFunc {
 func WebSignupGet(svc *auth.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if _, ok, err := appcontext.LoadUser(c, svc); err != nil {
+			_ = c.Error(errs.WithStack(err))
 			c.Status(http.StatusInternalServerError)
 			return
 		} else if ok {
@@ -58,6 +61,7 @@ func WebLoginPost(svc *auth.Service) gin.HandlerFunc {
 
 	return func(c *gin.Context) {
 		if _, ok, err := appcontext.LoadUser(c, svc); err != nil {
+			_ = c.Error(errs.WithStack(err))
 			c.Status(http.StatusInternalServerError)
 			return
 		} else if ok {
@@ -89,6 +93,7 @@ func WebLoginPost(svc *auth.Service) gin.HandlerFunc {
 			return
 		}
 		if err != nil {
+			_ = c.Error(errs.WithStack(err))
 			c.Status(http.StatusInternalServerError)
 			return
 		}
@@ -108,6 +113,7 @@ func WebSignupPost(svc *auth.Service) gin.HandlerFunc {
 
 	return func(c *gin.Context) {
 		if _, ok, err := appcontext.LoadUser(c, svc); err != nil {
+			_ = c.Error(errs.WithStack(err))
 			c.Status(http.StatusInternalServerError)
 			return
 		} else if ok {
@@ -147,6 +153,7 @@ func WebSignupPost(svc *auth.Service) gin.HandlerFunc {
 			return
 		}
 		if err != nil {
+			_ = c.Error(errs.WithStack(err))
 			c.Status(http.StatusInternalServerError)
 			return
 		}
@@ -164,6 +171,7 @@ func WebLogout(svc *auth.Service) gin.HandlerFunc {
 		}
 
 		if err := svc.LogoutSession(c.Request.Context(), sessionID); err != nil {
+			_ = c.Error(errs.WithStack(err))
 			c.Status(http.StatusInternalServerError)
 			return
 		}
@@ -193,6 +201,7 @@ func WebGoogleLogin(svc *auth.Service) gin.HandlerFunc {
 			case auth.ErrGoogleEmailHasPassword:
 				c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 			default:
+				_ = c.Error(errs.WithStack(err))
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "unable to sign in"})
 			}
 			return

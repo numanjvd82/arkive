@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"arkive/core/services/uploads"
+	"arkive/pkg/errs"
 )
 
 func APIDeleteFile(svc *uploads.Service) gin.HandlerFunc {
@@ -28,6 +29,7 @@ func APIDeleteFile(svc *uploads.Service) gin.HandlerFunc {
 			case uploads.ErrInvalidInput:
 				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
 			default:
+				_ = c.Error(errs.WithStack(err))
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "delete failed"})
 			}
 			return

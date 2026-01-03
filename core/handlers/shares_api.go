@@ -9,6 +9,7 @@ import (
 
 	"arkive/core/models"
 	"arkive/core/services/shares"
+	"arkive/pkg/errs"
 	"arkive/pkg/validation"
 )
 
@@ -74,8 +75,10 @@ func APICreateShare(svc *shares.Service) gin.HandlerFunc {
 			case shares.ErrInvalidInput:
 				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
 			case shares.ErrPasswordHashFailed:
+				_ = c.Error(errs.WithStack(err))
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "password hashing failed"})
 			default:
+				_ = c.Error(errs.WithStack(err))
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "share create failed"})
 			}
 			return
@@ -141,8 +144,10 @@ func APIUpdateShare(svc *shares.Service) gin.HandlerFunc {
 			case shares.ErrInvalidInput:
 				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
 			case shares.ErrPasswordHashFailed:
+				_ = c.Error(errs.WithStack(err))
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "password hashing failed"})
 			default:
+				_ = c.Error(errs.WithStack(err))
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "share update failed"})
 			}
 			return
@@ -229,6 +234,7 @@ func APIRevokeShare(svc *shares.Service) gin.HandlerFunc {
 			case shares.ErrInvalidInput:
 				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
 			default:
+				_ = c.Error(errs.WithStack(err))
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "share revoke failed"})
 			}
 			return
@@ -264,6 +270,7 @@ func APIDeleteShare(svc *shares.Service) gin.HandlerFunc {
 			case shares.ErrInvalidInput:
 				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
 			default:
+				_ = c.Error(errs.WithStack(err))
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "share delete failed"})
 			}
 			return
