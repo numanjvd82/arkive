@@ -44,6 +44,7 @@ func homeHeader() g.Node {
 			h.Nav(
 				h.Class("nav-links"),
 				h.A(h.Href("/pricing"), g.Text("Pricing")),
+				h.A(h.Href("/contact"), g.Text("Contact")),
 				h.A(h.Href("#features"), g.Text("Features")),
 				h.A(h.Href("#sharing"), g.Text("Sharing")),
 				h.A(h.Href("#security"), g.Text("Security")),
@@ -269,6 +270,7 @@ func homeFooter() g.Node {
 				h.Class("footer-links"),
 				h.A(h.Href("/login"), g.Text("Login")),
 				h.A(h.Href("/signup"), g.Text("Create account")),
+				h.A(h.Href("/contact"), g.Text("Contact")),
 				h.A(h.Href("/privacy"), h.Class("text-link"), g.Text("Privacy Policy")),
 				h.A(h.Href("/cookies"), h.Class("text-link"), g.Text("Cookie Policy")),
 				h.A(h.Href("/terms"), h.Class("text-link"), g.Text("Terms of Service")),

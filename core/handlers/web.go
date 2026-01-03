@@ -42,3 +42,9 @@ func WebPricing() gin.HandlerFunc {
 		web.Render(c, pages.PricingPage(pages.PricingPageProps{Ctx: pages.PageContext{}}))
 	}
 }
+
+func WebContact() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		web.Render(c, pages.ContactPage(pages.ContactPageProps{Ctx: pages.PageContext{}}))
+	}
+}
