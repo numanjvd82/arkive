@@ -114,8 +114,11 @@ func validateStartInput(userID, filename string, sizeBytes int64, requiresMultip
 	return nil, nil
 }
 
-func isExpired(expiresAt time.Time) bool {
-	return !expiresAt.IsZero() && time.Now().After(expiresAt)
+func isExpired(expiresAt *time.Time) bool {
+	if expiresAt == nil || expiresAt.IsZero() {
+		return false
+	}
+	return time.Now().After(*expiresAt)
 }
 
 func (s *Service) beginUploadTx(ctx context.Context, userID, objectKey, filename, contentType string, sizeBytes int64, throttleMs int) (pgx.Tx, models.File, validation.Errors, error) {
@@ -141,6 +144,7 @@ func (s *Service) beginUploadTx(ctx context.Context, userID, objectKey, filename
 		return nil, models.File{}, nil, err
 	}
 
+	expiresAt := time.Now().Add(s.uploadExpires)
 	file, err := s.fileRepo.CreateFile(ctx, tx, models.File{
 		UserID:      userID,
 		Bucket:      s.bucket,
@@ -150,7 +154,7 @@ func (s *Service) beginUploadTx(ctx context.Context, userID, objectKey, filename
 		SizeBytes:   sizeBytes,
 		Status:      FileStatusUploading,
 		ThrottleMs:  throttleMs,
-		ExpiresAt:   time.Now().Add(s.uploadExpires),
+		ExpiresAt:   &expiresAt,
 	})
 	if err != nil {
 		_ = tx.Rollback(ctx)
@@ -292,6 +296,7 @@ func (s *Service) StartMultipart(ctx context.Context, userID, filename string, s
 		return models.MultipartStartResponse{}, validationErrors, err
 	}
 
+	multipartExpiresAt := time.Now().Add(s.uploadExpires)
 	multipart, err := s.uploadRepo.CreateMultipart(ctx, tx, models.MultipartUpload{
 		FileID:        file.ID,
 		UploadID:      uploadID,
@@ -301,7 +306,7 @@ func (s *Service) StartMultipart(ctx context.Context, userID, filename string, s
 		TotalParts:    partCount,
 		UploadedParts: []byte("[]"),
 		Status:        MultipartStatusInitiated,
-		ExpiresAt:     time.Now().Add(s.uploadExpires),
+		ExpiresAt:     &multipartExpiresAt,
 	})
 	if err != nil {
 		_ = tx.Rollback(ctx)

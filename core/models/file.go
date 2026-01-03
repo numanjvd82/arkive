@@ -17,5 +17,5 @@ type File struct {
 	ThrottleMs           int
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
-	ExpiresAt            time.Time
+	ExpiresAt            *time.Time
 }
