@@ -16,6 +16,7 @@ func DashboardPage(props DashboardPageProps) web.Page {
 	return web.Page{
 		Title:   "Arkive · Dashboard",
 		CSS:     []string{"/web/pages/dashboard.css"},
+		JS:      []string{"/static/monetag.js"},
 		HideNav: true,
 		Body: h.Main(
 			h.Class("dashboard"),
