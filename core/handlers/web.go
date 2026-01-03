@@ -37,6 +37,12 @@ func WebAUP() gin.HandlerFunc {
 	}
 }
 
+func WebAbuse() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		web.Render(c, pages.AbusePage(pages.AbusePageProps{Ctx: pages.PageContext{}}))
+	}
+}
+
 func WebPricing() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		web.Render(c, pages.PricingPage(pages.PricingPageProps{Ctx: pages.PageContext{}}))

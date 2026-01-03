@@ -41,6 +41,8 @@ func privacyBody() g.Node {
 					h.A(h.Href("/cookies"), h.Class("text-link"), g.Text("Cookie Policy")),
 					g.Text(", and "),
 					h.A(h.Href("/aup"), h.Class("text-link"), g.Text("Acceptable Use Policy")),
+					g.Text(", and "),
+					h.A(h.Href("/abuse"), h.Class("text-link"), g.Text("Copyright & Abuse Reporting")),
 					g.Text("."),
 				),
 			),
@@ -54,7 +56,7 @@ func privacyBody() g.Node {
 					privacySection(
 						"1. Information we collect",
 						g.Group([]g.Node{
-							h.P(g.Text("Information you provide: account details like name, username, and email; credentials; files and metadata you upload; sharing settings; and messages you send to support.")),
+							h.P(g.Text("Information you provide: account details like name, username, and email; credentials; files and metadata you upload; sharing settings; abuse or copyright reports; and messages you send to support.")),
 							h.P(g.Text("Information from third parties: if you sign in with Google, we receive your name, email, profile photo, and Google account ID. In the Android app, purchases are processed by Google Play, which provides us with purchase status and receipts. Rewarded ad partners may provide ad interaction details needed to grant rewards.")),
 							h.P(g.Text("Information collected automatically: IP address, device and browser details, usage and log data, and security signals. We use essential cookies to keep you signed in and protect sessions.")),
 						}),

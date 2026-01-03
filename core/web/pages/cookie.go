@@ -41,6 +41,8 @@ func cookieBody() g.Node {
 					h.A(h.Href("/privacy"), h.Class("text-link"), g.Text("Privacy Policy")),
 					g.Text(", and "),
 					h.A(h.Href("/aup"), h.Class("text-link"), g.Text("Acceptable Use Policy")),
+					g.Text(", and "),
+					h.A(h.Href("/abuse"), h.Class("text-link"), g.Text("Copyright & Abuse Reporting")),
 					g.Text("."),
 				),
 			),

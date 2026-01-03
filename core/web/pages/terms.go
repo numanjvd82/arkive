@@ -41,6 +41,8 @@ func termsBody() g.Node {
 					h.A(h.Href("/cookies"), h.Class("text-link"), g.Text("Cookie Policy")),
 					g.Text(", and "),
 					h.A(h.Href("/aup"), h.Class("text-link"), g.Text("Acceptable Use Policy")),
+					g.Text(", and "),
+					h.A(h.Href("/abuse"), h.Class("text-link"), g.Text("Copyright & Abuse Reporting")),
 					g.Text("."),
 				),
 			),
@@ -68,6 +70,11 @@ func termsBody() g.Node {
 						g.Group([]g.Node{
 							h.P(g.Text("You own the files and content you upload. You grant Arkive a limited license to host, store, and deliver your content solely to operate the service and provide the features you request.")),
 							h.P(g.Text("You are responsible for the content you upload and share. Do not upload or share content that violates the Acceptable Use Policy.")),
+							h.P(
+								g.Text("If you believe content infringes copyright or violates our policies, submit a report at "),
+								h.A(h.Href("/abuse"), h.Class("text-link"), g.Text("Copyright & Abuse Reporting")),
+								g.Text("."),
+							),
 						}),
 					),
 					termsSection(

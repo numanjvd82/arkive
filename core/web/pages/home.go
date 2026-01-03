@@ -275,6 +275,7 @@ func homeFooter() g.Node {
 				h.A(h.Href("/cookies"), h.Class("text-link"), g.Text("Cookie Policy")),
 				h.A(h.Href("/terms"), h.Class("text-link"), g.Text("Terms of Service")),
 				h.A(h.Href("/aup"), h.Class("text-link"), g.Text("Acceptable Use")),
+				h.A(h.Href("/abuse"), h.Class("text-link"), g.Text("Copyright & Abuse")),
 			),
 		),
 	)

@@ -1,0 +1,67 @@
+.abuse-page {
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+.abuse-hero {
+  padding: 96px 0 32px;
+}
+
+.abuse-hero h1 {
+  font-size: clamp(2.2rem, 3.2vw, 3.2rem);
+  margin-bottom: 12px;
+}
+
+.abuse-meta {
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+
+.abuse-intro {
+  max-width: 740px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.abuse-content {
+  padding: 0 0 96px;
+}
+
+.abuse-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow: var(--shadow);
+}
+
+.abuse-section + .abuse-section {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.abuse-section h2 {
+  font-size: 1.35rem;
+  margin-bottom: 12px;
+}
+
+.abuse-section p {
+  color: var(--muted);
+  line-height: 1.7;
+  margin: 10px 0;
+}
+
+.abuse-section a {
+  color: var(--accent-warm);
+}
+
+@media (max-width: 700px) {
+  .abuse-hero {
+    padding: 72px 0 24px;
+  }
+
+  .abuse-card {
+    padding: 24px;
+  }
+}

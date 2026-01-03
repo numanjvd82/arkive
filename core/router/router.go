@@ -36,6 +36,8 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 	r.GET("/cookies", handlers.WebCookie())
 	r.GET("/terms", handlers.WebTerms())
 	r.GET("/aup", handlers.WebAUP())
+	r.GET("/abuse", handlers.WebAbuse())
+	r.GET("/dmca", handlers.WebAbuse())
 	r.GET("/s/:token", middleware.RateLimit(middleware.RateLimitConfig{
 		RequestsPerMinute: 2,
 		Burst:             2,

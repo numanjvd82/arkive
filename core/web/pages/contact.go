@@ -151,6 +151,7 @@ func contactContent() g.Node {
 							h.A(h.Class("text-link"), h.Href("/pricing"), g.Text("Pricing")),
 							h.A(h.Class("text-link"), h.Href("/privacy"), g.Text("Privacy")),
 							h.A(h.Class("text-link"), h.Href("/aup"), g.Text("Acceptable Use")),
+							h.A(h.Class("text-link"), h.Href("/abuse"), g.Text("Copyright & Abuse")),
 						),
 					},
 				),
