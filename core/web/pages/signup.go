@@ -97,6 +97,11 @@ func signUpBody(props SignupPageProps) g.Node {
 							Class:   "auth-submit",
 						}),
 					),
+					h.P(
+						h.Class("auth-alt"),
+						g.Text("Already have an account? "),
+						h.A(h.Class("text-link"), h.Href("/login"), g.Text("Log in")),
+					),
 					googleAuthSection(props.GoogleClientID),
 				},
 			}),

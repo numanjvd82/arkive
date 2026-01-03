@@ -77,6 +77,11 @@ func loginBody(props LoginPageProps) g.Node {
 							Class:   "auth-submit",
 						}),
 					),
+					h.P(
+						h.Class("auth-alt"),
+						g.Text("New to Arkive? "),
+						h.A(h.Class("text-link"), h.Href("/signup"), g.Text("Create an account")),
+					),
 					googleAuthSection(props.GoogleClientID),
 				},
 			}),
