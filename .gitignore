@@ -10,3 +10,7 @@ docker-compose.yml
 
 # Dumps 
 *.dump
+
+# Scripts
+deploy.sh
+server-setup.sh
