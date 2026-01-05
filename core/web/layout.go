@@ -28,6 +28,11 @@ func Layout(data LayoutData, content ...g.Node) g.Node {
 		h.Link(h.Rel("stylesheet"), h.Href("/static/globals.css")),
 		components.InlineStyle(components.ButtonCSS),
 		components.InlineStyle(components.ToastCSS),
+		h.Script(
+			h.Defer(),
+			h.Src("https://static.cloudflareinsights.com/beacon.min.js"),
+			g.Attr("data-cf-beacon", `{"token": "9ef8563310c5432ebe6f10581a7a6b7d"}`),
+		),
 		h.Link(h.Rel("icon"), h.Type("image/x-icon"), h.Href("/static/assets/images/favicon.ico")),
 		h.Link(h.Rel("icon"), h.Type("image/png"), g.Attr("sizes", "32x32"), h.Href("/static/assets/images/favicon-32x32.png")),
 		h.Link(h.Rel("icon"), h.Type("image/png"), g.Attr("sizes", "16x16"), h.Href("/static/assets/images/favicon-16x16.png")),
