@@ -14,3 +14,4 @@ docker-compose.yml
 # Scripts
 deploy.sh
 server-setup.sh
+cleanup.sh
