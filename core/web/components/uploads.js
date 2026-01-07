@@ -31,12 +31,29 @@
   let resumeWaiters = [];
   let selectedFile = null;
   let transferStats = null;
+  let uploadLock = false;
   const MAX_FILE_SIZE = 10 * 1024 * 1024 * 1024;
   const MULTIPART_THRESHOLD = 200 * 1024 * 1024;
   const LARGE_FILE_THROTTLE_MS = 100000;
 
   function setStatus(message) {
     status.textContent = message;
+  }
+
+  function setUploadInputEnabled(enabled) {
+    if (input) {
+      input.disabled = !enabled;
+    }
+    if (dropzone) {
+      dropzone.classList.toggle("is-disabled", !enabled);
+      dropzone.setAttribute("aria-disabled", enabled ? "false" : "true");
+      dropzone.setAttribute("tabindex", enabled ? "0" : "-1");
+    }
+  }
+
+  function updateInputState() {
+    const busy = uploadLock || (!!active && !paused);
+    setUploadInputEnabled(!busy);
   }
 
   function toastUploadSuccess(filename) {
@@ -234,6 +251,7 @@
     }
     updatePauseButtons();
     updateResumeBanner();
+    updateInputState();
   }
 
   function waitForResume() {
@@ -638,6 +656,8 @@
         fileId: state.fileId,
         cancel: function() { canceled = true; }
       };
+      uploadLock = false;
+      updateInputState();
       setProgress((rebuilt.bytes / file.size) * 100);
       setStatus("Uploading " + file.name + "...");
       updatePauseButtons();
@@ -760,6 +780,8 @@
         status: "uploading"
       });
       active = { mode: "single", uploadId: resp.uploadId, fileId: resp.fileId, controller: controller, signature: signature };
+      uploadLock = false;
+      updateInputState();
       setProgress(0);
       setStatus("Uploading " + file.name + "...");
       updatePauseButtons();
@@ -973,7 +995,7 @@
       return;
     }
     if (file.size > MAX_FILE_SIZE) {
-    setStatus("File exceeds the maximum upload size.");
+      setStatus("File exceeds the maximum upload size.");
       return;
     }
     transferStats = null;
@@ -984,6 +1006,8 @@
     }
     abortButton && (abortButton.disabled = false);
     setPaused(false);
+    uploadLock = true;
+    updateInputState();
     uploadFile(file)
       .catch(function() {})
       .finally(function() {
@@ -995,6 +1019,8 @@
         }
         updatePauseButtons();
         updateResumeBanner();
+        uploadLock = false;
+        updateInputState();
       });
   }
 
@@ -1018,12 +1044,12 @@
 
   if (dropzone) {
     dropzone.addEventListener("click", function() {
-      if (input) {
+      if (input && !input.disabled) {
         input.click();
       }
     });
     dropzone.addEventListener("keydown", function(event) {
-      if (event.key === "Enter" || event.key === " ") {
+      if ((event.key === "Enter" || event.key === " ") && input && !input.disabled) {
         event.preventDefault();
         input.click();
       }
@@ -1052,6 +1078,11 @@
   }
 
   input.addEventListener("change", function() {
+    if (active && !paused) {
+      setStatus("An upload is in progress. Wait for it to finish before starting another.");
+      input.value = "";
+      return;
+    }
     const resumeUploadId = getSelectedResumeUploadId();
     if (resumeUploadId) {
       if (!input.files || !input.files.length) {
@@ -1196,4 +1227,5 @@
 
   updatePauseButtons();
   updateResumeBanner();
+  updateInputState();
 })();

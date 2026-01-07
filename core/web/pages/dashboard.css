@@ -91,6 +91,12 @@
   gap: 10px;
 }
 
+.upload-note {
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 .dashboard .button,
 .dashboard .icon-button {
   box-shadow: none;
