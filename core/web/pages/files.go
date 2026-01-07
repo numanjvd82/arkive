@@ -2,6 +2,7 @@ package pages
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -20,6 +21,20 @@ type FilesPageProps struct {
 }
 
 func FilesPage(props FilesPageProps) web.Page {
+	totalSize := int64(0)
+	lastUpdated := time.Time{}
+	for _, file := range props.Files {
+		totalSize += file.SizeBytes
+		if file.UpdatedAt.After(lastUpdated) {
+			lastUpdated = file.UpdatedAt
+		}
+	}
+	fileCount := len(props.Files)
+	lastActivity := "No activity yet"
+	if !lastUpdated.IsZero() {
+		lastActivity = formatTime(lastUpdated)
+	}
+
 	return web.Page{
 		Title:      "Arkive · Files",
 		CSS:        []string{"/web/pages/files.css"},
@@ -43,11 +58,46 @@ func FilesPage(props FilesPageProps) web.Page {
 						h.Div(
 							h.Class("page-actions"),
 							components.Button(components.ButtonProps{
-								Text:    "Back to dashboard",
+								Text:    "New upload",
+								Href:    "/dashboard",
+								Variant: "primary",
+							}),
+							components.Button(components.ButtonProps{
+								Text:    "Dashboard",
 								Href:    "/dashboard",
 								Variant: "secondary",
 							}),
 						),
+					),
+					h.Section(
+						h.Class("files-summary"),
+						components.Card(components.CardProps{
+							Title:    "Stored files",
+							Subtitle: "Completed uploads",
+							Class:    "summary-card",
+							Body: []g.Node{
+								h.Span(h.Class("summary-value"), g.Text(fmt.Sprintf("%d", fileCount))),
+								h.Span(h.Class("summary-meta"), g.Text(fmt.Sprintf("%s total", format.Bytes(totalSize)))),
+							},
+						}),
+						components.Card(components.CardProps{
+							Title:    "Storage used",
+							Subtitle: "Across your workspace",
+							Class:    "summary-card",
+							Body: []g.Node{
+								h.Span(h.Class("summary-value"), g.Text(format.Bytes(totalSize))),
+								h.Span(h.Class("summary-meta"), g.Text("Based on completed uploads")),
+							},
+						}),
+						components.Card(components.CardProps{
+							Title:    "Last activity",
+							Subtitle: "Most recent upload",
+							Class:    "summary-card",
+							Body: []g.Node{
+								h.Span(h.Class("summary-value is-small"), g.Text(lastActivity)),
+								h.Span(h.Class("summary-meta"), g.Text("Updates as files complete")),
+							},
+						}),
 					),
 					h.Section(
 						h.Class("files-panels"),
@@ -249,20 +299,41 @@ func FilesPage(props FilesPageProps) web.Page {
 
 func renderCompletedList(files []models.File) g.Node {
 	if len(files) == 0 {
-		return h.P(h.Class("files-empty"), g.Text("No completed uploads yet."))
+		return h.Div(
+			h.Class("files-empty"),
+			h.P(g.Text("No completed uploads yet.")),
+			components.Button(components.ButtonProps{
+				Text:    "Upload your first file",
+				Href:    "/dashboard",
+				Variant: "secondary",
+			}),
+		)
 	}
 
 	rows := make([]g.Node, 0, len(files))
+	rows = append(rows, h.Div(
+		h.Class("files-row files-row-head"),
+		h.Span(g.Text("File")),
+		h.Span(g.Text("Size")),
+		h.Span(g.Text("Updated")),
+		h.Span(g.Text("Actions")),
+	))
 	for _, file := range files {
 		previewable := isPreviewableContentType(file.ContentType)
 		rows = append(rows, h.Div(
 			h.Class("files-row"),
 			g.Attr("data-file-row", file.ID),
 			h.Div(
-				h.Class("files-meta"),
-				h.Span(h.Class("files-name"), g.Text(file.Filename)),
-				h.Span(h.Class("files-sub"), g.Text(fmt.Sprintf("%s • Completed", format.Bytes(file.SizeBytes)))),
+				h.Class("files-file"),
+				h.Span(h.Class("files-badge"), g.Text(fileTypeLabel(file))),
+				h.Div(
+					h.Class("files-meta"),
+					h.Span(h.Class("files-name"), g.Text(file.Filename)),
+					h.Span(h.Class("files-sub"), g.Text(fileSubtitle(file))),
+				),
 			),
+			h.Span(h.Class("files-size"), g.Text(format.Bytes(file.SizeBytes))),
+			h.Span(h.Class("files-time"), g.Text(formatTime(file.UpdatedAt))),
 			h.Div(
 				h.Class("files-actions"),
 				h.Div(
@@ -296,7 +367,6 @@ func renderCompletedList(files []models.File) g.Node {
 						g.Text("Delete"),
 					),
 				),
-				h.Span(h.Class("files-time"), g.Text(formatTime(file.UpdatedAt))),
 			),
 		))
 	}
@@ -314,4 +384,30 @@ func formatTime(value time.Time) string {
 func isPreviewableContentType(contentType string) bool {
 	contentType = strings.TrimSpace(strings.ToLower(contentType))
 	return strings.HasPrefix(contentType, "image/") || strings.HasPrefix(contentType, "video/")
+}
+
+func fileTypeLabel(file models.File) string {
+	ext := strings.TrimSpace(strings.TrimPrefix(filepath.Ext(file.Filename), "."))
+	if ext == "" {
+		parts := strings.Split(strings.TrimSpace(file.ContentType), "/")
+		if len(parts) > 1 {
+			ext = parts[len(parts)-1]
+		}
+	}
+	ext = strings.ToUpper(ext)
+	if ext == "" {
+		return "FILE"
+	}
+	if len(ext) > 5 {
+		return "FILE"
+	}
+	return ext
+}
+
+func fileSubtitle(file models.File) string {
+	contentType := strings.TrimSpace(file.ContentType)
+	if contentType == "" {
+		contentType = "Unknown type"
+	}
+	return fmt.Sprintf("%s • %s", contentType, format.Bytes(file.SizeBytes))
 }
