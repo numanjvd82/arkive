@@ -2,6 +2,7 @@ package components
 
 import (
 	"html"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -28,6 +29,12 @@ var iconSizes = map[string]string{
 	"xl": "48",
 }
 
+var iconFS fs.FS
+
+func SetIconFS(fsys fs.FS) {
+	iconFS = fsys
+}
+
 func Icon(props IconProps) g.Node {
 	classes := c.Classes{
 		"icon": true,
@@ -46,8 +53,16 @@ func Icon(props IconProps) g.Node {
 		sizeAttr = iconSizes["md"]
 	}
 
-	iconPath := filepath.Join("core", "web", "static", "icons", props.Name+".svg")
-	raw, err := os.ReadFile(iconPath)
+	iconFile := props.Name + ".svg"
+	var raw []byte
+	var err error
+	if iconFS != nil {
+		raw, err = fs.ReadFile(iconFS, iconFile)
+	}
+	if err != nil || iconFS == nil {
+		iconPath := filepath.Join("core", "web", "static", "icons", iconFile)
+		raw, err = os.ReadFile(iconPath)
+	}
 	if err != nil {
 		return h.Span(h.Class(classes.String()))
 	}

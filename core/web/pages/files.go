@@ -21,9 +21,10 @@ type FilesPageProps struct {
 
 func FilesPage(props FilesPageProps) web.Page {
 	return web.Page{
-		Title: "Arkive · Files",
-		CSS:   []string{"/web/pages/files.css"},
-		JS:    []string{"/static/files.js", "/static/monetag-onclick.js", "/static/monetag-vignette.js"},
+		Title:      "Arkive · Files",
+		CSS:        []string{"/web/pages/files.css"},
+		JS:         []string{"/static/files.js", "/static/monetag-onclick.js", "/static/monetag-vignette.js"},
+		AuthLayout: true,
 
 		Body: g.Group([]g.Node{
 			components.InlineStyle(components.InputCSS),

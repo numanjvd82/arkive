@@ -26,7 +26,11 @@ func DashboardSidebar() g.Node {
 					h.Class("sidebar-close"),
 					h.Type("button"),
 					g.Attr("aria-label", "Close menu"),
-					g.Text("Close"),
+					Icon(IconProps{
+						Name:       "x",
+						Size:       "16",
+						Decorative: true,
+					}),
 				),
 			),
 			h.Nav(

@@ -70,17 +70,18 @@ body.sidebar-open {
 
 .sidebar-links {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .sidebar-link {
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px;
-  border-radius: 12px;
+  padding: 8px 10px;
+  border-radius: 10px;
   border: 1px solid transparent;
   color: var(--muted);
+  font-size: 0.95rem;
   transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 

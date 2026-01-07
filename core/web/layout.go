@@ -20,11 +20,23 @@ func Layout(data LayoutData, content ...g.Node) g.Node {
 		pageTitle = "arkive.sh"
 	}
 
+	return h.Doctype(h.HTML(
+		h.Lang("en"),
+		h.Head(buildHeadNodes(LayoutData{Title: pageTitle, CSS: data.CSS, JS: data.JS})...),
+		h.Body(
+			g.If(!data.HideNav, components.Nav()),
+			g.Group(content),
+			components.ToastHost(),
+		),
+	))
+}
+
+func buildHeadNodes(data LayoutData) []g.Node {
 	headNodes := []g.Node{
 		h.Meta(h.Charset("utf-8")),
 		h.Meta(h.Name("viewport"), h.Content("width=device-width, initial-scale=1")),
 		h.Meta(h.Name("monetag"), h.Content("9d950a3ef0c449efafbbfa7840a36731")),
-		h.TitleEl(g.Text(pageTitle)),
+		h.TitleEl(g.Text(data.Title)),
 		h.Link(h.Rel("stylesheet"), h.Href("/static/reset.css")),
 		h.Link(h.Rel("stylesheet"), h.Href("/static/globals.css")),
 		components.InlineStyle(components.ButtonCSS),
@@ -48,14 +60,5 @@ func Layout(data LayoutData, content ...g.Node) g.Node {
 	for _, src := range data.JS {
 		headNodes = append(headNodes, h.Script(h.Src(src), h.Defer()))
 	}
-
-	return h.Doctype(h.HTML(
-		h.Lang("en"),
-		h.Head(headNodes...),
-		h.Body(
-			g.If(!data.HideNav, components.Nav()),
-			g.Group(content),
-			components.ToastHost(),
-		),
-	))
+	return headNodes
 }

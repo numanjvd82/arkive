@@ -8,17 +8,24 @@ import (
 )
 
 type Page struct {
-	Title   string
-	CSS     []string
-	JS      []string
-	Body    g.Node
-	HideNav bool
+	Title      string
+	CSS        []string
+	JS         []string
+	Body       g.Node
+	HideNav    bool
+	AuthLayout bool
 }
 
 func Render(c *gin.Context, page Page) {
 	c.Header("Content-Type", "text/html; charset=utf-8")
 	var node g.Node
-	if page.Body == nil {
+	if page.AuthLayout {
+		if page.Body == nil {
+			node = AuthLayout(LayoutData{Title: page.Title, CSS: page.CSS, JS: page.JS})
+		} else {
+			node = AuthLayout(LayoutData{Title: page.Title, CSS: page.CSS, JS: page.JS}, page.Body)
+		}
+	} else if page.Body == nil {
 		node = Layout(LayoutData{Title: page.Title, CSS: page.CSS, JS: page.JS, HideNav: page.HideNav})
 	} else {
 		node = Layout(LayoutData{Title: page.Title, CSS: page.CSS, JS: page.JS, HideNav: page.HideNav}, page.Body)

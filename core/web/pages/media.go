@@ -38,9 +38,10 @@ func MediaViewPage(props MediaViewPageProps) web.Page {
 	}
 
 	return web.Page{
-		Title: fmt.Sprintf("Arkive · %s", file.Filename),
-		CSS:   buildMediaCSS(props),
-		JS:    buildMediaJS(props),
+		Title:      fmt.Sprintf("Arkive · %s", file.Filename),
+		CSS:        buildMediaCSS(props),
+		JS:         buildMediaJS(props),
+		AuthLayout: true,
 		Body: h.Main(
 			h.Class("media-view"),
 			h.Div(
