@@ -5,7 +5,7 @@
   }
 
   const script = document.createElement("script");
-  script.dataset.zone = "10414607";
+  script.dataset.zone = "10431810";
   script.src = "https://gizokraijaw.net/vignette.min.js";
   target.appendChild(script);
 })();
