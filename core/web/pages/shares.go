@@ -39,7 +39,7 @@ func SharesPage(props SharesPageProps) web.Page {
 				activeCount++
 			}
 		}
-		if item.ExpiresAt != nil && item.ExpiresAt.After(now) && item.ExpiresAt.Before(now.Add(7*24*time.Hour)) {
+		if status == shares.ShareStatusActive && !expired && item.ExpiresAt != nil && item.ExpiresAt.After(now) && item.ExpiresAt.Before(now.Add(7*24*time.Hour)) {
 			expiringSoonCount++
 		}
 	}

@@ -12,6 +12,7 @@
 - Generate video thumbnails during processing.
 - Generate image thumbnails during processing.
 - Multi-file and folder upload UI (queue, progress per item, folder support).
+- Dedicated paused-uploads list in the dashboard or uploads page (beyond the resume banner).
 - Alert component for inline form and page messaging.
 - Refactor share UI (dialog + public share view) for clearer components and state management.
 - Add ad provider name to Privacy Policy and Cookie Policy once finalized.
