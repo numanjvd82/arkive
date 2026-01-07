@@ -1,6 +1,9 @@
 package pages
 
 import (
+	"fmt"
+	"time"
+
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
 
@@ -257,6 +260,10 @@ func homeFooter() g.Node {
 				h.Class("footer-brand"),
 				h.H3(g.Text("Arkive")),
 				h.P(g.Text("Share files with freedom, speed, and security.")),
+				h.P(
+					h.Class("footer-legal"),
+					g.Text(fmt.Sprintf("© %d Arkive. All rights reserved.", time.Now().Year())),
+				),
 			),
 			h.Div(
 				h.Class("footer-links"),

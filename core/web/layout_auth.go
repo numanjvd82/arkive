@@ -1,6 +1,9 @@
 package web
 
 import (
+	"fmt"
+	"time"
+
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
 
@@ -66,6 +69,7 @@ func authFooter() g.Node {
 			h.Class("app-footer-inner"),
 			h.Span(g.Text("Arkive workspace")),
 			h.Span(g.Text("Support: support@arkive.sh")),
+			h.Span(g.Text(fmt.Sprintf("© %d Arkive. All rights reserved.", time.Now().Year()))),
 		),
 	)
 }

@@ -415,6 +415,11 @@
   margin-bottom: 10px;
 }
 
+.footer-legal {
+  margin-top: 16px;
+  font-size: 0.9rem;
+}
+
 .footer-links {
   display: grid;
   gap: 10px;
