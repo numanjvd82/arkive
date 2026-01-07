@@ -14,3 +14,11 @@ type Share struct {
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }
+
+type ShareWithFile struct {
+	Share
+	FileName        string
+	FileContentType string
+	FileSizeBytes   int64
+	FileUpdatedAt   time.Time
+}

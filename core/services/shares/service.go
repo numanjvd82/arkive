@@ -214,6 +214,14 @@ func (s *Service) DeleteShareForUser(ctx context.Context, shareID, ownerUserID s
 	return s.shareRepo.DeleteShareForUser(ctx, s.db, shareID, ownerUserID)
 }
 
+func (s *Service) ListSharesForUser(ctx context.Context, ownerUserID string) ([]models.ShareWithFile, error) {
+	ownerUserID = strings.TrimSpace(ownerUserID)
+	if ownerUserID == "" {
+		return nil, ErrUnauthorized
+	}
+	return s.shareRepo.ListSharesForUser(ctx, s.db, ownerUserID)
+}
+
 func isTokenValid(token string) bool {
 	if len(token) < TokenMinLength || len(token) > TokenMaxLength {
 		return false

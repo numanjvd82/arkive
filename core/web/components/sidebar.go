@@ -48,6 +48,11 @@ func DashboardSidebar() g.Node {
 				),
 				h.A(
 					h.Class("sidebar-link"),
+					h.Href("/shares"),
+					g.Text("Shares"),
+				),
+				h.A(
+					h.Class("sidebar-link"),
 					h.Href("/settings"),
 					g.Text("Settings"),
 				),

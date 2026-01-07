@@ -182,3 +182,61 @@ func (r *Repository) DeleteShareForUser(ctx context.Context, db database.PgExecu
 	}
 	return tag.RowsAffected() > 0, nil
 }
+
+func (r *Repository) ListSharesForUser(ctx context.Context, db database.PgExecutor, ownerUserID string) ([]models.ShareWithFile, error) {
+	rows, err := db.Query(ctx, `SELECT
+		s.id,
+		s.file_id,
+		s.owner_user_id,
+		s.token,
+		s.password_hash,
+		s.expires_at,
+		s.status,
+		s.revoked_at,
+		s.created_at,
+		s.updated_at,
+		f.filename,
+		f.content_type,
+		f.size_bytes,
+		f.updated_at
+	FROM
+		shares s
+	JOIN
+		files f ON f.id = s.file_id
+	WHERE
+		s.owner_user_id = $1
+	ORDER BY
+		s.created_at DESC`, ownerUserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	shares := []models.ShareWithFile{}
+	for rows.Next() {
+		var share models.ShareWithFile
+		if err := rows.Scan(
+			&share.ID,
+			&share.FileID,
+			&share.OwnerUserID,
+			&share.Token,
+			&share.PasswordHash,
+			&share.ExpiresAt,
+			&share.Status,
+			&share.RevokedAt,
+			&share.CreatedAt,
+			&share.UpdatedAt,
+			&share.FileName,
+			&share.FileContentType,
+			&share.FileSizeBytes,
+			&share.FileUpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		shares = append(shares, share)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return shares, nil
+}
