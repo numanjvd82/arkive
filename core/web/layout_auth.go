@@ -2,11 +2,13 @@ package web
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
 
+	"arkive/core/models"
 	"arkive/core/web/components"
 )
 
@@ -23,7 +25,7 @@ func AuthLayout(data LayoutData, content ...g.Node) g.Node {
 			components.InlineStyle(components.AuthLayoutCSS),
 			h.Div(
 				h.Class("app-shell"),
-				authHeader(),
+				authHeader(data.User),
 				components.DashboardSidebar(),
 				h.Div(h.Class("sidebar-scrim"), g.Attr("aria-hidden", "true")),
 				h.Div(h.Class("app-content"), g.Group(content)),
@@ -34,7 +36,7 @@ func AuthLayout(data LayoutData, content ...g.Node) g.Node {
 	))
 }
 
-func authHeader() g.Node {
+func authHeader(user *models.User) g.Node {
 	return h.Header(
 		h.Class("app-header"),
 		h.Div(
@@ -58,8 +60,54 @@ func authHeader() g.Node {
 					),
 				),
 			),
+			h.Div(
+				h.Class("app-header-right"),
+				renderUserMenu(user),
+			),
 		),
 	)
+}
+
+func renderUserMenu(user *models.User) g.Node {
+	if user == nil {
+		return h.Span()
+	}
+
+	brandName := strings.TrimSpace(user.BrandName)
+	if brandName == "" {
+		brandName = "Account"
+	}
+
+	return components.Dropdown(components.DropdownProps{
+		ID:    "user-menu",
+		Align: "right",
+		Label: "Open account menu",
+		Trigger: components.Avatar(components.AvatarProps{
+			Text:       brandName,
+			Size:       36,
+			Decorative: true,
+		}),
+		Menu: h.Div(
+			h.Class("dropdown-content"),
+			h.Div(
+				h.Class("dropdown-meta"),
+				h.Span(h.Class("dropdown-label"), g.Text(brandName)),
+				h.Span(h.Class("dropdown-email"), g.Text(user.Email)),
+			),
+			h.Div(h.Class("dropdown-divider")),
+			h.A(h.Class("dropdown-item"), h.Href("/settings"), g.Attr("role", "menuitem"), g.Text("Settings")),
+			h.Form(
+				h.Method("post"),
+				h.Action("/logout"),
+				h.Button(
+					h.Class("dropdown-item is-danger"),
+					h.Type("submit"),
+					g.Attr("role", "menuitem"),
+					g.Text("Logout"),
+				),
+			),
+		),
+	})
 }
 
 func authFooter() g.Node {

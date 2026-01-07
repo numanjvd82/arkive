@@ -42,6 +42,7 @@ func MediaViewPage(props MediaViewPageProps) web.Page {
 		CSS:        buildMediaCSS(props),
 		JS:         buildMediaJS(props),
 		AuthLayout: true,
+		User:       props.Ctx.User,
 		Body: h.Main(
 			h.Class("media-view"),
 			h.Div(

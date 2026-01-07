@@ -18,6 +18,7 @@ func DashboardPage(props DashboardPageProps) web.Page {
 		CSS:   []string{"/web/pages/dashboard.css"},
 		// JS:      []string{"/static/monetag-onclick.js", "/static/monetag-vignette.js"},
 		AuthLayout: true,
+		User:       props.Ctx.User,
 		Body: h.Main(
 			h.Class("dashboard"),
 			h.Div(

@@ -1,0 +1,16 @@
+.avatar {
+  --avatar-size: 38px;
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-soft);
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  box-shadow: none;
+}

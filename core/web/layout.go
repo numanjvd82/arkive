@@ -4,6 +4,7 @@ import (
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
 
+	"arkive/core/models"
 	"arkive/core/web/components"
 )
 
@@ -12,6 +13,7 @@ type LayoutData struct {
 	CSS     []string
 	JS      []string
 	HideNav bool
+	User    *models.User
 }
 
 func Layout(data LayoutData, content ...g.Node) g.Node {

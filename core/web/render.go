@@ -5,6 +5,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	g "maragu.dev/gomponents"
+
+	"arkive/core/models"
 )
 
 type Page struct {
@@ -14,6 +16,7 @@ type Page struct {
 	Body       g.Node
 	HideNav    bool
 	AuthLayout bool
+	User       *models.User
 }
 
 func Render(c *gin.Context, page Page) {
@@ -21,14 +24,14 @@ func Render(c *gin.Context, page Page) {
 	var node g.Node
 	if page.AuthLayout {
 		if page.Body == nil {
-			node = AuthLayout(LayoutData{Title: page.Title, CSS: page.CSS, JS: page.JS})
+			node = AuthLayout(LayoutData{Title: page.Title, CSS: page.CSS, JS: page.JS, User: page.User})
 		} else {
-			node = AuthLayout(LayoutData{Title: page.Title, CSS: page.CSS, JS: page.JS}, page.Body)
+			node = AuthLayout(LayoutData{Title: page.Title, CSS: page.CSS, JS: page.JS, User: page.User}, page.Body)
 		}
 	} else if page.Body == nil {
-		node = Layout(LayoutData{Title: page.Title, CSS: page.CSS, JS: page.JS, HideNav: page.HideNav})
+		node = Layout(LayoutData{Title: page.Title, CSS: page.CSS, JS: page.JS, HideNav: page.HideNav, User: page.User})
 	} else {
-		node = Layout(LayoutData{Title: page.Title, CSS: page.CSS, JS: page.JS, HideNav: page.HideNav}, page.Body)
+		node = Layout(LayoutData{Title: page.Title, CSS: page.CSS, JS: page.JS, HideNav: page.HideNav, User: page.User}, page.Body)
 	}
 	if err := node.Render(c.Writer); err != nil {
 		c.Status(http.StatusInternalServerError)

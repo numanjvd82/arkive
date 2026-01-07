@@ -25,6 +25,20 @@
   gap: 8px;
 }
 
+.app-header-right {
+  display: flex;
+  align-items: center;
+}
+
+.app-header-right .dropdown-trigger {
+  border-radius: 999px;
+  padding: 2px;
+}
+
+.app-header-right .dropdown-trigger:hover {
+  background: var(--bg-soft);
+}
+
 .app-header-icon {
   display: inline-flex;
   width: 20px;
