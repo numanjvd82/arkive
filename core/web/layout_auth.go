@@ -84,7 +84,7 @@ func renderUserMenu(user *models.User) g.Node {
 		Label: "Open account menu",
 		Trigger: components.Avatar(components.AvatarProps{
 			Text:       brandName,
-			Size:       36,
+			Size:       40,
 			Decorative: true,
 		}),
 		Menu: h.Div(
@@ -115,7 +115,7 @@ func authFooter() g.Node {
 		h.Class("app-footer"),
 		h.Div(
 			h.Class("app-footer-inner"),
-			h.Span(g.Text("Arkive workspace")),
+			h.Span(g.Text("Arkive Workspace. Securely store and share your files.")),
 			h.Span(g.Text("Support: support@arkive.sh")),
 			h.Span(g.Text(fmt.Sprintf("© %d Arkive. All rights reserved.", time.Now().Year()))),
 		),

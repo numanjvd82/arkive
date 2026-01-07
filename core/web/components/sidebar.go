@@ -35,6 +35,7 @@ func DashboardSidebar() g.Node {
 			),
 			h.Nav(
 				h.Class("sidebar-links"),
+				h.Span(h.Class("sidebar-label"), g.Text("Navigation")),
 				h.A(
 					h.Class("sidebar-link is-active"),
 					h.Href("/dashboard"),
@@ -44,11 +45,6 @@ func DashboardSidebar() g.Node {
 					h.Class("sidebar-link"),
 					h.Href("/files"),
 					g.Text("Files"),
-				),
-				h.A(
-					h.Class("sidebar-link"),
-					h.Href("#upload-panel"),
-					g.Text("Uploads"),
 				),
 			),
 			h.Div(
