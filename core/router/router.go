@@ -59,6 +59,7 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 	protected.GET("/dashboard", handlers.WebDashboard())
 	protected.GET("/files", handlers.WebFiles(uploadService))
 	protected.GET("/files/:id/view", handlers.WebFileView(uploadService))
+	protected.GET("/settings", handlers.WebSettings(uploadService))
 	protected.POST("/logout", handlers.WebLogout(authService))
 
 	api := r.Group("/api")

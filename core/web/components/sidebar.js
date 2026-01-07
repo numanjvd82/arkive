@@ -1,30 +1,57 @@
 (function() {
-  var body = document.body;
-  var toggle = document.getElementById("sidebar-toggle");
-  var sidebar = document.getElementById("dashboard-sidebar");
-  var scrim = document.querySelector(".sidebar-scrim");
-  var closeBtn = document.querySelector(".sidebar-close");
+  const body = document.body;
+  const toggle = document.getElementById("sidebar-toggle");
+  const sidebar = document.getElementById("dashboard-sidebar");
+  const scrim = document.querySelector(".sidebar-scrim");
+  const closeBtn = document.querySelector(".sidebar-close");
+  const links = Array.from(document.querySelectorAll(".sidebar-link"));
 
   if (!toggle || !sidebar || !scrim) {
     return;
   }
 
-  function setState(isOpen) {
+  const normalizePath = function(pathname) {
+    if (!pathname) {
+      return "/";
+    }
+    const trimmed = pathname.replace(/\/$/, "");
+    return trimmed === "" ? "/" : trimmed;
+  };
+
+  const currentPath = normalizePath(window.location.pathname);
+  let activeLink = null;
+  let activeLength = -1;
+
+  links.forEach(function(link) {
+    const linkPath = normalizePath(new URL(link.getAttribute("href"), window.location.origin).pathname);
+    const matches = currentPath === linkPath || (linkPath !== "/" && currentPath.indexOf(linkPath + "/") === 0);
+    if (matches && linkPath.length > activeLength) {
+      activeLink = link;
+      activeLength = linkPath.length;
+    }
+  });
+
+  if (activeLink) {
+    links.forEach(function(link) {
+      link.classList.remove("is-active");
+      link.removeAttribute("aria-current");
+    });
+    activeLink.classList.add("is-active");
+    activeLink.setAttribute("aria-current", "page");
+  }
+
+  const setState = function(isOpen) {
     body.classList.toggle("sidebar-open", isOpen);
     toggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
     sidebar.setAttribute("aria-hidden", isOpen ? "false" : "true");
-  }
+  };
 
-  function openSidebar() {
-    setState(true);
-  }
-
-  function closeSidebar() {
+  const closeSidebar = function() {
     setState(false);
-  }
+  };
 
   toggle.addEventListener("click", function() {
-    var isOpen = body.classList.contains("sidebar-open");
+    const isOpen = body.classList.contains("sidebar-open");
     setState(!isOpen);
   });
 
@@ -35,11 +62,11 @@
   }
 
   sidebar.addEventListener("click", function(event) {
-    var target = event.target;
+    const target = event.target;
     if (!target || !target.closest) {
       return;
     }
-    var link = target.closest("a");
+    const link = target.closest("a");
     if (link) {
       closeSidebar();
     }

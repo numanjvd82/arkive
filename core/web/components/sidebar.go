@@ -37,7 +37,7 @@ func DashboardSidebar() g.Node {
 				h.Class("sidebar-links"),
 				h.Span(h.Class("sidebar-label"), g.Text("Navigation")),
 				h.A(
-					h.Class("sidebar-link is-active"),
+					h.Class("sidebar-link"),
 					h.Href("/dashboard"),
 					g.Text("Dashboard"),
 				),
@@ -45,6 +45,11 @@ func DashboardSidebar() g.Node {
 					h.Class("sidebar-link"),
 					h.Href("/files"),
 					g.Text("Files"),
+				),
+				h.A(
+					h.Class("sidebar-link"),
+					h.Href("/settings"),
+					g.Text("Settings"),
 				),
 			),
 			h.Div(

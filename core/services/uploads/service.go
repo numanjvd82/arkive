@@ -370,6 +370,16 @@ func (s *Service) StartUpload(ctx context.Context, userID, filename string, size
 	}, nil, nil
 }
 
+func (s *Service) MonthlyUsage(ctx context.Context, userID string) (int64, error) {
+	var err error
+	userID, err = validateUserID(userID)
+	if err != nil {
+		return 0, err
+	}
+	cutoff := time.Now().Add(-30 * 24 * time.Hour)
+	return s.usageRepo.SumUsageSince(ctx, s.db, userID, cutoff)
+}
+
 func (s *Service) resolveUploadThrottle(ctx context.Context, userID string, sizeBytes int64, isPremium bool) (int, bool, error) {
 	if isPremium || sizeBytes <= 0 {
 		return 0, false, nil
