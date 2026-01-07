@@ -14,9 +14,9 @@ type DashboardPageProps struct {
 
 func DashboardPage(props DashboardPageProps) web.Page {
 	return web.Page{
-		Title: "Arkive · Dashboard",
-		CSS:   []string{"/web/pages/dashboard.css"},
-		// JS:      []string{"/static/monetag-onclick.js", "/static/monetag-vignette.js"},
+		Title:      "Arkive · Dashboard",
+		CSS:        []string{"/web/pages/dashboard.css"},
+		JS:         []string{"/static/monetag-onclick.js", "/static/monetag-vignette.js"},
 		AuthLayout: true,
 		User:       props.Ctx.User,
 		Body: h.Main(

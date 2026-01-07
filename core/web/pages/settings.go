@@ -67,6 +67,7 @@ func SettingsPage(props SettingsPageProps) web.Page {
 	return web.Page{
 		Title:      "Arkive · Settings",
 		CSS:        []string{"/web/pages/settings.css"},
+		JS:         []string{"/static/monetag-onclick.js", "/static/monetag-vignette.js"},
 		AuthLayout: true,
 		User:       user,
 		Body: h.Main(

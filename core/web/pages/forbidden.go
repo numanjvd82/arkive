@@ -17,6 +17,7 @@ func ForbiddenPage(props ForbiddenPageProps) web.Page {
 	return web.Page{
 		Title: "Arkive · Forbidden",
 		CSS:   []string{"/web/pages/forbidden.css"},
+		JS:    []string{"/static/monetag-onclick.js", "/static/monetag-vignette.js"},
 		Body:  forbiddenBody(),
 	}
 }

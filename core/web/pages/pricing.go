@@ -16,6 +16,7 @@ func PricingPage(props PricingPageProps) web.Page {
 	return web.Page{
 		Title: "Arkive · Pricing & Fair Use",
 		CSS:   []string{"/web/pages/pricing.css"},
+		JS:    []string{"/static/monetag-onclick.js", "/static/monetag-vignette.js"},
 		Body:  pricingBody(),
 	}
 }

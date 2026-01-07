@@ -17,6 +17,7 @@ func ContactPage(props ContactPageProps) web.Page {
 	return web.Page{
 		Title: "Arkive · Contact",
 		CSS:   []string{"/web/pages/contact.css"},
+		JS:    []string{"/static/monetag-onclick.js", "/static/monetag-vignette.js"},
 		Body:  contactBody(),
 	}
 }
