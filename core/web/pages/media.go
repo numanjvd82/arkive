@@ -121,7 +121,12 @@ func MediaViewPage(props MediaViewPageProps) web.Page {
 						h.Div(
 							h.Class("media-panel ad-slot compact"),
 							h.P(h.Class("ad-label"), g.Text("Ad slot")),
-							h.P(g.Text("300x250 or 728x90 placements supported.")),
+							h.Script(
+								g.Attr("async", "async"),
+								g.Attr("data-cfasync", "false"),
+								h.Src("https://pl28425100.effectivegatecpm.com/3e709d756892597be3b0708e86694b25/invoke.js"),
+							),
+							h.Div(h.ID("container-3e709d756892597be3b0708e86694b25")),
 						),
 					),
 				),
