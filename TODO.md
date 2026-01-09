@@ -15,12 +15,18 @@
 - Dedicated paused-uploads list in the dashboard or uploads page (beyond the resume banner).
 - Alert component for inline form and page messaging.
 - Refactor share UI (dialog + public share view) for clearer components and state management.
+- SEO improvements (titles, descriptions, canonical URLs, sitemap).
+- Add `robots.txt` and `ads.txt` for search/revenue support.
+- Add Open Graph/Twitter meta tags for link previews.
 - Add ad provider name to Privacy Policy and Cookie Policy once finalized.
 - Add governing law and dispute venue to Terms of Service after company registration.
 - Add company address and phone to Terms of Service after company registration.
 - Add cross-links between Privacy Policy, Cookie Policy, Terms of Service, and AUP.
 - Add revision dates to Terms of Service and AUP pages.
 - Add rewards disclaimer to Privacy Policy (availability, fraud checks, subject to change).
+- Inactivity retention warnings: send emails at 150/180/210 days inactive (archive/deletion notices) once email service is in place.
+- Archived files UX: users may be blocked from freeing space due to 2 GB/day restore cap; add a restore CTA or archive management view.
+- Competitive matrix: Arkive vs Drive/Dropbox/iCloud/OneDrive/TeraBox with feature comparisons, “why Arkive” messaging, and homepage/pricing bullets.
 
 ## Done
 - Install `ffprobe` on the server for video metadata extraction.

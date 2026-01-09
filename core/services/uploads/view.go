@@ -34,6 +34,9 @@ func (s *Service) GetFileForDisplay(ctx context.Context, userID, fileID string) 
 		}
 		return models.File{}, ErrNotFound
 	}
+	if isExpired(file.ExpiresAt) {
+		return models.File{}, ErrNotFound
+	}
 
 	return file, nil
 }
@@ -67,6 +70,9 @@ func (s *Service) GetFileForShare(ctx context.Context, fileID string) (models.Fi
 		if file.Status == FileStatusFailed || file.Status == FileStatusAborted {
 			return models.File{}, ErrUploadCancelled
 		}
+		return models.File{}, ErrNotFound
+	}
+	if isExpired(file.ExpiresAt) {
 		return models.File{}, ErrNotFound
 	}
 

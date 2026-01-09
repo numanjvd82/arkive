@@ -217,6 +217,12 @@ func APIDownloadFile(svc *uploads.Service) gin.HandlerFunc {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 			return
 		}
+		user, _ := appcontext.UserFromContext(c)
+		if err := svc.TouchUserActivity(c.Request.Context(), userID.(string), user.IsPremium); err != nil {
+			_ = c.Error(errs.WithStack(err))
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "download failed"})
+			return
+		}
 
 		url, err := svc.PresignDownload(c.Request.Context(), userID.(string), fileID)
 		if err != nil {
@@ -244,6 +250,12 @@ func APIMediaRedirect(svc *uploads.Service) gin.HandlerFunc {
 		userID, ok := c.Get("user_id")
 		if !ok {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			return
+		}
+		user, _ := appcontext.UserFromContext(c)
+		if err := svc.TouchUserActivity(c.Request.Context(), userID.(string), user.IsPremium); err != nil {
+			_ = c.Error(errs.WithStack(err))
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "media failed"})
 			return
 		}
 

@@ -16,15 +16,15 @@ import (
 )
 
 type FilesPageProps struct {
-	Ctx   PageContext
-	Files []models.File
+	Ctx           PageContext
+	Files         []models.File
+	ArchivedCount int64
 }
 
 func FilesPage(props FilesPageProps) web.Page {
 	totalSize := int64(0)
 	lastUpdated := time.Time{}
 	for _, file := range props.Files {
-		totalSize += file.SizeBytes
 		if file.UpdatedAt.After(lastUpdated) {
 			lastUpdated = file.UpdatedAt
 		}
@@ -33,6 +33,10 @@ func FilesPage(props FilesPageProps) web.Page {
 	lastActivity := "No activity yet"
 	if !lastUpdated.IsZero() {
 		lastActivity = formatTime(lastUpdated)
+	}
+	archivedCount := props.ArchivedCount
+	if props.Ctx.User != nil {
+		totalSize = props.Ctx.User.UsedBytes
 	}
 
 	return web.Page{
@@ -99,6 +103,7 @@ func FilesPage(props FilesPageProps) web.Page {
 							},
 						}),
 					),
+					renderArchivedBanner(archivedCount),
 					h.Section(
 						h.Class("files-panels"),
 						h.Section(
@@ -295,6 +300,18 @@ func FilesPage(props FilesPageProps) web.Page {
 			),
 		}),
 	}
+}
+
+func renderArchivedBanner(count int64) g.Node {
+	if count <= 0 {
+		return nil
+	}
+	message := "You have " + format.Commas(count) + " archived files. Log in to restore them (free restores up to 2 GB/day)."
+	return h.Div(
+		h.Class("files-banner"),
+		h.Span(h.Class("files-banner-title"), g.Text("Archived files")),
+		h.Span(h.Class("files-banner-body"), g.Text(message)),
+	)
 }
 
 func renderCompletedList(files []models.File) g.Node {

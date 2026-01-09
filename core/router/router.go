@@ -11,6 +11,7 @@ import (
 	filerepo "arkive/core/repositories/files"
 	sessionrepo "arkive/core/repositories/session"
 	sharerepo "arkive/core/repositories/shares"
+	usersrepo "arkive/core/repositories/users"
 	"arkive/core/services/auth"
 	"arkive/core/services/shares"
 	"arkive/core/services/uploads"
@@ -21,7 +22,7 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 	r := gin.Default()
 	r.Use(middleware.ErrorLogger())
 
-	authService := auth.NewService(db, authrepo.New(), sessionrepo.New(), auth.Config{
+	authService := auth.NewService(db, authrepo.New(), sessionrepo.New(), usersrepo.New(), auth.Config{
 		SessionTTL:     cfg.SessionTTL,
 		GoogleClientID: cfg.GoogleClientID,
 	})
@@ -56,10 +57,10 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 
 	protected := r.Group("/")
 	protected.Use(middleware.RequireSessionRedirect(authService))
-	protected.GET("/dashboard", handlers.WebDashboard())
+	protected.GET("/dashboard", handlers.WebDashboard(uploadService))
 	protected.GET("/files", handlers.WebFiles(uploadService))
 	protected.GET("/files/:id/view", handlers.WebFileView(uploadService))
-	protected.GET("/shares", handlers.WebShares(shareService))
+	protected.GET("/shares", handlers.WebShares(shareService, uploadService))
 	protected.GET("/settings", handlers.WebSettings(uploadService))
 	protected.POST("/logout", handlers.WebLogout(authService))
 

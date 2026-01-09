@@ -14,6 +14,7 @@ type User struct {
 	IsBanned        bool
 	BanReason       *string
 	LastLoginAt     *time.Time
+	LastActiveAt    time.Time
 	LastIP          *string
 	CreatedAt       time.Time
 	UpdatedAt       time.Time

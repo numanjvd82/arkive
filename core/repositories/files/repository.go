@@ -126,6 +126,118 @@ func (r *Repository) ClearFileExpiry(ctx context.Context, db database.PgExecutor
 	return err
 }
 
+func (r *Repository) MarkInactiveFilesForUser(ctx context.Context, db database.PgExecutor, userID string, expiresAt time.Time) (int64, error) {
+	query := `UPDATE
+		files
+	SET
+		expires_at = $2, updated_at = now()
+	WHERE
+		user_id = $1
+		AND status = 'complete'
+		AND expires_at IS NULL`
+	tag, err := db.Exec(ctx, query, userID, expiresAt)
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
+}
+
+func (r *Repository) ClearExpiryForUserCompletedFiles(ctx context.Context, db database.PgExecutor, userID string) (int64, error) {
+	query := `UPDATE
+		files
+	SET
+		expires_at = NULL, updated_at = now()
+	WHERE
+		user_id = $1
+		AND status = 'complete'
+		AND expires_at IS NOT NULL`
+	tag, err := db.Exec(ctx, query, userID)
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
+}
+
+func (r *Repository) ListArchivedFilesForUser(ctx context.Context, db database.PgExecutor, userID string) ([]models.File, error) {
+	query := `SELECT
+		id, user_id, bucket, object_key, filename, content_type, size_bytes,
+		video_width, video_height, video_duration_seconds, throttle_ms,
+		status, created_at, updated_at, expires_at
+	FROM
+		files
+	WHERE
+		user_id = $1
+		AND status = 'complete'
+		AND expires_at IS NOT NULL
+	ORDER BY
+		expires_at ASC`
+	rows, err := db.Query(ctx, query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var files []models.File
+	for rows.Next() {
+		var file models.File
+		if err := rows.Scan(
+			&file.ID,
+			&file.UserID,
+			&file.Bucket,
+			&file.ObjectKey,
+			&file.Filename,
+			&file.ContentType,
+			&file.SizeBytes,
+			&file.VideoWidth,
+			&file.VideoHeight,
+			&file.VideoDurationSeconds,
+			&file.ThrottleMs,
+			&file.Status,
+			&file.CreatedAt,
+			&file.UpdatedAt,
+			&file.ExpiresAt,
+		); err != nil {
+			return nil, err
+		}
+		files = append(files, file)
+	}
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+	return files, nil
+}
+
+func (r *Repository) CountActiveFilesForUser(ctx context.Context, db database.PgExecutor, userID string) (int64, error) {
+	var total int64
+	query := `SELECT
+		COUNT(*)
+	FROM
+		files
+	WHERE
+		user_id = $1
+		AND status IN ('pending', 'uploading', 'complete')`
+	if err := db.QueryRow(ctx, query, userID).Scan(&total); err != nil {
+		return 0, err
+	}
+	return total, nil
+}
+
+func (r *Repository) CountArchivedFilesForUser(ctx context.Context, db database.PgExecutor, userID string) (int64, error) {
+	var total int64
+	query := `SELECT
+		COUNT(*)
+	FROM
+		files
+	WHERE
+		user_id = $1
+		AND status = 'complete'
+		AND expires_at IS NOT NULL`
+	if err := db.QueryRow(ctx, query, userID).Scan(&total); err != nil {
+		return 0, err
+	}
+	return total, nil
+}
+
 func (r *Repository) UpdateVideoMetadata(ctx context.Context, db database.PgExecutor, fileID string, width, height int, durationSeconds int64) error {
 	query := `UPDATE
 		files
@@ -259,7 +371,9 @@ func (r *Repository) ListCompletedForUser(ctx context.Context, db database.PgExe
 	FROM
 		files
 	WHERE
-		user_id = $1 AND status = 'complete'
+		user_id = $1
+		AND status = 'complete'
+		AND expires_at IS NULL
 	ORDER BY
 		created_at DESC`
 	rows, err := db.Query(ctx, query, userID)
@@ -308,6 +422,55 @@ func (r *Repository) DeleteFileForUser(ctx context.Context, db database.PgExecut
 		return false, err
 	}
 	return tag.RowsAffected() > 0, nil
+}
+
+func (r *Repository) ListExpiredCompleteFiles(ctx context.Context, db database.PgExecutor, cutoff time.Time) ([]models.File, error) {
+	query := `SELECT
+		id, user_id, bucket, object_key, filename, content_type, size_bytes,
+		video_width, video_height, video_duration_seconds, throttle_ms,
+		status, created_at, updated_at, expires_at
+	FROM
+		files
+	WHERE
+		status = 'complete'
+		AND expires_at IS NOT NULL
+		AND expires_at <= $1
+	ORDER BY
+		expires_at ASC`
+	rows, err := db.Query(ctx, query, cutoff)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var files []models.File
+	for rows.Next() {
+		var file models.File
+		if err := rows.Scan(
+			&file.ID,
+			&file.UserID,
+			&file.Bucket,
+			&file.ObjectKey,
+			&file.Filename,
+			&file.ContentType,
+			&file.SizeBytes,
+			&file.VideoWidth,
+			&file.VideoHeight,
+			&file.VideoDurationSeconds,
+			&file.ThrottleMs,
+			&file.Status,
+			&file.CreatedAt,
+			&file.UpdatedAt,
+			&file.ExpiresAt,
+		); err != nil {
+			return nil, err
+		}
+		files = append(files, file)
+	}
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+	return files, nil
 }
 
 func (r *Repository) ListExpiredUploads(ctx context.Context, db database.PgExecutor, cutoff time.Time) ([]models.File, error) {

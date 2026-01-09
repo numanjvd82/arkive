@@ -90,7 +90,9 @@ func privacyBody() g.Node {
 					privacySection(
 						"5. Data retention",
 						g.Group([]g.Node{
-							h.P(g.Text("We keep account and file data for as long as your account is active. We delete or anonymize data when it is no longer needed, unless we are required to keep it for legal or security reasons.")),
+							h.P(g.Text("We keep account and file data for as long as your account is active. Accounts with no login or file activity for 30 days may be archived, and archived files are deleted after 7 days unless they are restored or upgraded.")),
+							h.P(g.Text("We may notify you by email before archiving or deleting files.")),
+							h.P(g.Text("We delete or anonymize data when it is no longer needed, unless we are required to keep it for legal or security reasons.")),
 						}),
 					),
 					privacySection(

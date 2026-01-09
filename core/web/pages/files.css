@@ -51,6 +51,26 @@
   margin-bottom: 24px;
 }
 
+.files-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(234, 185, 94, 0.45);
+  background: rgba(234, 185, 94, 0.16);
+  margin-bottom: 24px;
+}
+
+.files-banner-title {
+  font-weight: 600;
+}
+
+.files-banner-body {
+  color: var(--muted);
+}
+
 .summary-card .card-body {
   display: grid;
   gap: 6px;

@@ -14,9 +14,9 @@ import (
 )
 
 type SettingsPageProps struct {
-	Ctx               PageContext
-	MonthlyUsageBytes int64
-	FullSpeedLimit    int64
+	Ctx            PageContext
+	FileCount      int64
+	FileLimitLabel string
 }
 
 func SettingsPage(props SettingsPageProps) web.Page {
@@ -29,15 +29,18 @@ func SettingsPage(props SettingsPageProps) web.Page {
 	usedStorage := "0 B"
 	quotaStorage := "Unlimited"
 	usagePercent := 0
-	monthlyUsage := "0 B"
-	fullSpeedAllowance := "Unlimited"
-	fullSpeedStatus := "Full-speed"
+	fileLimit := props.FileLimitLabel
+	fileCountLabel := "0"
+	retentionLabel := "Unlimited while active"
 	if user != nil {
 		brandName = strings.TrimSpace(user.BrandName)
 		email = strings.TrimSpace(user.Email)
 		if user.IsPremium {
 			planName = "Premium"
-			fullSpeedStatus = "Unlimited"
+			retentionLabel = "Unlimited retention"
+			if fileLimit == "" {
+				fileLimit = "Unlimited"
+			}
 		}
 		if !user.CreatedAt.IsZero() {
 			memberSince = user.CreatedAt.Format("Jan 2, 2006")
@@ -56,12 +59,11 @@ func SettingsPage(props SettingsPageProps) web.Page {
 			}
 		}
 	}
-	monthlyUsage = format.Bytes(props.MonthlyUsageBytes)
-	if props.FullSpeedLimit > 0 {
-		fullSpeedAllowance = format.Bytes(props.FullSpeedLimit) + " per 30 days"
-		if props.MonthlyUsageBytes >= props.FullSpeedLimit {
-			fullSpeedStatus = "Throttled"
-		}
+	if props.FileCount > 0 {
+		fileCountLabel = format.Commas(props.FileCount)
+	}
+	if fileLimit == "" {
+		fileLimit = "Unlimited"
 	}
 
 	return web.Page{
@@ -118,7 +120,7 @@ func SettingsPage(props SettingsPageProps) web.Page {
 						}),
 						components.Card(components.CardProps{
 							Title:    "Plan & storage",
-							Subtitle: "Usage and speed limits pulled from your workspace.",
+							Subtitle: "Usage and limits pulled from your workspace.",
 							Class:    "settings-card",
 							Body: []g.Node{
 								h.Div(
@@ -135,18 +137,18 @@ func SettingsPage(props SettingsPageProps) web.Page {
 									),
 									h.Div(
 										h.Class("settings-meta-row"),
-										h.Span(g.Text("Full-speed allowance")),
-										h.Span(g.Text(fullSpeedAllowance)),
+										h.Span(g.Text("File limit")),
+										h.Span(g.Text(fileLimit)),
 									),
 									h.Div(
 										h.Class("settings-meta-row"),
-										h.Span(g.Text("Full-speed used")),
-										h.Span(g.Text(monthlyUsage)),
+										h.Span(g.Text("Files")),
+										h.Span(g.Text(fileCountLabel+" / "+fileLimit)),
 									),
 									h.Div(
 										h.Class("settings-meta-row"),
-										h.Span(g.Text("Upload status")),
-										h.Span(g.Text(fullSpeedStatus)),
+										h.Span(g.Text("Retention")),
+										h.Span(g.Text(retentionLabel)),
 									),
 								),
 								h.Div(
@@ -162,7 +164,7 @@ func SettingsPage(props SettingsPageProps) web.Page {
 								),
 								h.P(
 									h.Class("settings-note"),
-									g.Text("Uploads beyond the full-speed limit or over 10 GB are throttled."),
+									g.Text("Free accounts can store up to 10 GB and 10,000 files. Accounts with no login or file activity for 30 days may be archived; archived files are deleted after 7 days unless restored or upgraded."),
 								),
 							},
 						}),

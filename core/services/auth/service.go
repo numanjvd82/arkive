@@ -17,6 +17,7 @@ import (
 	"arkive/core/models"
 	authrepo "arkive/core/repositories/auth"
 	sessionrepo "arkive/core/repositories/session"
+	usersrepo "arkive/core/repositories/users"
 	"arkive/pkg/tokens"
 	"arkive/pkg/validation"
 )
@@ -25,6 +26,7 @@ type Service struct {
 	db             database.PgPool
 	authRepo       *authrepo.Repository
 	sessionRepo    *sessionrepo.Repository
+	userRepo       *usersrepo.Repository
 	sessionTTL     time.Duration
 	googleClientID string
 }
@@ -38,12 +40,14 @@ func NewService(
 	db database.PgPool,
 	authRepo *authrepo.Repository,
 	sessionRepo *sessionrepo.Repository,
+	userRepo *usersrepo.Repository,
 	cfg Config,
 ) *Service {
 	return &Service{
 		db:             db,
 		authRepo:       authRepo,
 		sessionRepo:    sessionRepo,
+		userRepo:       userRepo,
 		sessionTTL:     cfg.SessionTTL,
 		googleClientID: cfg.GoogleClientID,
 	}
@@ -88,6 +92,12 @@ func (s *Service) WebLogin(ctx context.Context, email, password, lastIP string) 
 
 	sessionID, expiresAt, err := s.createSession(ctx, tx, user.ID, lastIP)
 	if err != nil {
+		return "", time.Time{}, nil, err
+	}
+
+	loginAt := time.Now()
+	if err := s.userRepo.UpdateLoginActivity(ctx, tx, user.ID, loginAt, lastIP); err != nil {
+		_ = tx.Rollback(ctx)
 		return "", time.Time{}, nil, err
 	}
 
@@ -322,6 +332,12 @@ func (s *Service) WebGoogleLogin(ctx context.Context, credential, lastIP string)
 
 	sessionID, expiresAt, err := s.createSession(ctx, tx, user.ID, lastIP)
 	if err != nil {
+		return "", time.Time{}, err
+	}
+
+	loginAt := time.Now()
+	if err := s.userRepo.UpdateLoginActivity(ctx, tx, user.ID, loginAt, lastIP); err != nil {
+		_ = tx.Rollback(ctx)
 		return "", time.Time{}, err
 	}
 

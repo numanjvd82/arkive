@@ -11,6 +11,7 @@ var (
 	ErrFileTooLarge      = errors.New("file is too large")
 	ErrFileTooSmall      = errors.New("file is too small")
 	ErrMultipartRequired = errors.New("multipart upload required")
+	ErrFileLimitReached  = errors.New("file limit reached")
 )
 
 var (

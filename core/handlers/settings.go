@@ -9,6 +9,7 @@ import (
 	"arkive/core/web"
 	"arkive/core/web/pages"
 	appcontext "arkive/pkg/context"
+	"arkive/pkg/format"
 )
 
 func WebSettings(uploadService *uploads.Service) gin.HandlerFunc {
@@ -18,21 +19,26 @@ func WebSettings(uploadService *uploads.Service) gin.HandlerFunc {
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
+		if err := uploadService.TouchUserActivity(c.Request.Context(), user.ID, user.IsPremium); err != nil {
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
 
-		monthlyUsageBytes, err := uploadService.MonthlyUsage(c.Request.Context(), user.ID)
+		fileCount, err := uploadService.CountActiveFiles(c.Request.Context(), user.ID)
 		if err != nil {
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
-		fullSpeedLimit := uploads.MonthlyFullSpeedBytes
+
+		fileLimitLabel := format.Commas(uploads.FreeFileLimit)
 		if user.IsPremium {
-			fullSpeedLimit = 0
+			fileLimitLabel = "Unlimited"
 		}
 
 		web.Render(c, pages.SettingsPage(pages.SettingsPageProps{
-			Ctx:               pages.ContextWithUser(user),
-			MonthlyUsageBytes: monthlyUsageBytes,
-			FullSpeedLimit:    fullSpeedLimit,
+			Ctx:            pages.ContextWithUser(user),
+			FileCount:      fileCount,
+			FileLimitLabel: fileLimitLabel,
 		}))
 	}
 }

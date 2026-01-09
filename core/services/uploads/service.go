@@ -17,6 +17,8 @@ import (
 	storagerepo "arkive/core/repositories/storage"
 	uploadrepo "arkive/core/repositories/uploads"
 	usagerepo "arkive/core/repositories/usage"
+	usersrepo "arkive/core/repositories/users"
+	restoreusage "arkive/core/repositories/restore"
 	"arkive/pkg/safeptr"
 	"arkive/pkg/storage"
 	"arkive/pkg/storage/r2"
@@ -40,8 +42,7 @@ const (
 const (
 	MaxFileSizeBytes        int64 = 10 * 1024 * 1024 * 1024
 	MultipartThresholdBytes int64 = 200 * 1024 * 1024
-	MonthlyFullSpeedBytes   int64 = 10 * 1024 * 1024 * 1024
-	ThrottledUploadDelayMs        = 100000
+	FreeFileLimit                 = 10000
 )
 
 type Service struct {
@@ -50,6 +51,8 @@ type Service struct {
 	fileRepo            *filerepo.Repository
 	uploadRepo          *uploadrepo.Repository
 	usageRepo           *usagerepo.Repository
+	userRepo            *usersrepo.Repository
+	restoreRepo         *restoreusage.Repository
 	r2                  *r2.Client
 	bucket              string
 	uploadExpires       time.Duration
@@ -70,6 +73,8 @@ func NewService(
 	fileRepo *filerepo.Repository,
 	uploadRepo *uploadrepo.Repository,
 	usageRepo *usagerepo.Repository,
+	userRepo *usersrepo.Repository,
+	restoreRepo *restoreusage.Repository,
 	r2Client *r2.Client,
 	cfg Config,
 ) *Service {
@@ -79,6 +84,8 @@ func NewService(
 		fileRepo:            fileRepo,
 		uploadRepo:          uploadRepo,
 		usageRepo:           usageRepo,
+		userRepo:            userRepo,
+		restoreRepo:         restoreRepo,
 		r2:                  r2Client,
 		bucket:              cfg.Bucket,
 		uploadExpires:       cfg.UploadExpires,
@@ -334,6 +341,20 @@ func (s *Service) StartUpload(ctx context.Context, userID, filename string, size
 	if err != nil {
 		return models.UploadStartResponse{}, nil, err
 	}
+	if err := s.touchUserActivity(ctx, userID, isPremium); err != nil {
+		return models.UploadStartResponse{}, nil, err
+	}
+	if !isPremium {
+		totalFiles, err := s.fileRepo.CountActiveFilesForUser(ctx, s.db, userID)
+		if err != nil {
+			return models.UploadStartResponse{}, nil, err
+		}
+		if totalFiles >= FreeFileLimit {
+			validationErrors := validation.New()
+			validationErrors.Add("files", ErrFileLimitReached.Error())
+			return models.UploadStartResponse{}, validationErrors, nil
+		}
+	}
 	throttleMs, forceMultipart, err := s.resolveUploadThrottle(ctx, userID, sizeBytes, isPremium)
 	if err != nil {
 		return models.UploadStartResponse{}, nil, err
@@ -380,20 +401,25 @@ func (s *Service) MonthlyUsage(ctx context.Context, userID string) (int64, error
 	return s.usageRepo.SumUsageSince(ctx, s.db, userID, cutoff)
 }
 
-func (s *Service) resolveUploadThrottle(ctx context.Context, userID string, sizeBytes int64, isPremium bool) (int, bool, error) {
-	if isPremium || sizeBytes <= 0 {
-		return 0, false, nil
-	}
-	cutoff := time.Now().Add(-30 * 24 * time.Hour)
-	usedBytes, err := s.usageRepo.SumUsageSince(ctx, s.db, userID, cutoff)
+func (s *Service) CountActiveFiles(ctx context.Context, userID string) (int64, error) {
+	var err error
+	userID, err = validateUserID(userID)
 	if err != nil {
-		return 0, false, err
+		return 0, err
 	}
-	exceedsMonthly := usedBytes+sizeBytes > MonthlyFullSpeedBytes
-	largeFile := sizeBytes >= MaxFileSizeBytes
-	if exceedsMonthly || largeFile {
-		return ThrottledUploadDelayMs, true, nil
+	return s.fileRepo.CountActiveFilesForUser(ctx, s.db, userID)
+}
+
+func (s *Service) CountArchivedFiles(ctx context.Context, userID string) (int64, error) {
+	var err error
+	userID, err = validateUserID(userID)
+	if err != nil {
+		return 0, err
 	}
+	return s.fileRepo.CountArchivedFilesForUser(ctx, s.db, userID)
+}
+
+func (s *Service) resolveUploadThrottle(ctx context.Context, userID string, sizeBytes int64, isPremium bool) (int, bool, error) {
 	return 0, false, nil
 }
 
@@ -1068,6 +1094,9 @@ func (s *Service) PresignDownload(ctx context.Context, userID, fileID string) (s
 		if file.Status == FileStatusFailed || file.Status == FileStatusAborted {
 			return "", ErrUploadCancelled
 		}
+		return "", ErrNotFound
+	}
+	if isExpired(file.ExpiresAt) {
 		return "", ErrNotFound
 	}
 

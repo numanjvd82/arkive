@@ -71,7 +71,7 @@ func homeHero() g.Node {
 				h.Class("hero-copy"),
 				h.Span(h.Class("eyebrow"), g.Text("Share with freedom")),
 				h.H1(g.Text("Fast, secure file sharing with zero friction.")),
-				h.P(g.Text("Arkive gives you unlimited storage with unlimited retention. Share links instantly, add passwords, and let anyone download—no account required.")),
+				h.P(g.Text("Arkive gives you generous storage with unlimited retention while active. Share links instantly, add passwords, and let anyone download—no account required.")),
 				h.P(
 					h.Class("hero-note"),
 					g.Text("Fair use applies. "),
@@ -85,8 +85,8 @@ func homeHero() g.Node {
 				),
 				h.Div(
 					h.Class("hero-stats"),
-					statItem("Unlimited", "storage"),
-					statItem("0", "expiry limits"),
+					statItem("10 GB", "included"),
+					statItem("Active", "retention"),
 					statItem("No login", "for shared links"),
 				),
 			),
@@ -135,7 +135,7 @@ func homeFeatures() g.Node {
 				featureCard("Lightning fast", "Uploads and downloads tuned for speed across the globe."),
 				featureCard("No accounts for viewers", "Anyone can access shared files without logging in."),
 				featureCard("Password protected", "Lock shared links with a password whenever you want."),
-				featureCard("Unlimited retention", "No expiry dates. Your files stay available."),
+				featureCard("Retention while active", "Files stay available while your account is active."),
 				featureCard("Secure by default", "Encrypted storage and privacy-first defaults."),
 				featureCard("Open source soon", "We are preparing a public repo and roadmap."),
 			),
@@ -170,7 +170,7 @@ func homeSharing() g.Node {
 					h.Div(
 						h.Class("panel-tags"),
 						h.Span(h.Class("tag"), g.Text("Password on")),
-						h.Span(h.Class("tag"), g.Text("No expiry")),
+						h.Span(h.Class("tag"), g.Text("Active retention")),
 						h.Span(h.Class("tag"), g.Text("Unlimited downloads")),
 					),
 				),
@@ -188,12 +188,12 @@ func homeSecurity() g.Node {
 			h.Div(
 				h.Class("security-copy"),
 				h.H2(g.Text("Secure, private, and built to last.")),
-				h.P(g.Text("Arkive keeps your files protected with encryption and privacy-first defaults. No retention timers. No surprise deletions.")),
+				h.P(g.Text("Arkive keeps your files protected with encryption and privacy-first defaults. Retention is unlimited while active.")),
 				h.Div(
 					h.Class("security-tags"),
 					h.Span(h.Class("tag"), g.Text("Encrypted storage")),
 					h.Span(h.Class("tag"), g.Text("Password locks")),
-					h.Span(h.Class("tag"), g.Text("Unlimited retention")),
+					h.Span(h.Class("tag"), g.Text("Active retention")),
 				),
 			),
 			h.Div(
@@ -238,8 +238,8 @@ func homeCTA() g.Node {
 				h.Div(
 					h.Class("cta-copy"),
 					h.Span(h.Class("eyebrow"), g.Text("Start free")),
-					h.H2(g.Text("Unlimited storage today. Share instantly.")),
-					h.P(g.Text("Create your account and start sharing instantly. No limits on retention, no friction for recipients.")),
+					h.H2(g.Text("Generous storage today. Share instantly.")),
+					h.P(g.Text("Create your account and start sharing instantly. Unlimited retention while active, no friction for recipients.")),
 				),
 				h.Div(
 					h.Class("cta-actions"),

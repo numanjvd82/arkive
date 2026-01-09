@@ -9,9 +9,11 @@ import (
 	"arkive/core/config"
 	"arkive/core/database"
 	filerepo "arkive/core/repositories/files"
+	restoreusage "arkive/core/repositories/restore"
 	storagerepo "arkive/core/repositories/storage"
 	uploadrepo "arkive/core/repositories/uploads"
 	usagerepo "arkive/core/repositories/usage"
+	usersrepo "arkive/core/repositories/users"
 	"arkive/core/router"
 	"arkive/core/services/uploads"
 	"arkive/migrations"
@@ -58,7 +60,16 @@ func main() {
 		log.Fatalf("r2 client failed: %v", err)
 	}
 
-	uploadService := uploads.NewService(db, storagerepo.New(), filerepo.New(), uploadrepo.New(), usagerepo.New(), r2Client, uploads.Config{
+	uploadService := uploads.NewService(
+		db,
+		storagerepo.New(),
+		filerepo.New(),
+		uploadrepo.New(),
+		usagerepo.New(),
+		usersrepo.New(),
+		restoreusage.New(),
+		r2Client,
+		uploads.Config{
 		Bucket:              cfg.R2Bucket,
 		UploadExpires:       15 * time.Minute,
 		DownloadExpire:      3 * time.Hour,
@@ -70,6 +81,12 @@ func main() {
 		log.Fatalf("cleanup cron failed: %v", err)
 	}
 	defer cleanupCron.Stop()
+
+	retentionCron, err := jobs.StartRetentionCleanup(uploadService)
+	if err != nil {
+		log.Fatalf("retention cron failed: %v", err)
+	}
+	defer retentionCron.Stop()
 
 	if strings.EqualFold(cfg.Env, "dev") {
 		gin.SetMode(gin.DebugMode)

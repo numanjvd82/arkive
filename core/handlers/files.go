@@ -21,6 +21,11 @@ func WebFiles(uploadService *uploads.Service) gin.HandlerFunc {
 			c.Redirect(http.StatusSeeOther, "/login")
 			return
 		}
+		if err := uploadService.TouchUserActivity(c.Request.Context(), user.ID, user.IsPremium); err != nil {
+			_ = c.Error(errs.WithStack(err))
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
 
 		files, err := uploadService.ListCompletedUploads(c.Request.Context(), user.ID)
 		if err != nil {
@@ -28,10 +33,17 @@ func WebFiles(uploadService *uploads.Service) gin.HandlerFunc {
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
+		archivedCount, err := uploadService.CountArchivedFiles(c.Request.Context(), user.ID)
+		if err != nil {
+			_ = c.Error(errs.WithStack(err))
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
 
 		web.Render(c, pages.FilesPage(pages.FilesPageProps{
-			Ctx:   pages.ContextWithUser(user),
-			Files: files,
+			Ctx:           pages.ContextWithUser(user),
+			Files:         files,
+			ArchivedCount: archivedCount,
 		}))
 	}
 }
@@ -41,6 +53,11 @@ func WebFileView(uploadService *uploads.Service) gin.HandlerFunc {
 		user, ok := appcontext.UserFromContext(c)
 		if !ok || user.ID == "" {
 			c.Redirect(http.StatusSeeOther, "/login")
+			return
+		}
+		if err := uploadService.TouchUserActivity(c.Request.Context(), user.ID, user.IsPremium); err != nil {
+			_ = c.Error(errs.WithStack(err))
+			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
 
