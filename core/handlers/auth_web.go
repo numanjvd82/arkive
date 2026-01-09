@@ -82,7 +82,7 @@ func WebLoginPost(svc *auth.Service) gin.HandlerFunc {
 			return
 		}
 
-		sessionID, expiresAt, validationErrors, err := svc.WebLogin(c.Request.Context(), form.Email, form.Password)
+		sessionID, expiresAt, validationErrors, err := svc.WebLogin(c.Request.Context(), form.Email, form.Password, c.ClientIP())
 		if len(validationErrors) > 0 {
 			web.Render(c, pages.LoginPage(pages.LoginPageProps{
 				Ctx:            pages.PageContext{},
@@ -193,7 +193,7 @@ func WebGoogleLogin(svc *auth.Service) gin.HandlerFunc {
 			return
 		}
 
-		sessionID, expiresAt, err := svc.WebGoogleLogin(c.Request.Context(), body.Credential)
+		sessionID, expiresAt, err := svc.WebGoogleLogin(c.Request.Context(), body.Credential, c.ClientIP())
 		if err != nil {
 			switch err {
 			case auth.ErrInvalidInput, auth.ErrGoogleTokenInvalid, auth.ErrGoogleEmailNotVerified, auth.ErrGoogleClientNotConfigured:

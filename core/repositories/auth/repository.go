@@ -47,7 +47,7 @@ func (r *Repository) GetUserByID(ctx context.Context, db database.PgExecutor, us
 	var user models.User
 	query := `SELECT
 		id, brand_name, email, quota_bytes, used_bytes, reserved_bytes, is_premium,
-		is_email_verified, is_banned, ban_reason, last_login_at, last_ip, created_at, updated_at
+		is_email_verified, is_banned, ban_reason, last_login_at, last_ip::text, created_at, updated_at
 	FROM
 		users
 	WHERE
@@ -99,6 +99,18 @@ func (r *Repository) GetUserByGoogleSub(ctx context.Context, db database.PgExecu
 		return models.User{}, err
 	}
 	return user, nil
+}
+
+func (r *Repository) UpdateLastLogin(ctx context.Context, db database.PgExecutor, userID, lastIP string) error {
+	query := `UPDATE
+		users
+	SET
+		last_login_at = now(),
+		last_ip = NULLIF($2, '')::inet
+	WHERE
+		id = $1`
+	_, err := db.Exec(ctx, query, userID, lastIP)
+	return err
 }
 
 func (r *Repository) CreateUserWithGoogleProfile(ctx context.Context, db database.PgExecutor, brandName, email, sub, givenName, familyName string, emailVerified bool, pictureURL string) (models.User, error) {

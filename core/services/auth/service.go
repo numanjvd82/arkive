@@ -49,7 +49,7 @@ func NewService(
 	}
 }
 
-func (s *Service) WebLogin(ctx context.Context, email, password string) (string, time.Time, validation.Errors, error) {
+func (s *Service) WebLogin(ctx context.Context, email, password, lastIP string) (string, time.Time, validation.Errors, error) {
 	email = strings.TrimSpace(email)
 	password = strings.TrimSpace(password)
 	if email == "" || password == "" {
@@ -67,10 +67,12 @@ func (s *Service) WebLogin(ctx context.Context, email, password string) (string,
 	if err != nil {
 		return "", time.Time{}, nil, err
 	}
-
-	user, err := s.authenticateUser(ctx, email, password)
-	if err != nil {
+	defer func() {
 		_ = tx.Rollback(ctx)
+	}()
+
+	user, err := s.authenticateUser(ctx, tx, email, password)
+	if err != nil {
 		if errors.Is(err, ErrInvalidCredentials) {
 			validationErrors := validation.New()
 			validationErrors.Add(validation.GeneralKey, ErrLoginInvalid.Error())
@@ -84,9 +86,8 @@ func (s *Service) WebLogin(ctx context.Context, email, password string) (string,
 		return "", time.Time{}, nil, err
 	}
 
-	sessionID, expiresAt, err := s.createSession(ctx, tx, user.ID)
+	sessionID, expiresAt, err := s.createSession(ctx, tx, user.ID, lastIP)
 	if err != nil {
-		_ = tx.Rollback(ctx)
 		return "", time.Time{}, nil, err
 	}
 
@@ -236,15 +237,8 @@ func (s *Service) GetUserByID(ctx context.Context, userID string) (models.User, 
 	return user, nil
 }
 
-func (s *Service) authenticateUser(ctx context.Context, email, password string) (models.User, error) {
-	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
-	if err != nil {
-		return models.User{}, err
-	}
-	defer func() {
-		_ = tx.Rollback(ctx)
-	}()
-	user, hash, err := s.authRepo.GetUserByEmail(ctx, tx, email)
+func (s *Service) authenticateUser(ctx context.Context, db database.PgExecutor, email, password string) (models.User, error) {
+	user, hash, err := s.authRepo.GetUserByEmail(ctx, db, email)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return models.User{}, ErrInvalidCredentials
@@ -260,14 +254,10 @@ func (s *Service) authenticateUser(ctx context.Context, email, password string) 
 		return models.User{}, ErrInvalidCredentials
 	}
 
-	if err := tx.Commit(ctx); err != nil {
-		return models.User{}, err
-	}
-
 	return user, nil
 }
 
-func (s *Service) WebGoogleLogin(ctx context.Context, credential string) (string, time.Time, error) {
+func (s *Service) WebGoogleLogin(ctx context.Context, credential, lastIP string) (string, time.Time, error) {
 	credential = strings.TrimSpace(credential)
 	if credential == "" {
 		return "", time.Time{}, ErrInvalidInput
@@ -299,42 +289,39 @@ func (s *Service) WebGoogleLogin(ctx context.Context, credential string) (string
 	if err != nil {
 		return "", time.Time{}, err
 	}
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
 
 	user, err := s.authRepo.GetUserByGoogleSub(ctx, tx, sub)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		_ = tx.Rollback(ctx)
 		return "", time.Time{}, err
 	}
 
 	if errors.Is(err, pgx.ErrNoRows) {
 		_, _, err := s.authRepo.GetUserByEmail(ctx, tx, email)
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			_ = tx.Rollback(ctx)
 			return "", time.Time{}, err
 		}
 
 		if !errors.Is(err, pgx.ErrNoRows) {
-			_ = tx.Rollback(ctx)
 			return "", time.Time{}, ErrGoogleEmailHasPassword
 		}
 
 		displayName := strings.TrimSpace(strings.Join([]string{givenName, familyName}, " "))
 		brandName, err := s.uniqueBrandName(ctx, tx, displayName, email)
 		if err != nil {
-			_ = tx.Rollback(ctx)
 			return "", time.Time{}, err
 		}
 
 		user, err = s.authRepo.CreateUserWithGoogleProfile(ctx, tx, brandName, email, sub, givenName, familyName, emailVerified, pictureURL)
 		if err != nil {
-			_ = tx.Rollback(ctx)
 			return "", time.Time{}, err
 		}
 	}
 
-	sessionID, expiresAt, err := s.createSession(ctx, tx, user.ID)
+	sessionID, expiresAt, err := s.createSession(ctx, tx, user.ID, lastIP)
 	if err != nil {
-		_ = tx.Rollback(ctx)
 		return "", time.Time{}, err
 	}
 
@@ -439,8 +426,11 @@ func (s *Service) uniqueBrandName(ctx context.Context, db database.PgExecutor, n
 	return fmt.Sprintf("%s-%s", base, token[:6]), nil
 }
 
-func (s *Service) createSession(ctx context.Context, db database.PgExecutor, userID string) (string, time.Time, error) {
+func (s *Service) createSession(ctx context.Context, db database.PgExecutor, userID, lastIP string) (string, time.Time, error) {
 	expiresAt := time.Now().Add(s.sessionTTL)
+	if err := s.authRepo.UpdateLastLogin(ctx, db, userID, strings.TrimSpace(lastIP)); err != nil {
+		return "", time.Time{}, err
+	}
 	sessionID, err := s.sessionRepo.CreateSession(ctx, db, userID, expiresAt)
 	if err != nil {
 		return "", time.Time{}, err
