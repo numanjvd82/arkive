@@ -6,6 +6,35 @@ const CLOSE_ID = "adblock-close";
 const WARNING_ID = "adblock-warning";
 const DETECTION_DELAY_MS = 2500;
 const RECHECK_DELAY_MS = 800;
+const MONETAG_CONFIG = [
+  {
+    src: "monetag-onclick.js",
+    injectedSelectors: [
+      'script[data-zone="10431804"]',
+      'script[src*="al5sm.com/tag.min.js"]'
+    ],
+    resourceMatches: ["al5sm.com/"],
+    localLoadedFlag: "__arkiveMonetagOnclickLoaded",
+    externalBlockedFlag: "__arkiveMonetagOnclickExternalBlocked"
+  },
+  {
+    src: "monetag-vignette.js",
+    injectedSelectors: [
+      'script[data-zone="10431810"]',
+      'script[src*="gizokraijaw.net/vignette.min.js"]'
+    ],
+    resourceMatches: ["gizokraijaw.net/"],
+    localLoadedFlag: "__arkiveMonetagVignetteLoaded",
+    externalBlockedFlag: "__arkiveMonetagVignetteExternalBlocked"
+  },
+  {
+    src: "monetag-push-ad.js",
+    injectedSelectors: ['script[src*="3nbf4.com/act/files/tag.min.js"]'],
+    resourceMatches: ["3nbf4.com/act/files/tag.min.js"],
+    localLoadedFlag: "__arkiveMonetagPushLoaded",
+    externalBlockedFlag: "__arkiveMonetagPushExternalBlocked"
+  }
+];
 
 function openAdblockModal() {
   if (!window.Dialog || !window.Dialog.open) {
@@ -84,34 +113,22 @@ function isBaitBlocked() {
   return blocked;
 }
 
-function hasMonetagOnclick() {
-  return Boolean(document.querySelector('script[src*="monetag-onclick.js"]'));
+function isMonetagExpected() {
+  return Boolean(document.body && document.body.hasAttribute("data-monetag-expected"));
 }
 
-function hasMonetagVignette() {
-  return Boolean(document.querySelector('script[src*="monetag-vignette.js"]'));
+function hasAnySelector(selectors) {
+  return selectors.some(function(selector) {
+    return Boolean(document.querySelector(selector));
+  });
 }
 
-function hasMonetagPush() {
-  return Boolean(document.querySelector('script[src*="monetag-push-ad.js"]'));
+function hasScriptWithSrc(srcPart) {
+  return Boolean(document.querySelector('script[src*="' + srcPart + '"]'));
 }
 
-function hasMonetagOnclickInjection() {
-  return Boolean(
-    document.querySelector('script[data-zone="10431804"], script[src*="al5sm.com/tag.min.js"]')
-  );
-}
-
-function hasMonetagVignetteInjection() {
-  return Boolean(
-    document.querySelector('script[data-zone="10431810"], script[src*="gizokraijaw.net/vignette.min.js"]')
-  );
-}
-
-function hasMonetagPushInjection() {
-  return Boolean(
-    document.querySelector('script[src*="3nbf4.com/act/files/tag.min.js"]')
-  );
+function getFlag(flagName) {
+  return Boolean(window[flagName]);
 }
 
 function hasMonetagResourceLoaded() {
@@ -124,11 +141,11 @@ function hasMonetagResourceLoaded() {
     if (!entry || !entry.name) {
       return false;
     }
-    return (
-      entry.name.includes("al5sm.com/") ||
-      entry.name.includes("gizokraijaw.net/") ||
-      entry.name.includes("3nbf4.com/act/files/tag.min.js")
-    );
+    return MONETAG_CONFIG.some(function(config) {
+      return config.resourceMatches.some(function(match) {
+        return entry.name.includes(match);
+      });
+    });
   });
 }
 
@@ -151,10 +168,36 @@ function isAdsterraBlocked() {
 
 function detectAdblock() {
   const baitBlocked = isBaitBlocked();
+  const monetagExpected = isMonetagExpected();
+  const resourceLoaded = hasMonetagResourceLoaded();
+  let monetagTagsMissing = monetagExpected;
+  let monetagSignalsLoaded = false;
+  let monetagLocalBlocked = false;
+  let monetagExternalBlocked = false;
+  let monetagInjectionMissing = false;
+
+  if (monetagExpected) {
+    MONETAG_CONFIG.forEach(function(config) {
+      const hasTag = hasScriptWithSrc(config.src);
+      const localLoaded = getFlag(config.localLoadedFlag);
+      const externalBlocked = getFlag(config.externalBlockedFlag);
+      const injected = hasAnySelector(config.injectedSelectors);
+
+      monetagTagsMissing = monetagTagsMissing && !hasTag;
+      monetagSignalsLoaded = monetagSignalsLoaded || localLoaded || injected || resourceLoaded;
+      monetagLocalBlocked = monetagLocalBlocked || (hasTag && !localLoaded);
+      monetagExternalBlocked = monetagExternalBlocked || externalBlocked;
+      monetagInjectionMissing = monetagInjectionMissing || (hasTag && !injected && !resourceLoaded);
+    });
+
+    if (monetagTagsMissing && !monetagSignalsLoaded) {
+      monetagInjectionMissing = true;
+    }
+  }
+
   const monetagBlocked =
-    (hasMonetagOnclick() && !hasMonetagOnclickInjection() && !hasMonetagResourceLoaded()) ||
-    (hasMonetagVignette() && !hasMonetagVignetteInjection() && !hasMonetagResourceLoaded()) ||
-    (hasMonetagPush() && !hasMonetagPushInjection() && !hasMonetagResourceLoaded());
+    monetagExpected &&
+    (monetagInjectionMissing || monetagLocalBlocked || monetagExternalBlocked);
   const adsterraBlocked = isAdsterraBlocked();
 
   return baitBlocked || monetagBlocked || adsterraBlocked;

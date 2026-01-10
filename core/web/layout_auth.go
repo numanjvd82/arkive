@@ -35,6 +35,7 @@ func AuthLayout(data LayoutData, content ...g.Node) g.Node {
 			JS:            data.JS,
 		})...),
 		h.Body(
+			g.If(data.User != nil && !data.User.IsPremium, g.Attr("data-monetag-expected", "true")),
 			components.InlineStyle(components.AuthLayoutCSS),
 			h.Div(
 				h.Class("app-shell"),
