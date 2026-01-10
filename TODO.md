@@ -14,11 +14,10 @@
 - Multi-file and folder upload UI (queue, progress per item, folder support).
 - Dedicated paused-uploads list in the dashboard or uploads page (beyond the resume banner).
 - Alert component for inline form and page messaging.
-- Refactor share UI (dialog + public share view) for clearer components and state management.
-- SEO improvements (titles, descriptions, canonical URLs, sitemap).
-- Add `robots.txt` and `ads.txt` for search/revenue support.
-- Add Open Graph/Twitter meta tags for link previews.
+- Add `ads.txt` for search/revenue support.
 - Add "Show on Google and other search engines" option for public shares; default off, and only index when enabled.
+- Add SEO landing pages: /secure-file-sharing, /share-large-files, /file-sharing-without-login.
+- Add internal links from home/pricing/footer to the new SEO landing pages.
 - Add ad provider name to Privacy Policy and Cookie Policy once finalized.
 - Add governing law and dispute venue to Terms of Service after company registration.
 - Add company address and phone to Terms of Service after company registration.
@@ -37,3 +36,9 @@
 - Refactor media view page (components, helpers) for better structure and maintainability.
 - Strategy for private/public view and download expiry (stable media URLs, refresh flow, tokenized CDN).
 - Improve toast visibility and messaging for rate-limited actions across the app.
+- SEO improvements (titles, descriptions, canonical URLs, sitemap, JSON-LD).
+- Add `robots.txt` for search/revenue support.
+- Add Open Graph/Twitter meta tags for link previews.
+- Add sitemap.xml for marketing pages.
+- Refactor share UI (dialog + public share view) for clearer components and state management.
+
