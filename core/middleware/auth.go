@@ -6,6 +6,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"arkive/core/services/auth"
+	"arkive/core/web"
+	"arkive/core/web/pages"
 	appcontext "arkive/pkg/context"
 	"arkive/pkg/errs"
 )
@@ -19,7 +21,10 @@ func RequireSessionRedirect(svc *auth.Service) gin.HandlerFunc {
 			return
 		}
 		if !ok {
-			c.Redirect(http.StatusSeeOther, "/login")
+			c.Status(http.StatusForbidden)
+			web.Render(c, pages.ForbiddenPage(pages.ForbiddenPageProps{
+				Ctx: pages.PageContext{},
+			}))
 			c.Abort()
 			return
 		}

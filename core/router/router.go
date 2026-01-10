@@ -163,5 +163,7 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 		}), handlers.APIDeleteShare(shareService))
 	}
 
+	r.NoRoute(handlers.WebNotFound())
+
 	return r
 }

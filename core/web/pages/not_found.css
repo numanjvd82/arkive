@@ -1,21 +1,21 @@
-.forbidden-page {
+.not-found {
   position: relative;
   padding: 72px 0 120px;
   overflow: hidden;
 }
 
-.forbidden-page::before {
+.not-found::before {
   content: "";
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(600px 320px at 10% -10%, rgba(255, 192, 120, 0.2), transparent 65%),
-    radial-gradient(520px 340px at 95% 5%, rgba(120, 200, 255, 0.18), transparent 70%),
-    linear-gradient(140deg, rgba(16, 20, 32, 0.95), rgba(19, 24, 36, 0.9));
+    radial-gradient(600px 320px at 10% -10%, rgba(110, 204, 255, 0.28), transparent 65%),
+    radial-gradient(520px 340px at 95% 5%, rgba(255, 196, 120, 0.18), transparent 70%),
+    linear-gradient(140deg, rgba(15, 19, 30, 0.96), rgba(18, 22, 34, 0.9));
   pointer-events: none;
 }
 
-.forbidden-page::after {
+.not-found::after {
   content: "";
   position: absolute;
   inset: -20% 35% auto;
@@ -24,40 +24,40 @@
   pointer-events: none;
 }
 
-.forbidden-page .container {
+.not-found .container {
   position: relative;
   z-index: 1;
 }
 
-.forbidden-grid {
+.not-found-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
   gap: 32px;
   align-items: start;
 }
 
-.forbidden-copy {
+.not-found-copy {
   display: grid;
   gap: 18px;
 }
 
-.forbidden-eyebrow {
-  color: var(--accent-warm);
+.not-found-eyebrow {
+  color: var(--accent-cool);
   margin: 0;
 }
 
-.forbidden-lead {
+.not-found-lead {
   margin: 0;
   color: var(--muted);
 }
 
-.forbidden-actions {
+.not-found-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
 }
 
-.forbidden-hint {
+.not-found-hint {
   display: grid;
   gap: 8px;
   padding: 16px 18px;
@@ -67,16 +67,16 @@
   color: var(--muted);
 }
 
-.forbidden-hint p {
+.not-found-hint p {
   margin: 0;
 }
 
-.forbidden-ads {
+.not-found-ads {
   display: grid;
   gap: 18px;
 }
 
-.forbidden-panel {
+.not-found-panel {
   padding: 18px;
   border-radius: 20px;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -107,21 +107,21 @@
 }
 
 @media (max-width: 960px) {
-  .forbidden-grid {
+  .not-found-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 }
 
 @media (max-width: 640px) {
-  .forbidden-page {
+  .not-found {
     padding: 56px 0 90px;
   }
 
-  .forbidden-actions {
+  .not-found-actions {
     flex-direction: column;
   }
 
-  .forbidden-actions .button {
+  .not-found-actions .button {
     width: 100%;
   }
 }
