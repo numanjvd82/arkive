@@ -8,19 +8,25 @@
 }
 
 .pricing-hero h1 {
-  font-size: clamp(2.2rem, 3.4vw, 3.4rem);
+  font-size: var(--text-display-size);
+  line-height: var(--text-display-lh);
+  letter-spacing: var(--text-display-ls);
+  font-weight: var(--text-display-wt);
   margin-bottom: 12px;
 }
 
 .pricing-meta {
   color: var(--muted);
   margin-bottom: 16px;
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-lh);
 }
 
 .pricing-intro {
   max-width: 760px;
   color: var(--muted);
-  line-height: 1.7;
+  font-size: var(--text-body-lg-size);
+  line-height: var(--text-body-lg-lh);
 }
 
 .pricing-content {
@@ -59,13 +65,16 @@
 
 .pricing-table th {
   color: var(--accent);
-  font-size: 0.95rem;
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
 }
 
 .pricing-table thead th {
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  font-size: 0.8rem;
+  letter-spacing: var(--text-label-ls);
+  font-size: var(--text-label-size);
+  line-height: var(--text-label-lh);
+  font-weight: var(--text-label-wt);
   color: var(--muted);
 }
 
@@ -75,13 +84,16 @@
 }
 
 .fairuse-card h2 {
-  font-size: 1.4rem;
+  font-size: var(--text-h3-size);
+  line-height: var(--text-h3-lh);
+  font-weight: var(--text-h3-wt);
   margin-bottom: 12px;
 }
 
 .fairuse-intro {
   color: var(--muted);
-  line-height: 1.7;
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-lh);
   margin-bottom: 16px;
 }
 
@@ -89,7 +101,8 @@
   margin: 0;
   padding-left: 20px;
   color: var(--muted);
-  line-height: 1.7;
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-lh);
 }
 
 .fairuse-list li + li {

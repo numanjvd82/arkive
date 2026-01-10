@@ -8,19 +8,25 @@
 }
 
 .cookie-hero h1 {
-  font-size: clamp(2.2rem, 3.2vw, 3.2rem);
+  font-size: var(--text-h1-size);
+  line-height: var(--text-h1-lh);
+  letter-spacing: var(--text-h1-ls);
+  font-weight: var(--text-h1-wt);
   margin-bottom: 12px;
 }
 
 .cookie-meta {
   color: var(--muted);
   margin-bottom: 16px;
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-lh);
 }
 
 .cookie-intro {
   max-width: 720px;
   color: var(--muted);
-  line-height: 1.7;
+  font-size: var(--text-body-lg-size);
+  line-height: var(--text-body-lg-lh);
 }
 
 .cookie-content {
@@ -42,13 +48,16 @@
 }
 
 .cookie-section h2 {
-  font-size: 1.35rem;
+  font-size: var(--text-h3-size);
+  line-height: var(--text-h3-lh);
+  font-weight: var(--text-h3-wt);
   margin-bottom: 12px;
 }
 
 .cookie-section p {
   color: var(--muted);
-  line-height: 1.7;
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-lh);
   margin: 10px 0;
 }
 

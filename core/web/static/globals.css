@@ -1,9 +1,3 @@
-@font-face {
-  font-family: "Space Grotesk";
-  src: local("Space Grotesk");
-  font-weight: 400 700;
-}
-
 :root {
   --bg: #141824;
   --bg-soft: #1a2030;
@@ -21,6 +15,70 @@
   --danger: #ff5c5c;
   --border: #2b3347;
   --shadow: 0 24px 40px rgba(7, 9, 15, 0.35);
+
+  --font-ui: "Inter", system-ui, -apple-system, "Segoe UI", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  --font-heading: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+
+  --text-display-size: clamp(2.75rem, 2.2rem + 2.2vw, 5rem);
+  --text-display-lh: 1.05;
+  --text-display-ls: -0.02em;
+  --text-display-wt: 600;
+
+  --text-h1-size: 2.25rem;
+  --text-h1-lh: 1.15;
+  --text-h1-ls: -0.01em;
+  --text-h1-wt: 600;
+
+  --text-h2-size: 1.75rem;
+  --text-h2-lh: 1.2;
+  --text-h2-ls: -0.01em;
+  --text-h2-wt: 600;
+
+  --text-h3-size: 1.375rem;
+  --text-h3-lh: 1.25;
+  --text-h3-ls: 0;
+  --text-h3-wt: 600;
+
+  --text-h4-size: 1.125rem;
+  --text-h4-lh: 1.3;
+  --text-h4-ls: 0;
+  --text-h4-wt: 600;
+
+  --text-body-lg-size: 1.125rem;
+  --text-body-lg-lh: 1.6;
+  --text-body-lg-ls: 0;
+  --text-body-lg-wt: 400;
+
+  --text-body-size: 1rem;
+  --text-body-lh: 1.6;
+  --text-body-ls: 0;
+  --text-body-wt: 400;
+
+  --text-body-sm-size: 0.875rem;
+  --text-body-sm-lh: 1.55;
+  --text-body-sm-ls: 0;
+  --text-body-sm-wt: 400;
+
+  --text-caption-size: 0.75rem;
+  --text-caption-lh: 1.4;
+  --text-caption-ls: 0.01em;
+  --text-caption-wt: 400;
+
+  --text-label-size: 0.75rem;
+  --text-label-lh: 1.2;
+  --text-label-ls: 0.06em;
+  --text-label-wt: 600;
+
+  --text-button-size: 0.875rem;
+  --text-button-lh: 1.1;
+  --text-button-ls: 0.01em;
+  --text-button-wt: 600;
+
+  --text-mono-size: 0.8125rem;
+  --text-mono-lh: 1.5;
+  --text-mono-ls: 0;
+  --text-mono-wt: 500;
 }
 
 [data-theme="light"] {
@@ -42,10 +100,55 @@
   --shadow: 0 20px 36px rgba(17, 21, 34, 0.1);
 }
 
+html {
+  font-family: var(--font-ui);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 body {
-  font-family: "Space Grotesk", "Arial Black", Arial, sans-serif;
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-lh);
+  letter-spacing: var(--text-body-ls);
+  font-weight: var(--text-body-wt);
   color: var(--text);
   background: var(--bg);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-heading);
+}
+
+h1 {
+  font-size: var(--text-h1-size);
+  line-height: var(--text-h1-lh);
+  letter-spacing: var(--text-h1-ls);
+  font-weight: var(--text-h1-wt);
+}
+
+h2 {
+  font-size: var(--text-h2-size);
+  line-height: var(--text-h2-lh);
+  letter-spacing: var(--text-h2-ls);
+  font-weight: var(--text-h2-wt);
+}
+
+h3 {
+  font-size: var(--text-h3-size);
+  line-height: var(--text-h3-lh);
+  letter-spacing: var(--text-h3-ls);
+  font-weight: var(--text-h3-wt);
+}
+
+h4 {
+  font-size: var(--text-h4-size);
+  line-height: var(--text-h4-lh);
+  letter-spacing: var(--text-h4-ls);
+  font-weight: var(--text-h4-wt);
 }
 
 * {
@@ -93,4 +196,56 @@ a {
 .container {
   width: min(1120px, 92vw);
   margin: 0 auto;
+}
+
+.text-display {
+  font-family: var(--font-heading);
+  font-size: var(--text-display-size);
+  line-height: var(--text-display-lh);
+  letter-spacing: var(--text-display-ls);
+  font-weight: var(--text-display-wt);
+}
+
+.body-lg {
+  font-size: var(--text-body-lg-size);
+  line-height: var(--text-body-lg-lh);
+  letter-spacing: var(--text-body-lg-ls);
+  font-weight: var(--text-body-lg-wt);
+}
+
+.body-sm {
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
+  letter-spacing: var(--text-body-sm-ls);
+  font-weight: var(--text-body-sm-wt);
+}
+
+.caption {
+  font-size: var(--text-caption-size);
+  line-height: var(--text-caption-lh);
+  letter-spacing: var(--text-caption-ls);
+  font-weight: var(--text-caption-wt);
+}
+
+.label {
+  font-size: var(--text-label-size);
+  line-height: var(--text-label-lh);
+  letter-spacing: var(--text-label-ls);
+  font-weight: var(--text-label-wt);
+  text-transform: uppercase;
+}
+
+.button-text {
+  font-size: var(--text-button-size);
+  line-height: var(--text-button-lh);
+  letter-spacing: var(--text-button-ls);
+  font-weight: var(--text-button-wt);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: var(--text-mono-size);
+  line-height: var(--text-mono-lh);
+  letter-spacing: var(--text-mono-ls);
+  font-weight: var(--text-mono-wt);
 }

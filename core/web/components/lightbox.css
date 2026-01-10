@@ -24,7 +24,9 @@
 }
 
 .lightbox-title {
-  font-weight: 600;
+  font-size: var(--text-h4-size);
+  line-height: var(--text-h4-lh);
+  font-weight: var(--text-h4-wt);
   color: #ffffff;
 }
 
@@ -35,7 +37,8 @@
 
 .lightbox-hint {
   color: rgba(255, 255, 255, 0.6);
-  font-size: 0.85rem;
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
 }
 
 .lightbox-action {
@@ -45,7 +48,10 @@
   border-radius: 12px;
   padding: 8px 12px;
   cursor: pointer;
-  font-weight: 600;
+  font-size: var(--text-button-size);
+  line-height: var(--text-button-lh);
+  letter-spacing: var(--text-button-ls);
+  font-weight: var(--text-button-wt);
 }
 
 .lightbox-action.is-disabled,
@@ -117,6 +123,6 @@ body {
   }
 
   .lightbox-hint {
-    font-size: 0.78rem;
+    font-size: var(--text-body-sm-size);
   }
 }

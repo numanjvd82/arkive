@@ -28,13 +28,18 @@
 }
 
 .page-title h1 {
-  font-size: clamp(2rem, 3.2vw, 2.8rem);
+  font-size: var(--text-h1-size);
+  line-height: var(--text-h1-lh);
+  letter-spacing: var(--text-h1-ls);
+  font-weight: var(--text-h1-wt);
   margin-bottom: 8px;
 }
 
 .page-title p {
   color: var(--muted);
   max-width: 520px;
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
 }
 
 .page-actions {
@@ -77,17 +82,20 @@
 }
 
 .summary-value {
-  font-size: 1.8rem;
-  font-weight: 600;
+  font-size: var(--text-h3-size);
+  line-height: var(--text-h3-lh);
+  font-weight: var(--text-h3-wt);
 }
 
 .summary-value.is-small {
-  font-size: 1.1rem;
+  font-size: var(--text-h4-size);
+  line-height: var(--text-h4-lh);
 }
 
 .summary-meta {
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
 }
 
 .files-panels {
@@ -112,7 +120,9 @@
 }
 
 .panel-header h2 {
-  font-size: 1.3rem;
+  font-size: var(--text-h3-size);
+  line-height: var(--text-h3-lh);
+  font-weight: var(--text-h3-wt);
 }
 
 .panel-header p {
@@ -141,9 +151,11 @@
   border: none;
   padding: 0 8px;
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: var(--text-label-size);
+  line-height: var(--text-label-lh);
+  letter-spacing: var(--text-label-ls);
+  font-weight: var(--text-label-wt);
   text-transform: uppercase;
-  letter-spacing: 0.12em;
 }
 
 .files-row-head span:last-child {
@@ -166,9 +178,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font-size: var(--text-label-size);
+  line-height: var(--text-label-lh);
+  letter-spacing: var(--text-label-ls);
+  font-weight: var(--text-label-wt);
   color: var(--muted);
 }
 
@@ -187,7 +200,8 @@
 
 .files-sub {
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -197,25 +211,33 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.85rem;
+  font-size: var(--text-mono-size);
+  line-height: var(--text-mono-lh);
+  font-family: var(--font-mono);
   color: var(--muted);
   flex-wrap: wrap;
 }
 
 .files-share-label {
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-size: 0.7rem;
+  letter-spacing: var(--text-label-ls);
+  font-size: var(--text-label-size);
+  line-height: var(--text-label-lh);
+  font-weight: var(--text-label-wt);
 }
 
 .files-time {
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: var(--text-mono-size);
+  line-height: var(--text-mono-lh);
+  font-family: var(--font-mono);
   white-space: nowrap;
 }
 
 .files-size {
-  font-size: 0.9rem;
+  font-size: var(--text-mono-size);
+  line-height: var(--text-mono-lh);
+  font-family: var(--font-mono);
   color: var(--muted);
 }
 
@@ -228,7 +250,10 @@
 
 .files-actions .button {
   padding: 6px 12px;
-  font-size: 0.85rem;
+  font-size: var(--text-button-size);
+  line-height: var(--text-button-lh);
+  letter-spacing: var(--text-button-ls);
+  font-weight: var(--text-button-wt);
   border-radius: 999px;
 }
 
@@ -303,6 +328,8 @@
 .share-subtitle {
   margin: 0;
   color: var(--muted);
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
 }
 
 .share-link-row {
@@ -323,7 +350,8 @@
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
-  font-size: 0.9rem;
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
   color: var(--muted);
 }
 
@@ -344,8 +372,10 @@
   border: 1px solid var(--border);
   background: var(--surface-strong);
   color: var(--muted);
-  font-size: 0.75rem;
-  letter-spacing: 0.02em;
+  font-size: var(--text-label-size);
+  line-height: var(--text-label-lh);
+  letter-spacing: var(--text-label-ls);
+  font-weight: var(--text-label-wt);
 }
 
 .share-save-state.is-empty {

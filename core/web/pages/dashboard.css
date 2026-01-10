@@ -34,13 +34,18 @@
 }
 
 .page-title h1 {
-  font-size: clamp(2rem, 3.6vw, 3rem);
+  font-size: var(--text-h1-size);
+  line-height: var(--text-h1-lh);
+  letter-spacing: var(--text-h1-ls);
+  font-weight: var(--text-h1-wt);
   margin-bottom: 8px;
 }
 
 .page-title p {
   color: var(--muted);
   max-width: 520px;
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
 }
 
 .page-actions {
@@ -71,7 +76,9 @@
 }
 
 .panel-header h2 {
-  font-size: 1.3rem;
+  font-size: var(--text-h3-size);
+  line-height: var(--text-h3-lh);
+  font-weight: var(--text-h3-wt);
 }
 
 .panel-header p {
@@ -94,7 +101,8 @@
 .upload-note {
   margin-top: 14px;
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
 }
 
 .dashboard .button,

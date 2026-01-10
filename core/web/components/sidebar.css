@@ -48,7 +48,10 @@ body.sidebar-open {
 .sidebar-brand {
   display: inline-flex;
   align-items: center;
-  font-weight: 700;
+  font-family: var(--font-heading);
+  font-size: var(--text-h4-size);
+  line-height: var(--text-h4-lh);
+  font-weight: var(--text-h4-wt);
   text-transform: lowercase;
 }
 
@@ -58,8 +61,10 @@ body.sidebar-open {
   color: var(--muted);
   padding: 6px 10px;
   border-radius: 999px;
-  font-size: 0.75rem;
-  letter-spacing: 0.08em;
+  font-size: var(--text-label-size);
+  line-height: var(--text-label-lh);
+  letter-spacing: var(--text-label-ls);
+  font-weight: var(--text-label-wt);
   text-transform: uppercase;
   cursor: pointer;
 }
@@ -81,8 +86,10 @@ body.sidebar-open {
 }
 
 .sidebar-label {
-  font-size: 0.7rem;
-  letter-spacing: 0.14em;
+  font-size: var(--text-label-size);
+  line-height: var(--text-label-lh);
+  letter-spacing: var(--text-label-ls);
+  font-weight: var(--text-label-wt);
   text-transform: uppercase;
   color: var(--muted);
   padding: 2px 4px;
@@ -97,7 +104,8 @@ body.sidebar-open {
   border-radius: 999px;
   border: 1px solid transparent;
   color: var(--muted);
-  font-size: 0.95rem;
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
   transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
@@ -126,17 +134,20 @@ body.sidebar-open {
   border: 1px solid var(--border);
   background: transparent;
   color: var(--text);
-  font-weight: 600;
+  font-weight: var(--text-label-wt);
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-size: 0.75rem;
+  letter-spacing: var(--text-label-ls);
+  font-size: var(--text-label-size);
+  line-height: var(--text-label-lh);
   cursor: pointer;
 }
 
 .sidebar-logout {
   text-transform: none;
-  letter-spacing: 0.02em;
-  font-size: 0.9rem;
+  letter-spacing: var(--text-button-ls);
+  font-size: var(--text-button-size);
+  line-height: var(--text-button-lh);
+  font-weight: var(--text-button-wt);
   color: var(--danger);
   border-color: rgba(255, 92, 92, 0.35);
   background: rgba(255, 92, 92, 0.08);

@@ -6,8 +6,10 @@
 
 .progress-label {
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-size: 0.75rem;
+  letter-spacing: var(--text-label-ls);
+  font-size: var(--text-label-size);
+  line-height: var(--text-label-lh);
+  font-weight: var(--text-label-wt);
   color: var(--muted);
 }
 
@@ -33,7 +35,8 @@
   right: 10px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 1rem;
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
   font-weight: 600;
   color: var(--text);
 }

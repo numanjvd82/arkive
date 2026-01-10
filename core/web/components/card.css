@@ -13,10 +13,13 @@
 }
 
 .card-header h3 {
-  font-size: 1.2rem;
+  font-size: var(--text-h3-size);
+  line-height: var(--text-h3-lh);
+  font-weight: var(--text-h3-wt);
 }
 
 .card-header p {
   color: var(--muted);
-  font-size: 0.95rem;
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
 }

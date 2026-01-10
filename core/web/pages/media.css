@@ -40,13 +40,18 @@
 }
 
 .media-title h1 {
-  font-size: clamp(2rem, 3.4vw, 3rem);
+  font-size: var(--text-h1-size);
+  line-height: var(--text-h1-lh);
+  letter-spacing: var(--text-h1-ls);
+  font-weight: var(--text-h1-wt);
   margin: 10px 0 12px;
 }
 
 .media-eyebrow {
-  font-size: 0.78rem;
-  letter-spacing: 0.16em;
+  font-size: var(--text-label-size);
+  line-height: var(--text-label-lh);
+  letter-spacing: var(--text-label-ls);
+  font-weight: var(--text-label-wt);
   text-transform: uppercase;
   color: var(--accent-cool);
   margin: 0;
@@ -59,7 +64,8 @@
 }
 
 .chip {
-  font-size: 0.85rem;
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
   padding: 6px 12px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
@@ -145,8 +151,10 @@
 
 .media-frame-inner .plyr__control--cinema {
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 0.7rem;
+  letter-spacing: var(--text-label-ls);
+  font-size: var(--text-label-size);
+  line-height: var(--text-label-lh);
+  font-weight: var(--text-label-wt);
 }
 
 .media-frame-inner .plyr--video {
@@ -211,7 +219,9 @@
 }
 
 .media-placeholder span {
-  font-size: 1.1rem;
+  font-size: var(--text-h4-size);
+  line-height: var(--text-h4-lh);
+  font-weight: var(--text-h4-wt);
   color: var(--accent-strong);
 }
 
@@ -242,7 +252,9 @@
 
 .media-panel h3 {
   margin: 0 0 14px;
-  font-size: 1.05rem;
+  font-size: var(--text-h4-size);
+  line-height: var(--text-h4-lh);
+  font-weight: var(--text-h4-wt);
 }
 
 .media-meta {
@@ -254,7 +266,8 @@
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  font-size: 0.9rem;
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
 }
 
 .meta-label {
@@ -264,6 +277,9 @@
 .meta-value {
   text-align: right;
   word-break: break-word;
+  font-family: var(--font-mono);
+  font-size: var(--text-mono-size);
+  line-height: var(--text-mono-lh);
 }
 
 .ad-slot {
@@ -273,8 +289,10 @@
 
 .ad-slot .ad-label {
   text-transform: uppercase;
-  letter-spacing: 0.14em;
-  font-size: 0.72rem;
+  letter-spacing: var(--text-label-ls);
+  font-size: var(--text-label-size);
+  line-height: var(--text-label-lh);
+  font-weight: var(--text-label-wt);
   color: var(--muted);
   margin: 0 0 12px;
 }
@@ -285,13 +303,16 @@
 }
 
 .ad-body strong {
-  font-size: 1.2rem;
+  font-size: var(--text-h3-size);
+  line-height: var(--text-h3-lh);
+  font-weight: var(--text-h3-wt);
 }
 
 .ad-slot.compact p {
   margin: 0;
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
 }
 
 .media-view.is-cinema .media-shell {

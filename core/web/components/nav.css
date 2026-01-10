@@ -12,6 +12,9 @@
 .nav-brand {
   display: inline-flex;
   align-items: center;
-  font-weight: 700;
+  font-family: var(--font-heading);
+  font-size: var(--text-h4-size);
+  line-height: var(--text-h4-lh);
+  font-weight: var(--text-h4-wt);
   text-transform: lowercase;
 }

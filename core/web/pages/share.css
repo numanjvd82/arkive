@@ -22,13 +22,18 @@
 
 .share-header h1 {
   margin: 8px 0;
-  font-size: clamp(1.6rem, 2.6vw, 2.1rem);
+  font-size: var(--text-h2-size);
+  line-height: var(--text-h2-lh);
+  letter-spacing: var(--text-h2-ls);
+  font-weight: var(--text-h2-wt);
 }
 
 .share-eyebrow {
   text-transform: uppercase;
-  letter-spacing: 0.14em;
-  font-size: 0.75rem;
+  letter-spacing: var(--text-label-ls);
+  font-size: var(--text-label-size);
+  line-height: var(--text-label-lh);
+  font-weight: var(--text-label-wt);
   color: var(--muted);
   margin: 0;
 }
@@ -36,6 +41,8 @@
 .share-subtitle {
   margin: 0;
   color: var(--muted);
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
 }
 
 .share-file-meta {
@@ -86,7 +93,10 @@
   background: rgba(107, 209, 230, 0.12);
   border: 1px solid rgba(107, 209, 230, 0.3);
   color: var(--text);
-  font-size: 0.85rem;
+  font-size: var(--text-label-size);
+  line-height: var(--text-label-lh);
+  letter-spacing: var(--text-label-ls);
+  font-weight: var(--text-label-wt);
 }
 
 .share-link-panel {
@@ -101,7 +111,8 @@
 .share-link-hint {
   margin: 8px 0 0;
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
 }
 
 .share-actions {
@@ -145,7 +156,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  font-size: 0.9rem;
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
 }
 
 .meta-label {
@@ -153,7 +165,9 @@
 }
 
 .meta-value {
-  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: var(--text-mono-size);
+  line-height: var(--text-mono-lh);
   color: var(--text);
   text-align: right;
 }

@@ -4,8 +4,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.2rem;
-  font-weight: bold;
+  font-size: var(--text-h4-size);
+  line-height: var(--text-h4-lh);
+  font-weight: var(--text-h4-wt);
   background: var(--surface-strong);
   border-radius: 50%;
   color: var(--muted);
@@ -26,8 +27,8 @@
   color: #fff;
   padding: 10px 12px;
   border-radius: 12px;
-  font-size: 0.95rem;
-  line-height: 1.45;
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s ease;

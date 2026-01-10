@@ -56,12 +56,14 @@
 .dropdown-label {
   font-weight: 600;
   color: var(--text);
-  font-size: 0.95rem;
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
 }
 
 .dropdown-email {
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
   word-break: break-all;
 }
 
@@ -81,7 +83,8 @@
   border: 1px solid transparent;
   background: transparent;
   color: var(--text);
-  font-size: 0.9rem;
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
   cursor: pointer;
   text-align: left;
   transition: background 0.2s ease, border-color 0.2s ease;

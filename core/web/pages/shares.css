@@ -28,13 +28,18 @@
 }
 
 .page-title h1 {
-  font-size: clamp(2rem, 3.2vw, 2.8rem);
+  font-size: var(--text-h1-size);
+  line-height: var(--text-h1-lh);
+  letter-spacing: var(--text-h1-ls);
+  font-weight: var(--text-h1-wt);
   margin-bottom: 8px;
 }
 
 .page-title p {
   color: var(--muted);
   max-width: 520px;
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
 }
 
 .page-actions {
@@ -57,13 +62,15 @@
 }
 
 .summary-value {
-  font-size: 1.8rem;
-  font-weight: 600;
+  font-size: var(--text-h3-size);
+  line-height: var(--text-h3-lh);
+  font-weight: var(--text-h3-wt);
 }
 
 .summary-meta {
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
 }
 
 .shares-panels {
@@ -88,7 +95,9 @@
 }
 
 .panel-header h2 {
-  font-size: 1.3rem;
+  font-size: var(--text-h3-size);
+  line-height: var(--text-h3-lh);
+  font-weight: var(--text-h3-wt);
 }
 
 .panel-header p {
@@ -117,9 +126,11 @@
   border: none;
   padding: 0 8px;
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: var(--text-label-size);
+  line-height: var(--text-label-lh);
+  letter-spacing: var(--text-label-ls);
+  font-weight: var(--text-label-wt);
   text-transform: uppercase;
-  letter-spacing: 0.12em;
 }
 
 .shares-row-head span:last-child {
@@ -142,9 +153,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font-size: var(--text-label-size);
+  line-height: var(--text-label-lh);
+  letter-spacing: var(--text-label-ls);
+  font-weight: var(--text-label-wt);
   color: var(--muted);
 }
 
@@ -163,7 +175,8 @@
 
 .shares-sub {
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -182,10 +195,11 @@
   border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--surface);
-  font-size: 0.75rem;
-  letter-spacing: 0.08em;
+  font-size: var(--text-label-size);
+  line-height: var(--text-label-lh);
+  letter-spacing: var(--text-label-ls);
+  font-weight: var(--text-label-wt);
   text-transform: uppercase;
-  font-weight: 600;
 }
 
 .status-pill.active {
@@ -208,7 +222,9 @@
 
 .shares-expiry {
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: var(--text-mono-size);
+  line-height: var(--text-mono-lh);
+  font-family: var(--font-mono);
   white-space: nowrap;
 }
 
@@ -220,7 +236,9 @@
 }
 
 .shares-link-text {
-  font-size: 0.85rem;
+  font-size: var(--text-mono-size);
+  line-height: var(--text-mono-lh);
+  font-family: var(--font-mono);
   color: var(--muted);
   background: var(--surface);
   border: 1px solid var(--border);
@@ -233,7 +251,10 @@
 
 .shares-copy {
   padding: 6px 12px;
-  font-size: 0.85rem;
+  font-size: var(--text-button-size);
+  line-height: var(--text-button-lh);
+  letter-spacing: var(--text-button-ls);
+  font-weight: var(--text-button-wt);
   border-radius: 999px;
 }
 
@@ -247,7 +268,10 @@
 
 .shares-actions .button {
   padding: 6px 12px;
-  font-size: 0.85rem;
+  font-size: var(--text-button-size);
+  line-height: var(--text-button-lh);
+  letter-spacing: var(--text-button-ls);
+  font-weight: var(--text-button-wt);
   border-radius: 999px;
 }
 

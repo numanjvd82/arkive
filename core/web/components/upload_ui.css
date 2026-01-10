@@ -34,7 +34,9 @@
   background: rgba(107, 209, 230, 0.18);
   display: grid;
   place-items: center;
-  font-size: 1.2rem;
+  font-size: var(--text-h4-size);
+  line-height: var(--text-h4-lh);
+  font-weight: var(--text-h4-wt);
   color: var(--text);
 }
 
@@ -45,7 +47,8 @@
 
 .dropzone-title {
   margin: 0;
-  font-size: 1rem;
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-lh);
   font-weight: 600;
 }
 
@@ -57,7 +60,8 @@
 .dropzone-sub {
   margin: 0;
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
 }
 
 .upload-chip {
@@ -69,7 +73,8 @@
   border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--bg-soft);
-  font-size: 0.9rem;
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
 }
 
 .upload-chip.is-hidden {
@@ -89,7 +94,8 @@
   background: transparent;
   color: var(--muted);
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
 }
 
 .upload-actions {
@@ -120,7 +126,8 @@
   align-items: center;
   gap: 12px;
   margin-top: 10px;
-  font-size: 0.9rem;
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
   color: var(--muted);
 }
 
@@ -156,13 +163,15 @@
 
 .resume-meta {
   color: var(--muted);
-  font-size: 0.95rem;
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
 }
 
 .resume-note {
   margin: 0;
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
 }
 
 .resume-actions {

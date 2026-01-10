@@ -29,13 +29,18 @@
 }
 
 .page-title h1 {
-  font-size: clamp(2rem, 3.2vw, 2.8rem);
+  font-size: var(--text-h1-size);
+  line-height: var(--text-h1-lh);
+  letter-spacing: var(--text-h1-ls);
+  font-weight: var(--text-h1-wt);
   margin-bottom: 8px;
 }
 
 .page-title p {
   color: var(--muted);
   max-width: 520px;
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
 }
 
 .settings-grid {
@@ -65,7 +70,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  font-size: 0.95rem;
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
 }
 
 .settings-badge {
@@ -74,9 +80,11 @@
   border: 1px solid rgba(107, 209, 230, 0.4);
   background: rgba(107, 209, 230, 0.16);
   color: var(--text);
-  font-size: 0.75rem;
+  font-size: var(--text-label-size);
+  line-height: var(--text-label-lh);
+  letter-spacing: var(--text-label-ls);
+  font-weight: var(--text-label-wt);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
 }
 
 .settings-progress {
@@ -85,7 +93,8 @@
 }
 
 .settings-progress-label {
-  font-size: 0.85rem;
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
   color: var(--muted);
 }
 
@@ -122,7 +131,8 @@
 .settings-note {
   margin: 0;
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
 }
 
 @media (max-width: 960px) {
