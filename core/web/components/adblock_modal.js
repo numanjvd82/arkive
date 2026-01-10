@@ -6,6 +6,12 @@ const CLOSE_ID = "adblock-close";
 const WARNING_ID = "adblock-warning";
 const DETECTION_DELAY_MS = 2500;
 const RECHECK_DELAY_MS = 800;
+const POLL_INTERVAL_MS = 1200;
+const MAX_POLL_MS = 8000;
+function debugLog(label, payload) {
+  void label;
+  void payload;
+}
 const MONETAG_CONFIG = [
   {
     src: "monetag-onclick.js",
@@ -14,7 +20,6 @@ const MONETAG_CONFIG = [
       'script[src*="al5sm.com/tag.min.js"]'
     ],
     resourceMatches: ["al5sm.com/"],
-    localLoadedFlag: "__arkiveMonetagOnclickLoaded",
     externalBlockedFlag: "__arkiveMonetagOnclickExternalBlocked"
   },
   {
@@ -24,14 +29,12 @@ const MONETAG_CONFIG = [
       'script[src*="gizokraijaw.net/vignette.min.js"]'
     ],
     resourceMatches: ["gizokraijaw.net/"],
-    localLoadedFlag: "__arkiveMonetagVignetteLoaded",
     externalBlockedFlag: "__arkiveMonetagVignetteExternalBlocked"
   },
   {
     src: "monetag-push-ad.js",
     injectedSelectors: ['script[src*="3nbf4.com/act/files/tag.min.js"]'],
     resourceMatches: ["3nbf4.com/act/files/tag.min.js"],
-    localLoadedFlag: "__arkiveMonetagPushLoaded",
     externalBlockedFlag: "__arkiveMonetagPushExternalBlocked"
   }
 ];
@@ -114,7 +117,8 @@ function isBaitBlocked() {
 }
 
 function isMonetagExpected() {
-  return Boolean(document.body && document.body.hasAttribute("data-monetag-expected"));
+  const expected = Boolean(document.body && document.body.hasAttribute("data-monetag-expected"));
+  return expected;
 }
 
 function hasAnySelector(selectors) {
@@ -137,7 +141,7 @@ function hasMonetagResourceLoaded() {
   }
 
   const resources = window.performance.getEntriesByType("resource");
-  return resources.some(function(entry) {
+  const found = resources.some(function(entry) {
     if (!entry || !entry.name) {
       return false;
     }
@@ -147,6 +151,7 @@ function hasMonetagResourceLoaded() {
       });
     });
   });
+  return found;
 }
 
 function isAdsterraBlocked() {
@@ -166,26 +171,30 @@ function isAdsterraBlocked() {
   return !hasChildren;
 }
 
+function hasAdsterraFill() {
+  const container = document.getElementById("container-3e709d756892597be3b0708e86694b25");
+  if (!container) {
+    return false;
+  }
+  return container.children.length > 0;
+}
+
 function detectAdblock() {
   const baitBlocked = isBaitBlocked();
   const monetagExpected = isMonetagExpected();
   const resourceLoaded = hasMonetagResourceLoaded();
   let monetagTagsMissing = monetagExpected;
   let monetagSignalsLoaded = false;
-  let monetagLocalBlocked = false;
   let monetagExternalBlocked = false;
   let monetagInjectionMissing = false;
 
   if (monetagExpected) {
     MONETAG_CONFIG.forEach(function(config) {
       const hasTag = hasScriptWithSrc(config.src);
-      const localLoaded = getFlag(config.localLoadedFlag);
       const externalBlocked = getFlag(config.externalBlockedFlag);
       const injected = hasAnySelector(config.injectedSelectors);
-
       monetagTagsMissing = monetagTagsMissing && !hasTag;
-      monetagSignalsLoaded = monetagSignalsLoaded || localLoaded || injected || resourceLoaded;
-      monetagLocalBlocked = monetagLocalBlocked || (hasTag && !localLoaded);
+      monetagSignalsLoaded = monetagSignalsLoaded || injected || resourceLoaded;
       monetagExternalBlocked = monetagExternalBlocked || externalBlocked;
       monetagInjectionMissing = monetagInjectionMissing || (hasTag && !injected && !resourceLoaded);
     });
@@ -197,10 +206,34 @@ function detectAdblock() {
 
   const monetagBlocked =
     monetagExpected &&
-    (monetagInjectionMissing || monetagLocalBlocked || monetagExternalBlocked);
+    (monetagInjectionMissing || monetagExternalBlocked);
   const adsterraBlocked = isAdsterraBlocked();
+  const adSignalsPresent = monetagSignalsLoaded || hasAdsterraFill();
 
-  return baitBlocked || monetagBlocked || adsterraBlocked;
+  if (monetagBlocked || adsterraBlocked) {
+    return true;
+  }
+  if (adSignalsPresent) {
+    return false;
+  }
+  return baitBlocked;
+}
+
+function scheduleAutoClose() {
+  let elapsed = 0;
+  const timer = setInterval(function() {
+    elapsed += POLL_INTERVAL_MS;
+    if (!detectAdblock()) {
+      closeAdblockModal();
+      setContinueLabel(false);
+      ensureBlockedWarning(false);
+      clearInterval(timer);
+      return;
+    }
+    if (elapsed >= MAX_POLL_MS) {
+      clearInterval(timer);
+    }
+  }, POLL_INTERVAL_MS);
 }
 
 function setupAdblockModal() {
@@ -285,6 +318,7 @@ setTimeout(function() {
       ensureBlockedWarning(true);
       setContinueLabel(true);
       openAdblockModal();
+      scheduleAutoClose();
       // blockDownloadButton();
     } else {
       ensureBlockedWarning(false);
