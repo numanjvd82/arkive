@@ -19,3 +19,10 @@ func SitemapXML() gin.HandlerFunc {
 		c.FileFromFS("sitemap.xml", web.StaticFS("static"))
 	}
 }
+
+func FaviconICO() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Header("Content-Type", "image/x-icon")
+		c.FileFromFS("assets/images/favicon.ico", web.StaticFS("static"))
+	}
+}

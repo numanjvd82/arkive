@@ -95,6 +95,7 @@ func buildHeadNodes(data LayoutData) []g.Node {
 		),
 		h.Link(h.Rel("icon"), h.Type("image/x-icon"), h.Href("/static/assets/images/favicon.ico")),
 		h.Link(h.Rel("icon"), h.Type("image/png"), g.Attr("sizes", "32x32"), h.Href("/static/assets/images/favicon-32x32.png")),
+		h.Link(h.Rel("icon"), h.Type("image/png"), g.Attr("sizes", "48x48"), h.Href("/static/assets/images/favicon-48x48.png")),
 		h.Link(h.Rel("icon"), h.Type("image/png"), g.Attr("sizes", "16x16"), h.Href("/static/assets/images/favicon-16x16.png")),
 		h.Link(h.Rel("apple-touch-icon"), g.Attr("sizes", "180x180"), h.Href("/static/assets/images/apple-touch-icon.png")),
 		h.Link(h.Rel("manifest"), h.Href("/static/assets/images/site.webmanifest")),

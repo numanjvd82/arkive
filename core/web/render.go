@@ -148,6 +148,7 @@ func buildBaseURL(c *gin.Context) string {
 	if host == "" {
 		host = c.Request.Host
 	}
+	host = strings.TrimPrefix(host, "www.")
 	if host == "" {
 		return ""
 	}
