@@ -7,7 +7,7 @@ type PageContext struct {
 }
 
 const (
-	DefaultOGImage = "/static/assets/images/android-chrome-512x512.png"
+	DefaultOGImage = "/static/assets/images/og-image.png"
 	RobotsIndex    = "index, follow"
 	RobotsNoIndex  = "noindex, nofollow"
 )

@@ -54,3 +54,27 @@ func WebContact() gin.HandlerFunc {
 		web.Render(c, pages.ContactPage(pages.ContactPageProps{Ctx: pages.PageContext{}}))
 	}
 }
+
+func WebSecureFileSharing() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		web.Render(c, pages.SecureFileSharingPage(pages.SecureFileSharingPageProps{Ctx: pages.PageContext{}}))
+	}
+}
+
+func WebShareLargeFiles() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		web.Render(c, pages.ShareLargeFilesPage(pages.ShareLargeFilesPageProps{Ctx: pages.PageContext{}}))
+	}
+}
+
+func WebFileSharingWithoutLogin() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		web.Render(c, pages.FileSharingWithoutLoginPage(pages.FileSharingWithoutLoginPageProps{Ctx: pages.PageContext{}}))
+	}
+}
+
+func WebDropPages() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		web.Render(c, pages.DropPagesPage(pages.DropPagesPageProps{Ctx: pages.PageContext{}}))
+	}
+}

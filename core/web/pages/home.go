@@ -1,14 +1,10 @@
 package pages
 
 import (
-	"fmt"
-	"time"
-
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
 
 	"arkive/core/web"
-	"arkive/core/web/components"
 )
 
 type HomePageProps struct {
@@ -28,43 +24,17 @@ func HomePage(props HomePageProps) web.Page {
 		HideNav:       true,
 		Body: h.Div(
 			h.Class("page home"),
-			homeHeader(),
+			marketingHeader(),
 			homeHero(),
 			homeFeatures(),
 			homeSharing(),
 			homeSecurity(),
+			homeComparison(),
 			homeRoadmap(),
 			homeCTA(),
-			homeFooter(),
+			marketingFooter(),
 		),
 	}
-}
-
-func homeHeader() g.Node {
-	return h.Header(
-		h.Class("site-header"),
-		h.Div(
-			h.Class("container nav"),
-			components.BrandLogo(components.BrandLogoProps{
-				Href:  "/",
-				Class: "nav-brand",
-			}),
-			h.Nav(
-				h.Class("nav-links"),
-				h.A(h.Href("/pricing"), g.Text("Pricing")),
-				h.A(h.Href("/contact"), g.Text("Contact")),
-				h.A(h.Href("#features"), g.Text("Features")),
-				h.A(h.Href("#sharing"), g.Text("Sharing")),
-				h.A(h.Href("#security"), g.Text("Security")),
-				h.A(h.Href("#roadmap"), g.Text("Roadmap")),
-			),
-			h.Div(
-				h.Class("nav-actions"),
-				h.A(h.Class("button secondary"), h.Href("/login"), g.Text("Log in")),
-				h.A(h.Class("button primary"), h.Href("/signup"), g.Text("Create account")),
-			),
-		),
-	)
 }
 
 func homeHero() g.Node {
@@ -233,6 +203,35 @@ func homeRoadmap() g.Node {
 	)
 }
 
+func homeComparison() g.Node {
+	return h.Section(
+		h.Class("comparison"),
+		h.Div(
+			h.Class("container"),
+			h.Div(
+				h.Class("section-heading"),
+				h.H2(g.Text("Arkive vs the usual options.")),
+				h.P(g.Text("A quick look at how Arkive compares for modern sharing workflows.")),
+			),
+			h.Div(
+				h.Class("comparison-table"),
+				h.Div(
+					h.Class("comparison-row comparison-head"),
+					h.Span(g.Text("Feature")),
+					h.Span(g.Text("Arkive")),
+					h.Span(g.Text("Drive/Dropbox")),
+					h.Span(g.Text("WeTransfer")),
+				),
+				comparisonRow("No login for viewers", "Yes", "No", "Yes"),
+				comparisonRow("Password protection", "Yes", "Limited", "Paid"),
+				comparisonRow("Retention while active", "Yes", "Varies", "Expires"),
+				comparisonRow("Drop Pages (Share Pages)", "Coming soon", "No", "No"),
+				comparisonRow("Share link updates", "Yes", "Limited", "No"),
+			),
+		),
+	)
+}
+
 func homeCTA() g.Node {
 	return h.Section(
 		h.Class("cta"),
@@ -251,43 +250,6 @@ func homeCTA() g.Node {
 					h.A(h.Class("button primary"), h.Href("/signup"), g.Text("Create account")),
 					h.A(h.Class("button secondary"), h.Href("/login"), g.Text("Log in")),
 				),
-			),
-		),
-	)
-}
-
-func homeFooter() g.Node {
-	return h.Footer(
-		h.Class("site-footer"),
-		h.Div(
-			h.Class("container footer-grid"),
-			h.Div(
-				h.Class("footer-brand"),
-				h.H3(g.Text("Arkive")),
-				h.P(g.Text("Share files with freedom, speed, and security.")),
-				h.P(
-					h.Class("footer-legal"),
-					g.Text(fmt.Sprintf("© %d Arkive. All rights reserved.", time.Now().Year())),
-				),
-			),
-			h.Div(
-				h.Class("footer-links"),
-				h.A(h.Href("/pricing"), g.Text("Pricing")),
-				h.A(h.Href("#features"), g.Text("Features")),
-				h.A(h.Href("#sharing"), g.Text("Sharing")),
-				h.A(h.Href("#security"), g.Text("Security")),
-				h.A(h.Href("#roadmap"), g.Text("Roadmap")),
-			),
-			h.Div(
-				h.Class("footer-links"),
-				h.A(h.Href("/login"), g.Text("Login")),
-				h.A(h.Href("/signup"), g.Text("Create account")),
-				h.A(h.Href("/contact"), g.Text("Contact")),
-				h.A(h.Href("/privacy"), h.Class("text-link"), g.Text("Privacy Policy")),
-				h.A(h.Href("/cookies"), h.Class("text-link"), g.Text("Cookie Policy")),
-				h.A(h.Href("/terms"), h.Class("text-link"), g.Text("Terms of Service")),
-				h.A(h.Href("/aup"), h.Class("text-link"), g.Text("Acceptable Use")),
-				h.A(h.Href("/abuse"), h.Class("text-link"), g.Text("Copyright & Abuse")),
 			),
 		),
 	)
@@ -339,5 +301,15 @@ func freedomItem(title, body string) g.Node {
 		h.Class("freedom-item"),
 		h.H4(g.Text(title)),
 		h.P(g.Text(body)),
+	)
+}
+
+func comparisonRow(feature, arkive, drive, wetransfer string) g.Node {
+	return h.Div(
+		h.Class("comparison-row"),
+		h.Span(h.Class("comparison-feature"), g.Text(feature)),
+		h.Span(h.Class("comparison-value"), g.Text(arkive)),
+		h.Span(h.Class("comparison-value"), g.Text(drive)),
+		h.Span(h.Class("comparison-value"), g.Text(wetransfer)),
 	)
 }
