@@ -18,6 +18,7 @@
 - SEO improvements (titles, descriptions, canonical URLs, sitemap).
 - Add `robots.txt` and `ads.txt` for search/revenue support.
 - Add Open Graph/Twitter meta tags for link previews.
+- Add "Show on Google and other search engines" option for public shares; default off, and only index when enabled.
 - Add ad provider name to Privacy Policy and Cookie Policy once finalized.
 - Add governing law and dispute venue to Terms of Service after company registration.
 - Add company address and phone to Terms of Service after company registration.
@@ -27,6 +28,7 @@
 - Inactivity retention warnings: send emails at 150/180/210 days inactive (archive/deletion notices) once email service is in place.
 - Archived files UX: users may be blocked from freeing space due to 2 GB/day restore cap; add a restore CTA or archive management view.
 - Competitive matrix: Arkive vs Drive/Dropbox/iCloud/OneDrive/TeraBox with feature comparisons, “why Arkive” messaging, and homepage/pricing bullets.
+- Drop Pages (Collections): product spec + data model + ads mechanics + MVP build plan.
 
 ## Done
 - Install `ffprobe` on the server for video metadata extraction.

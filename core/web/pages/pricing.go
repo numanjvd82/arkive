@@ -14,10 +14,14 @@ type PricingPageProps struct {
 func PricingPage(props PricingPageProps) web.Page {
 	_ = props
 	return web.Page{
-		Title: "Arkive · Pricing & Fair Use",
-		CSS:   []string{"/web/pages/pricing.css"},
-		JS:    []string{"/static/monetag-onclick.js", "/static/monetag-vignette.js"},
-		Body:  pricingBody(),
+		Title:         "Arkive · Pricing & Fair Use",
+		Description:   "See Arkive pricing, fair use policy, and what is included in the free plan and upcoming premium tiers.",
+		CanonicalPath: "/pricing",
+		OGImage:       DefaultOGImage,
+		Robots:        RobotsIndex,
+		CSS:           []string{"/web/pages/pricing.css"},
+		JS:            []string{"/static/monetag-onclick.js", "/static/monetag-vignette.js"},
+		Body:          pricingBody(),
 	}
 }
 

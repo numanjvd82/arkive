@@ -14,9 +14,13 @@ type AUPPageProps struct {
 func AUPPage(props AUPPageProps) web.Page {
 	_ = props
 	return web.Page{
-		Title: "Arkive · Acceptable Use Policy",
-		CSS:   []string{"/web/pages/aup.css"},
-		Body:  aupBody(),
+		Title:         "Arkive · Acceptable Use Policy",
+		Description:   "Review Arkive's acceptable use policy for prohibited content and safe usage guidelines.",
+		CanonicalPath: "/aup",
+		OGImage:       DefaultOGImage,
+		Robots:        RobotsIndex,
+		CSS:           []string{"/web/pages/aup.css"},
+		Body:          aupBody(),
 	}
 }
 

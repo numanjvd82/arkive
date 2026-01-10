@@ -15,10 +15,11 @@ type ForbiddenPageProps struct {
 func ForbiddenPage(props ForbiddenPageProps) web.Page {
 	_ = props
 	return web.Page{
-		Title: "Arkive · Forbidden",
-		CSS:   []string{"/web/pages/forbidden.css"},
-		JS:    []string{"/static/monetag-onclick.js", "/static/monetag-vignette.js"},
-		Body:  forbiddenBody(),
+		Title:  "Arkive · Forbidden",
+		Robots: RobotsNoIndex,
+		CSS:    []string{"/web/pages/forbidden.css"},
+		JS:     []string{"/static/monetag-onclick.js", "/static/monetag-vignette.js"},
+		Body:   forbiddenBody(),
 	}
 }
 

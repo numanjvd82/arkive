@@ -18,9 +18,14 @@ type HomePageProps struct {
 func HomePage(props HomePageProps) web.Page {
 	_ = props
 	return web.Page{
-		Title:   "Arkive · Share with freedom",
-		CSS:     []string{"/web/pages/home.css"},
-		HideNav: true,
+		Title:         "Arkive · Share with freedom",
+		Description:   "Fast, secure file sharing with zero friction. Share links instantly, add passwords, and let anyone download without an account.",
+		CanonicalPath: "/",
+		OGImage:       DefaultOGImage,
+		Robots:        RobotsIndex,
+		JSONLD:        `{"@context":"https://schema.org","@type":"WebSite","name":"Arkive","url":"https://arkive.sh","description":"Fast, secure file sharing with zero friction."}`,
+		CSS:           []string{"/web/pages/home.css"},
+		HideNav:       true,
 		Body: h.Div(
 			h.Class("page home"),
 			homeHeader(),

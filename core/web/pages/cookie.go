@@ -14,9 +14,13 @@ type CookiePageProps struct {
 func CookiePage(props CookiePageProps) web.Page {
 	_ = props
 	return web.Page{
-		Title: "Arkive · Cookie Policy",
-		CSS:   []string{"/web/pages/cookie.css"},
-		Body:  cookieBody(),
+		Title:         "Arkive · Cookie Policy",
+		Description:   "Learn how Arkive uses cookies and similar technologies on the website and app.",
+		CanonicalPath: "/cookies",
+		OGImage:       DefaultOGImage,
+		Robots:        RobotsIndex,
+		CSS:           []string{"/web/pages/cookie.css"},
+		Body:          cookieBody(),
 	}
 }
 

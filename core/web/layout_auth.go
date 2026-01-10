@@ -20,7 +20,20 @@ func AuthLayout(data LayoutData, content ...g.Node) g.Node {
 
 	return h.Doctype(h.HTML(
 		h.Lang("en"),
-		h.Head(buildHeadNodes(LayoutData{Title: pageTitle, CSS: data.CSS, JS: data.JS})...),
+		h.Head(buildHeadNodes(LayoutData{
+			Title:         pageTitle,
+			Description:   data.Description,
+			CanonicalURL:  data.CanonicalURL,
+			Robots:        data.Robots,
+			OGTitle:       data.OGTitle,
+			OGDescription: data.OGDescription,
+			OGImage:       data.OGImage,
+			OGType:        data.OGType,
+			TwitterCard:   data.TwitterCard,
+			JSONLD:        data.JSONLD,
+			CSS:           data.CSS,
+			JS:            data.JS,
+		})...),
 		h.Body(
 			components.InlineStyle(components.AuthLayoutCSS),
 			h.Div(

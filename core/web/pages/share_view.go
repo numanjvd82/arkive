@@ -48,6 +48,7 @@ func PublicShareViewPage(props PublicShareViewProps) web.Page {
 
 	return web.Page{
 		Title:   fmt.Sprintf("Arkive · %s", file.Filename),
+		Robots:  RobotsNoIndex,
 		CSS:     append(buildMediaCSS(MediaViewPageProps{IsVideo: isVideo}), "/web/pages/share.css"),
 		JS:      buildMediaJS(MediaViewPageProps{IsVideo: isVideo}),
 		HideNav: true,

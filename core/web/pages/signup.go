@@ -23,10 +23,12 @@ func SignupPage(props SignupPageProps) web.Page {
 		js = append(js, "/static/auth_google.js")
 	}
 	return web.Page{
-		Title: "Arkive · Sign Up",
-		CSS:   []string{"/web/pages/signup.css"},
-		JS:    js,
-		Body:  signUpBody(props),
+		Title:   "Arkive · Sign Up",
+		Robots:  RobotsNoIndex,
+		CSS:     []string{"/web/pages/signup.css"},
+		JS:      js,
+		Body:    signUpBody(props),
+		HideNav: true,
 	}
 }
 

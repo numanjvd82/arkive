@@ -14,9 +14,13 @@ type PrivacyPageProps struct {
 func PrivacyPage(props PrivacyPageProps) web.Page {
 	_ = props
 	return web.Page{
-		Title: "Arkive · Privacy Policy",
-		CSS:   []string{"/web/pages/privacy.css"},
-		Body:  privacyBody(),
+		Title:         "Arkive · Privacy Policy",
+		Description:   "Read Arkive's privacy policy to understand how we collect, use, and protect your information.",
+		CanonicalPath: "/privacy",
+		OGImage:       DefaultOGImage,
+		Robots:        RobotsIndex,
+		CSS:           []string{"/web/pages/privacy.css"},
+		Body:          privacyBody(),
 	}
 }
 

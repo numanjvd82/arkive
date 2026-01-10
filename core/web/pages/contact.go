@@ -15,10 +15,14 @@ type ContactPageProps struct {
 func ContactPage(props ContactPageProps) web.Page {
 	_ = props
 	return web.Page{
-		Title: "Arkive · Contact",
-		CSS:   []string{"/web/pages/contact.css"},
-		JS:    []string{"/static/monetag-onclick.js", "/static/monetag-vignette.js"},
-		Body:  contactBody(),
+		Title:         "Arkive · Contact",
+		Description:   "Contact the Arkive team for support, security reports, or general questions.",
+		CanonicalPath: "/contact",
+		OGImage:       DefaultOGImage,
+		Robots:        RobotsIndex,
+		CSS:           []string{"/web/pages/contact.css"},
+		JS:            []string{"/static/monetag-onclick.js", "/static/monetag-vignette.js"},
+		Body:          contactBody(),
 	}
 }
 

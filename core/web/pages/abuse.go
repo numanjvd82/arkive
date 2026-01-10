@@ -14,9 +14,13 @@ type AbusePageProps struct {
 func AbusePage(props AbusePageProps) web.Page {
 	_ = props
 	return web.Page{
-		Title: "Arkive · Copyright & Abuse Reporting",
-		CSS:   []string{"/web/pages/abuse.css"},
-		Body:  abuseBody(),
+		Title:         "Arkive · Copyright & Abuse Reporting",
+		Description:   "Report copyright infringement or abuse on Arkive and learn about our response process.",
+		CanonicalPath: "/abuse",
+		OGImage:       DefaultOGImage,
+		Robots:        RobotsIndex,
+		CSS:           []string{"/web/pages/abuse.css"},
+		Body:          abuseBody(),
 	}
 }
 

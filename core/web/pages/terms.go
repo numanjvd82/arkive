@@ -14,9 +14,13 @@ type TermsPageProps struct {
 func TermsPage(props TermsPageProps) web.Page {
 	_ = props
 	return web.Page{
-		Title: "Arkive · Terms of Service",
-		CSS:   []string{"/web/pages/terms.css"},
-		Body:  termsBody(),
+		Title:         "Arkive · Terms of Service",
+		Description:   "Read the Arkive terms of service covering account use, content rules, and legal terms.",
+		CanonicalPath: "/terms",
+		OGImage:       DefaultOGImage,
+		Robots:        RobotsIndex,
+		CSS:           []string{"/web/pages/terms.css"},
+		Body:          termsBody(),
 	}
 }
 

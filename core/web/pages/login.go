@@ -22,10 +22,12 @@ func LoginPage(props LoginPageProps) web.Page {
 		js = append(js, "/static/auth_google.js")
 	}
 	return web.Page{
-		Title: "Arkive · Login",
-		CSS:   []string{"/web/pages/login.css"},
-		JS:    js,
-		Body:  loginBody(props),
+		Title:   "Arkive · Login",
+		Robots:  RobotsNoIndex,
+		CSS:     []string{"/web/pages/login.css"},
+		JS:      js,
+		Body:    loginBody(props),
+		HideNav: true,
 	}
 }
 

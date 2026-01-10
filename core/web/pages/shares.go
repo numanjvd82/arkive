@@ -46,6 +46,7 @@ func SharesPage(props SharesPageProps) web.Page {
 
 	return web.Page{
 		Title:      "Arkive · Shares",
+		Robots:     RobotsNoIndex,
 		CSS:        []string{"/web/pages/shares.css"},
 		JS:         []string{"/static/shares.js", "/static/monetag-onclick.js", "/static/monetag-vignette.js"},
 		AuthLayout: true,

@@ -28,6 +28,7 @@ func PublicSharePassword(props PublicSharePasswordProps) web.Page {
 
 	return web.Page{
 		Title:   fmt.Sprintf("Arkive · %s", file.Filename),
+		Robots:  RobotsNoIndex,
 		CSS:     []string{"/web/pages/share.css"},
 		JS:      []string{"/static/monetag-onclick.js", "/static/monetag-vignette.js"},
 		HideNav: true,
