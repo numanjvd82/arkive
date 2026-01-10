@@ -12,6 +12,7 @@ type ButtonProps struct {
 	Type    string
 	Href    string
 	Class   string
+	ID      string
 }
 
 const ButtonCSS = "/web/components/button.css"
@@ -35,6 +36,7 @@ func Button(props ButtonProps) g.Node {
 			h.A(
 				h.Class(classes.String()),
 				h.Href(props.Href),
+				g.If(props.ID != "", g.Attr("id", props.ID)),
 				g.Text(props.Text),
 			),
 		})
@@ -50,6 +52,7 @@ func Button(props ButtonProps) g.Node {
 		h.Button(
 			h.Class(classes.String()),
 			g.Attr("type", buttonType),
+			g.If(props.ID != "", g.Attr("id", props.ID)),
 			g.Text(props.Text),
 		),
 	})

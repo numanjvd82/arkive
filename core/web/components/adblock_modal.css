@@ -1,0 +1,144 @@
+#adblock-backdrop.dialog-backdrop {
+  background: rgba(8, 12, 20, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+body.adblock-locked {
+  overflow: hidden;
+}
+
+#adblock-backdrop .dialog {
+  width: min(560px, 92vw);
+  padding: 28px;
+  border-radius: 20px;
+  background: radial-gradient(520px 320px at 10% 0%, rgba(107, 209, 230, 0.12), transparent 60%),
+    radial-gradient(520px 320px at 90% 0%, rgba(243, 180, 108, 0.12), transparent 60%),
+    var(--surface);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: var(--shadow);
+  gap: 16px;
+}
+
+#adblock-backdrop .button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--text-button-size);
+  line-height: var(--text-button-lh);
+  letter-spacing: var(--text-button-ls);
+  font-weight: var(--text-button-wt);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+
+#adblock-backdrop .button.primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: transparent;
+}
+
+#adblock-backdrop .button.secondary {
+  background: transparent;
+  box-shadow: none;
+}
+
+.adblock-body {
+  display: grid;
+  gap: 12px;
+}
+
+.adblock-close {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+
+.adblock-eyebrow {
+  margin: 0;
+  color: var(--accent-cool);
+}
+
+#adblock-backdrop .dialog h3 {
+  font-size: var(--text-h3-size);
+  line-height: var(--text-h3-lh);
+  font-weight: var(--text-h3-wt);
+}
+
+.adblock-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  color: var(--muted);
+}
+
+.adblock-warning {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 92, 92, 0.3);
+  background: rgba(255, 92, 92, 0.12);
+  color: var(--danger);
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
+}
+
+.adblock-note-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  display: grid;
+  place-items: center;
+  color: var(--accent-cool);
+  flex: 0 0 auto;
+}
+
+.adblock-actions {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.adblock-steps {
+  border-radius: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.adblock-steps ol {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
+}
+
+@media (max-width: 640px) {
+  #adblock-backdrop .dialog {
+    padding: 22px;
+  }
+
+  .adblock-actions {
+    flex-direction: column;
+  }
+
+  .adblock-actions .button {
+    width: 100%;
+  }
+}

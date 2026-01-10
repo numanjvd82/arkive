@@ -44,6 +44,7 @@ func AuthLayout(data LayoutData, content ...g.Node) g.Node {
 				h.Div(h.Class("app-content"), g.Group(content)),
 				authFooter(),
 			),
+			g.If(data.User != nil && !data.User.IsPremium, components.AdBlockModal()),
 			components.ToastHost(),
 		),
 	))
