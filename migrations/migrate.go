@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -50,10 +51,19 @@ func Run(ctx context.Context, pool *pgxpool.Pool) error {
 		}
 
 		fmt.Printf("running %s\n", m.name)
-		if _, err := pool.Exec(ctx, string(sqlBytes)); err != nil {
+		tx, err := pool.Begin(ctx)
+		if err != nil {
 			return err
 		}
-		if err := markApplied(ctx, pool, m.version); err != nil {
+		if _, err := tx.Exec(ctx, string(sqlBytes)); err != nil {
+			_ = tx.Rollback(ctx)
+			return err
+		}
+		if err := markAppliedTx(ctx, tx, m.version); err != nil {
+			_ = tx.Rollback(ctx)
+			return err
+		}
+		if err := tx.Commit(ctx); err != nil {
 			return err
 		}
 		fmt.Printf("done %s\n", m.name)
@@ -115,7 +125,7 @@ func isApplied(ctx context.Context, pool *pgxpool.Pool, version int64) (bool, er
 	return exists, nil
 }
 
-func markApplied(ctx context.Context, pool *pgxpool.Pool, version int64) error {
-	_, err := pool.Exec(ctx, "INSERT INTO schema_migrations (version) VALUES ($1)", version)
+func markAppliedTx(ctx context.Context, tx pgx.Tx, version int64) error {
+	_, err := tx.Exec(ctx, "INSERT INTO schema_migrations (version) VALUES ($1)", version)
 	return err
 }
