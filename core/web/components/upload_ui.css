@@ -188,6 +188,19 @@
   gap: 8px;
 }
 
+.queue-item-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.queue-item-meta-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .queue-item-title {
   font-weight: 600;
   font-size: var(--text-body-size);
@@ -255,10 +268,15 @@
 .queue-toggle {
   border: none;
   background: transparent;
-  color: var(--accent, #3dbed1);
+  padding: 0;
+  color: var(--muted);
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
   cursor: pointer;
-  font: inherit;
-  text-decoration: underline;
+}
+
+.queue-toggle:hover {
+  color: var(--text);
 }
 
 .queue-empty {

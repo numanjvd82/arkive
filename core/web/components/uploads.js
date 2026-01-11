@@ -521,7 +521,9 @@
       expanded: true,
       el: null,
       progressEl: null,
-      statusEl: null
+      statusEl: null,
+      filesWrap: null,
+      toggleEl: null
     };
 
     const batchEl = document.createElement("div");
@@ -529,6 +531,9 @@
 
     const header = document.createElement("div");
     header.className = "queue-item-header";
+
+    const main = document.createElement("div");
+    main.className = "queue-item-main";
 
     const title = document.createElement("span");
     title.className = "queue-item-title";
@@ -538,8 +543,22 @@
     meta.className = "queue-item-meta";
     meta.textContent = files.length + (files.length === 1 ? " file" : " files") + " • " + formatBytes(batch.totalBytes);
 
-    header.appendChild(title);
-    header.appendChild(meta);
+    main.appendChild(title);
+    header.appendChild(main);
+    const metaWrap = document.createElement("div");
+    metaWrap.className = "queue-item-meta-wrap";
+    metaWrap.appendChild(meta);
+
+    let toggle = null;
+    if (files.length > 1) {
+      toggle = document.createElement("button");
+      toggle.className = "queue-toggle";
+      toggle.type = "button";
+      toggle.setAttribute("aria-expanded", "true");
+      toggle.textContent = "Hide files";
+      metaWrap.appendChild(toggle);
+    }
+    header.appendChild(metaWrap);
 
     const progressWrap = document.createElement("div");
     progressWrap.className = "queue-progress";
@@ -558,19 +577,8 @@
     progressWrap.appendChild(bar);
     progressWrap.appendChild(statusText);
 
-    const toggle = document.createElement("button");
-    toggle.className = "queue-toggle";
-    toggle.type = "button";
-    toggle.textContent = "Hide files";
-
     const filesWrap = document.createElement("div");
     filesWrap.className = "queue-files";
-
-    toggle.addEventListener("click", function() {
-      batch.expanded = !batch.expanded;
-      filesWrap.classList.toggle("is-hidden", !batch.expanded);
-      toggle.textContent = batch.expanded ? "Hide files" : "Show files";
-    });
 
     batch.files.forEach(function(item) {
       const row = document.createElement("div");
@@ -594,12 +602,28 @@
 
     batchEl.appendChild(header);
     batchEl.appendChild(progressWrap);
-    batchEl.appendChild(toggle);
     batchEl.appendChild(filesWrap);
+
+    function setBatchExpanded(expanded) {
+      batch.expanded = expanded;
+      filesWrap.classList.toggle("is-hidden", !expanded);
+      if (toggle) {
+        toggle.textContent = expanded ? "Hide files" : "Show files";
+        toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+      }
+    }
+
+    if (toggle) {
+      toggle.addEventListener("click", function() {
+        setBatchExpanded(!batch.expanded);
+      });
+    }
 
     batch.el = batchEl;
     batch.progressEl = barFill;
     batch.statusEl = statusText;
+    batch.filesWrap = filesWrap;
+    batch.toggleEl = toggle;
 
     return batch;
   }
