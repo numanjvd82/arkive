@@ -15,7 +15,6 @@ type File struct {
 	VideoHeight          int
 	VideoDurationSeconds int64
 	Status               string
-	ThrottleMs           int
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
 	ExpiresAt            *time.Time

@@ -43,7 +43,6 @@
   const MAX_QUEUE_ITEMS = 300;
   const MAX_FILE_SIZE = 10 * 1024 * 1024 * 1024;
   const MULTIPART_THRESHOLD = 200 * 1024 * 1024;
-  const LARGE_FILE_THROTTLE_MS = 100000;
   const MAX_CONCURRENCY = isPremium ? 10 : 1;
 
   let primaryTaskId = null;
@@ -165,15 +164,6 @@
     if (task.transferStats.speed > 0 && totalBytes > 0) {
       task.transferStats.eta = Math.max(0, (totalBytes - uploadedBytes) / task.transferStats.speed);
     }
-  }
-
-  function waitForThrottle(ms) {
-    if (!ms || ms <= 0) {
-      return Promise.resolve();
-    }
-    return new Promise(function(resolve) {
-      setTimeout(resolve, ms);
-    });
   }
 
   function fileSignature(file) {
@@ -810,8 +800,7 @@
               return {
                 partNumber: partNumber,
                 etag: etag,
-                size: chunk.size,
-                throttleMs: res.throttleMs
+                size: chunk.size
               };
             });
         })
@@ -871,10 +860,6 @@
           sizeBytes: file.size,
           status: "uploading"
         });
-        const throttleMs = typeof result.throttleMs === "number"
-          ? result.throttleMs
-          : (file.size >= MAX_FILE_SIZE ? LARGE_FILE_THROTTLE_MS : 0);
-        await waitForThrottle(throttleMs);
       } catch (err) {
         if (err && err.noNext) {
           break;
@@ -1007,10 +992,6 @@
             sizeBytes: file.size,
             status: "uploading"
           });
-          const throttleMs = typeof result.throttleMs === "number"
-            ? result.throttleMs
-            : (file.size >= MAX_FILE_SIZE ? LARGE_FILE_THROTTLE_MS : 0);
-          await waitForThrottle(throttleMs);
         } catch (err) {
           if (err && err.cancelled) {
             clearState(signature);

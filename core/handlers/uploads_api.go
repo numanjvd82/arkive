@@ -119,7 +119,6 @@ func APIUploadNext(svc *uploads.Service) gin.HandlerFunc {
 			"chunkSize":     resp.ChunkSize,
 			"totalParts":    resp.TotalParts,
 			"uploadedParts": resp.UploadedParts,
-			"throttleMs":    resp.ThrottleMs,
 		})
 	}
 }

@@ -10,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"arkive/core/database"
 	"arkive/core/models"
 	"arkive/pkg/storage/r2"
 )
@@ -141,6 +142,36 @@ func normalizeFolderPath(folderPath string) string {
 		return ""
 	}
 	return cleaned
+}
+
+func (s *Service) ensureFolderPath(ctx context.Context, db database.PgExecutor, userID, folderPath string) error {
+	folderPath = normalizeFolderPath(folderPath)
+	if folderPath == "" {
+		return nil
+	}
+
+	parts := strings.Split(folderPath, "/")
+	parentPath := ""
+	for _, part := range parts {
+		if part == "" {
+			continue
+		}
+		path := part
+		if parentPath != "" {
+			path = parentPath + "/" + part
+		}
+		err := s.folderRepo.CreateFolder(ctx, db, models.Folder{
+			UserID:     userID,
+			Path:       path,
+			Name:       part,
+			ParentPath: parentPath,
+		})
+		if err != nil {
+			return err
+		}
+		parentPath = path
+	}
+	return nil
 }
 
 func validatePartNumber(partNumber int32, totalParts int) error {

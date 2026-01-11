@@ -9,6 +9,7 @@ import (
 	"arkive/core/config"
 	"arkive/core/database"
 	filerepo "arkive/core/repositories/files"
+	folderrepo "arkive/core/repositories/folders"
 	restoreusage "arkive/core/repositories/restore"
 	storagerepo "arkive/core/repositories/storage"
 	uploadrepo "arkive/core/repositories/uploads"
@@ -64,17 +65,18 @@ func main() {
 		db,
 		storagerepo.New(),
 		filerepo.New(),
+		folderrepo.New(),
 		uploadrepo.New(),
 		usagerepo.New(),
 		usersrepo.New(),
 		restoreusage.New(),
 		r2Client,
 		uploads.Config{
-		Bucket:              cfg.R2Bucket,
-		UploadExpires:       15 * time.Minute,
-		DownloadExpire:      3 * time.Hour,
-		ShareDownloadExpire: 30 * time.Minute,
-	})
+			Bucket:              cfg.R2Bucket,
+			UploadExpires:       15 * time.Minute,
+			DownloadExpire:      3 * time.Hour,
+			ShareDownloadExpire: 30 * time.Minute,
+		})
 
 	cleanupCron, err := jobs.StartUploadCleanup(uploadService)
 	if err != nil {

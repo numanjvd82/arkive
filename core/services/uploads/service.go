@@ -14,11 +14,12 @@ import (
 	"arkive/core/database"
 	"arkive/core/models"
 	filerepo "arkive/core/repositories/files"
+	folderrepo "arkive/core/repositories/folders"
+	restoreusage "arkive/core/repositories/restore"
 	storagerepo "arkive/core/repositories/storage"
 	uploadrepo "arkive/core/repositories/uploads"
 	usagerepo "arkive/core/repositories/usage"
 	usersrepo "arkive/core/repositories/users"
-	restoreusage "arkive/core/repositories/restore"
 	"arkive/pkg/safeptr"
 	"arkive/pkg/storage"
 	"arkive/pkg/storage/r2"
@@ -49,6 +50,7 @@ type Service struct {
 	db                  database.PgPool
 	storageRepo         *storagerepo.Repository
 	fileRepo            *filerepo.Repository
+	folderRepo          *folderrepo.Repository
 	uploadRepo          *uploadrepo.Repository
 	usageRepo           *usagerepo.Repository
 	userRepo            *usersrepo.Repository
@@ -71,6 +73,7 @@ func NewService(
 	db database.PgPool,
 	storageRepo *storagerepo.Repository,
 	fileRepo *filerepo.Repository,
+	folderRepo *folderrepo.Repository,
 	uploadRepo *uploadrepo.Repository,
 	usageRepo *usagerepo.Repository,
 	userRepo *usersrepo.Repository,
@@ -82,6 +85,7 @@ func NewService(
 		db:                  db,
 		storageRepo:         storageRepo,
 		fileRepo:            fileRepo,
+		folderRepo:          folderRepo,
 		uploadRepo:          uploadRepo,
 		usageRepo:           usageRepo,
 		userRepo:            userRepo,
@@ -128,7 +132,7 @@ func isExpired(expiresAt *time.Time) bool {
 	return time.Now().After(*expiresAt)
 }
 
-func (s *Service) beginUploadTx(ctx context.Context, userID, objectKey, folderPath, filename, contentType string, sizeBytes int64, throttleMs int) (pgx.Tx, models.File, validation.Errors, error) {
+func (s *Service) beginUploadTx(ctx context.Context, userID, objectKey, folderPath, filename, contentType string, sizeBytes int64) (pgx.Tx, models.File, validation.Errors, error) {
 	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return nil, models.File{}, nil, err
@@ -151,6 +155,11 @@ func (s *Service) beginUploadTx(ctx context.Context, userID, objectKey, folderPa
 		return nil, models.File{}, nil, err
 	}
 
+	if err := s.ensureFolderPath(ctx, tx, userID, folderPath); err != nil {
+		_ = tx.Rollback(ctx)
+		return nil, models.File{}, nil, err
+	}
+
 	expiresAt := time.Now().Add(s.uploadExpires)
 	file, err := s.fileRepo.CreateFile(ctx, tx, models.File{
 		UserID:      userID,
@@ -161,7 +170,6 @@ func (s *Service) beginUploadTx(ctx context.Context, userID, objectKey, folderPa
 		ContentType: contentType,
 		SizeBytes:   sizeBytes,
 		Status:      FileStatusUploading,
-		ThrottleMs:  throttleMs,
 		ExpiresAt:   &expiresAt,
 	})
 	if err != nil {
@@ -272,7 +280,7 @@ func buildCompletedFromList(listed []types.Part, totalParts int) ([]types.Comple
 	return completed, stored, nil
 }
 
-func (s *Service) StartMultipart(ctx context.Context, userID, folderPath, filename string, sizeBytes int64, contentType string, throttleMs int, minMultipartSize int64) (models.MultipartStartResponse, validation.Errors, error) {
+func (s *Service) StartMultipart(ctx context.Context, userID, folderPath, filename string, sizeBytes int64, contentType string, minMultipartSize int64) (models.MultipartStartResponse, validation.Errors, error) {
 	var err error
 	userID, err = validateUserID(userID)
 	if err != nil {
@@ -299,7 +307,7 @@ func (s *Service) StartMultipart(ctx context.Context, userID, folderPath, filena
 		return models.MultipartStartResponse{}, nil, err
 	}
 
-	tx, file, validationErrors, err := s.beginUploadTx(ctx, userID, objectKey, folderPath, filename, contentType, sizeBytes, throttleMs)
+	tx, file, validationErrors, err := s.beginUploadTx(ctx, userID, objectKey, folderPath, filename, contentType, sizeBytes)
 	if err != nil || (validationErrors != nil && validationErrors.HasAny()) {
 		_ = s.r2.AbortMultipartUpload(ctx, objectKey, uploadID)
 		return models.MultipartStartResponse{}, validationErrors, err
@@ -357,17 +365,8 @@ func (s *Service) StartUpload(ctx context.Context, userID, folderPath, filename 
 			return models.UploadStartResponse{}, validationErrors, nil
 		}
 	}
-	throttleMs, forceMultipart, err := s.resolveUploadThrottle(ctx, userID, sizeBytes, isPremium)
-	if err != nil {
-		return models.UploadStartResponse{}, nil, err
-	}
-	minMultipartSize := MultipartThresholdBytes
-	if forceMultipart {
-		minMultipartSize = 0
-	}
-
-	if sizeBytes > MultipartThresholdBytes || forceMultipart {
-		resp, validationErrors, err := s.StartMultipart(ctx, userID, folderPath, filename, sizeBytes, contentType, throttleMs, minMultipartSize)
+	if sizeBytes > MultipartThresholdBytes {
+		resp, validationErrors, err := s.StartMultipart(ctx, userID, folderPath, filename, sizeBytes, contentType, MultipartThresholdBytes)
 		if err != nil || (validationErrors != nil && validationErrors.HasAny()) {
 			return models.UploadStartResponse{}, validationErrors, err
 		}
@@ -380,7 +379,7 @@ func (s *Service) StartUpload(ctx context.Context, userID, folderPath, filename 
 			TotalParts: resp.TotalParts,
 		}, nil, nil
 	}
-	resp, validationErrors, err := s.StartSingleUpload(ctx, userID, folderPath, filename, sizeBytes, contentType, throttleMs)
+	resp, validationErrors, err := s.StartSingleUpload(ctx, userID, folderPath, filename, sizeBytes, contentType)
 	if err != nil || (validationErrors != nil && validationErrors.HasAny()) {
 		return models.UploadStartResponse{}, validationErrors, err
 	}
@@ -421,25 +420,7 @@ func (s *Service) CountArchivedFiles(ctx context.Context, userID string) (int64,
 	return s.fileRepo.CountArchivedFilesForUser(ctx, s.db, userID)
 }
 
-func (s *Service) resolveUploadThrottle(ctx context.Context, userID string, sizeBytes int64, isPremium bool) (int, bool, error) {
-	return 0, false, nil
-}
-
-func waitForThrottle(ctx context.Context, throttleMs int) error {
-	if throttleMs <= 0 {
-		return nil
-	}
-	timer := time.NewTimer(time.Duration(throttleMs) * time.Millisecond)
-	defer timer.Stop()
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-timer.C:
-		return nil
-	}
-}
-
-func (s *Service) StartSingleUpload(ctx context.Context, userID, folderPath, filename string, sizeBytes int64, contentType string, throttleMs int) (models.SingleStartResponse, validation.Errors, error) {
+func (s *Service) StartSingleUpload(ctx context.Context, userID, folderPath, filename string, sizeBytes int64, contentType string) (models.SingleStartResponse, validation.Errors, error) {
 	var err error
 	userID, err = validateUserID(userID)
 	if err != nil {
@@ -458,16 +439,12 @@ func (s *Service) StartSingleUpload(ctx context.Context, userID, folderPath, fil
 		return models.SingleStartResponse{}, nil, err
 	}
 
-	if err := waitForThrottle(ctx, throttleMs); err != nil {
-		return models.SingleStartResponse{}, nil, err
-	}
-
 	uploadURL, err := s.r2.PresignUpload(ctx, objectKey, contentType, s.uploadExpires)
 	if err != nil {
 		return models.SingleStartResponse{}, nil, err
 	}
 
-	tx, file, validationErrors, err := s.beginUploadTx(ctx, userID, objectKey, folderPath, filename, contentType, sizeBytes, throttleMs)
+	tx, file, validationErrors, err := s.beginUploadTx(ctx, userID, objectKey, folderPath, filename, contentType, sizeBytes)
 	if err != nil || (validationErrors != nil && validationErrors.HasAny()) {
 		return models.SingleStartResponse{}, validationErrors, err
 	}
@@ -598,10 +575,6 @@ func (s *Service) nextMultipart(ctx context.Context, upload models.MultipartUplo
 		return models.UploadNextResponse{}, err
 	}
 
-	if err := waitForThrottle(ctx, file.ThrottleMs); err != nil {
-		return models.UploadNextResponse{}, err
-	}
-
 	url, err := s.r2.PresignUploadPart(ctx, upload.ObjectKey, upload.UploadID, nextPart, s.uploadExpires)
 	if err != nil {
 		return models.UploadNextResponse{}, err
@@ -616,7 +589,6 @@ func (s *Service) nextMultipart(ctx context.Context, upload models.MultipartUplo
 		ChunkSize:     upload.ChunkSize,
 		TotalParts:    upload.TotalParts,
 		UploadedParts: resumeParts,
-		ThrottleMs:    file.ThrottleMs,
 	}, nil
 }
 
@@ -1176,6 +1148,34 @@ func (s *Service) ListCompletedUploads(ctx context.Context, userID string) ([]mo
 		return nil, err
 	}
 	return s.fileRepo.ListCompletedForUser(ctx, s.db, userID)
+}
+
+type FolderContents struct {
+	Folders []models.Folder
+	Files   []models.File
+}
+
+func (s *Service) ListFolderContents(ctx context.Context, userID, folderPath string) (FolderContents, error) {
+	var err error
+	userID, err = validateUserID(userID)
+	if err != nil {
+		return FolderContents{}, err
+	}
+
+	folderPath = normalizeFolderPath(folderPath)
+	folders, err := s.folderRepo.ListByParent(ctx, s.db, userID, folderPath)
+	if err != nil {
+		return FolderContents{}, err
+	}
+	files, err := s.fileRepo.ListCompletedForUserInFolder(ctx, s.db, userID, folderPath)
+	if err != nil {
+		return FolderContents{}, err
+	}
+
+	return FolderContents{
+		Folders: folders,
+		Files:   files,
+	}, nil
 }
 
 func (s *Service) ResumeMultipart(ctx context.Context, userID, fileID string) (models.MultipartResumeResponse, error) {
