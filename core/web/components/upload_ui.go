@@ -32,7 +32,7 @@ func UploadControls(props UploadControlsProps) g.Node {
 	}
 	statusText := props.StatusText
 	if statusText == "" {
-		statusText = "No uploads yet."
+		statusText = ""
 	}
 
 	return g.Group([]g.Node{
@@ -88,6 +88,7 @@ func UploadControls(props UploadControlsProps) g.Node {
 			h.Class("upload-input is-hidden"),
 			g.Attr("webkitdirectory", ""),
 			g.Attr("directory", ""),
+			g.Attr("mozdirectory", ""),
 			g.Attr("multiple", "multiple"),
 		),
 		h.Div(
@@ -128,11 +129,6 @@ func UploadControls(props UploadControlsProps) g.Node {
 			),
 		),
 
-		ProgressBar(ProgressBarProps{
-			ID:    "upload-progress",
-			Value: 0,
-			Label: "Progress",
-		}),
 		h.Div(
 			h.Class("upload-meta"),
 			h.Span(h.Class("upload-meta-title"), g.Attr("id", "upload-meta-title")),
@@ -149,7 +145,7 @@ func UploadControls(props UploadControlsProps) g.Node {
 			}),
 		),
 		h.P(
-			h.Class("upload-status"),
+			h.Class("upload-status is-hidden"),
 			g.Attr("id", "upload-status"),
 			g.Text(statusText),
 		),

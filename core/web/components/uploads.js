@@ -20,18 +20,25 @@
   const metaTitle = document.getElementById("upload-meta-title");
   const metaDetail = document.getElementById("upload-meta-detail");
   const metaTooltip = document.getElementById("upload-meta-tooltip");
-  const progress = document.getElementById("upload-progress");
   const status = document.getElementById("upload-status");
   const queueList = document.getElementById("upload-queue-list");
   const queueMeta = document.getElementById("upload-queue-meta");
   const queueEmpty = document.getElementById("upload-queue-empty");
 
-  if (!input || !progress || !status || !queueList) {
+  if (!input || !status || !queueList) {
     return;
   }
 
-  const progressBar = progress.querySelector(".progress-bar");
-  const progressPercent = progress.querySelector(".progress-percent");
+  function enableFolderPicker() {
+    if (!folderInput) {
+      return;
+    }
+    folderInput.setAttribute("webkitdirectory", "");
+    folderInput.setAttribute("directory", "");
+    folderInput.setAttribute("mozdirectory", "");
+  }
+
+  enableFolderPicker();
   const isPremium = document.body && document.body.getAttribute("data-user-premium") === "true";
   const MAX_QUEUE_ITEMS = 300;
   const MAX_FILE_SIZE = 10 * 1024 * 1024 * 1024;
@@ -81,17 +88,6 @@
   function toastUploadError(detail) {
     const message = detail ? "Upload failed. " + detail : "Upload failed. Try again.";
     window.Toast.error(message, { title: "Upload failed" });
-  }
-
-  function setProgress(percent) {
-    const clamped = Math.max(0, Math.min(100, Math.round(percent)));
-    if (progressBar) {
-      progressBar.style.width = clamped + "%";
-      progressBar.setAttribute("aria-valuenow", String(clamped));
-    }
-    if (progressPercent) {
-      progressPercent.textContent = clamped + "%";
-    }
   }
 
   function formatBytes(bytes) {
@@ -348,7 +344,6 @@
   function updatePrimaryUI() {
     const primary = primaryTaskId ? activeTasks.get(primaryTaskId) : null;
     if (!primary) {
-      setProgress(0);
       clearMeta();
       setStatus("No uploads in progress.");
       return;
@@ -358,7 +353,6 @@
     const totalBytes = primary.totalBytes || file.size;
     updateTransferStats(primary, uploadedBytes, totalBytes);
     updateMeta(file.name, uploadedBytes, totalBytes, primary.transferStats);
-    setProgress(totalBytes > 0 ? (uploadedBytes / totalBytes) * 100 : 0);
     setStatus(primary.statusText || ("Uploading " + file.name + "..."));
   }
 
@@ -1349,6 +1343,7 @@
   if (browseFoldersButton) {
     browseFoldersButton.addEventListener("click", function() {
       if (folderInput && !folderInput.disabled) {
+        enableFolderPicker();
         folderInput.click();
       }
     });
