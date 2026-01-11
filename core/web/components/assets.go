@@ -10,8 +10,8 @@ var embeddedFiles embed.FS
 
 func readAsset(path string) ([]byte, error) {
 	cleanPath := strings.TrimPrefix(path, "/")
-	if strings.HasPrefix(cleanPath, "web/components/") {
-		cleanPath = strings.TrimPrefix(cleanPath, "web/components/")
+	if after, ok := strings.CutPrefix(cleanPath, "web/components/"); ok {
+		cleanPath = after
 	}
 	return embeddedFiles.ReadFile(cleanPath)
 }

@@ -38,6 +38,7 @@
 - Engage in code reviews to maintain high code quality and share knowledge among the team.
 - Monitor performance and optimize database queries as needed.
 - Don't run destructive commands like `git reset --hard` without backups or confirmation.
+- Always use native SVG icons where applicable and render them via the Icon component.
 
 ## Recent Updates
 - Added `pkg/validation` for reusable validation helpers and error maps.
