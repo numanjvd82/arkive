@@ -18,15 +18,14 @@
   width: 100%;
   height: 18px;
   border-radius: 999px;
-  background: var(--surface-strong);
+  background: rgba(108, 120, 142, 0.2);
   overflow: hidden;
 }
 
 .progress-bar {
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--accent-cool), var(--accent));
-  box-shadow: 0 0 16px rgba(107, 209, 230, 0.35);
+  background: linear-gradient(90deg, rgba(61, 190, 209, 0.8), rgba(61, 190, 209, 0.35));
   transition: width 0.2s ease;
 }
 
