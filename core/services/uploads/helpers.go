@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"path"
 	"strings"
 	"time"
 
@@ -126,6 +127,20 @@ func validateUploadID(uploadID string) (string, error) {
 		return "", ErrInvalidInput
 	}
 	return uploadID, nil
+}
+
+func normalizeFolderPath(folderPath string) string {
+	folderPath = strings.TrimSpace(strings.ReplaceAll(folderPath, "\\", "/"))
+	if folderPath == "" {
+		return ""
+	}
+	cleaned := path.Clean(folderPath)
+	cleaned = strings.TrimPrefix(cleaned, "/")
+	cleaned = strings.TrimSuffix(cleaned, "/")
+	if cleaned == "." || cleaned == "" || strings.HasPrefix(cleaned, "..") {
+		return ""
+	}
+	return cleaned
 }
 
 func validatePartNumber(partNumber int32, totalParts int) error {

@@ -7,6 +7,7 @@ type File struct {
 	UserID               string
 	Bucket               string
 	ObjectKey            string
+	FolderPath           string
 	Filename             string
 	ContentType          string
 	SizeBytes            int64

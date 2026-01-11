@@ -128,7 +128,7 @@ func isExpired(expiresAt *time.Time) bool {
 	return time.Now().After(*expiresAt)
 }
 
-func (s *Service) beginUploadTx(ctx context.Context, userID, objectKey, filename, contentType string, sizeBytes int64, throttleMs int) (pgx.Tx, models.File, validation.Errors, error) {
+func (s *Service) beginUploadTx(ctx context.Context, userID, objectKey, folderPath, filename, contentType string, sizeBytes int64, throttleMs int) (pgx.Tx, models.File, validation.Errors, error) {
 	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return nil, models.File{}, nil, err
@@ -156,6 +156,7 @@ func (s *Service) beginUploadTx(ctx context.Context, userID, objectKey, filename
 		UserID:      userID,
 		Bucket:      s.bucket,
 		ObjectKey:   objectKey,
+		FolderPath:  folderPath,
 		Filename:    filename,
 		ContentType: contentType,
 		SizeBytes:   sizeBytes,
@@ -271,13 +272,14 @@ func buildCompletedFromList(listed []types.Part, totalParts int) ([]types.Comple
 	return completed, stored, nil
 }
 
-func (s *Service) StartMultipart(ctx context.Context, userID, filename string, sizeBytes int64, contentType string, throttleMs int, minMultipartSize int64) (models.MultipartStartResponse, validation.Errors, error) {
+func (s *Service) StartMultipart(ctx context.Context, userID, folderPath, filename string, sizeBytes int64, contentType string, throttleMs int, minMultipartSize int64) (models.MultipartStartResponse, validation.Errors, error) {
 	var err error
 	userID, err = validateUserID(userID)
 	if err != nil {
 		return models.MultipartStartResponse{}, nil, err
 	}
 	filename = strings.TrimSpace(filename)
+	folderPath = normalizeFolderPath(folderPath)
 	contentType = strings.TrimSpace(contentType)
 	validationErrors, err := validateStartInput(userID, filename, sizeBytes, true, minMultipartSize)
 	if err != nil || (validationErrors != nil && validationErrors.HasAny()) {
@@ -297,7 +299,7 @@ func (s *Service) StartMultipart(ctx context.Context, userID, filename string, s
 		return models.MultipartStartResponse{}, nil, err
 	}
 
-	tx, file, validationErrors, err := s.beginUploadTx(ctx, userID, objectKey, filename, contentType, sizeBytes, throttleMs)
+	tx, file, validationErrors, err := s.beginUploadTx(ctx, userID, objectKey, folderPath, filename, contentType, sizeBytes, throttleMs)
 	if err != nil || (validationErrors != nil && validationErrors.HasAny()) {
 		_ = s.r2.AbortMultipartUpload(ctx, objectKey, uploadID)
 		return models.MultipartStartResponse{}, validationErrors, err
@@ -335,7 +337,7 @@ func (s *Service) StartMultipart(ctx context.Context, userID, filename string, s
 	}, nil, nil
 }
 
-func (s *Service) StartUpload(ctx context.Context, userID, filename string, sizeBytes int64, contentType string, isPremium bool) (models.UploadStartResponse, validation.Errors, error) {
+func (s *Service) StartUpload(ctx context.Context, userID, folderPath, filename string, sizeBytes int64, contentType string, isPremium bool) (models.UploadStartResponse, validation.Errors, error) {
 	var err error
 	userID, err = validateUserID(userID)
 	if err != nil {
@@ -365,7 +367,7 @@ func (s *Service) StartUpload(ctx context.Context, userID, filename string, size
 	}
 
 	if sizeBytes > MultipartThresholdBytes || forceMultipart {
-		resp, validationErrors, err := s.StartMultipart(ctx, userID, filename, sizeBytes, contentType, throttleMs, minMultipartSize)
+		resp, validationErrors, err := s.StartMultipart(ctx, userID, folderPath, filename, sizeBytes, contentType, throttleMs, minMultipartSize)
 		if err != nil || (validationErrors != nil && validationErrors.HasAny()) {
 			return models.UploadStartResponse{}, validationErrors, err
 		}
@@ -378,7 +380,7 @@ func (s *Service) StartUpload(ctx context.Context, userID, filename string, size
 			TotalParts: resp.TotalParts,
 		}, nil, nil
 	}
-	resp, validationErrors, err := s.StartSingleUpload(ctx, userID, filename, sizeBytes, contentType, throttleMs)
+	resp, validationErrors, err := s.StartSingleUpload(ctx, userID, folderPath, filename, sizeBytes, contentType, throttleMs)
 	if err != nil || (validationErrors != nil && validationErrors.HasAny()) {
 		return models.UploadStartResponse{}, validationErrors, err
 	}
@@ -437,13 +439,14 @@ func waitForThrottle(ctx context.Context, throttleMs int) error {
 	}
 }
 
-func (s *Service) StartSingleUpload(ctx context.Context, userID, filename string, sizeBytes int64, contentType string, throttleMs int) (models.SingleStartResponse, validation.Errors, error) {
+func (s *Service) StartSingleUpload(ctx context.Context, userID, folderPath, filename string, sizeBytes int64, contentType string, throttleMs int) (models.SingleStartResponse, validation.Errors, error) {
 	var err error
 	userID, err = validateUserID(userID)
 	if err != nil {
 		return models.SingleStartResponse{}, nil, err
 	}
 	filename = strings.TrimSpace(filename)
+	folderPath = normalizeFolderPath(folderPath)
 	contentType = strings.TrimSpace(contentType)
 	validationErrors, err := validateStartInput(userID, filename, sizeBytes, false, MultipartThresholdBytes)
 	if err != nil || (validationErrors != nil && validationErrors.HasAny()) {
@@ -464,7 +467,7 @@ func (s *Service) StartSingleUpload(ctx context.Context, userID, filename string
 		return models.SingleStartResponse{}, nil, err
 	}
 
-	tx, file, validationErrors, err := s.beginUploadTx(ctx, userID, objectKey, filename, contentType, sizeBytes, throttleMs)
+	tx, file, validationErrors, err := s.beginUploadTx(ctx, userID, objectKey, folderPath, filename, contentType, sizeBytes, throttleMs)
 	if err != nil || (validationErrors != nil && validationErrors.HasAny()) {
 		return models.SingleStartResponse{}, validationErrors, err
 	}

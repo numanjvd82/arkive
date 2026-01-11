@@ -17,11 +17,11 @@ func New() *Repository {
 func (r *Repository) CreateFile(ctx context.Context, db database.PgExecutor, file models.File) (models.File, error) {
 	var created models.File
 	query := `INSERT INTO files
-		(user_id, bucket, object_key, filename, content_type, size_bytes, status, throttle_ms, expires_at)
+		(user_id, bucket, object_key, folder_path, filename, content_type, size_bytes, status, throttle_ms, expires_at)
 	VALUES
-		($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 	RETURNING
-		id, user_id, bucket, object_key, filename, content_type, size_bytes,
+		id, user_id, bucket, object_key, folder_path, filename, content_type, size_bytes,
 		video_width, video_height, video_duration_seconds,
 		throttle_ms,
 		status, created_at, updated_at, expires_at`
@@ -29,6 +29,7 @@ func (r *Repository) CreateFile(ctx context.Context, db database.PgExecutor, fil
 		file.UserID,
 		file.Bucket,
 		file.ObjectKey,
+		file.FolderPath,
 		file.Filename,
 		file.ContentType,
 		file.SizeBytes,
@@ -40,6 +41,7 @@ func (r *Repository) CreateFile(ctx context.Context, db database.PgExecutor, fil
 		&created.UserID,
 		&created.Bucket,
 		&created.ObjectKey,
+		&created.FolderPath,
 		&created.Filename,
 		&created.ContentType,
 		&created.SizeBytes,
@@ -160,7 +162,7 @@ func (r *Repository) ClearExpiryForUserCompletedFiles(ctx context.Context, db da
 
 func (r *Repository) ListArchivedFilesForUser(ctx context.Context, db database.PgExecutor, userID string) ([]models.File, error) {
 	query := `SELECT
-		id, user_id, bucket, object_key, filename, content_type, size_bytes,
+		id, user_id, bucket, object_key, folder_path, filename, content_type, size_bytes,
 		video_width, video_height, video_duration_seconds, throttle_ms,
 		status, created_at, updated_at, expires_at
 	FROM
@@ -185,6 +187,7 @@ func (r *Repository) ListArchivedFilesForUser(ctx context.Context, db database.P
 			&file.UserID,
 			&file.Bucket,
 			&file.ObjectKey,
+			&file.FolderPath,
 			&file.Filename,
 			&file.ContentType,
 			&file.SizeBytes,
@@ -255,7 +258,7 @@ func (r *Repository) UpdateVideoMetadata(ctx context.Context, db database.PgExec
 func (r *Repository) GetFileByID(ctx context.Context, db database.PgExecutor, fileID string) (models.File, error) {
 	var file models.File
 	query := `SELECT
-		id, user_id, bucket, object_key, filename, content_type, size_bytes,
+		id, user_id, bucket, object_key, folder_path, filename, content_type, size_bytes,
 		video_width, video_height, video_duration_seconds, throttle_ms,
 		status, created_at, updated_at, expires_at
 	FROM
@@ -267,6 +270,7 @@ func (r *Repository) GetFileByID(ctx context.Context, db database.PgExecutor, fi
 		&file.UserID,
 		&file.Bucket,
 		&file.ObjectKey,
+		&file.FolderPath,
 		&file.Filename,
 		&file.ContentType,
 		&file.SizeBytes,
@@ -287,7 +291,7 @@ func (r *Repository) GetFileByID(ctx context.Context, db database.PgExecutor, fi
 func (r *Repository) GetFileForUser(ctx context.Context, db database.PgExecutor, fileID, userID string) (models.File, error) {
 	var file models.File
 	query := `SELECT
-		id, user_id, bucket, object_key, filename, content_type, size_bytes,
+		id, user_id, bucket, object_key, folder_path, filename, content_type, size_bytes,
 		video_width, video_height, video_duration_seconds, throttle_ms,
 		status, created_at, updated_at, expires_at
 	FROM
@@ -299,6 +303,7 @@ func (r *Repository) GetFileForUser(ctx context.Context, db database.PgExecutor,
 		&file.UserID,
 		&file.Bucket,
 		&file.ObjectKey,
+		&file.FolderPath,
 		&file.Filename,
 		&file.ContentType,
 		&file.SizeBytes,
@@ -318,7 +323,7 @@ func (r *Repository) GetFileForUser(ctx context.Context, db database.PgExecutor,
 
 func (r *Repository) ListPendingForUser(ctx context.Context, db database.PgExecutor, userID string) ([]models.File, error) {
 	query := `SELECT
-		id, user_id, bucket, object_key, filename, content_type, size_bytes,
+		id, user_id, bucket, object_key, folder_path, filename, content_type, size_bytes,
 		video_width, video_height, video_duration_seconds, throttle_ms,
 		status, created_at, updated_at, expires_at
 	FROM
@@ -341,6 +346,7 @@ func (r *Repository) ListPendingForUser(ctx context.Context, db database.PgExecu
 			&file.UserID,
 			&file.Bucket,
 			&file.ObjectKey,
+			&file.FolderPath,
 			&file.Filename,
 			&file.ContentType,
 			&file.SizeBytes,
@@ -365,7 +371,7 @@ func (r *Repository) ListPendingForUser(ctx context.Context, db database.PgExecu
 
 func (r *Repository) ListCompletedForUser(ctx context.Context, db database.PgExecutor, userID string) ([]models.File, error) {
 	query := `SELECT
-		id, user_id, bucket, object_key, filename, content_type, size_bytes,
+		id, user_id, bucket, object_key, folder_path, filename, content_type, size_bytes,
 		video_width, video_height, video_duration_seconds, throttle_ms,
 		status, created_at, updated_at, expires_at
 	FROM
@@ -390,6 +396,7 @@ func (r *Repository) ListCompletedForUser(ctx context.Context, db database.PgExe
 			&file.UserID,
 			&file.Bucket,
 			&file.ObjectKey,
+			&file.FolderPath,
 			&file.Filename,
 			&file.ContentType,
 			&file.SizeBytes,
@@ -426,7 +433,7 @@ func (r *Repository) DeleteFileForUser(ctx context.Context, db database.PgExecut
 
 func (r *Repository) ListExpiredCompleteFiles(ctx context.Context, db database.PgExecutor, cutoff time.Time) ([]models.File, error) {
 	query := `SELECT
-		id, user_id, bucket, object_key, filename, content_type, size_bytes,
+		id, user_id, bucket, object_key, folder_path, filename, content_type, size_bytes,
 		video_width, video_height, video_duration_seconds, throttle_ms,
 		status, created_at, updated_at, expires_at
 	FROM
@@ -451,6 +458,7 @@ func (r *Repository) ListExpiredCompleteFiles(ctx context.Context, db database.P
 			&file.UserID,
 			&file.Bucket,
 			&file.ObjectKey,
+			&file.FolderPath,
 			&file.Filename,
 			&file.ContentType,
 			&file.SizeBytes,
@@ -475,7 +483,7 @@ func (r *Repository) ListExpiredCompleteFiles(ctx context.Context, db database.P
 
 func (r *Repository) ListExpiredUploads(ctx context.Context, db database.PgExecutor, cutoff time.Time) ([]models.File, error) {
 	query := `SELECT
-		id, user_id, bucket, object_key, filename, content_type, size_bytes,
+		id, user_id, bucket, object_key, folder_path, filename, content_type, size_bytes,
 		video_width, video_height, video_duration_seconds, throttle_ms,
 		status, created_at, updated_at, expires_at
 	FROM
@@ -500,6 +508,7 @@ func (r *Repository) ListExpiredUploads(ctx context.Context, db database.PgExecu
 			&file.UserID,
 			&file.Bucket,
 			&file.ObjectKey,
+			&file.FolderPath,
 			&file.Filename,
 			&file.ContentType,
 			&file.SizeBytes,

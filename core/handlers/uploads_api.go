@@ -14,6 +14,7 @@ import (
 
 type uploadStartRequest struct {
 	Filename    string `json:"filename"`
+	FolderPath  string `json:"folderPath"`
 	Size        int64  `json:"size"`
 	ContentType string `json:"contentType"`
 }
@@ -41,7 +42,7 @@ func APIUploadStart(svc *uploads.Service) gin.HandlerFunc {
 		}
 
 		user, _ := appcontext.UserFromContext(c)
-		resp, validationErrors, err := svc.StartUpload(c.Request.Context(), userID.(string), req.Filename, req.Size, req.ContentType, user.IsPremium)
+		resp, validationErrors, err := svc.StartUpload(c.Request.Context(), userID.(string), req.FolderPath, req.Filename, req.Size, req.ContentType, user.IsPremium)
 		if err != nil {
 			switch err {
 			case uploads.ErrUnauthorized:

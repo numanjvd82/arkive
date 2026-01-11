@@ -51,12 +51,24 @@ func UploadControls(props UploadControlsProps) g.Node {
 				h.Class("dropzone-copy"),
 				h.P(
 					h.Class("dropzone-title"),
-					g.Text("Drop file here or "),
-					h.Span(h.Class("dropzone-browse"), g.Text("Browse")),
+					g.Text("Drop files or folders here or "),
+					h.Button(
+						h.Class("dropzone-action"),
+						h.Type("button"),
+						g.Attr("id", "upload-browse-files"),
+						g.Text("Browse files"),
+					),
+					g.Text(" or "),
+					h.Button(
+						h.Class("dropzone-action"),
+						h.Type("button"),
+						g.Attr("id", "upload-browse-folders"),
+						g.Text("Browse folder"),
+					),
 				),
 				h.P(
 					h.Class("dropzone-sub"),
-					g.Text("Fast, resumable uploads. Large files continue where you left off."),
+					g.Text("Fast, resumable uploads. Files queue automatically."),
 				),
 			),
 		),
@@ -65,8 +77,18 @@ func UploadControls(props UploadControlsProps) g.Node {
 			h.ID(inputID),
 			h.Name(inputName),
 			h.Class("upload-input is-hidden"),
+			g.Attr("multiple", "multiple"),
 			g.If(props.InputRequired, g.Attr("required", "required")),
 			g.If(props.InputHelper != "", g.Attr("aria-describedby", inputID+"-helper")),
+		),
+		h.Input(
+			h.Type("file"),
+			h.ID("upload-folder"),
+			h.Name("folder"),
+			h.Class("upload-input is-hidden"),
+			g.Attr("webkitdirectory", ""),
+			g.Attr("directory", ""),
+			g.Attr("multiple", "multiple"),
 		),
 		h.Div(
 			h.Class("upload-chip is-hidden"),
@@ -130,6 +152,24 @@ func UploadControls(props UploadControlsProps) g.Node {
 			h.Class("upload-status"),
 			g.Attr("id", "upload-status"),
 			g.Text(statusText),
+		),
+		h.Div(
+			h.Class("upload-queue"),
+			g.Attr("id", "upload-queue"),
+			h.Div(
+				h.Class("queue-header"),
+				h.Span(h.Class("queue-title"), g.Text("Queue")),
+				h.Span(h.Class("queue-meta"), g.Attr("id", "upload-queue-meta"), g.Text("0 items")),
+			),
+			h.Div(
+				h.Class("queue-list"),
+				g.Attr("id", "upload-queue-list"),
+			),
+			h.P(
+				h.Class("queue-empty"),
+				g.Attr("id", "upload-queue-empty"),
+				g.Text("Nothing queued yet."),
+			),
 		),
 		Dialog(DialogProps{
 			BackdropID: "upload-confirm-backdrop",

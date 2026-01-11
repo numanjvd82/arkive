@@ -328,7 +328,7 @@ func renderCompletedList(files []models.File) g.Node {
 		)
 	}
 
-	rows := make([]g.Node, 0, len(files))
+	rows := make([]g.Node, 0, len(files)+4)
 	rows = append(rows, h.Div(
 		h.Class("files-row files-row-head"),
 		h.Span(g.Text("File")),
@@ -336,57 +336,83 @@ func renderCompletedList(files []models.File) g.Node {
 		h.Span(g.Text("Updated")),
 		h.Span(g.Text("Actions")),
 	))
+	folderOrder := make([]string, 0)
+	filesByFolder := make(map[string][]models.File)
 	for _, file := range files {
-		previewable := isPreviewableContentType(file.ContentType)
+		folder := strings.TrimSpace(file.FolderPath)
+		if _, ok := filesByFolder[folder]; !ok {
+			folderOrder = append(folderOrder, folder)
+		}
+		filesByFolder[folder] = append(filesByFolder[folder], file)
+	}
+
+	for _, folder := range folderOrder {
+		group := filesByFolder[folder]
+		totalBytes := int64(0)
+		for _, file := range group {
+			totalBytes += file.SizeBytes
+		}
+		folderLabel := "Root"
+		if folder != "" {
+			folderLabel = folder
+		}
 		rows = append(rows, h.Div(
-			h.Class("files-row"),
-			g.Attr("data-file-row", file.ID),
-			h.Div(
-				h.Class("files-file"),
-				h.Span(h.Class("files-badge"), g.Text(fileTypeLabel(file))),
-				h.Div(
-					h.Class("files-meta"),
-					h.Span(h.Class("files-name"), g.Text(file.Filename)),
-					h.Span(h.Class("files-sub"), g.Text(fileSubtitle(file))),
-				),
-			),
-			h.Span(h.Class("files-size"), g.Text(format.Bytes(file.SizeBytes))),
-			h.Span(h.Class("files-time"), g.Text(formatTime(file.UpdatedAt))),
-			h.Div(
-				h.Class("files-actions"),
-				h.Div(
-					h.Class("files-action-buttons"),
-					h.Button(
-						h.Class("button secondary"),
-						h.Type("button"),
-						g.Attr("data-file-action", "share"),
-						g.Attr("data-file-id", file.ID),
-						g.Text("Share"),
-					),
-					g.If(!previewable, h.Button(
-						h.Class("button secondary is-disabled"),
-						h.Type("button"),
-						g.Attr("disabled", "disabled"),
-						g.Text("View"),
-					)),
-					g.If(previewable, h.A(
-						h.Class("button secondary"),
-						h.Href(fmt.Sprintf("/files/%s/view", file.ID)),
-						g.Attr("data-file-action", "view"),
-						g.Attr("data-file-id", file.ID),
-						g.Text("View"),
-					)),
-					h.Button(
-						h.Class("button danger"),
-						h.Type("button"),
-						g.Attr("data-file-action", "delete"),
-						g.Attr("data-file-id", file.ID),
-						g.Attr("data-file-name", file.Filename),
-						g.Text("Delete"),
-					),
-				),
-			),
+			h.Class("files-folder"),
+			h.Span(h.Class("files-folder-title"), g.Text(folderLabel)),
+			h.Span(h.Class("files-folder-meta"), g.Text(fmt.Sprintf("%d files • %s", len(group), format.Bytes(totalBytes)))),
 		))
+		for _, file := range group {
+			previewable := isPreviewableContentType(file.ContentType)
+			rows = append(rows, h.Div(
+				h.Class("files-row"),
+				g.Attr("data-file-row", file.ID),
+				h.Div(
+					h.Class("files-file"),
+					h.Span(h.Class("files-badge"), g.Text(fileTypeLabel(file))),
+					h.Div(
+						h.Class("files-meta"),
+						h.Span(h.Class("files-name"), g.Text(file.Filename)),
+						h.Span(h.Class("files-sub"), g.Text(fileSubtitle(file))),
+					),
+				),
+				h.Span(h.Class("files-size"), g.Text(format.Bytes(file.SizeBytes))),
+				h.Span(h.Class("files-time"), g.Text(formatTime(file.UpdatedAt))),
+				h.Div(
+					h.Class("files-actions"),
+					h.Div(
+						h.Class("files-action-buttons"),
+						h.Button(
+							h.Class("button secondary"),
+							h.Type("button"),
+							g.Attr("data-file-action", "share"),
+							g.Attr("data-file-id", file.ID),
+							g.Text("Share"),
+						),
+						g.If(!previewable, h.Button(
+							h.Class("button secondary is-disabled"),
+							h.Type("button"),
+							g.Attr("disabled", "disabled"),
+							g.Text("View"),
+						)),
+						g.If(previewable, h.A(
+							h.Class("button secondary"),
+							h.Href(fmt.Sprintf("/files/%s/view", file.ID)),
+							g.Attr("data-file-action", "view"),
+							g.Attr("data-file-id", file.ID),
+							g.Text("View"),
+						)),
+						h.Button(
+							h.Class("button danger"),
+							h.Type("button"),
+							g.Attr("data-file-action", "delete"),
+							g.Attr("data-file-id", file.ID),
+							g.Attr("data-file-name", file.Filename),
+							g.Text("Delete"),
+						),
+					),
+				),
+			))
+		}
 	}
 
 	return h.Div(h.Class("files-rows"), g.Group(rows))

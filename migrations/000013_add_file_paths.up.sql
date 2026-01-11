@@ -1,0 +1,2 @@
+ALTER TABLE files
+  ADD COLUMN folder_path TEXT NOT NULL DEFAULT '';
