@@ -97,7 +97,6 @@ func renderUserMenu(user *models.User) g.Node {
 	}
 
 	return components.Dropdown(components.DropdownProps{
-		ID:    "user-menu",
 		Align: "right",
 		Label: "Open account menu",
 		Trigger: components.Avatar(components.AvatarProps{

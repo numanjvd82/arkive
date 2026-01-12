@@ -178,6 +178,44 @@ func (s *Service) ensureFolderPath(ctx context.Context, db database.PgExecutor, 
 	return nil
 }
 
+func (s *Service) cleanupFolderPath(ctx context.Context, db database.PgExecutor, userID, folderPath string) error {
+	folderPath = normalizeFolderPath(folderPath)
+	if folderPath == "" {
+		return nil
+	}
+
+	parts := strings.Split(folderPath, "/")
+	paths := make([]string, 0, len(parts))
+	current := ""
+	for _, part := range parts {
+		if part == "" {
+			continue
+		}
+		if current == "" {
+			current = part
+		} else {
+			current = current + "/" + part
+		}
+		paths = append(paths, current)
+	}
+
+	for i := len(paths) - 1; i >= 0; i-- {
+		path := paths[i]
+		count, err := s.fileRepo.CountFilesInFolderTree(ctx, db, userID, path)
+		if err != nil {
+			return err
+		}
+		if count > 0 {
+			break
+		}
+		if err := s.folderRepo.DeleteByPath(ctx, db, userID, path); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func validatePartNumber(partNumber int32, totalParts int) error {
 	if partNumber <= 0 || partNumber > int32(totalParts) {
 		return ErrInvalidInput

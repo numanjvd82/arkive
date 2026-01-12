@@ -524,7 +524,6 @@ func renderFileOverflow(file models.File, previewable bool) g.Node {
 	)
 
 	return components.Dropdown(components.DropdownProps{
-		ID:    "file-actions-" + file.ID,
 		Align: "right",
 		Label: "More actions",
 		Trigger: components.Icon(components.IconProps{

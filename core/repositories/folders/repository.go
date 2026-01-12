@@ -65,3 +65,13 @@ func (r *Repository) ListByParent(ctx context.Context, db database.PgExecutor, u
 	}
 	return folders, nil
 }
+
+func (r *Repository) DeleteByPath(ctx context.Context, db database.PgExecutor, userID, path string) error {
+	query := `DELETE FROM
+		folders
+	WHERE
+		user_id = $1
+		AND path = $2`
+	_, err := db.Exec(ctx, query, userID, path)
+	return err
+}

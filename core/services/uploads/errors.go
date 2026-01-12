@@ -12,6 +12,8 @@ var (
 	ErrFileTooSmall      = errors.New("file is too small")
 	ErrMultipartRequired = errors.New("multipart upload required")
 	ErrFileLimitReached  = errors.New("file limit reached")
+	ErrQueueLimitReached = errors.New("upload queue limit reached")
+	ErrConcurrentLimit   = errors.New("upload already in progress")
 )
 
 var (

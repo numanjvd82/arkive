@@ -89,6 +89,14 @@
     window.Toast.error(message, { title: "Upload failed" });
   }
 
+  function getUploadErrorMessage(err) {
+    if (err && err.data && err.data.errors) {
+      const errors = err.data.errors;
+      return errors.queue || errors.files || errors.size || errors.uploads || "";
+    }
+    return "";
+  }
+
   function formatBytes(bytes) {
     if (!bytes || bytes <= 0) {
       return "0 B";
@@ -441,6 +449,7 @@
     updateBatchUI(task.batch);
     if (task.id === primaryTaskId) {
       updatePrimaryUI();
+      updatePauseButtons();
     }
   }
 
@@ -1006,7 +1015,7 @@
           if (err && err.status === 404 && existing) {
             clearState(signature);
           }
-          const message = err && err.data && err.data.errors && err.data.errors.size ? err.data.errors.size : null;
+          const message = getUploadErrorMessage(err);
           task.status = "error";
           task.statusText = "Upload failed.";
           setStatus("Upload failed. " + (message || (err && err.message ? err.message : "Try again.")));
@@ -1051,7 +1060,7 @@
     } catch (err) {
       const uploadId = state && state.uploadId ? state.uploadId : (existing && existing.uploadId ? existing.uploadId : null);
       await cleanupFailure(task, uploadId, signature);
-      const detail = err && err.data && err.data.errors && err.data.errors.size ? err.data.errors.size : (err && err.message ? err.message : "");
+      const detail = getUploadErrorMessage(err) || (err && err.message ? err.message : "");
       toastUploadError(detail);
       throw err;
     }
@@ -1200,7 +1209,7 @@
         if (task.status !== "cancelled") {
           task.status = "error";
           task.statusText = "Upload failed.";
-          const detail = err && err.data && err.data.errors && err.data.errors.size ? err.data.errors.size : (err && err.message ? err.message : "");
+          const detail = getUploadErrorMessage(err) || (err && err.message ? err.message : "");
           toastUploadError(detail);
         }
       })

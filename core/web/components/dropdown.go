@@ -22,8 +22,9 @@ const DropdownJS = "/web/components/dropdown.js"
 
 func Dropdown(props DropdownProps) g.Node {
 	id := strings.TrimSpace(props.ID)
-	if id == "" {
-		id = "dropdown"
+	menuID := ""
+	if id != "" {
+		menuID = id + "-menu"
 	}
 
 	alignClass := "is-right"
@@ -44,10 +45,12 @@ func Dropdown(props DropdownProps) g.Node {
 	triggerAttrs := []g.Node{
 		h.Type("button"),
 		h.Class("dropdown-trigger"),
-		g.Attr("data-dropdown-trigger", id),
+		g.Attr("data-dropdown-trigger", "true"),
 		g.Attr("aria-haspopup", "menu"),
 		g.Attr("aria-expanded", "false"),
-		g.Attr("aria-controls", id+"-menu"),
+	}
+	if menuID != "" {
+		triggerAttrs = append(triggerAttrs, g.Attr("aria-controls", menuID))
 	}
 	if strings.TrimSpace(props.Label) != "" {
 		triggerAttrs = append(triggerAttrs, g.Attr("aria-label", strings.TrimSpace(props.Label)))
@@ -58,15 +61,15 @@ func Dropdown(props DropdownProps) g.Node {
 		InlineScript(DropdownJS),
 		h.Div(
 			h.Class(rootClasses),
-			g.Attr("data-dropdown", id),
+			g.Attr("data-dropdown", "true"),
 			h.Button(
 				g.Group(triggerAttrs),
 				props.Trigger,
 			),
 			h.Div(
-				h.ID(id+"-menu"),
+				g.If(menuID != "", h.ID(menuID)),
 				h.Class(menuClasses),
-				g.Attr("data-dropdown-menu", id),
+				g.Attr("data-dropdown-menu", "true"),
 				g.Attr("role", "menu"),
 				props.Menu,
 			),
