@@ -143,6 +143,8 @@
   padding: 10px 6px;
   border-bottom: 1px solid var(--border);
   background: transparent;
+  position: relative;
+  z-index: 1;
 }
 
 .files-controls {
@@ -169,6 +171,10 @@
 
 .files-row-file:hover {
   background: rgba(255, 255, 255, 0.02);
+}
+
+.files-row.is-dropdown-open {
+  z-index: 5;
 }
 
 .files-file {
@@ -289,6 +295,7 @@
   display: grid;
   gap: 6px;
   padding: 6px;
+  z-index: 60;
 }
 
 .files-overflow .dropdown-item {
