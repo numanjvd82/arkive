@@ -42,6 +42,12 @@
   pointer-events: auto;
 }
 
+.dropdown:focus-within .dropdown-menu {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
 .dropdown-meta {
   display: grid;
   gap: 4px;
