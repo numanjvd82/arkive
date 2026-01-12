@@ -1,0 +1,23 @@
+.sort-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
+  color: var(--muted);
+}
+
+.sort-label {
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.sort-select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px 10px;
+  color: var(--text);
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
+}
