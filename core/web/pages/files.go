@@ -2,7 +2,7 @@ package pages
 
 import (
 	"fmt"
-	"path/filepath"
+	"net/url"
 	"strings"
 	"time"
 
@@ -17,8 +17,15 @@ import (
 
 type FilesPageProps struct {
 	Ctx           PageContext
+	FolderPath    string
+	Folders       []models.Folder
 	Files         []models.File
 	ArchivedCount int64
+	Query         url.Values
+	Sort          string
+	Page          int
+	PageSize      int
+	TotalFiles    int
 }
 
 func FilesPage(props FilesPageProps) web.Page {
@@ -29,7 +36,10 @@ func FilesPage(props FilesPageProps) web.Page {
 			lastUpdated = file.UpdatedAt
 		}
 	}
-	fileCount := len(props.Files)
+	fileCount := props.TotalFiles
+	if fileCount == 0 {
+		fileCount = len(props.Files)
+	}
 	lastActivity := "No activity yet"
 	if !lastUpdated.IsZero() {
 		lastActivity = formatTime(lastUpdated)
@@ -114,7 +124,10 @@ func FilesPage(props FilesPageProps) web.Page {
 								h.H2(g.Text("Completed files")),
 								h.P(g.Text("Everything you have finished uploading.")),
 							),
-							renderCompletedList(props.Files),
+							renderListControls(props),
+							renderBreadcrumbs(props.FolderPath),
+							renderCompletedList(props.Folders, props.Files, props.FolderPath),
+							renderPagination(props),
 						),
 					),
 				),
@@ -315,11 +328,63 @@ func renderArchivedBanner(count int64) g.Node {
 	)
 }
 
-func renderCompletedList(files []models.File) g.Node {
-	if len(files) == 0 {
+func renderBreadcrumbs(folderPath string) g.Node {
+	crumbs := []components.Breadcrumb{
+		{Title: "Files", Href: "/files", IconName: "folder"},
+	}
+	if folderPath != "" {
+		parts := strings.Split(folderPath, "/")
+		path := ""
+		for _, part := range parts {
+			if part == "" {
+				continue
+			}
+			if path == "" {
+				path = part
+			} else {
+				path = path + "/" + part
+			}
+			crumbs = append(crumbs, components.Breadcrumb{
+				Title: part,
+				Href:  "/files?path=" + url.QueryEscape(path),
+			})
+		}
+	}
+	return components.Breadcrumbs(components.BreadcrumbsProps{
+		Items: crumbs,
+	})
+}
+
+func renderListControls(props FilesPageProps) g.Node {
+	options := []components.SortOption{
+		{Label: "Updated (newest)", Value: "updated_desc"},
+		{Label: "Updated (oldest)", Value: "updated_asc"},
+		{Label: "Name (A-Z)", Value: "name_asc"},
+		{Label: "Name (Z-A)", Value: "name_desc"},
+		{Label: "Size (smallest)", Value: "size_asc"},
+		{Label: "Size (largest)", Value: "size_desc"},
+	}
+	return h.Div(
+		h.Class("files-controls"),
+		components.SortSelect(components.SortSelectProps{
+			Label:   "Sort",
+			Value:   props.Sort,
+			Options: options,
+			BaseURL: "/files",
+			Query:   props.Query,
+		}),
+	)
+}
+
+func renderCompletedList(folders []models.Folder, files []models.File, folderPath string) g.Node {
+	if len(files) == 0 && len(folders) == 0 {
+		emptyMessage := "No completed uploads yet."
+		if folderPath != "" {
+			emptyMessage = "This folder is empty."
+		}
 		return h.Div(
 			h.Class("files-empty"),
-			h.P(g.Text("No completed uploads yet.")),
+			h.P(g.Text(emptyMessage)),
 			components.Button(components.ButtonProps{
 				Text:    "Upload your first file",
 				Href:    "/dashboard",
@@ -328,94 +393,92 @@ func renderCompletedList(files []models.File) g.Node {
 		)
 	}
 
-	rows := make([]g.Node, 0, len(files)+4)
-	rows = append(rows, h.Div(
-		h.Class("files-row files-row-head"),
-		h.Span(g.Text("File")),
-		h.Span(g.Text("Size")),
-		h.Span(g.Text("Updated")),
-		h.Span(g.Text("Actions")),
-	))
-	folderOrder := make([]string, 0)
-	filesByFolder := make(map[string][]models.File)
-	for _, file := range files {
-		folder := strings.TrimSpace(file.FolderPath)
-		if _, ok := filesByFolder[folder]; !ok {
-			folderOrder = append(folderOrder, folder)
-		}
-		filesByFolder[folder] = append(filesByFolder[folder], file)
+	rows := make([]g.Node, 0, len(files)+len(folders))
+	for _, folder := range folders {
+		folderLink := "/files?path=" + url.QueryEscape(folder.Path)
+		rows = append(rows, h.Div(
+			h.Class("files-row files-row-folder"),
+			h.A(
+				h.Class("files-row-link"),
+				h.Href(folderLink),
+				h.Span(
+					h.Class("files-type-icon is-folder"),
+					components.Icon(components.IconProps{
+						Name:       "folder",
+						Size:       "18",
+						Decorative: true,
+					}),
+				),
+				h.Div(
+					h.Class("files-meta"),
+					h.Span(h.Class("files-name"), g.Text(folder.Name)),
+					h.Span(h.Class("files-sub"), g.Text("Folder")),
+				),
+			),
+			h.Div(
+				h.Class("files-actions"),
+				h.A(
+					h.Class("button ghost"),
+					h.Href(folderLink),
+					g.Text("Open"),
+				),
+			),
+		))
 	}
 
-	for _, folder := range folderOrder {
-		group := filesByFolder[folder]
-		totalBytes := int64(0)
-		for _, file := range group {
-			totalBytes += file.SizeBytes
-		}
-		folderLabel := "Root"
-		if folder != "" {
-			folderLabel = folder
-		}
-		rows = append(rows, h.Div(
-			h.Class("files-folder"),
-			h.Span(h.Class("files-folder-title"), g.Text(folderLabel)),
-			h.Span(h.Class("files-folder-meta"), g.Text(fmt.Sprintf("%d files • %s", len(group), format.Bytes(totalBytes)))),
-		))
-		for _, file := range group {
-			previewable := isPreviewableContentType(file.ContentType)
-			rows = append(rows, h.Div(
-				h.Class("files-row"),
-				g.Attr("data-file-row", file.ID),
-				h.Div(
-					h.Class("files-file"),
-					h.Span(h.Class("files-badge"), g.Text(fileTypeLabel(file))),
-					h.Div(
-						h.Class("files-meta"),
-						h.Span(h.Class("files-name"), g.Text(file.Filename)),
-						h.Span(h.Class("files-sub"), g.Text(fileSubtitle(file))),
-					),
-				),
-				h.Span(h.Class("files-size"), g.Text(format.Bytes(file.SizeBytes))),
-				h.Span(h.Class("files-time"), g.Text(formatTime(file.UpdatedAt))),
-				h.Div(
-					h.Class("files-actions"),
-					h.Div(
-						h.Class("files-action-buttons"),
-						h.Button(
-							h.Class("button secondary"),
-							h.Type("button"),
-							g.Attr("data-file-action", "share"),
-							g.Attr("data-file-id", file.ID),
-							g.Text("Share"),
-						),
-						g.If(!previewable, h.Button(
-							h.Class("button secondary is-disabled"),
-							h.Type("button"),
-							g.Attr("disabled", "disabled"),
-							g.Text("View"),
-						)),
-						g.If(previewable, h.A(
-							h.Class("button secondary"),
-							h.Href(fmt.Sprintf("/files/%s/view", file.ID)),
-							g.Attr("data-file-action", "view"),
-							g.Attr("data-file-id", file.ID),
-							g.Text("View"),
-						)),
-						h.Button(
-							h.Class("button danger"),
-							h.Type("button"),
-							g.Attr("data-file-action", "delete"),
-							g.Attr("data-file-id", file.ID),
-							g.Attr("data-file-name", file.Filename),
-							g.Text("Delete"),
-						),
-					),
-				),
-			))
-		}
+	for _, file := range files {
+		rows = append(rows, renderFileRow(file))
 	}
 
 	return h.Div(h.Class("files-rows"), g.Group(rows))
+}
+
+func renderFileRow(file models.File) g.Node {
+	previewable := isPreviewableContentType(file.ContentType)
+	fileURL := fileViewURL(file, previewable)
+	timestamp := formatTime(file.UpdatedAt)
+	relative := format.RelativeTime(file.UpdatedAt)
+
+	return h.Div(
+		h.Class("files-row files-row-file"),
+		g.Attr("data-file-row", file.ID),
+		h.A(
+			h.Class("files-row-link"),
+			h.Href(fileURL),
+			h.Span(
+				h.Class("files-type-icon"),
+				components.Icon(components.IconProps{
+					Name:       fileTypeIcon(file),
+					Size:       "18",
+					Decorative: true,
+				}),
+			),
+			h.Div(
+				h.Class("files-meta"),
+				h.Span(h.Class("files-name"), g.Text(file.Filename)),
+				h.Span(h.Class("files-sub"), g.Text(fileSubtitle(file))),
+			),
+			h.Span(
+				h.Class("files-meta-inline"),
+				h.Span(h.Class("files-size"), g.Text(format.Bytes(file.SizeBytes))),
+				h.Span(h.Class("files-time"), h.Title(timestamp), g.Text(relative)),
+			),
+		),
+		h.Div(
+			h.Class("files-actions"),
+			h.Div(
+				h.Class("files-action-buttons"),
+				h.Button(
+					h.Class("button ghost"),
+					h.Type("button"),
+					g.Attr("data-file-action", "share"),
+					g.Attr("data-file-id", file.ID),
+					g.Text("Share"),
+				),
+				renderFileOverflow(file, previewable),
+			),
+		),
+	)
 }
 
 func formatTime(value time.Time) string {
@@ -430,22 +493,48 @@ func isPreviewableContentType(contentType string) bool {
 	return strings.HasPrefix(contentType, "image/") || strings.HasPrefix(contentType, "video/")
 }
 
-func fileTypeLabel(file models.File) string {
-	ext := strings.TrimSpace(strings.TrimPrefix(filepath.Ext(file.Filename), "."))
-	if ext == "" {
-		parts := strings.Split(strings.TrimSpace(file.ContentType), "/")
-		if len(parts) > 1 {
-			ext = parts[len(parts)-1]
-		}
+func fileViewURL(file models.File, previewable bool) string {
+	if previewable {
+		return fmt.Sprintf("/files/%s/view", file.ID)
 	}
-	ext = strings.ToUpper(ext)
-	if ext == "" {
-		return "FILE"
-	}
-	if len(ext) > 5 {
-		return "FILE"
-	}
-	return ext
+	return fmt.Sprintf("/api/files/%s/download", file.ID)
+}
+
+func renderFileOverflow(file models.File, previewable bool) g.Node {
+	menu := h.Div(
+		h.Class("files-overflow"),
+		g.If(previewable, h.A(
+			h.Class("dropdown-item"),
+			h.Href(fmt.Sprintf("/files/%s/view", file.ID)),
+			g.Text("View"),
+		)),
+		h.A(
+			h.Class("dropdown-item"),
+			h.Href(fmt.Sprintf("/api/files/%s/download", file.ID)),
+			g.Text("Download"),
+		),
+		h.Button(
+			h.Class("dropdown-item danger"),
+			h.Type("button"),
+			g.Attr("data-file-action", "delete"),
+			g.Attr("data-file-id", file.ID),
+			g.Attr("data-file-name", file.Filename),
+			g.Text("Delete"),
+		),
+	)
+
+	return components.Dropdown(components.DropdownProps{
+		ID:    "file-actions-" + file.ID,
+		Align: "right",
+		Label: "More actions",
+		Trigger: components.Icon(components.IconProps{
+			Name:       "dots",
+			Size:       "18",
+			Decorative: true,
+		}),
+		Menu:  menu,
+		Class: "files-overflow-dropdown",
+	})
 }
 
 func fileSubtitle(file models.File) string {
@@ -453,5 +542,39 @@ func fileSubtitle(file models.File) string {
 	if contentType == "" {
 		contentType = "Unknown type"
 	}
-	return fmt.Sprintf("%s • %s", contentType, format.Bytes(file.SizeBytes))
+	return contentType
+}
+
+func fileTypeIcon(file models.File) string {
+	contentType := strings.TrimSpace(strings.ToLower(file.ContentType))
+	switch {
+	case strings.HasPrefix(contentType, "image/"):
+		return "file-image"
+	case strings.HasPrefix(contentType, "video/"):
+		return "file-video"
+	case strings.HasPrefix(contentType, "audio/"):
+		return "file-audio"
+	case strings.Contains(contentType, "zip") || strings.Contains(contentType, "rar") || strings.Contains(contentType, "tar"):
+		return "file-archive"
+	case strings.Contains(contentType, "pdf") || strings.Contains(contentType, "word") || strings.Contains(contentType, "officedocument"):
+		return "file-doc"
+	case strings.HasPrefix(contentType, "text/") || strings.Contains(contentType, "json") || strings.Contains(contentType, "xml"):
+		return "file-text"
+	default:
+		return "file"
+	}
+}
+
+func renderPagination(props FilesPageProps) g.Node {
+	if props.TotalFiles <= 0 {
+		return nil
+	}
+	return components.Pagination(components.PaginationProps{
+		TotalRecords: props.TotalFiles,
+		CurrentPage:  props.Page,
+		PageSize:     props.PageSize,
+		BaseURL:      "/files",
+		Query:        props.Query,
+		PageSizes:    []int{25, 50, 100},
+	})
 }
