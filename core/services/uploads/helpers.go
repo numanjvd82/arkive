@@ -144,6 +144,10 @@ func normalizeFolderPath(folderPath string) string {
 	return cleaned
 }
 
+func NormalizeFolderPath(folderPath string) string {
+	return normalizeFolderPath(folderPath)
+}
+
 func (s *Service) ensureFolderPath(ctx context.Context, db database.PgExecutor, userID, folderPath string) error {
 	folderPath = normalizeFolderPath(folderPath)
 	if folderPath == "" {

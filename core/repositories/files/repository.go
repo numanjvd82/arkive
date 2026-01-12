@@ -411,7 +411,15 @@ func (r *Repository) ListCompletedForUser(ctx context.Context, db database.PgExe
 	return files, nil
 }
 
-func (r *Repository) ListCompletedForUserInFolder(ctx context.Context, db database.PgExecutor, userID, folderPath string) ([]models.File, error) {
+func (r *Repository) ListCompletedForUserInFolder(ctx context.Context, db database.PgExecutor, userID, folderPath, sort string, page, pageSize int) ([]models.File, error) {
+	if pageSize <= 0 {
+		pageSize = 25
+	}
+	if page <= 0 {
+		page = 1
+	}
+	offset := (page - 1) * pageSize
+	orderBy := resolveFilesOrderBy(sort)
 	query := `SELECT
 		id, user_id, bucket, object_key, folder_path, filename, content_type, size_bytes,
 		video_width, video_height, video_duration_seconds,
@@ -423,9 +431,9 @@ func (r *Repository) ListCompletedForUserInFolder(ctx context.Context, db databa
 		AND folder_path = $2
 		AND status = 'complete'
 		AND expires_at IS NULL
-	ORDER BY
-		created_at DESC`
-	rows, err := db.Query(ctx, query, userID, folderPath)
+	ORDER BY ` + orderBy + `
+	LIMIT $3 OFFSET $4`
+	rows, err := db.Query(ctx, query, userID, folderPath, pageSize, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -459,6 +467,42 @@ func (r *Repository) ListCompletedForUserInFolder(ctx context.Context, db databa
 		return nil, rows.Err()
 	}
 	return files, nil
+}
+
+func (r *Repository) CountCompletedForUserInFolder(ctx context.Context, db database.PgExecutor, userID, folderPath string) (int, error) {
+	query := `SELECT
+		COUNT(1)
+	FROM
+		files
+	WHERE
+		user_id = $1
+		AND folder_path = $2
+		AND status = 'complete'
+		AND expires_at IS NULL`
+	var count int
+	if err := db.QueryRow(ctx, query, userID, folderPath).Scan(&count); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+func resolveFilesOrderBy(sort string) string {
+	switch sort {
+	case "name_asc":
+		return "filename ASC"
+	case "name_desc":
+		return "filename DESC"
+	case "size_asc":
+		return "size_bytes ASC"
+	case "size_desc":
+		return "size_bytes DESC"
+	case "updated_asc":
+		return "updated_at ASC"
+	case "updated_desc":
+		return "updated_at DESC"
+	default:
+		return "updated_at DESC"
+	}
 }
 
 func (r *Repository) DeleteFileForUser(ctx context.Context, db database.PgExecutor, fileID, userID string) (bool, error) {

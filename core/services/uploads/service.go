@@ -1151,11 +1151,12 @@ func (s *Service) ListCompletedUploads(ctx context.Context, userID string) ([]mo
 }
 
 type FolderContents struct {
-	Folders []models.Folder
-	Files   []models.File
+	Folders    []models.Folder
+	Files      []models.File
+	TotalFiles int
 }
 
-func (s *Service) ListFolderContents(ctx context.Context, userID, folderPath string) (FolderContents, error) {
+func (s *Service) ListFolderContents(ctx context.Context, userID, folderPath, sort string, page, pageSize int) (FolderContents, error) {
 	var err error
 	userID, err = validateUserID(userID)
 	if err != nil {
@@ -1167,14 +1168,19 @@ func (s *Service) ListFolderContents(ctx context.Context, userID, folderPath str
 	if err != nil {
 		return FolderContents{}, err
 	}
-	files, err := s.fileRepo.ListCompletedForUserInFolder(ctx, s.db, userID, folderPath)
+	totalFiles, err := s.fileRepo.CountCompletedForUserInFolder(ctx, s.db, userID, folderPath)
+	if err != nil {
+		return FolderContents{}, err
+	}
+	files, err := s.fileRepo.ListCompletedForUserInFolder(ctx, s.db, userID, folderPath, sort, page, pageSize)
 	if err != nil {
 		return FolderContents{}, err
 	}
 
 	return FolderContents{
-		Folders: folders,
-		Files:   files,
+		Folders:    folders,
+		Files:      files,
+		TotalFiles: totalFiles,
 	}, nil
 }
 

@@ -11,6 +11,7 @@ import (
 	"arkive/core/web/pages"
 	appcontext "arkive/pkg/context"
 	"arkive/pkg/errs"
+	"arkive/pkg/pagination"
 	"arkive/pkg/video"
 )
 
@@ -27,7 +28,11 @@ func WebFiles(uploadService *uploads.Service) gin.HandlerFunc {
 			return
 		}
 
-		files, err := uploadService.ListCompletedUploads(c.Request.Context(), user.ID)
+		folderPath := uploads.NormalizeFolderPath(c.Query("path"))
+		sort := strings.TrimSpace(c.DefaultQuery("sort", "updated_desc"))
+		page := pagination.ParsePageParam(c.DefaultQuery("page", "1"))
+		pageSize := pagination.ParsePageSizeParam(c.DefaultQuery("pageSize", "25"))
+		contents, err := uploadService.ListFolderContents(c.Request.Context(), user.ID, folderPath, sort, page, pageSize)
 		if err != nil {
 			_ = c.Error(errs.WithStack(err))
 			c.AbortWithStatus(http.StatusInternalServerError)
@@ -42,7 +47,14 @@ func WebFiles(uploadService *uploads.Service) gin.HandlerFunc {
 
 		web.Render(c, pages.FilesPage(pages.FilesPageProps{
 			Ctx:           pages.ContextWithUser(user),
-			Files:         files,
+			FolderPath:    folderPath,
+			Folders:       contents.Folders,
+			Files:         contents.Files,
+			Query:         c.Request.URL.Query(),
+			Sort:          sort,
+			Page:          page,
+			PageSize:      pageSize,
+			TotalFiles:    contents.TotalFiles,
 			ArchivedCount: archivedCount,
 		}))
 	}
