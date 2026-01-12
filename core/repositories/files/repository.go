@@ -2,6 +2,7 @@ package filerepo
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"arkive/core/database"
@@ -215,6 +216,21 @@ func (r *Repository) CountActiveFilesForUser(ctx context.Context, db database.Pg
 	WHERE
 		user_id = $1
 		AND status IN ('pending', 'uploading', 'complete')`
+	if err := db.QueryRow(ctx, query, userID).Scan(&total); err != nil {
+		return 0, err
+	}
+	return total, nil
+}
+
+func (r *Repository) CountInFlightForUser(ctx context.Context, db database.PgExecutor, userID string) (int64, error) {
+	var total int64
+	query := `SELECT
+		COUNT(*)
+	FROM
+		files
+	WHERE
+		user_id = $1
+		AND status IN ('pending', 'uploading')`
 	if err := db.QueryRow(ctx, query, userID).Scan(&total); err != nil {
 		return 0, err
 	}
@@ -484,6 +500,31 @@ func (r *Repository) CountCompletedForUserInFolder(ctx context.Context, db datab
 		return 0, err
 	}
 	return count, nil
+}
+
+func (r *Repository) CountFilesInFolderTree(ctx context.Context, db database.PgExecutor, userID, folderPath string) (int, error) {
+	escapedPath := escapeLikePattern(folderPath)
+	likePattern := escapedPath + "/%"
+	query := `SELECT
+		COUNT(1)
+	FROM
+		files
+	WHERE
+		user_id = $1
+		AND status NOT IN ('failed', 'aborted')
+		AND (folder_path = $2 OR folder_path LIKE $3 ESCAPE '\')`
+	var count int
+	if err := db.QueryRow(ctx, query, userID, folderPath, likePattern).Scan(&count); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+func escapeLikePattern(value string) string {
+	value = strings.ReplaceAll(value, "\\", "\\\\")
+	value = strings.ReplaceAll(value, "%", "\\%")
+	value = strings.ReplaceAll(value, "_", "\\_")
+	return value
 }
 
 func resolveFilesOrderBy(sort string) string {

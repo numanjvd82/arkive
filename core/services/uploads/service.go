@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"math"
 	"sort"
 	"strings"
 	"time"
@@ -44,6 +45,9 @@ const (
 	MaxFileSizeBytes        int64 = 10 * 1024 * 1024 * 1024
 	MultipartThresholdBytes int64 = 200 * 1024 * 1024
 	FreeFileLimit                 = 10000
+	MaxQueueItems                 = 300
+	FreeUploadConcurrency         = 1
+	PremiumUploadConcurrency      = 10
 )
 
 type Service struct {
@@ -231,12 +235,13 @@ func (s *Service) finalizeFileCompletion(ctx context.Context, tx pgx.Tx, userID 
 	return nil
 }
 
-func (s *Service) markUploadFailed(ctx context.Context, userID, fileID string, sizeBytes int64) {
-	updated, err := s.fileRepo.UpdateFileStatusIf(ctx, s.db, fileID, FileStatusFailed, []string{FileStatusPending, FileStatusUploading})
+func (s *Service) markUploadFailed(ctx context.Context, userID string, file models.File) {
+	updated, err := s.fileRepo.UpdateFileStatusIf(ctx, s.db, file.ID, FileStatusFailed, []string{FileStatusPending, FileStatusUploading})
 	if err != nil || !updated {
 		return
 	}
-	_, _ = s.storageRepo.ReleaseReservedStorage(ctx, s.db, userID, sizeBytes)
+	_, _ = s.storageRepo.ReleaseReservedStorage(ctx, s.db, userID, file.SizeBytes)
+	_ = s.cleanupFolderPath(ctx, s.db, userID, file.FolderPath)
 }
 
 func buildCompletedFromList(listed []types.Part, totalParts int) ([]types.CompletedPart, []models.StoredPart, []int32) {
@@ -354,13 +359,31 @@ func (s *Service) StartUpload(ctx context.Context, userID, folderPath, filename 
 	if err := s.touchUserActivity(ctx, userID, isPremium); err != nil {
 		return models.UploadStartResponse{}, nil, err
 	}
+
+	inFlight, err := s.fileRepo.CountInFlightForUser(ctx, s.db, userID)
+	if err != nil {
+		return models.UploadStartResponse{}, nil, err
+	}
+	validationErrors := validation.New()
+	if inFlight >= MaxQueueItems {
+		validationErrors.Add("queue", ErrQueueLimitReached.Error())
+	}
+	if isPremium {
+		if inFlight >= PremiumUploadConcurrency {
+			validationErrors.Add("queue", ErrConcurrentLimit.Error())
+		}
+	} else if inFlight >= FreeUploadConcurrency {
+		validationErrors.Add("queue", ErrConcurrentLimit.Error())
+	}
+	if validationErrors.HasAny() {
+		return models.UploadStartResponse{}, validationErrors, nil
+	}
 	if !isPremium {
 		totalFiles, err := s.fileRepo.CountActiveFilesForUser(ctx, s.db, userID)
 		if err != nil {
 			return models.UploadStartResponse{}, nil, err
 		}
 		if totalFiles >= FreeFileLimit {
-			validationErrors := validation.New()
 			validationErrors.Add("files", ErrFileLimitReached.Error())
 			return models.UploadStartResponse{}, validationErrors, nil
 		}
@@ -770,7 +793,7 @@ func (s *Service) CompleteMultipart(ctx context.Context, userID, multipartID str
 		_, _ = s.uploadRepo.UpdateMultipartStatusIf(ctx, s.db, multipartID, MultipartStatusFailed, []string{MultipartStatusInitiated, MultipartStatusUploading})
 		file, fileErr := s.fileRepo.GetFileByID(ctx, s.db, upload.FileID)
 		if fileErr == nil {
-			s.markUploadFailed(ctx, userID, file.ID, file.SizeBytes)
+			s.markUploadFailed(ctx, userID, file)
 		}
 		return err
 	}
@@ -810,7 +833,7 @@ func (s *Service) CompleteMultipart(ctx context.Context, userID, multipartID str
 	if err != nil {
 		_ = tx.Rollback(ctx)
 		_, _ = s.uploadRepo.UpdateMultipartStatusIf(ctx, s.db, multipartID, MultipartStatusFailed, []string{MultipartStatusInitiated, MultipartStatusUploading})
-		s.markUploadFailed(ctx, userID, file.ID, file.SizeBytes)
+		s.markUploadFailed(ctx, userID, file)
 		_ = s.r2.DeleteObject(ctx, upload.ObjectKey)
 		return err
 	}
@@ -821,7 +844,7 @@ func (s *Service) CompleteMultipart(ctx context.Context, userID, multipartID str
 	if err := s.finalizeFileCompletion(ctx, tx, userID, file, actualSize); err != nil {
 		_ = tx.Rollback(ctx)
 		_, _ = s.uploadRepo.UpdateMultipartStatusIf(ctx, s.db, multipartID, MultipartStatusFailed, []string{MultipartStatusInitiated, MultipartStatusUploading})
-		s.markUploadFailed(ctx, userID, file.ID, file.SizeBytes)
+		s.markUploadFailed(ctx, userID, file)
 		_ = s.r2.DeleteObject(ctx, upload.ObjectKey)
 		return err
 	}
@@ -895,6 +918,10 @@ func (s *Service) AbortMultipart(ctx context.Context, userID, multipartID string
 		_ = tx.Rollback(ctx)
 		return ErrUploadFailed
 	}
+	if err := s.cleanupFolderPath(ctx, tx, userID, file.FolderPath); err != nil {
+		_ = tx.Rollback(ctx)
+		return err
+	}
 
 	if err := tx.Commit(ctx); err != nil {
 		return err
@@ -942,14 +969,14 @@ func (s *Service) CompleteSingleUpload(ctx context.Context, userID, fileID strin
 	actualSize, err := s.resolveAndPersistContentType(ctx, file, file.ObjectKey, tx)
 	if err != nil {
 		_ = tx.Rollback(ctx)
-		s.markUploadFailed(ctx, userID, file.ID, file.SizeBytes)
+		s.markUploadFailed(ctx, userID, file)
 		_ = s.r2.DeleteObject(ctx, file.ObjectKey)
 		return err
 	}
 
 	if err := s.finalizeFileCompletion(ctx, tx, userID, file, actualSize); err != nil {
 		_ = tx.Rollback(ctx)
-		s.markUploadFailed(ctx, userID, file.ID, file.SizeBytes)
+		s.markUploadFailed(ctx, userID, file)
 		_ = s.r2.DeleteObject(ctx, file.ObjectKey)
 		return err
 	}
@@ -1008,6 +1035,10 @@ func (s *Service) AbortSingleUpload(ctx context.Context, userID, fileID string) 
 	if !released {
 		_ = tx.Rollback(ctx)
 		return ErrUploadFailed
+	}
+	if err := s.cleanupFolderPath(ctx, tx, userID, file.FolderPath); err != nil {
+		_ = tx.Rollback(ctx)
+		return err
 	}
 
 	if err := tx.Commit(ctx); err != nil {
@@ -1171,6 +1202,18 @@ func (s *Service) ListFolderContents(ctx context.Context, userID, folderPath, so
 	totalFiles, err := s.fileRepo.CountCompletedForUserInFolder(ctx, s.db, userID, folderPath)
 	if err != nil {
 		return FolderContents{}, err
+	}
+	if page < 1 {
+		page = 1
+	}
+	if pageSize <= 0 {
+		pageSize = 25
+	}
+	if totalFiles > 0 {
+		totalPages := int(math.Ceil(float64(totalFiles) / float64(pageSize)))
+		if page > totalPages {
+			page = totalPages
+		}
 	}
 	files, err := s.fileRepo.ListCompletedForUserInFolder(ctx, s.db, userID, folderPath, sort, page, pageSize)
 	if err != nil {
