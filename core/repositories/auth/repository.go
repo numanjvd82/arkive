@@ -32,12 +32,12 @@ func (r *Repository) GetUserByEmail(ctx context.Context, db database.PgExecutor,
 	var user models.User
 	var hash *string
 	query := `SELECT
-		id, brand_name, email, password_hash
+		id, brand_name, email, password_hash, is_email_verified
 	FROM
 		users
 	WHERE
 		email = $1`
-	if err := db.QueryRow(ctx, query, email).Scan(&user.ID, &user.BrandName, &user.Email, &hash); err != nil {
+	if err := db.QueryRow(ctx, query, email).Scan(&user.ID, &user.BrandName, &user.Email, &hash, &user.IsEmailVerified); err != nil {
 		return models.User{}, nil, err
 	}
 	return user, hash, nil

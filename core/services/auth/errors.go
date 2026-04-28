@@ -14,6 +14,7 @@ var (
 	ErrGoogleEmailHasPassword    = errors.New("this email already has a password account")
 	ErrLoginUseGoogle            = errors.New("log in with google")
 	ErrEmailSendFailed           = errors.New("unable to send verification email")
+	ErrEmailNotVerified          = errors.New("please verify your email before logging in")
 
 	ErrEmailRequired           = errors.New("email is required")
 	ErrPasswordRequired        = errors.New("password is required")

@@ -96,6 +96,12 @@ func (s *Service) WebLogin(ctx context.Context, email, password, lastIP string) 
 		return "", time.Time{}, nil, err
 	}
 
+	if s.EmailVerificationEnabled() && !user.IsEmailVerified {
+		validationErrors := validation.New()
+		validationErrors.Add(validation.GeneralKey, ErrEmailNotVerified.Error())
+		return "", time.Time{}, validationErrors, nil
+	}
+
 	sessionID, expiresAt, err := s.createSession(ctx, tx, user.ID, lastIP)
 	if err != nil {
 		return "", time.Time{}, nil, err
