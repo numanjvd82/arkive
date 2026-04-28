@@ -243,7 +243,7 @@ func homeCTA() g.Node {
 					h.Class("cta-copy"),
 					h.Span(h.Class("eyebrow"), g.Text("Start free")),
 					h.H2(g.Text("Generous storage today. Share instantly.")),
-					h.P(g.Text("Create your account and start sharing instantly. Unlimited retention while active, no friction for recipients.")),
+					h.P(g.Text("Create your account and start sharing instantly. Files are kept while your account stays active.")),
 				),
 				h.Div(
 					h.Class("cta-actions"),

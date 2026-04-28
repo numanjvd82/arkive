@@ -15,7 +15,7 @@ func PricingPage(props PricingPageProps) web.Page {
 	_ = props
 	return web.Page{
 		Title:         "Arkive · Pricing & Fair Use",
-		Description:   "See Arkive pricing, fair use policy, and what is included in the free plan and upcoming premium tiers.",
+		Description:   "See Arkive pricing and fair use policy for our storage-first file sharing MVP.",
 		CanonicalPath: "/pricing",
 		OGImage:       DefaultOGImage,
 		Robots:        RobotsIndex,
@@ -33,10 +33,10 @@ func pricingBody() g.Node {
 			h.Div(
 				h.Class("container"),
 				h.H1(g.Text("Pricing & Fair Use")),
-				h.P(h.Class("pricing-meta"), g.Text("Last updated January 02, 2026")),
+				h.P(h.Class("pricing-meta"), g.Text("Last updated April 28, 2026")),
 				h.P(
 					h.Class("pricing-intro"),
-					g.Text("Arkive is free with generous storage and fair-use limits. Unlimited uploads, fair-use storage, and unlimited retention while active."),
+					g.Text("Arkive is a storage + file sharing MVP. Plans include storage caps and monthly bandwidth limits to keep the service stable and fair."),
 				),
 			),
 		),
@@ -54,18 +54,20 @@ func pricingBody() g.Node {
 								h.Tr(
 									h.Th(g.Text("Feature")),
 									h.Th(g.Text("Free")),
-									h.Th(g.Text("Premium (coming soon)")),
+									h.Th(g.Text("Starter")),
+									h.Th(g.Text("Pro")),
+									h.Th(g.Text("Max")),
 								),
 							),
 							h.TBody(
-								pricingRow("Price", "Free", "Coming soon"),
-								pricingRow("Storage", "10 GB included (Fair Use)", "Unlimited (higher tiers)"),
-								pricingRow("Retention", "Unlimited while active", "Unlimited"),
-								pricingRow("Upload speed", "Normal", "Priority"),
-								pricingRow("File limit", "10,000 files", "Higher limits"),
-								pricingRow("Share links", "Unlimited", "Unlimited"),
-								pricingRow("Ads", "Yes", "No"),
-								pricingRow("Support", "Standard email support", "Priority support"),
+								pricingRow5("Price", "Free", "$9/month", "$19/month", "$29/month"),
+								pricingRow5("Storage", "10 GB", "100 GB", "500 GB", "1 TB"),
+								pricingRow5("Bandwidth / month", "100 GB (Fair Use)", "250 GB", "750 GB", "1–2 TB (Fair Use)"),
+								pricingRow5("Public share links", "Yes", "Yes", "Yes", "Yes"),
+								pricingRow5("Ads", "Enabled", "No ads", "No ads", "No ads"),
+								pricingRow5("Inactivity archive", "After 30 days", "After 30 days", "After 30 days", "After 30 days"),
+								pricingRow5("Upload priority", "Standard", "Faster uploads", "Priority uploads", "Highest priority"),
+								pricingRow5("Support", "Standard", "Standard", "Priority", "Highest priority"),
 							),
 						),
 					),
@@ -75,37 +77,32 @@ func pricingBody() g.Node {
 					h.H2(g.Text("Fair Use Policy")),
 					h.P(
 						h.Class("fairuse-intro"),
-						g.Text("Arkive is built for real people, not bots or servers. To keep things fast and fair, we use a few automatic limits."),
+						g.Text("Arkive is a storage and file sharing platform (MVP stage). Fair use limits help prevent abuse and keep performance consistent for everyone."),
 					),
 					h.Ul(
 						h.Class("fairuse-list"),
-						h.Li(g.Text("Uploads are unlimited. Storage is capped at 10 GB total for free accounts.")),
+						h.Li(g.Text("Storage limits are set per plan (see table above).")),
+						h.Li(g.Text("Bandwidth limits apply per plan and reset monthly.")),
 						h.Li(g.Text("Accounts with no login or file activity for 30 days may be archived.")),
 						h.Li(g.Text("Activity means owner logins or authenticated actions; public link views do not count.")),
-						h.Li(g.Text("Free restores are limited to 2 GB/day.")),
-						h.Li(g.Text("Archived files are not immediately accessible. Log in to restore them (may take a short time).")),
-						h.Li(g.Text("Archived files are deleted after 7 days unless they are restored or upgraded.")),
+						h.Li(g.Text("Restores from archive are limited to 2 GB/day.")),
+						h.Li(g.Text("Archived files may take a short time to restore.")),
+						h.Li(g.Text("Archived files are deleted after 7 days unless restored or upgraded.")),
 						h.Li(g.Text("We email you before archiving or deleting files.")),
-						h.Li(g.Text("Share as many links as you want, as long as it is real usage (not link farms or spam).")),
-						h.Li(g.Text("No abusive behavior, including hotlinking, scraping, or using Arkive as a backup mirror.")),
-						h.Li(g.Text("Public sharing of illegal content will result in immediate suspension.")),
-						h.Li(g.Text("If you need more speed or higher limits, just ask.")),
+						h.Li(g.Text("Abuse protection: no spam, link farms, scraping, hotlinking misuse, or using Arkive as a public mirror.")),
+						h.Li(g.Text("Illegal content or repeated abuse can result in suspension.")),
 					),
 					h.H3(g.Text("What happens if limits are hit")),
 					h.Ul(
 						h.Class("fairuse-list"),
-						h.Li(g.Text("Temporary throttling or reduced speeds.")),
-						h.Li(g.Text("Limits reduction or archive state for inactive accounts.")),
-						h.Li(g.Text("Deletion after notice for prolonged inactivity.")),
-						h.Li(g.Text("Account suspension for illegal or abusive use.")),
+						h.Li(g.Text("Uploads/downloads may be throttled temporarily.")),
+						h.Li(g.Text("Uploads may be paused until the next billing month or until you upgrade.")),
+						h.Li(g.Text("Inactive accounts may be archived after notice.")),
+						h.Li(g.Text("Severe or illegal abuse can result in suspension.")),
 					),
 					h.P(
 						h.Class("fairuse-note"),
-						g.Text("We rarely need to enforce limits and will reach out if anything needs attention. Contact support@arkive.sh."),
-					),
-					h.P(
-						h.Class("fairuse-intro"),
-						g.Text("Have a special use case (YouTuber? Educator? Community archive?) We would love to help. Just reach out."),
+						g.Text("If you hit limits for legitimate reasons, email support@arkive.sh and we’ll help you pick the right plan or a higher limit."),
 					),
 				),
 			),
@@ -113,10 +110,12 @@ func pricingBody() g.Node {
 	)
 }
 
-func pricingRow(feature, free, premium string) g.Node {
+func pricingRow5(feature, free, starter, pro, max string) g.Node {
 	return h.Tr(
 		h.Th(g.Text(feature)),
 		h.Td(g.Text(free)),
-		h.Td(g.Text(premium)),
+		h.Td(g.Text(starter)),
+		h.Td(g.Text(pro)),
+		h.Td(g.Text(max)),
 	)
 }
