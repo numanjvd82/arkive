@@ -44,6 +44,10 @@ func signUpBody(props SignupPageProps) g.Node {
 				Subtitle: "Create your Arkive workspace.",
 				Class:    "auth-card",
 				Body: []g.Node{
+					h.P(
+						h.Class("auth-helper"),
+						g.Text("We’ll send a confirmation link to your email."),
+					),
 					h.Form(
 						h.Class("auth-form"),
 						g.Attr("method", "POST"),

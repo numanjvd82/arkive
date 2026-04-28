@@ -13,6 +13,7 @@ var (
 	ErrGoogleClientNotConfigured = errors.New("google client id is not configured")
 	ErrGoogleEmailHasPassword    = errors.New("this email already has a password account")
 	ErrLoginUseGoogle            = errors.New("log in with google")
+	ErrEmailSendFailed           = errors.New("unable to send verification email")
 
 	ErrEmailRequired           = errors.New("email is required")
 	ErrPasswordRequired        = errors.New("password is required")

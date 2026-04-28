@@ -42,3 +42,10 @@
   text-align: center;
   color: var(--muted);
 }
+
+.auth-helper {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
+}

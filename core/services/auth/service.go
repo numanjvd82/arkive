@@ -16,6 +16,7 @@ import (
 	"arkive/core/database"
 	"arkive/core/models"
 	authrepo "arkive/core/repositories/auth"
+	emailverifyrepo "arkive/core/repositories/emailverify"
 	sessionrepo "arkive/core/repositories/session"
 	usersrepo "arkive/core/repositories/users"
 	"arkive/pkg/tokens"
@@ -23,10 +24,14 @@ import (
 )
 
 type Service struct {
-	db             database.PgPool
-	authRepo       *authrepo.Repository
-	sessionRepo    *sessionrepo.Repository
-	userRepo       *usersrepo.Repository
+	db              database.PgPool
+	authRepo        *authrepo.Repository
+	sessionRepo     *sessionrepo.Repository
+	userRepo        *usersrepo.Repository
+	emailVerifyRepo *emailverifyrepo.Repository
+
+	emailSender    EmailSender
+	publicBaseURL  string
 	sessionTTL     time.Duration
 	googleClientID string
 }
@@ -44,12 +49,13 @@ func NewService(
 	cfg Config,
 ) *Service {
 	return &Service{
-		db:             db,
-		authRepo:       authRepo,
-		sessionRepo:    sessionRepo,
-		userRepo:       userRepo,
-		sessionTTL:     cfg.SessionTTL,
-		googleClientID: cfg.GoogleClientID,
+		db:              db,
+		authRepo:        authRepo,
+		sessionRepo:     sessionRepo,
+		userRepo:        userRepo,
+		emailVerifyRepo: emailverifyrepo.New(),
+		sessionTTL:      cfg.SessionTTL,
+		googleClientID:  cfg.GoogleClientID,
 	}
 }
 
@@ -175,10 +181,18 @@ func (s *Service) WebSignup(ctx context.Context, brandName, email, password, con
 		return nil, err
 	}
 
-	_, err = s.authRepo.CreateUser(ctx, tx, brandName, email, string(hash))
+	user, err := s.authRepo.CreateUser(ctx, tx, brandName, email, string(hash))
 	if err != nil {
 		_ = tx.Rollback(ctx)
 		return nil, err
+	}
+
+	// Best-effort email verification; if email provider isn't configured (dev), this is a no-op.
+	if err := s.sendEmailVerification(ctx, tx, user.ID, email); err != nil {
+		_ = tx.Rollback(ctx)
+		// Treat email send as part of signup: no email means no account.
+		validationErrors.Add(validation.GeneralKey, ErrEmailSendFailed.Error())
+		return validationErrors, nil
 	}
 
 	if err := tx.Commit(ctx); err != nil {
@@ -456,4 +470,8 @@ func (s *Service) createSession(ctx context.Context, db database.PgExecutor, use
 
 func (s *Service) GoogleClientID() string {
 	return s.googleClientID
+}
+
+func (s *Service) EmailVerificationEnabled() bool {
+	return s.emailSender != nil && strings.TrimSpace(s.publicBaseURL) != ""
 }

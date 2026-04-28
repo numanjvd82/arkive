@@ -16,6 +16,7 @@ import (
 	"arkive/core/services/shares"
 	"arkive/core/services/uploads"
 	"arkive/core/web"
+	"arkive/pkg/email"
 )
 
 func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) *gin.Engine {
@@ -26,6 +27,13 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 		SessionTTL:     cfg.SessionTTL,
 		GoogleClientID: cfg.GoogleClientID,
 	})
+	if cfg.PostmarkServerToken != "" {
+		sender, err := email.NewPostmarkSender(cfg.PostmarkServerToken)
+		if err != nil {
+			panic("email sender failed: " + err.Error())
+		}
+		authService.ConfigureEmailVerification(sender, auth.VerifyConfig{PublicBaseURL: cfg.PublicBaseURL})
+	}
 	shareService := shares.NewService(db, filerepo.New(), sharerepo.New())
 
 	r.StaticFS("/static", web.StaticFS("static"))
@@ -60,6 +68,7 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 	r.POST("/login", handlers.WebLoginPost(authService))
 	r.GET("/signup", handlers.WebSignupGet(authService))
 	r.POST("/signup", handlers.WebSignupPost(authService))
+	r.GET("/verify-email", handlers.WebVerifyEmail(authService))
 	r.POST("/auth/google", handlers.WebGoogleLogin(authService))
 
 	protected := r.Group("/")

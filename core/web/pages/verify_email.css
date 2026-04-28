@@ -1,0 +1,22 @@
+.auth-page {
+  display: flex;
+  flex-direction: column;
+}
+
+.auth-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 18px;
+  background: var(--bg);
+}
+
+.auth-card {
+  width: min(420px, 92vw);
+}
+
+.verify-actions {
+  display: grid;
+  gap: 12px;
+}

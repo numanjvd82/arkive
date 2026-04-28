@@ -42,3 +42,13 @@
   text-align: center;
   color: var(--muted);
 }
+
+.auth-message {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(107, 209, 230, 0.12);
+  color: var(--accent-cool);
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
+}

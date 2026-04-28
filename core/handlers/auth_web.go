@@ -26,8 +26,18 @@ func WebLoginGet(svc *auth.Service) gin.HandlerFunc {
 			return
 		}
 
+		msg := ""
+		switch strings.TrimSpace(c.Query("msg")) {
+		case "check-your-email":
+			if svc.EmailVerificationEnabled() {
+				msg = "Account created. Check your email to confirm your address."
+			}
+		case "account-created":
+			msg = "Account created. You can log in now."
+		}
 		webPage := pages.LoginPage(pages.LoginPageProps{
 			Ctx:            pages.PageContext{},
+			Message:        msg,
 			GoogleClientID: svc.GoogleClientID(),
 		})
 		web.Render(c, webPage)
@@ -77,6 +87,7 @@ func WebLoginPost(svc *auth.Service) gin.HandlerFunc {
 					validation.GeneralKey: "Please fill out the form.",
 				},
 				Email:          strings.TrimSpace(c.PostForm("email")),
+				Message:        "",
 				GoogleClientID: svc.GoogleClientID(),
 			}))
 			return
@@ -88,6 +99,7 @@ func WebLoginPost(svc *auth.Service) gin.HandlerFunc {
 				Ctx:            pages.PageContext{},
 				Errors:         validationErrors,
 				Email:          strings.TrimSpace(form.Email),
+				Message:        "",
 				GoogleClientID: svc.GoogleClientID(),
 			}))
 			return
@@ -158,7 +170,11 @@ func WebSignupPost(svc *auth.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.Redirect(http.StatusSeeOther, "/login")
+		if svc.EmailVerificationEnabled() {
+			c.Redirect(http.StatusSeeOther, "/login?msg=check-your-email")
+			return
+		}
+		c.Redirect(http.StatusSeeOther, "/login?msg=account-created")
 	}
 }
 

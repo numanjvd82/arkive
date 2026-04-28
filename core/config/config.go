@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -18,6 +19,9 @@ type Config struct {
 	R2Bucket          string
 	R2Endpoint        string
 	R2Region          string
+
+	PublicBaseURL       string
+	PostmarkServerToken string
 }
 
 func Load() (Config, error) {
@@ -71,6 +75,19 @@ func Load() (Config, error) {
 		r2Region = "auto"
 	}
 
+	publicBaseURL := strings.TrimSpace(os.Getenv("PUBLIC_BASE_URL"))
+	if publicBaseURL == "" {
+		publicBaseURL = "https://arkive.sh"
+	}
+
+	postmarkServerToken := strings.TrimSpace(os.Getenv("POSTMARK_SERVER_TOKEN"))
+	// Email verification can be skipped only in dev.
+	if env != "dev" {
+		if postmarkServerToken == "" {
+			return Config{}, errors.New("POSTMARK_SERVER_TOKEN is required")
+		}
+	}
+
 	return Config{
 		DatabaseURL:       dsn,
 		Port:              addr,
@@ -83,6 +100,9 @@ func Load() (Config, error) {
 		R2Bucket:          r2Bucket,
 		R2Endpoint:        r2Endpoint,
 		R2Region:          r2Region,
+
+		PublicBaseURL:       publicBaseURL,
+		PostmarkServerToken: postmarkServerToken,
 	}, nil
 }
 
