@@ -110,7 +110,5 @@ func buildHeadNodes(data LayoutData) []g.Node {
 	for _, src := range data.JS {
 		headNodes = append(headNodes, h.Script(h.Src(src), h.Defer()))
 	}
-	// Adsterra Popunder (requested placement: right before closing </head>)
-	headNodes = append(headNodes, h.Script(h.Src("https://pl29292461.profitablecpmratenetwork.com/2a/57/c3/2a57c307624103fb74caf2fe8afb0d43.js")))
 	return headNodes
 }

@@ -18,22 +18,23 @@ func AuthLayout(data LayoutData, content ...g.Node) g.Node {
 		pageTitle = "arkive.sh"
 	}
 
+	headNodes := append(buildHeadNodes(LayoutData{
+		Title:         pageTitle,
+		Description:   data.Description,
+		CanonicalURL:  data.CanonicalURL,
+		Robots:        data.Robots,
+		OGTitle:       data.OGTitle,
+		OGDescription: data.OGDescription,
+		OGImage:       data.OGImage,
+		OGType:        data.OGType,
+		TwitterCard:   data.TwitterCard,
+		JSONLD:        data.JSONLD,
+		CSS:           data.CSS,
+		JS:            data.JS,
+	}), h.Script(h.Src("https://pl29292461.profitablecpmratenetwork.com/2a/57/c3/2a57c307624103fb74caf2fe8afb0d43.js")))
 	return h.Doctype(h.HTML(
 		h.Lang("en"),
-		h.Head(buildHeadNodes(LayoutData{
-			Title:         pageTitle,
-			Description:   data.Description,
-			CanonicalURL:  data.CanonicalURL,
-			Robots:        data.Robots,
-			OGTitle:       data.OGTitle,
-			OGDescription: data.OGDescription,
-			OGImage:       data.OGImage,
-			OGType:        data.OGType,
-			TwitterCard:   data.TwitterCard,
-			JSONLD:        data.JSONLD,
-			CSS:           data.CSS,
-			JS:            data.JS,
-		})...),
+		h.Head(headNodes...),
 		h.Body(
 			g.If(data.User != nil, g.Attr("data-user-premium", fmt.Sprintf("%t", data.User.IsPremium))),
 			components.InlineStyle(components.AuthLayoutCSS),
