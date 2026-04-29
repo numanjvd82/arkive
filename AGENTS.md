@@ -43,5 +43,4 @@
 ## Recent Updates
 - Added `pkg/validation` for reusable validation helpers and error maps.
 - Auth signup checks uniqueness via repo lookups (`GetUserByEmail`, `GetUserByBrandName`) before insert.
-- Added AdBlock detection modal using shared Dialog/Button components for authenticated pages.
 - Review `TODO.md` and suggest next steps when that implementation is being discussed.

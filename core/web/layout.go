@@ -1,14 +1,11 @@
 package web
 
 import (
-	"strings"
-
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
 
 	"arkive/core/models"
 	"arkive/core/web/components"
-	"arkive/pkg/ads"
 )
 
 type LayoutData struct {
@@ -111,11 +108,7 @@ func buildHeadNodes(data LayoutData) []g.Node {
 	if data.JSONLD != "" {
 		headNodes = append(headNodes, h.Script(h.Type("application/ld+json"), g.Raw(data.JSONLD)))
 	}
-	adblockDisabled := ads.AdblockModalDisabled()
 	for _, src := range data.JS {
-		if adblockDisabled && strings.Contains(src, "monetag-") {
-			continue
-		}
 		headNodes = append(headNodes, h.Script(h.Src(src), h.Defer()))
 	}
 	return headNodes

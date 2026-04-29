@@ -10,7 +10,6 @@ import (
 
 	"arkive/core/models"
 	"arkive/core/web/components"
-	"arkive/pkg/ads"
 )
 
 func AuthLayout(data LayoutData, content ...g.Node) g.Node {
@@ -18,7 +17,6 @@ func AuthLayout(data LayoutData, content ...g.Node) g.Node {
 	if pageTitle == "" {
 		pageTitle = "arkive.sh"
 	}
-	adblockDisabled := ads.AdblockModalDisabled()
 
 	return h.Doctype(h.HTML(
 		h.Lang("en"),
@@ -37,7 +35,6 @@ func AuthLayout(data LayoutData, content ...g.Node) g.Node {
 			JS:            data.JS,
 		})...),
 		h.Body(
-			g.If(data.User != nil && !data.User.IsPremium && !adblockDisabled, g.Attr("data-monetag-expected", "true")),
 			g.If(data.User != nil, g.Attr("data-user-premium", fmt.Sprintf("%t", data.User.IsPremium))),
 			components.InlineStyle(components.AuthLayoutCSS),
 			h.Div(
@@ -48,7 +45,6 @@ func AuthLayout(data LayoutData, content ...g.Node) g.Node {
 				h.Div(h.Class("app-content"), g.Group(content)),
 				authFooter(),
 			),
-			g.If(data.User != nil && !data.User.IsPremium && !adblockDisabled, components.AdBlockModal()),
 			components.ToastHost(),
 		),
 	))
