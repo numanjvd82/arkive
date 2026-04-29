@@ -15,7 +15,7 @@ func PricingPage(props PricingPageProps) web.Page {
 	_ = props
 	return web.Page{
 		Title:         "Arkive · Pricing & Fair Use",
-		Description:   "See Arkive pricing and fair use policy for our storage-first file sharing MVP.",
+		Description:   "See Arkive pricing and fair use policy for our storage-first file sharing platform.",
 		CanonicalPath: "/pricing",
 		OGImage:       DefaultOGImage,
 		Robots:        RobotsIndex,
@@ -34,10 +34,10 @@ func pricingBody() g.Node {
 				h.Class("container"),
 				h.H1(g.Text("Pricing & Fair Use")),
 				h.P(h.Class("pricing-meta"), g.Text("Last updated April 28, 2026")),
-				h.P(
-					h.Class("pricing-intro"),
-					g.Text("Arkive is a storage + file sharing MVP. Plans include storage caps and monthly bandwidth limits to keep the service stable and fair."),
-				),
+					h.P(
+						h.Class("pricing-intro"),
+						g.Text("Arkive is a storage-first file sharing platform. Plans include storage caps and monthly bandwidth limits to keep the service stable and fair."),
+					),
 			),
 		),
 		h.Div(
@@ -77,7 +77,7 @@ func pricingBody() g.Node {
 					h.H2(g.Text("Fair Use Policy")),
 					h.P(
 						h.Class("fairuse-intro"),
-						g.Text("Arkive is a storage and file sharing platform (MVP stage). Fair use limits help prevent abuse and keep performance consistent for everyone."),
+						g.Text("Arkive is a storage and file sharing platform. Fair use limits help prevent abuse and keep performance consistent for everyone."),
 					),
 					h.Ul(
 						h.Class("fairuse-list"),
