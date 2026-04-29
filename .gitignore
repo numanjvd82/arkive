@@ -1,4 +1,4 @@
-.env
+.env*
 *.log
 /bin/
 /tmp/
@@ -8,7 +8,7 @@ coverage.out
 # Docker files
 docker-compose.yml
 
-# Dumps 
+# Dumps
 *.dump
 
 # Scripts
