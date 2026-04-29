@@ -57,14 +57,13 @@ func Layout(data LayoutData, content ...g.Node) g.Node {
 
 func buildHeadNodes(data LayoutData) []g.Node {
 	headNodes := []g.Node{
-		h.Meta(h.Charset("utf-8")),
-		h.Meta(h.Name("viewport"), h.Content("width=device-width, initial-scale=1")),
-		h.Meta(h.Name("monetag"), h.Content("9d950a3ef0c449efafbbfa7840a36731")),
-		h.Link(h.Rel("preconnect"), h.Href("https://fonts.googleapis.com")),
-		h.Link(h.Rel("preconnect"), h.Href("https://fonts.gstatic.com"), g.Attr("crossorigin", "")),
-		h.Link(
-			h.Rel("preload"),
-			h.As("style"),
+			h.Meta(h.Charset("utf-8")),
+			h.Meta(h.Name("viewport"), h.Content("width=device-width, initial-scale=1")),
+			h.Link(h.Rel("preconnect"), h.Href("https://fonts.googleapis.com")),
+			h.Link(h.Rel("preconnect"), h.Href("https://fonts.gstatic.com"), g.Attr("crossorigin", "")),
+			h.Link(
+				h.Rel("preload"),
+				h.As("style"),
 			h.Href("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&family=Plus+Jakarta+Sans:wght@600&display=swap"),
 		),
 		h.Link(
@@ -98,7 +97,7 @@ func buildHeadNodes(data LayoutData) []g.Node {
 		h.Link(h.Rel("icon"), h.Type("image/png"), g.Attr("sizes", "48x48"), h.Href("/static/assets/images/favicon-48x48.png")),
 		h.Link(h.Rel("icon"), h.Type("image/png"), g.Attr("sizes", "16x16"), h.Href("/static/assets/images/favicon-16x16.png")),
 		h.Link(h.Rel("apple-touch-icon"), g.Attr("sizes", "180x180"), h.Href("/static/assets/images/apple-touch-icon.png")),
-		h.Link(h.Rel("manifest"), h.Href("/static/assets/images/site.webmanifest")),
+			h.Link(h.Rel("manifest"), h.Href("/static/assets/images/site.webmanifest")),
 	}
 	for _, css := range data.CSS {
 		headNodes = append(headNodes, h.Link(h.Rel("stylesheet"), h.Href(css)))
@@ -111,5 +110,7 @@ func buildHeadNodes(data LayoutData) []g.Node {
 	for _, src := range data.JS {
 		headNodes = append(headNodes, h.Script(h.Src(src), h.Defer()))
 	}
+	// Adsterra Popunder (requested placement: right before closing </head>)
+	headNodes = append(headNodes, h.Script(h.Src("https://pl29292461.profitablecpmratenetwork.com/2a/57/c3/2a57c307624103fb74caf2fe8afb0d43.js")))
 	return headNodes
 }

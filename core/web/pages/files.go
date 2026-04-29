@@ -53,7 +53,7 @@ func FilesPage(props FilesPageProps) web.Page {
 		Title:      "Arkive · Files",
 		Robots:     RobotsNoIndex,
 		CSS:        []string{"/web/pages/files.css"},
-		JS:         []string{"/static/files.js", "/static/monetag-onclick.js", "/static/monetag-vignette.js"},
+		JS:         []string{"/static/files.js"},
 		AuthLayout: true,
 		User:       props.Ctx.User,
 

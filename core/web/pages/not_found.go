@@ -25,7 +25,6 @@ func NotFoundPage(props NotFoundPageProps) web.Page {
 		Title:  title,
 		Robots: RobotsNoIndex,
 		CSS:    []string{"/web/pages/not_found.css"},
-		JS:     []string{"/static/monetag-onclick.js", "/static/monetag-vignette.js"},
 		User:   props.Ctx.User,
 		Body: h.Main(
 			h.Class("not-found"),

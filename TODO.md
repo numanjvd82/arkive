@@ -17,7 +17,7 @@
 - Add `ads.txt` for search/revenue support.
 - Add "Show on Google and other search engines" option for public shares; default off, and only index when enabled.
 - Add ad provider name to Privacy Policy and Cookie Policy once finalized.
-- Adblock detection: add Brave Shields stub-response check for Monetag (fetch one script, check stub markers) to reduce false negatives. Also make it more reliable across browsers.
+- Adblock detection: deprecated (removed).
 - Add governing law and dispute venue to Terms of Service after company registration.
 - Add company address and phone to Terms of Service after company registration.
 - Add rewards disclaimer to Privacy Policy (availability, fraud checks, subject to change).

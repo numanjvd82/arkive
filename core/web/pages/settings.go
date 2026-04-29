@@ -70,7 +70,6 @@ func SettingsPage(props SettingsPageProps) web.Page {
 		Title:      "Arkive · Settings",
 		Robots:     RobotsNoIndex,
 		CSS:        []string{"/web/pages/settings.css"},
-		JS:         []string{"/static/monetag-onclick.js", "/static/monetag-vignette.js"},
 		AuthLayout: true,
 		User:       user,
 		Body: h.Main(

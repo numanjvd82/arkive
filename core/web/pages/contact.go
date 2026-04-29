@@ -21,7 +21,6 @@ func ContactPage(props ContactPageProps) web.Page {
 		OGImage:       DefaultOGImage,
 		Robots:        RobotsIndex,
 		CSS:           []string{"/web/pages/contact.css"},
-		JS:            []string{"/static/monetag-onclick.js", "/static/monetag-vignette.js"},
 		Body:          contactBody(),
 	}
 }

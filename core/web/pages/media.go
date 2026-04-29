@@ -201,7 +201,7 @@ func buildMediaCSS(props MediaViewPageProps) []string {
 }
 
 func buildMediaJS(props MediaViewPageProps) []string {
-	js := []string{"/static/media.js", "/static/monetag-onclick.js", "/static/monetag-vignette.js"}
+	js := []string{"/static/media.js"}
 	if props.IsVideo {
 		js = append([]string{
 			"https://cdn.plyr.io/3.7.8/plyr.polyfilled.js",

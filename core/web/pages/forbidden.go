@@ -92,5 +92,5 @@ func buildForbiddenJS(showAds bool) []string {
 	if !showAds {
 		return nil
 	}
-	return []string{"/static/monetag-onclick.js", "/static/monetag-vignette.js"}
+	return nil
 }

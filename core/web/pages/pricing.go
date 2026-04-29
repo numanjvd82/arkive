@@ -20,7 +20,6 @@ func PricingPage(props PricingPageProps) web.Page {
 		OGImage:       DefaultOGImage,
 		Robots:        RobotsIndex,
 		CSS:           []string{"/web/pages/pricing.css"},
-		JS:            []string{"/static/monetag-onclick.js", "/static/monetag-vignette.js"},
 		Body:          pricingBody(),
 	}
 }
