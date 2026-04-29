@@ -240,7 +240,7 @@ func APIDownloadFile(svc *uploads.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"url": url})
+		c.Redirect(http.StatusFound, url)
 	}
 }
 
