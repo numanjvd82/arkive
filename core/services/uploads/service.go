@@ -29,13 +29,6 @@ const (
 	FileStatusAborted   = "aborted"
 )
 
-const (
-	MaxFileSizeBytes   int64 = 10 * 1024 * 1024 * 1024
-	MaxFileCount             = 10000
-	MaxQueueItems            = 300
-	MaxUploadConcurrency     = 10
-)
-
 type Service struct {
 	db                  database.PgPool
 	storageRepo         *storagerepo.Repository
@@ -48,12 +41,18 @@ type Service struct {
 	uploadExpires       time.Duration
 	downloadExpire      time.Duration
 	shareDownloadExpire time.Duration
+	maxFileSizeBytes    int64
+	maxUploadConcurrency int
+	maxQueueItems       int
 }
 
 type Config struct {
-	UploadExpires       time.Duration
-	DownloadExpire      time.Duration
-	ShareDownloadExpire time.Duration
+	UploadExpires        time.Duration
+	DownloadExpire       time.Duration
+	ShareDownloadExpire  time.Duration
+	MaxFileSizeBytes     int64
+	MaxUploadConcurrency int
+	MaxQueueItems        int
 }
 
 func NewService(
@@ -68,21 +67,24 @@ func NewService(
 	cfg Config,
 ) *Service {
 	return &Service{
-		db:                  db,
-		storageRepo:         storageRepo,
-		fileRepo:            fileRepo,
-		folderRepo:          folderRepo,
-		uploadRepo:          uploadRepo,
-		usageRepo:           usageRepo,
-		userRepo:            userRepo,
-		storage:             storageProvider,
-		uploadExpires:       cfg.UploadExpires,
-		downloadExpire:      cfg.DownloadExpire,
-		shareDownloadExpire: cfg.ShareDownloadExpire,
+		db:                   db,
+		storageRepo:          storageRepo,
+		fileRepo:             fileRepo,
+		folderRepo:           folderRepo,
+		uploadRepo:           uploadRepo,
+		usageRepo:            usageRepo,
+		userRepo:             userRepo,
+		storage:              storageProvider,
+		uploadExpires:        cfg.UploadExpires,
+		downloadExpire:       cfg.DownloadExpire,
+		shareDownloadExpire:  cfg.ShareDownloadExpire,
+		maxFileSizeBytes:     cfg.MaxFileSizeBytes,
+		maxUploadConcurrency: cfg.MaxUploadConcurrency,
+		maxQueueItems:        cfg.MaxQueueItems,
 	}
 }
 
-func validateStartInput(userID, filename string, sizeBytes int64) (validation.Errors, error) {
+func (s *Service) validateStartInput(userID, filename string, sizeBytes int64) (validation.Errors, error) {
 	validationErrors := validation.New()
 	if strings.TrimSpace(userID) == "" {
 		return nil, ErrUnauthorized
@@ -93,7 +95,7 @@ func validateStartInput(userID, filename string, sizeBytes int64) (validation.Er
 	if sizeBytes <= 0 {
 		validationErrors.Add("size", ErrFileSizeRequired.Error())
 	}
-	if sizeBytes > MaxFileSizeBytes {
+	if sizeBytes > s.maxFileSizeBytes {
 		validationErrors.Add("size", ErrFileTooLarge.Error())
 	}
 	if validationErrors.HasAny() {
@@ -164,7 +166,7 @@ func (s *Service) finalizeFileCompletion(ctx context.Context, tx pgx.Tx, userID 
 	if actualSize <= 0 {
 		return ErrUploadFailed
 	}
-	if actualSize > MaxFileSizeBytes {
+	if actualSize > s.maxFileSizeBytes {
 		return ErrFileTooLarge
 	}
 
@@ -235,10 +237,10 @@ func (s *Service) StartUpload(ctx context.Context, userID, folderPath, filename 
 		return models.UploadStartResponse{}, nil, err
 	}
 	validationErrors := validation.New()
-	if inFlight >= MaxQueueItems {
+	if inFlight >= int64(s.maxQueueItems) {
 		validationErrors.Add("queue", ErrQueueLimitReached.Error())
 	}
-	if inFlight >= MaxUploadConcurrency {
+	if inFlight >= int64(s.maxUploadConcurrency) {
 		validationErrors.Add("queue", ErrConcurrentLimit.Error())
 	}
 	if validationErrors.HasAny() {
@@ -296,7 +298,7 @@ func (s *Service) StartSingleUpload(ctx context.Context, userID, folderPath, fil
 	folderPath = normalizeFolderPath(folderPath)
 	contentType = strings.TrimSpace(contentType)
 
-	validationErrors, err := validateStartInput(userID, filename, sizeBytes)
+	validationErrors, err := s.validateStartInput(userID, filename, sizeBytes)
 	if err != nil {
 		return models.SingleStartResponse{}, nil, err
 	}

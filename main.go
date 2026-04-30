@@ -73,6 +73,9 @@ func main() {
 			UploadExpires:       15 * time.Minute,
 			DownloadExpire:      3 * time.Hour,
 			ShareDownloadExpire: 30 * time.Minute,
+			MaxFileSizeBytes:    cfg.MaxFileSizeBytes,
+			MaxUploadConcurrency: cfg.MaxUploadConcurrency,
+			MaxQueueItems:       cfg.MaxQueueItems,
 		})
 
 	cleanupCron, err := jobs.StartUploadCleanup(uploadService)

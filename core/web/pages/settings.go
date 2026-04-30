@@ -14,9 +14,7 @@ import (
 )
 
 type SettingsPageProps struct {
-	Ctx            PageContext
-	FileCount      int64
-	FileLimitLabel string
+	Ctx PageContext
 }
 
 func SettingsPage(props SettingsPageProps) web.Page {
@@ -29,8 +27,6 @@ func SettingsPage(props SettingsPageProps) web.Page {
 	usedStorage := "0 B"
 	quotaStorage := "Unlimited"
 	usagePercent := 0
-	fileLimit := props.FileLimitLabel
-	fileCountLabel := "0"
 	retentionLabel := "While active (archive after inactivity)"
 	if user != nil {
 		brandName = strings.TrimSpace(user.BrandName)
@@ -51,12 +47,6 @@ func SettingsPage(props SettingsPageProps) web.Page {
 				}
 			}
 		}
-	}
-	if props.FileCount > 0 {
-		fileCountLabel = format.Commas(props.FileCount)
-	}
-	if fileLimit == "" {
-		fileLimit = "Unlimited"
 	}
 
 	return web.Page{
@@ -127,16 +117,6 @@ func SettingsPage(props SettingsPageProps) web.Page {
 										h.Class("settings-meta-row"),
 										h.Span(g.Text("Storage used")),
 										h.Span(g.Text(usedStorage+" / "+quotaStorage)),
-									),
-									h.Div(
-										h.Class("settings-meta-row"),
-										h.Span(g.Text("File limit")),
-										h.Span(g.Text(fileLimit)),
-									),
-									h.Div(
-										h.Class("settings-meta-row"),
-										h.Span(g.Text("Files")),
-										h.Span(g.Text(fileCountLabel+" / "+fileLimit)),
 									),
 									h.Div(
 										h.Class("settings-meta-row"),

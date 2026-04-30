@@ -6,10 +6,9 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"arkive/core/services/uploads"
-	"arkive/core/web"
-	"arkive/core/web/pages"
 	appcontext "arkive/pkg/context"
-	"arkive/pkg/format"
+	"arkive/core/web"
+	pages "arkive/core/web/pages"
 )
 
 func WebSettings(uploadService *uploads.Service) gin.HandlerFunc {
@@ -24,18 +23,8 @@ func WebSettings(uploadService *uploads.Service) gin.HandlerFunc {
 			return
 		}
 
-		fileCount, err := uploadService.CountActiveFiles(c.Request.Context(), user.ID)
-		if err != nil {
-			c.AbortWithStatus(http.StatusInternalServerError)
-			return
-		}
-
-		fileLimitLabel := format.Commas(uploads.MaxFileCount)
-
 		web.Render(c, pages.SettingsPage(pages.SettingsPageProps{
-			Ctx:            pages.ContextWithUser(user),
-			FileCount:      fileCount,
-			FileLimitLabel: fileLimitLabel,
+			Ctx: pages.ContextWithUser(user),
 		}))
 	}
 }

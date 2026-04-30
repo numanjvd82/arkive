@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -19,8 +20,11 @@ type Config struct {
 	S3Endpoint        string
 	S3Region          string
 
-	PublicBaseURL       string
-	PostmarkServerToken string
+	PublicBaseURL        string
+	PostmarkServerToken  string
+	MaxFileSizeBytes     int64
+	MaxUploadConcurrency int
+	MaxQueueItems        int
 }
 
 func Load() (Config, error) {
@@ -81,6 +85,33 @@ func Load() (Config, error) {
 		}
 	}
 
+	maxFileSizeBytes := int64(10 * 1024 * 1024 * 1024)
+	if v := os.Getenv("MAX_FILE_SIZE_BYTES"); v != "" {
+		n, err := parseInt64(v)
+		if err != nil || n <= 0 {
+			return Config{}, errors.New("MAX_FILE_SIZE_BYTES must be a positive integer")
+		}
+		maxFileSizeBytes = n
+	}
+
+	maxUploadConcurrency := 10
+	if v := os.Getenv("MAX_UPLOAD_CONCURRENCY"); v != "" {
+		n, err := parseInt(v)
+		if err != nil || n <= 0 {
+			return Config{}, errors.New("MAX_UPLOAD_CONCURRENCY must be a positive integer")
+		}
+		maxUploadConcurrency = n
+	}
+
+	maxQueueItems := 300
+	if v := os.Getenv("MAX_QUEUE_ITEMS"); v != "" {
+		n, err := parseInt(v)
+		if err != nil || n <= 0 {
+			return Config{}, errors.New("MAX_QUEUE_ITEMS must be a positive integer")
+		}
+		maxQueueItems = n
+	}
+
 	return Config{
 		DatabaseURL:       dsn,
 		Port:              addr,
@@ -93,9 +124,24 @@ func Load() (Config, error) {
 		S3Endpoint:        s3Endpoint,
 		S3Region:          s3Region,
 
-		PublicBaseURL:       publicBaseURL,
-		PostmarkServerToken: postmarkServerToken,
+		PublicBaseURL:        publicBaseURL,
+		PostmarkServerToken:  postmarkServerToken,
+		MaxFileSizeBytes:     maxFileSizeBytes,
+		MaxUploadConcurrency: maxUploadConcurrency,
+		MaxQueueItems:        maxQueueItems,
 	}, nil
+}
+
+func parseInt64(s string) (int64, error) {
+	var n int64
+	_, err := fmt.Sscanf(s, "%d", &n)
+	return n, err
+}
+
+func parseInt(s string) (int, error) {
+	var n int
+	_, err := fmt.Sscanf(s, "%d", &n)
+	return n, err
 }
 
 func parseDurationEnv(key string) (time.Duration, error) {
