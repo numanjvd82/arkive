@@ -12,23 +12,17 @@ import (
 )
 
 type LoginPageProps struct {
-	Ctx            PageContext
-	Errors         validation.Errors
-	Message        string
-	Email          string
-	GoogleClientID string
+	Ctx     PageContext
+	Errors  validation.Errors
+	Message string
+	Email   string
 }
 
 func LoginPage(props LoginPageProps) web.Page {
-	js := []string{}
-	if props.GoogleClientID != "" {
-		js = append(js, "/static/auth_google.js")
-	}
 	return web.Page{
 		Title:   "Arkive · Login",
 		Robots:  RobotsNoIndex,
 		CSS:     []string{"/web/pages/login.css"},
-		JS:      js,
 		Body:    loginBody(props),
 		HideNav: true,
 	}
@@ -95,7 +89,6 @@ func loginBody(props LoginPageProps) g.Node {
 						g.Text("New to Arkive? "),
 						h.A(h.Class("text-link"), h.Href("/signup"), g.Text("Create an account")),
 					),
-					googleAuthSection(props.GoogleClientID),
 				},
 			}),
 		),

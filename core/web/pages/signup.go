@@ -10,23 +10,17 @@ import (
 )
 
 type SignupPageProps struct {
-	Ctx            PageContext
-	Errors         validation.Errors
-	BrandName      string
-	Email          string
-	GoogleClientID string
+	Ctx       PageContext
+	Errors    validation.Errors
+	BrandName string
+	Email     string
 }
 
 func SignupPage(props SignupPageProps) web.Page {
-	js := []string{}
-	if props.GoogleClientID != "" {
-		js = append(js, "/static/auth_google.js")
-	}
 	return web.Page{
 		Title:   "Arkive · Sign Up",
 		Robots:  RobotsNoIndex,
 		CSS:     []string{"/web/pages/signup.css"},
-		JS:      js,
 		Body:    signUpBody(props),
 		HideNav: true,
 	}
@@ -108,7 +102,6 @@ func signUpBody(props SignupPageProps) g.Node {
 						g.Text("Already have an account? "),
 						h.A(h.Class("text-link"), h.Href("/login"), g.Text("Log in")),
 					),
-					googleAuthSection(props.GoogleClientID),
 				},
 			}),
 		),

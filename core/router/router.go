@@ -24,8 +24,7 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 	r.Use(middleware.ErrorLogger())
 
 	authService := auth.NewService(db, authrepo.New(), sessionrepo.New(), usersrepo.New(), auth.Config{
-		SessionTTL:     cfg.SessionTTL,
-		GoogleClientID: cfg.GoogleClientID,
+		SessionTTL: cfg.SessionTTL,
 	})
 	if cfg.PostmarkServerToken != "" {
 		sender, err := email.NewPostmarkSender(cfg.PostmarkServerToken)
@@ -69,8 +68,6 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 	r.GET("/signup", handlers.WebSignupGet(authService))
 	r.POST("/signup", handlers.WebSignupPost(authService))
 	r.GET("/verify-email", handlers.WebVerifyEmail(authService))
-	r.POST("/auth/google", handlers.WebGoogleLogin(authService))
-
 	protected := r.Group("/")
 	protected.Use(middleware.RequireSessionRedirect(authService))
 	protected.GET("/dashboard", handlers.WebDashboard(uploadService))

@@ -12,7 +12,6 @@ type Config struct {
 	Port              string
 	SessionTTL        time.Duration
 	Env               string
-	GoogleClientID    string
 	R2AccessKeyID     string
 	R2SecretAccessKey string
 	R2SessionToken    string
@@ -28,11 +27,6 @@ func Load() (Config, error) {
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
 		return Config{}, errors.New("DATABASE_URL is required")
-	}
-
-	googleClientID := os.Getenv("GOOGLE_CLIENT_ID")
-	if googleClientID == "" {
-		return Config{}, errors.New("GOOGLE_CLIENT_ID is required")
 	}
 
 	sessionTTL, err := parseDurationEnv("SESSION_TTL")
@@ -93,7 +87,6 @@ func Load() (Config, error) {
 		Port:              addr,
 		SessionTTL:        sessionTTL,
 		Env:               env,
-		GoogleClientID:    os.Getenv("GOOGLE_CLIENT_ID"),
 		R2AccessKeyID:     r2AccessKeyID,
 		R2SecretAccessKey: r2SecretAccessKey,
 		R2SessionToken:    os.Getenv("R2_SESSION_TOKEN"),

@@ -8,11 +8,6 @@ var (
 	ErrEmailExists               = errors.New("email already exists")
 	ErrBrandNameExists           = errors.New("brand name already exists")
 	ErrSessionNotFound           = errors.New("session not found")
-	ErrGoogleTokenInvalid        = errors.New("google token is invalid")
-	ErrGoogleEmailNotVerified    = errors.New("google email is not verified")
-	ErrGoogleClientNotConfigured = errors.New("google client id is not configured")
-	ErrGoogleEmailHasPassword    = errors.New("this email already has a password account")
-	ErrLoginUseGoogle            = errors.New("log in with google")
 	ErrEmailSendFailed           = errors.New("unable to send verification email")
 	ErrEmailNotVerified          = errors.New("please verify your email before logging in")
 
