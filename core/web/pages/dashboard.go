@@ -48,7 +48,7 @@ func DashboardPage(props DashboardPageProps) web.Page {
 							}),
 							h.P(
 								h.Class("upload-note"),
-								g.Text("Uploads run in a queue. Premium accounts can upload up to 10 files at once."),
+								g.Text("Uploads run in a queue. Multiple files upload concurrently."),
 							),
 						),
 					),

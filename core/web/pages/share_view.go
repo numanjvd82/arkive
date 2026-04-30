@@ -144,16 +144,7 @@ func PublicShareViewPage(props PublicShareViewProps) web.Page {
 									g.Text("Share this link with anyone you want to access the file."),
 								),
 							),
-							h.Div(
-								h.Class("media-panel ad-slot compact"),
-								h.P(h.Class("ad-label"), g.Text("Ad slot")),
-								h.Script(
-									g.Attr("async", "async"),
-									g.Attr("data-cfasync", "false"),
-									h.Src("https://pl28425100.effectivegatecpm.com/3e709d756892597be3b0708e86694b25/invoke.js"),
-								),
-								h.Div(h.ID("container-3e709d756892597be3b0708e86694b25")),
-							),
+
 						),
 					),
 				),

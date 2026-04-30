@@ -13,7 +13,6 @@ import (
 	"arkive/core/models"
 	filerepo "arkive/core/repositories/files"
 	folderrepo "arkive/core/repositories/folders"
-	restoreusage "arkive/core/repositories/restore"
 	storagerepo "arkive/core/repositories/storage"
 	uploadrepo "arkive/core/repositories/uploads"
 	usagerepo "arkive/core/repositories/usage"
@@ -31,11 +30,10 @@ const (
 )
 
 const (
-	MaxFileSizeBytes    int64 = 10 * 1024 * 1024 * 1024
-	FreeFileLimit             = 10000
-	MaxQueueItems             = 300
-	FreeUploadConcurrency     = 1
-	PremiumUploadConcurrency  = 10
+	MaxFileSizeBytes   int64 = 10 * 1024 * 1024 * 1024
+	MaxFileCount             = 10000
+	MaxQueueItems            = 300
+	MaxUploadConcurrency     = 10
 )
 
 type Service struct {
@@ -46,7 +44,6 @@ type Service struct {
 	uploadRepo          *uploadrepo.Repository
 	usageRepo           *usagerepo.Repository
 	userRepo            *usersrepo.Repository
-	restoreRepo         *restoreusage.Repository
 	storage             storage.Provider
 	uploadExpires       time.Duration
 	downloadExpire      time.Duration
@@ -67,7 +64,6 @@ func NewService(
 	uploadRepo *uploadrepo.Repository,
 	usageRepo *usagerepo.Repository,
 	userRepo *usersrepo.Repository,
-	restoreRepo *restoreusage.Repository,
 	storageProvider storage.Provider,
 	cfg Config,
 ) *Service {
@@ -79,7 +75,6 @@ func NewService(
 		uploadRepo:          uploadRepo,
 		usageRepo:           usageRepo,
 		userRepo:            userRepo,
-		restoreRepo:         restoreRepo,
 		storage:             storageProvider,
 		uploadExpires:       cfg.UploadExpires,
 		downloadExpire:      cfg.DownloadExpire,
@@ -225,13 +220,13 @@ func (s *Service) markUploadFailed(ctx context.Context, userID string, file mode
 	_ = s.cleanupFolderPath(ctx, s.db, userID, file.FolderPath)
 }
 
-func (s *Service) StartUpload(ctx context.Context, userID, folderPath, filename string, sizeBytes int64, contentType string, isPremium bool) (models.UploadStartResponse, validation.Errors, error) {
+func (s *Service) StartUpload(ctx context.Context, userID, folderPath, filename string, sizeBytes int64, contentType string) (models.UploadStartResponse, validation.Errors, error) {
 	var err error
 	userID, err = validateUserID(userID)
 	if err != nil {
 		return models.UploadStartResponse{}, nil, err
 	}
-	if err := s.touchUserActivity(ctx, userID, isPremium); err != nil {
+	if err := s.TouchUserActivity(ctx, userID); err != nil {
 		return models.UploadStartResponse{}, nil, err
 	}
 
@@ -243,25 +238,11 @@ func (s *Service) StartUpload(ctx context.Context, userID, folderPath, filename 
 	if inFlight >= MaxQueueItems {
 		validationErrors.Add("queue", ErrQueueLimitReached.Error())
 	}
-	if isPremium {
-		if inFlight >= PremiumUploadConcurrency {
-			validationErrors.Add("queue", ErrConcurrentLimit.Error())
-		}
-	} else if inFlight >= FreeUploadConcurrency {
+	if inFlight >= MaxUploadConcurrency {
 		validationErrors.Add("queue", ErrConcurrentLimit.Error())
 	}
 	if validationErrors.HasAny() {
 		return models.UploadStartResponse{}, validationErrors, nil
-	}
-	if !isPremium {
-		totalFiles, err := s.fileRepo.CountActiveFilesForUser(ctx, s.db, userID)
-		if err != nil {
-			return models.UploadStartResponse{}, nil, err
-		}
-		if totalFiles >= FreeFileLimit {
-			validationErrors.Add("files", ErrFileLimitReached.Error())
-			return models.UploadStartResponse{}, validationErrors, nil
-		}
 	}
 
 	resp, validationErrors, err := s.StartSingleUpload(ctx, userID, folderPath, filename, sizeBytes, contentType)

@@ -17,10 +17,7 @@ import (
 type RateLimitConfig struct {
 	RequestsPerMinute int
 	Burst             int
-	PremiumRPM        int
-	PremiumBurst      int
 	KeyPrefix         string
-	SkipPremium       bool
 }
 
 type limiterEntry struct {
@@ -126,18 +123,9 @@ func RateLimit(cfg RateLimitConfig) gin.HandlerFunc {
 		}
 
 		user, ok := appcontext.UserFromContext(c)
-		if ok && cfg.SkipPremium && user.IsPremium {
-			c.Next()
-			return
-		}
-
 		key := buildRateLimitKey(c, cfg.KeyPrefix, user.ID, ok)
 		requestsPerMinute := cfg.RequestsPerMinute
 		burst := cfg.Burst
-		if ok && user.IsPremium && cfg.PremiumRPM > 0 {
-			requestsPerMinute = cfg.PremiumRPM
-			burst = cfg.PremiumBurst
-		}
 		ratePerSec := float64(requestsPerMinute) / 60
 		burstPerSec := float64(burst)
 		if burstPerSec <= 0 {

@@ -90,15 +90,11 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 		apiUploads.POST("/start", middleware.RateLimit(middleware.RateLimitConfig{
 			RequestsPerMinute: 6,
 			Burst:             10,
-			PremiumRPM:        30,
-			PremiumBurst:      60,
 			KeyPrefix:         "upload:start",
 		}), handlers.APIUploadStart(uploadService))
 		apiUploads.POST("/:id/next", middleware.RateLimit(middleware.RateLimitConfig{
 			RequestsPerMinute: 120,
 			Burst:             240,
-			PremiumRPM:        600,
-			PremiumBurst:      1200,
 			KeyPrefix:         "upload:next",
 		}), handlers.APIUploadNext(uploadService))
 		apiUploads.POST("/:id/complete", middleware.RateLimit(middleware.RateLimitConfig{
@@ -124,15 +120,11 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 		apiFiles.GET("/:id/download", middleware.RateLimit(middleware.RateLimitConfig{
 			RequestsPerMinute: 60,
 			Burst:             120,
-			PremiumRPM:        300,
-			PremiumBurst:      600,
 			KeyPrefix:         "file:download",
 		}), handlers.APIDownloadFile(uploadService))
 		apiFiles.GET("/:id/media", middleware.RateLimit(middleware.RateLimitConfig{
 			RequestsPerMinute: 60,
 			Burst:             120,
-			PremiumRPM:        300,
-			PremiumBurst:      600,
 			KeyPrefix:         "file:media",
 		}), handlers.APIMediaRedirect(uploadService))
 		apiFiles.DELETE("/:id", middleware.RateLimit(middleware.RateLimitConfig{
@@ -143,8 +135,6 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 		apiFiles.POST("/:id/share", middleware.RateLimit(middleware.RateLimitConfig{
 			RequestsPerMinute: 6,
 			Burst:             12,
-			PremiumRPM:        30,
-			PremiumBurst:      60,
 			KeyPrefix:         "share:create",
 		}), handlers.APICreateShare(shareService))
 	}

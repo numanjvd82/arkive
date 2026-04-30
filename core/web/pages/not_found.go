@@ -62,24 +62,7 @@ func NotFoundPage(props NotFoundPageProps) web.Page {
 							h.P(g.Text("Check the URL or use the search from your dashboard.")),
 						),
 					),
-					h.Aside(
-						h.Class("not-found-ads"),
-						h.Div(
-							h.Class("not-found-panel ad-slot compact"),
-							h.P(h.Class("ad-label"), g.Text("Ad slot")),
-							h.Script(
-								g.Attr("async", "async"),
-								g.Attr("data-cfasync", "false"),
-								h.Src("https://pl28425100.effectivegatecpm.com/3e709d756892597be3b0708e86694b25/invoke.js"),
-							),
-							h.Div(h.ID("container-3e709d756892597be3b0708e86694b25")),
-						),
-						h.Div(
-							h.Class("not-found-panel"),
-							h.P(h.Class("ad-label"), g.Text("Information")),
-							h.P(g.Text("Display and vignette ads help keep Arkive running.")),
-						),
-					),
+
 				),
 			),
 		),

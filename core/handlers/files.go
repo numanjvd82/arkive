@@ -22,7 +22,7 @@ func WebFiles(uploadService *uploads.Service) gin.HandlerFunc {
 			c.Redirect(http.StatusSeeOther, "/login")
 			return
 		}
-		if err := uploadService.TouchUserActivity(c.Request.Context(), user.ID, user.IsPremium); err != nil {
+		if err := uploadService.TouchUserActivity(c.Request.Context(), user.ID); err != nil {
 			_ = c.Error(errs.WithStack(err))
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
@@ -67,7 +67,7 @@ func WebFileView(uploadService *uploads.Service) gin.HandlerFunc {
 			c.Redirect(http.StatusSeeOther, "/login")
 			return
 		}
-		if err := uploadService.TouchUserActivity(c.Request.Context(), user.ID, user.IsPremium); err != nil {
+		if err := uploadService.TouchUserActivity(c.Request.Context(), user.ID); err != nil {
 			_ = c.Error(errs.WithStack(err))
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return

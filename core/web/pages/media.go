@@ -105,30 +105,6 @@ func MediaViewPage(props MediaViewPageProps) web.Page {
 								metaRow("Updated", fallbackText(formatTime(file.UpdatedAt), "Not available")),
 							),
 						),
-						h.Div(
-							h.Class("media-panel ad-slot"),
-							h.P(h.Class("ad-label"), g.Text("Sponsored")),
-							h.Div(
-								h.Class("ad-body"),
-								h.Strong(g.Text("Your brand here")),
-								h.P(g.Text("Reserve this space for product launches and creator campaigns.")),
-								h.Button(
-									h.Class("button primary"),
-									g.Attr("type", "button"),
-									g.Text("View rates"),
-								),
-							),
-						),
-						h.Div(
-							h.Class("media-panel ad-slot compact"),
-							h.P(h.Class("ad-label"), g.Text("Ad slot")),
-							h.Script(
-								g.Attr("async", "async"),
-								g.Attr("data-cfasync", "false"),
-								h.Src("https://pl28425100.effectivegatecpm.com/3e709d756892597be3b0708e86694b25/invoke.js"),
-							),
-							h.Div(h.ID("container-3e709d756892597be3b0708e86694b25")),
-						),
 					),
 				),
 			),

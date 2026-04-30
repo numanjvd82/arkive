@@ -23,7 +23,7 @@ func SettingsPage(props SettingsPageProps) web.Page {
 	user := props.Ctx.User
 	brandName := ""
 	email := ""
-	planName := "Free"
+	planName := "Arkive"
 	memberSince := "Unavailable"
 	lastLogin := "Unavailable"
 	usedStorage := "0 B"
@@ -35,13 +35,6 @@ func SettingsPage(props SettingsPageProps) web.Page {
 	if user != nil {
 		brandName = strings.TrimSpace(user.BrandName)
 		email = strings.TrimSpace(user.Email)
-		if user.IsPremium {
-			planName = "Premium"
-			retentionLabel = "While active (archive after inactivity)"
-			if fileLimit == "" {
-				fileLimit = "Unlimited"
-			}
-		}
 		if !user.CreatedAt.IsZero() {
 			memberSince = user.CreatedAt.Format("Jan 2, 2006")
 		}

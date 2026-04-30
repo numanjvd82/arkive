@@ -37,10 +37,9 @@
   }
 
   enableFolderPicker();
-  const isPremium = document.body && document.body.getAttribute("data-user-premium") === "true";
   const MAX_QUEUE_ITEMS = 300;
   const MAX_FILE_SIZE = 10 * 1024 * 1024 * 1024;
-  const MAX_CONCURRENCY = isPremium ? 10 : 1;
+  const MAX_CONCURRENCY = 10;
 
   let primaryTaskId = null;
   let batchCounter = 0;

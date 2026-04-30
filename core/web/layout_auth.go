@@ -36,8 +36,7 @@ func AuthLayout(data LayoutData, content ...g.Node) g.Node {
 		h.Lang("en"),
 		h.Head(headNodes...),
 		h.Body(
-			g.If(data.User != nil, g.Attr("data-user-premium", fmt.Sprintf("%t", data.User.IsPremium))),
-			components.InlineStyle(components.AuthLayoutCSS),
+	components.InlineStyle(components.AuthLayoutCSS),
 			h.Div(
 				h.Class("app-shell"),
 				authHeader(data.User),

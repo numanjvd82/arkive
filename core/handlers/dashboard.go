@@ -19,7 +19,7 @@ func WebDashboard(uploadService *uploads.Service) gin.HandlerFunc {
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
-		if err := uploadService.TouchUserActivity(c.Request.Context(), user.ID, user.IsPremium); err != nil {
+		if err := uploadService.TouchUserActivity(c.Request.Context(), user.ID); err != nil {
 			_ = c.Error(errs.WithStack(err))
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return

@@ -42,12 +42,11 @@ func (r *Repository) TouchUserActivity(ctx context.Context, db database.PgExecut
 
 func (r *Repository) ListInactiveUsers(ctx context.Context, db database.PgExecutor, cutoff time.Time) ([]models.User, error) {
 	query := `SELECT
-		id, is_premium, last_active_at
+		id, last_active_at
 	FROM
 		users
 	WHERE
-		is_premium = false
-		AND last_active_at <= $1`
+		last_active_at <= $1`
 	rows, err := db.Query(ctx, query, cutoff)
 	if err != nil {
 		return nil, err
@@ -57,7 +56,7 @@ func (r *Repository) ListInactiveUsers(ctx context.Context, db database.PgExecut
 	var users []models.User
 	for rows.Next() {
 		var user models.User
-		if err := rows.Scan(&user.ID, &user.IsPremium, &user.LastActiveAt); err != nil {
+		if err := rows.Scan(&user.ID, &user.LastActiveAt); err != nil {
 			return nil, err
 		}
 		users = append(users, user)

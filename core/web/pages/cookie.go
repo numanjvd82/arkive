@@ -78,27 +78,20 @@ func cookieBody() g.Node {
 						}),
 					),
 					cookieSection(
-						"4. Ads and rewarded offers",
-						g.Group([]g.Node{
-							h.P(g.Text("We show ads on the website through a third-party ad provider. These ads are not targeted based on personal profiles.")),
-							h.P(g.Text("On the website and in the mobile app, rewarded ads may be used to grant temporary storage boosts or rate limit increases. Ad partners may receive a user identifier and basic interaction data to grant rewards and prevent fraud.")),
-						}),
-					),
-					cookieSection(
-						"5. Your choices",
+						"4. Your choices",
 						g.Group([]g.Node{
 							h.P(g.Text("You can manage cookies through your browser settings. If you block or delete essential cookies, parts of the service may not work.")),
 							h.P(g.Text("Some jurisdictions allow you to opt out of certain analytics or advertising technologies. Contact us at support@arkive.sh if you need help with a specific request.")),
 						}),
 					),
 					cookieSection(
-						"6. Updates",
+						"5. Updates",
 						g.Group([]g.Node{
 							h.P(g.Text("We may update this Cookie Policy from time to time. The date above shows when it was last revised.")),
 						}),
 					),
 					cookieSection(
-						"7. Contact",
+						"6. Contact",
 						g.Group([]g.Node{
 							h.P(
 								g.Text("Questions? Email "),

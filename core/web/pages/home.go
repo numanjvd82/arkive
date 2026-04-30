@@ -196,7 +196,7 @@ func homeRoadmap() g.Node {
 				h.Class("roadmap-grid"),
 				roadmapCard("Affiliate program", "Earn well for every creator you bring."),
 				roadmapCard("Mobile apps", "Android and iOS apps with instant sharing."),
-				roadmapCard("Premium membership", "Advanced controls and priority support."),
+				roadmapCard("Advanced controls", "More sharing and management features."),
 				roadmapCard("Open source", "Public repo and community contributions."),
 			),
 		),

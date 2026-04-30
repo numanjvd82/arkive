@@ -19,7 +19,7 @@ func WebSettings(uploadService *uploads.Service) gin.HandlerFunc {
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
-		if err := uploadService.TouchUserActivity(c.Request.Context(), user.ID, user.IsPremium); err != nil {
+		if err := uploadService.TouchUserActivity(c.Request.Context(), user.ID); err != nil {
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
@@ -30,10 +30,7 @@ func WebSettings(uploadService *uploads.Service) gin.HandlerFunc {
 			return
 		}
 
-		fileLimitLabel := format.Commas(uploads.FreeFileLimit)
-		if user.IsPremium {
-			fileLimitLabel = "Unlimited"
-		}
+		fileLimitLabel := format.Commas(uploads.MaxFileCount)
 
 		web.Render(c, pages.SettingsPage(pages.SettingsPageProps{
 			Ctx:            pages.ContextWithUser(user),

@@ -10,7 +10,6 @@ import (
 	"arkive/core/database"
 	filerepo "arkive/core/repositories/files"
 	folderrepo "arkive/core/repositories/folders"
-	restoreusage "arkive/core/repositories/restore"
 	storagerepo "arkive/core/repositories/storage"
 	uploadrepo "arkive/core/repositories/uploads"
 	usagerepo "arkive/core/repositories/usage"
@@ -69,7 +68,6 @@ func main() {
 		uploadrepo.New(),
 		usagerepo.New(),
 		usersrepo.New(),
-		restoreusage.New(),
 		storageClient,
 		uploads.Config{
 			UploadExpires:       15 * time.Minute,

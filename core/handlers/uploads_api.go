@@ -6,7 +6,6 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"arkive/core/services/uploads"
-	appcontext "arkive/pkg/context"
 	"arkive/pkg/errs"
 )
 
@@ -31,8 +30,7 @@ func APIUploadStart(svc *uploads.Service) gin.HandlerFunc {
 			return
 		}
 
-		user, _ := appcontext.UserFromContext(c)
-		resp, validationErrors, err := svc.StartUpload(c.Request.Context(), userID.(string), req.FolderPath, req.Filename, req.Size, req.ContentType, user.IsPremium)
+		resp, validationErrors, err := svc.StartUpload(c.Request.Context(), userID.(string), req.FolderPath, req.Filename, req.Size, req.ContentType)
 		if err != nil {
 			switch err {
 			case uploads.ErrUnauthorized:
@@ -142,8 +140,7 @@ func APIDownloadFile(svc *uploads.Service) gin.HandlerFunc {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 			return
 		}
-		user, _ := appcontext.UserFromContext(c)
-		if err := svc.TouchUserActivity(c.Request.Context(), userID.(string), user.IsPremium); err != nil {
+		if err := svc.TouchUserActivity(c.Request.Context(), userID.(string)); err != nil {
 			_ = c.Error(errs.WithStack(err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "download failed"})
 			return
@@ -177,8 +174,7 @@ func APIMediaRedirect(svc *uploads.Service) gin.HandlerFunc {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 			return
 		}
-		user, _ := appcontext.UserFromContext(c)
-		if err := svc.TouchUserActivity(c.Request.Context(), userID.(string), user.IsPremium); err != nil {
+		if err := svc.TouchUserActivity(c.Request.Context(), userID.(string)); err != nil {
 			_ = c.Error(errs.WithStack(err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "media failed"})
 			return

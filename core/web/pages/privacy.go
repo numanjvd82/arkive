@@ -61,7 +61,7 @@ func privacyBody() g.Node {
 						"1. Information we collect",
 						g.Group([]g.Node{
 							h.P(g.Text("Information you provide: account details like name, username, and email; credentials; files and metadata you upload; sharing settings; abuse or copyright reports; and messages you send to support.")),
-							h.P(g.Text("Information from third parties: if you sign in with Google, we receive your name, email, profile photo, and Google account ID. In the Android app, purchases are processed by Google Play, which provides us with purchase status and receipts. Rewarded ad partners may provide ad interaction details needed to grant rewards.")),
+							h.P(g.Text("Information from third parties: if you sign in with Google, we receive your name, email, profile photo, and Google account ID.")),
 							h.P(g.Text("Information collected automatically: IP address, device and browser details, usage and log data, and security signals. We use essential cookies to keep you signed in and protect sessions.")),
 						}),
 					),
@@ -73,20 +73,16 @@ func privacyBody() g.Node {
 						}),
 					),
 					privacySection(
-						"3. Ads, analytics, and rewarded offers",
+						"3. Analytics",
 						g.Group([]g.Node{
-							h.P(g.Text("We show ads on the website using a third-party ad provider. We do not use targeted advertising and do not sell or share personal information for targeted ads.")),
 							h.P(g.Text("We use Cloudflare Web Analytics to understand aggregate traffic and performance. Cloudflare may process device and log data on our behalf.")),
-							h.P(g.Text("On the website and in the mobile app, you may choose to watch rewarded ads to receive temporary storage boosts or rate limit increases. To award rewards and prevent fraud, our ad partners may receive a user identifier and basic device or ad interaction data.")),
-							h.P(g.Text("Rewards are promotional, subject to availability and fraud checks, and may change or end at any time.")),
-							h.P(g.Text("We may display plan information on the website, but purchases are completed in the Android app through Google Play.")),
 						}),
 					),
 					privacySection(
 						"4. How we share information",
 						g.Group([]g.Node{
 							h.P(g.Text("We share information with service providers who help us operate the service, such as hosting, storage, analytics, and email delivery. These providers are bound by contracts to protect your data.")),
-							h.P(g.Text("We share information with Google when you use Google sign-in, and with Google Play when you purchase a plan in the Android app.")),
+							h.P(g.Text("We share information with Google when you use Google sign-in.")),
 							h.P(g.Text("We may share information to comply with legal obligations, protect our users, and enforce our terms.")),
 							h.P(g.Text("If Arkive is involved in a merger, acquisition, or asset sale, information may be transferred as part of that transaction.")),
 						}),

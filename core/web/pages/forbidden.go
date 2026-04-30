@@ -13,18 +13,16 @@ type ForbiddenPageProps struct {
 }
 
 func ForbiddenPage(props ForbiddenPageProps) web.Page {
-	showAds := shouldShowAds(props.Ctx)
 	return web.Page{
 		Title:  "Arkive · Forbidden",
 		Robots: RobotsNoIndex,
 		CSS:    []string{"/web/pages/forbidden.css"},
-		JS:     buildForbiddenJS(showAds),
 		User:   props.Ctx.User,
-		Body:   forbiddenBody(showAds),
+		Body:   forbiddenBody(),
 	}
 }
 
-func forbiddenBody(showAds bool) g.Node {
+func forbiddenBody() g.Node {
 	return h.Div(
 		h.Class("forbidden-page"),
 		h.Div(
@@ -61,36 +59,7 @@ func forbiddenBody(showAds bool) g.Node {
 						h.P(g.Text("Already signed in? Try refreshing or opening the dashboard again.")),
 					),
 				),
-				g.If(showAds, h.Aside(
-					h.Class("forbidden-ads"),
-					h.Div(
-						h.Class("forbidden-panel ad-slot compact"),
-						h.P(h.Class("ad-label"), g.Text("Ad slot")),
-						h.Script(
-							g.Attr("async", "async"),
-							g.Attr("data-cfasync", "false"),
-							h.Src("https://pl28425100.effectivegatecpm.com/3e709d756892597be3b0708e86694b25/invoke.js"),
-						),
-						h.Div(h.ID("container-3e709d756892597be3b0708e86694b25")),
-					),
-					h.Div(
-						h.Class("forbidden-panel"),
-						h.P(h.Class("ad-label"), g.Text("Information")),
-						h.P(g.Text("Display and vignette ads keep Arkive accessible.")),
-					),
-				)),
 			),
 		),
 	)
-}
-
-func shouldShowAds(ctx PageContext) bool {
-	return ctx.User == nil || !ctx.User.IsPremium
-}
-
-func buildForbiddenJS(showAds bool) []string {
-	if !showAds {
-		return nil
-	}
-	return nil
 }
