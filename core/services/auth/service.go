@@ -15,6 +15,7 @@ import (
 	emailverifyrepo "arkive/core/repositories/emailverify"
 	sessionrepo "arkive/core/repositories/session"
 	usersrepo "arkive/core/repositories/users"
+	"arkive/pkg/mailer"
 	"arkive/pkg/validation"
 )
 
@@ -25,7 +26,7 @@ type Service struct {
 	userRepo        *usersrepo.Repository
 	emailVerifyRepo *emailverifyrepo.Repository
 
-	emailSender   EmailSender
+	mailer        mailer.Mailer
 	publicBaseURL string
 	sessionTTL    time.Duration
 }
@@ -49,6 +50,11 @@ func NewService(
 		emailVerifyRepo: emailverifyrepo.New(),
 		sessionTTL:      cfg.SessionTTL,
 	}
+}
+
+func (s *Service) SetMailer(m mailer.Mailer, publicBaseURL string) {
+	s.mailer = m
+	s.publicBaseURL = strings.TrimRight(strings.TrimSpace(publicBaseURL), "/")
 }
 
 func (s *Service) WebLogin(ctx context.Context, email, password, lastIP string) (string, time.Time, validation.Errors, error) {
@@ -283,5 +289,5 @@ func (s *Service) createSession(ctx context.Context, db database.PgExecutor, use
 }
 
 func (s *Service) EmailVerificationEnabled() bool {
-	return s.emailSender != nil && strings.TrimSpace(s.publicBaseURL) != ""
+	return s.mailer != nil && strings.TrimSpace(s.publicBaseURL) != ""
 }

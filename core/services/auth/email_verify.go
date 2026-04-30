@@ -1,15 +1,19 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"errors"
 	"net/url"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 
+	"arkive/core/services/auth/templates"
+	"arkive/pkg/mailer"
 	"arkive/pkg/tokens"
 )
 
@@ -17,21 +21,8 @@ var (
 	ErrVerifyTokenInvalid = errors.New("verification link is invalid or expired")
 )
 
-type EmailSender interface {
-	SendVerifyEmail(to, verifyURL string) error
-}
-
-type VerifyConfig struct {
-	PublicBaseURL string
-}
-
-func (s *Service) ConfigureEmailVerification(sender EmailSender, cfg VerifyConfig) {
-	s.emailSender = sender
-	s.publicBaseURL = strings.TrimRight(strings.TrimSpace(cfg.PublicBaseURL), "/")
-}
-
 func (s *Service) sendEmailVerification(ctx context.Context, tx pgx.Tx, userID, email string) error {
-	if s.emailSender == nil {
+	if s.mailer == nil {
 		return nil
 	}
 	if s.publicBaseURL == "" {
@@ -49,7 +40,25 @@ func (s *Service) sendEmailVerification(ctx context.Context, tx pgx.Tx, userID, 
 	}
 
 	verifyURL := s.publicBaseURL + "/verify-email?token=" + url.QueryEscape(token)
-	return s.emailSender.SendVerifyEmail(email, verifyURL)
+
+	tmplBytes, err := templates.FS.ReadFile("verify_email.html")
+	if err != nil {
+		return err
+	}
+	tmpl, err := template.New("verify_email").Parse(string(tmplBytes))
+	if err != nil {
+		return err
+	}
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, struct{ VerifyURL string }{VerifyURL: verifyURL}); err != nil {
+		return err
+	}
+
+	return s.mailer.Send(mailer.Message{
+		To:      email,
+		Subject: "Confirm your Arkive email",
+		HTML:    buf.String(),
+	})
 }
 
 func (s *Service) VerifyEmail(ctx context.Context, token string) error {

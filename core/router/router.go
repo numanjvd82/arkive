@@ -16,7 +16,7 @@ import (
 	"arkive/core/services/shares"
 	"arkive/core/services/uploads"
 	"arkive/core/web"
-	"arkive/pkg/email"
+	"arkive/pkg/mailer"
 )
 
 func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) *gin.Engine {
@@ -26,13 +26,19 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 	authService := auth.NewService(db, authrepo.New(), sessionrepo.New(), usersrepo.New(), auth.Config{
 		SessionTTL: cfg.SessionTTL,
 	})
-	if cfg.PostmarkServerToken != "" {
-		sender, err := email.NewPostmarkSender(cfg.PostmarkServerToken)
-		if err != nil {
-			panic("email sender failed: " + err.Error())
-		}
-		authService.ConfigureEmailVerification(sender, auth.VerifyConfig{PublicBaseURL: cfg.PublicBaseURL})
+	mailerProvider, err := mailer.NewMailerFromConfig(mailer.Config{
+		Provider:      cfg.EmailProvider,
+		From:          cfg.EmailFrom,
+		SMTPHost:      cfg.SMTPHost,
+		SMTPPort:      cfg.SMTPPort,
+		SMTPUser:      cfg.SMTPUser,
+		SMTPPass:      cfg.SMTPPass,
+		PostmarkToken: cfg.PostmarkToken,
+	})
+	if err != nil {
+		panic("mailer setup failed: " + err.Error())
 	}
+	authService.SetMailer(mailerProvider, cfg.PublicBaseURL)
 	shareService := shares.NewService(db, filerepo.New(), sharerepo.New())
 
 	r.StaticFS("/static", web.StaticFS("static"))

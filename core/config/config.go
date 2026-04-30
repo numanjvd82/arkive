@@ -21,10 +21,16 @@ type Config struct {
 	S3Region          string
 
 	PublicBaseURL        string
-	PostmarkServerToken  string
 	MaxFileSizeBytes     int64
 	MaxUploadConcurrency int
 	MaxQueueItems        int
+	EmailProvider        string
+	EmailFrom            string
+	SMTPHost             string
+	SMTPPort             int
+	SMTPUser             string
+	SMTPPass             string
+	PostmarkToken        string
 }
 
 func Load() (Config, error) {
@@ -78,12 +84,27 @@ func Load() (Config, error) {
 		publicBaseURL = "https://arkive.sh"
 	}
 
-	postmarkServerToken := strings.TrimSpace(os.Getenv("POSTMARK_SERVER_TOKEN"))
-	if env != "dev" {
-		if postmarkServerToken == "" {
-			return Config{}, errors.New("POSTMARK_SERVER_TOKEN is required")
+	emailProvider := strings.ToLower(strings.TrimSpace(os.Getenv("EMAIL_PROVIDER")))
+	if emailProvider == "" {
+		emailProvider = "noop"
+	}
+
+	emailFrom := strings.TrimSpace(os.Getenv("EMAIL_FROM"))
+	if emailFrom == "" {
+		emailFrom = "noreply@arkive.sh"
+	}
+
+	smtpHost := strings.TrimSpace(os.Getenv("SMTP_HOST"))
+	smtpPort := 587
+	if v := os.Getenv("SMTP_PORT"); v != "" {
+		if n, err := parseInt(v); err == nil && n > 0 {
+			smtpPort = n
 		}
 	}
+	smtpUser := os.Getenv("SMTP_USER")
+	smtpPass := os.Getenv("SMTP_PASS")
+
+	postmarkToken := strings.TrimSpace(os.Getenv("POSTMARK_SERVER_TOKEN"))
 
 	maxFileSizeBytes := int64(10 * 1024 * 1024 * 1024)
 	if v := os.Getenv("MAX_FILE_SIZE_BYTES"); v != "" {
@@ -125,10 +146,16 @@ func Load() (Config, error) {
 		S3Region:          s3Region,
 
 		PublicBaseURL:        publicBaseURL,
-		PostmarkServerToken:  postmarkServerToken,
 		MaxFileSizeBytes:     maxFileSizeBytes,
 		MaxUploadConcurrency: maxUploadConcurrency,
 		MaxQueueItems:        maxQueueItems,
+		EmailProvider:        emailProvider,
+		EmailFrom:            emailFrom,
+		SMTPHost:             smtpHost,
+		SMTPPort:             smtpPort,
+		SMTPUser:             smtpUser,
+		SMTPPass:             smtpPass,
+		PostmarkToken:        postmarkToken,
 	}, nil
 }
 
