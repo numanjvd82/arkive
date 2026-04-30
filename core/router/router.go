@@ -27,13 +27,12 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 		SessionTTL: cfg.SessionTTL,
 	})
 	mailerProvider, err := mailer.NewMailerFromConfig(mailer.Config{
-		Provider:      cfg.EmailProvider,
-		From:          cfg.EmailFrom,
-		SMTPHost:      cfg.SMTPHost,
-		SMTPPort:      cfg.SMTPPort,
-		SMTPUser:      cfg.SMTPUser,
-		SMTPPass:      cfg.SMTPPass,
-		PostmarkToken: cfg.PostmarkToken,
+		Provider: cfg.EmailProvider,
+		From:     cfg.EmailFrom,
+		SMTPHost: cfg.SMTPHost,
+		SMTPPort: cfg.SMTPPort,
+		SMTPUser: cfg.SMTPUser,
+		SMTPPass: cfg.SMTPPass,
 	})
 	if err != nil {
 		panic("mailer setup failed: " + err.Error())

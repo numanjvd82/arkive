@@ -13,13 +13,12 @@ type Mailer interface {
 }
 
 type Config struct {
-	Provider      string
-	From          string
-	SMTPHost      string
-	SMTPPort      int
-	SMTPUser      string
-	SMTPPass      string
-	PostmarkToken string
+	Provider string
+	From     string
+	SMTPHost string
+	SMTPPort int
+	SMTPUser string
+	SMTPPass string
 }
 
 func NewMailerFromConfig(cfg Config) (Mailer, error) {
@@ -32,8 +31,6 @@ func NewMailerFromConfig(cfg Config) (Mailer, error) {
 			Pass: cfg.SMTPPass,
 			From: cfg.From,
 		})
-	case "postmark":
-		return NewPostmarkMailer(cfg.PostmarkToken, cfg.From)
 	case "noop":
 		return NewNoopMailer(), nil
 	default:

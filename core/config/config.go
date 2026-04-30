@@ -24,13 +24,12 @@ type Config struct {
 	MaxFileSizeBytes     int64
 	MaxUploadConcurrency int
 	MaxQueueItems        int
-	EmailProvider        string
-	EmailFrom            string
-	SMTPHost             string
-	SMTPPort             int
-	SMTPUser             string
-	SMTPPass             string
-	PostmarkToken        string
+	EmailProvider string
+	EmailFrom     string
+	SMTPHost      string
+	SMTPPort      int
+	SMTPUser      string
+	SMTPPass      string
 }
 
 func Load() (Config, error) {
@@ -104,8 +103,6 @@ func Load() (Config, error) {
 	smtpUser := os.Getenv("SMTP_USER")
 	smtpPass := os.Getenv("SMTP_PASS")
 
-	postmarkToken := strings.TrimSpace(os.Getenv("POSTMARK_SERVER_TOKEN"))
-
 	maxFileSizeBytes := int64(10 * 1024 * 1024 * 1024)
 	if v := os.Getenv("MAX_FILE_SIZE_BYTES"); v != "" {
 		n, err := parseInt64(v)
@@ -153,9 +150,8 @@ func Load() (Config, error) {
 		EmailFrom:            emailFrom,
 		SMTPHost:             smtpHost,
 		SMTPPort:             smtpPort,
-		SMTPUser:             smtpUser,
-		SMTPPass:             smtpPass,
-		PostmarkToken:        postmarkToken,
+		SMTPUser: smtpUser,
+		SMTPPass: smtpPass,
 	}, nil
 }
 
