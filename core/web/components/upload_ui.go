@@ -14,10 +14,6 @@ type UploadControlsProps struct {
 	InputRequired bool
 }
 
-type UploadResumeBannerProps struct {
-	ID string
-}
-
 const UploadUICSS = "/web/components/upload_ui.css"
 const UploadUIJS = "/web/components/uploads.js"
 
@@ -109,22 +105,10 @@ func UploadControls(props UploadControlsProps) g.Node {
 				h.Class("upload-controls is-hidden"),
 				g.Attr("id", "upload-controls"),
 				h.Button(
-					h.Class("button secondary"),
-					h.Type("button"),
-					g.Attr("id", "upload-pause"),
-					g.Text("Pause"),
-				),
-				h.Button(
-					h.Class("button secondary"),
-					h.Type("button"),
-					g.Attr("id", "upload-resume"),
-					g.Text("Resume"),
-				),
-				h.Button(
 					h.Class("button danger"),
 					h.Type("button"),
 					g.Attr("id", "upload-abort"),
-					g.Text("Cancel"),
+					g.Text("Cancel all"),
 				),
 			),
 		),
@@ -191,41 +175,4 @@ func UploadControls(props UploadControlsProps) g.Node {
 	})
 }
 
-func UploadResumeBanner(props UploadResumeBannerProps) g.Node {
-	id := props.ID
-	if id == "" {
-		id = "upload-resume-banner"
-	}
 
-	return g.Group([]g.Node{
-		InlineStyle(UploadUICSS),
-		h.Div(
-			h.Class("upload-resume-banner is-hidden"),
-			g.Attr("id", id),
-			h.Div(
-				h.Class("resume-content"),
-				h.Span(h.Class("resume-title"), g.Text("Upload paused")),
-				h.Span(h.Class("resume-meta"), g.Attr("id", "resume-banner-meta")),
-				h.P(
-					h.Class("resume-note"),
-					g.Text("To resume, select the same file again. Your browser requires this."),
-				),
-			),
-			h.Div(
-				h.Class("resume-actions"),
-				h.Button(
-					h.Class("button primary"),
-					h.Type("button"),
-					g.Attr("id", "resume-banner-resume"),
-					g.Text("Resume"),
-				),
-				h.Button(
-					h.Class("button secondary"),
-					h.Type("button"),
-					g.Attr("id", "resume-banner-cancel"),
-					g.Text("Cancel"),
-				),
-			),
-		),
-	})
-}

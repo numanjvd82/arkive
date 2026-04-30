@@ -12,12 +12,12 @@ type Config struct {
 	Port              string
 	SessionTTL        time.Duration
 	Env               string
-	R2AccessKeyID     string
-	R2SecretAccessKey string
-	R2SessionToken    string
-	R2Bucket          string
-	R2Endpoint        string
-	R2Region          string
+	S3AccessKeyID     string
+	S3SecretAccessKey string
+	S3SessionToken    string
+	S3Bucket          string
+	S3Endpoint        string
+	S3Region          string
 
 	PublicBaseURL       string
 	PostmarkServerToken string
@@ -44,29 +44,29 @@ func Load() (Config, error) {
 		env = "prod"
 	}
 
-	r2AccessKeyID := os.Getenv("R2_ACCESS_KEY_ID")
-	if r2AccessKeyID == "" {
-		return Config{}, errors.New("R2_ACCESS_KEY_ID is required")
+	s3AccessKeyID := os.Getenv("S3_ACCESS_KEY_ID")
+	if s3AccessKeyID == "" {
+		return Config{}, errors.New("S3_ACCESS_KEY_ID is required")
 	}
 
-	r2SecretAccessKey := os.Getenv("R2_SECRET_ACCESS_KEY")
-	if r2SecretAccessKey == "" {
-		return Config{}, errors.New("R2_SECRET_ACCESS_KEY is required")
+	s3SecretAccessKey := os.Getenv("S3_SECRET_ACCESS_KEY")
+	if s3SecretAccessKey == "" {
+		return Config{}, errors.New("S3_SECRET_ACCESS_KEY is required")
 	}
 
-	r2Bucket := os.Getenv("R2_BUCKET")
-	if r2Bucket == "" {
-		return Config{}, errors.New("R2_BUCKET is required")
+	s3Bucket := os.Getenv("S3_BUCKET")
+	if s3Bucket == "" {
+		return Config{}, errors.New("S3_BUCKET is required")
 	}
 
-	r2Endpoint := os.Getenv("R2_ENDPOINT")
-	if r2Endpoint == "" {
-		return Config{}, errors.New("R2_ENDPOINT is required")
+	s3Endpoint := os.Getenv("S3_ENDPOINT")
+	if s3Endpoint == "" {
+		return Config{}, errors.New("S3_ENDPOINT is required")
 	}
 
-	r2Region := os.Getenv("R2_REGION")
-	if r2Region == "" {
-		r2Region = "auto"
+	s3Region := os.Getenv("S3_REGION")
+	if s3Region == "" {
+		s3Region = "auto"
 	}
 
 	publicBaseURL := strings.TrimSpace(os.Getenv("PUBLIC_BASE_URL"))
@@ -75,7 +75,6 @@ func Load() (Config, error) {
 	}
 
 	postmarkServerToken := strings.TrimSpace(os.Getenv("POSTMARK_SERVER_TOKEN"))
-	// Email verification can be skipped only in dev.
 	if env != "dev" {
 		if postmarkServerToken == "" {
 			return Config{}, errors.New("POSTMARK_SERVER_TOKEN is required")
@@ -87,12 +86,12 @@ func Load() (Config, error) {
 		Port:              addr,
 		SessionTTL:        sessionTTL,
 		Env:               env,
-		R2AccessKeyID:     r2AccessKeyID,
-		R2SecretAccessKey: r2SecretAccessKey,
-		R2SessionToken:    os.Getenv("R2_SESSION_TOKEN"),
-		R2Bucket:          r2Bucket,
-		R2Endpoint:        r2Endpoint,
-		R2Region:          r2Region,
+		S3AccessKeyID:     s3AccessKeyID,
+		S3SecretAccessKey: s3SecretAccessKey,
+		S3SessionToken:    os.Getenv("S3_SESSION_TOKEN"),
+		S3Bucket:          s3Bucket,
+		S3Endpoint:        s3Endpoint,
+		S3Region:          s3Region,
 
 		PublicBaseURL:       publicBaseURL,
 		PostmarkServerToken: postmarkServerToken,

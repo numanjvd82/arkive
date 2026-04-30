@@ -47,7 +47,7 @@ func (s *Service) scheduleVideoMetadata(file models.File) {
 }
 
 func (s *Service) collectVideoMetadata(ctx context.Context, file models.File) error {
-	url, err := s.r2.PresignDownload(ctx, file.ObjectKey, file.Filename, "inline", s.downloadExpire)
+	url, err := s.storage.PresignDownload(ctx, file.ObjectKey, file.Filename, "inline", s.downloadExpire)
 	if err != nil {
 		return err
 	}

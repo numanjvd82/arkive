@@ -33,7 +33,6 @@ func DashboardPage(props DashboardPageProps) web.Page {
 							h.P(g.Text("Quick access to uploads and ongoing transfers.")),
 						),
 					),
-					components.UploadResumeBanner(components.UploadResumeBannerProps{}),
 					h.Section(
 						h.Class("dashboard-panels"),
 						h.Section(

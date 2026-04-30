@@ -19,7 +19,7 @@ import (
 	"arkive/core/services/uploads"
 	"arkive/migrations"
 	"arkive/pkg/jobs"
-	"arkive/pkg/storage/r2"
+	"arkive/pkg/storage/s3client"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -49,16 +49,16 @@ func main() {
 		log.Fatalf("migrations failed: %v", err)
 	}
 
-	r2Client, err := r2.New(context.Background(), r2.Config{
-		AccessKeyID:     cfg.R2AccessKeyID,
-		SecretAccessKey: cfg.R2SecretAccessKey,
-		SessionToken:    cfg.R2SessionToken,
-		Bucket:          cfg.R2Bucket,
-		Endpoint:        cfg.R2Endpoint,
-		Region:          cfg.R2Region,
+	storageClient, err := s3client.New(context.Background(), s3client.Config{
+		AccessKeyID:     cfg.S3AccessKeyID,
+		SecretAccessKey: cfg.S3SecretAccessKey,
+		SessionToken:    cfg.S3SessionToken,
+		Bucket:          cfg.S3Bucket,
+		Endpoint:        cfg.S3Endpoint,
+		Region:          cfg.S3Region,
 	})
 	if err != nil {
-		log.Fatalf("r2 client failed: %v", err)
+		log.Fatalf("s3 client failed: %v", err)
 	}
 
 	uploadService := uploads.NewService(
@@ -70,9 +70,8 @@ func main() {
 		usagerepo.New(),
 		usersrepo.New(),
 		restoreusage.New(),
-		r2Client,
+		storageClient,
 		uploads.Config{
-			Bucket:              cfg.R2Bucket,
 			UploadExpires:       15 * time.Minute,
 			DownloadExpire:      3 * time.Hour,
 			ShareDownloadExpire: 30 * time.Minute,

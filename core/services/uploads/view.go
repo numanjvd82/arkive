@@ -49,7 +49,7 @@ func (s *Service) PresignView(ctx context.Context, userID, fileID string) (strin
 	if !isViewableContentType(file.ContentType) {
 		return "", ErrInvalidInput
 	}
-	return s.r2.PresignDownload(ctx, file.ObjectKey, file.Filename, "inline", s.downloadExpire)
+	return s.storage.PresignDownload(ctx, file.ObjectKey, file.Filename, "inline", s.downloadExpire)
 }
 
 func (s *Service) GetFileForShare(ctx context.Context, fileID string) (models.File, error) {
@@ -90,7 +90,7 @@ func (s *Service) PresignShare(ctx context.Context, fileID string) (string, erro
 		disposition = "inline"
 	}
 
-	return s.r2.PresignDownload(ctx, file.ObjectKey, file.Filename, disposition, s.downloadExpire)
+	return s.storage.PresignDownload(ctx, file.ObjectKey, file.Filename, disposition, s.downloadExpire)
 }
 
 func (s *Service) PresignShareView(ctx context.Context, fileID string) (string, error) {
@@ -113,7 +113,7 @@ func (s *Service) PresignShareViewForFile(ctx context.Context, file models.File)
 	if !isViewableContentType(file.ContentType) {
 		return "", ErrInvalidInput
 	}
-	return s.r2.PresignDownload(ctx, file.ObjectKey, file.Filename, "inline", s.downloadExpire)
+	return s.storage.PresignDownload(ctx, file.ObjectKey, file.Filename, "inline", s.downloadExpire)
 }
 
 func (s *Service) PresignShareDownloadForFile(ctx context.Context, file models.File) (string, error) {
@@ -121,7 +121,7 @@ func (s *Service) PresignShareDownloadForFile(ctx context.Context, file models.F
 	if expiry <= 0 {
 		expiry = s.downloadExpire
 	}
-	return s.r2.PresignDownload(ctx, file.ObjectKey, file.Filename, "attachment", expiry)
+	return s.storage.PresignDownload(ctx, file.ObjectKey, file.Filename, "attachment", expiry)
 }
 
 func isViewableContentType(contentType string) bool {

@@ -285,52 +285,6 @@
   font-size: var(--text-body-sm-size);
   line-height: var(--text-body-sm-lh);
 }
-
-.upload-resume-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin: 0 0 24px;
-  padding: 16px 20px;
-  border-radius: 18px;
-  border: 1px solid var(--border);
-  background: linear-gradient(120deg, rgba(255, 221, 158, 0.18), rgba(117, 216, 232, 0.18));
-}
-
-.upload-resume-banner.is-hidden {
-  display: none;
-}
-
-.resume-content {
-  display: grid;
-  gap: 6px;
-}
-
-.resume-title {
-  font-weight: 600;
-}
-
-.resume-meta {
-  color: var(--muted);
-  font-size: var(--text-body-sm-size);
-  line-height: var(--text-body-sm-lh);
-}
-
-.resume-note {
-  margin: 0;
-  color: var(--muted);
-  font-size: var(--text-body-sm-size);
-  line-height: var(--text-body-sm-lh);
-}
-
-.resume-actions {
-  display: inline-flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-
 .is-hidden {
   display: none;
 }
