@@ -48,16 +48,6 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 	r.GET("/", handlers.WebHome())
 	r.GET("/pricing", handlers.WebPricing())
 	r.GET("/contact", handlers.WebContact())
-	r.GET("/secure-file-sharing", handlers.WebSecureFileSharing())
-	r.GET("/share-large-files", handlers.WebShareLargeFiles())
-	r.GET("/file-sharing-without-login", handlers.WebFileSharingWithoutLogin())
-	r.GET("/drop-pages", handlers.WebDropPages())
-	r.GET("/privacy", handlers.WebPrivacy())
-	r.GET("/cookies", handlers.WebCookie())
-	r.GET("/terms", handlers.WebTerms())
-	r.GET("/aup", handlers.WebAUP())
-	r.GET("/abuse", handlers.WebAbuse())
-	r.GET("/dmca", handlers.WebAbuse())
 	r.GET("/s/:token", middleware.RateLimit(middleware.RateLimitConfig{
 		RequestsPerMinute: 2,
 		Burst:             2,

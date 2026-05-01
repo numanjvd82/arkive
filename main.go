@@ -84,12 +84,6 @@ func main() {
 	}
 	defer cleanupCron.Stop()
 
-	retentionCron, err := jobs.StartRetentionCleanup(uploadService)
-	if err != nil {
-		log.Fatalf("retention cron failed: %v", err)
-	}
-	defer retentionCron.Stop()
-
 	if strings.EqualFold(cfg.Env, "dev") {
 		gin.SetMode(gin.DebugMode)
 	} else {
