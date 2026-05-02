@@ -105,6 +105,11 @@
   background: var(--bg-soft);
 }
 
+.setup-panel:has(input[name="storage_provider"][value="local"]:checked) .s3-panel,
+.setup-panel:has(input[name="storage_provider"][value="s3"]:checked) .local-panel {
+  display: none;
+}
+
 .provider-panel legend {
   padding: 0 6px;
   color: var(--muted);

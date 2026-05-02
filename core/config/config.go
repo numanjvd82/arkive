@@ -9,16 +9,10 @@ import (
 )
 
 type Config struct {
-	DatabaseURL       string
-	Port              string
-	SessionTTL        time.Duration
-	Env               string
-	S3AccessKeyID     string
-	S3SecretAccessKey string
-	S3SessionToken    string
-	S3Bucket          string
-	S3Endpoint        string
-	S3Region          string
+	DatabaseURL string
+	Port        string
+	SessionTTL  time.Duration
+	Env         string
 
 	PublicBaseURL        string
 	MaxFileSizeBytes     int64
@@ -51,15 +45,6 @@ func Load() (Config, error) {
 	env := os.Getenv("APP_ENV")
 	if env == "" {
 		env = "prod"
-	}
-
-	s3AccessKeyID := os.Getenv("S3_ACCESS_KEY_ID")
-	s3SecretAccessKey := os.Getenv("S3_SECRET_ACCESS_KEY")
-	s3Bucket := os.Getenv("S3_BUCKET")
-	s3Endpoint := os.Getenv("S3_ENDPOINT")
-	s3Region := os.Getenv("S3_REGION")
-	if s3Region == "" {
-		s3Region = "auto"
 	}
 
 	publicBaseURL := strings.TrimSpace(os.Getenv("PUBLIC_BASE_URL"))
@@ -115,17 +100,10 @@ func Load() (Config, error) {
 	}
 
 	return Config{
-		DatabaseURL:       dsn,
-		Port:              addr,
-		SessionTTL:        sessionTTL,
-		Env:               env,
-		S3AccessKeyID:     s3AccessKeyID,
-		S3SecretAccessKey: s3SecretAccessKey,
-		S3SessionToken:    os.Getenv("S3_SESSION_TOKEN"),
-		S3Bucket:          s3Bucket,
-		S3Endpoint:        s3Endpoint,
-		S3Region:          s3Region,
-
+		DatabaseURL:          dsn,
+		Port:                 addr,
+		SessionTTL:           sessionTTL,
+		Env:                  env,
 		PublicBaseURL:        publicBaseURL,
 		MaxFileSizeBytes:     maxFileSizeBytes,
 		MaxUploadConcurrency: maxUploadConcurrency,

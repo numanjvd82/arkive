@@ -132,7 +132,7 @@ func setupBody(props SetupPageProps) g.Node {
 					h.Div(
 						h.Class("provider-grid"),
 						h.FieldSet(
-							h.Class("provider-panel"),
+							h.Class("provider-panel local-panel"),
 							h.Legend(g.Text("Local disk")),
 							components.InputField(components.InputProps{
 								Label:       "Storage path",
@@ -145,7 +145,7 @@ func setupBody(props SetupPageProps) g.Node {
 							}),
 						),
 						h.FieldSet(
-							h.Class("provider-panel"),
+							h.Class("provider-panel s3-panel"),
 							h.Legend(g.Text("S3-compatible")),
 							components.InputField(components.InputProps{
 								Label:      "Access key",
@@ -193,15 +193,6 @@ func setupBody(props SetupPageProps) g.Node {
 								Placeholder: "auto",
 								Value:       props.S3Region,
 							}),
-							h.Label(
-								h.Class("setup-checkbox"),
-								h.Input(
-									g.Attr("type", "checkbox"),
-									g.Attr("name", "s3_use_path_style"),
-									g.If(props.S3UsePathStyle, g.Attr("checked", "checked")),
-								),
-								h.Span(g.Text("Use path-style URLs")),
-							),
 						),
 					),
 				),

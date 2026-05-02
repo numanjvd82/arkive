@@ -157,6 +157,16 @@
   color: var(--text);
 }
 
+.settings-provider-fields {
+  display: grid;
+  gap: 14px;
+}
+
+.settings-form:has(input[name="storage_provider"][value="local"]:checked) .s3-panel,
+.settings-form:has(input[name="storage_provider"][value="s3"]:checked) .local-panel {
+  display: none;
+}
+
 .setup-checkbox {
   display: flex;
   align-items: center;

@@ -8,7 +8,6 @@ import (
 
 	"arkive/core/config"
 	"arkive/core/database"
-	"arkive/core/models"
 	filerepo "arkive/core/repositories/files"
 	folderrepo "arkive/core/repositories/folders"
 	settingsrepo "arkive/core/repositories/settings"
@@ -52,9 +51,6 @@ func main() {
 	}
 
 	settingsRepo := settingsrepo.New()
-	if err := seedStorageSettings(context.Background(), db, settingsRepo, cfg); err != nil {
-		log.Fatalf("storage settings seed failed: %v", err)
-	}
 	localStorage := localclient.New(func(ctx context.Context) (string, error) {
 		settings, err := settingsRepo.GetStorageSettings(ctx, db)
 		if err != nil {
@@ -99,24 +95,4 @@ func main() {
 	if err := r.Run(cfg.Port); err != nil {
 		log.Fatalf("server failed: %v", err)
 	}
-}
-
-func seedStorageSettings(ctx context.Context, db database.PgPool, settingsRepo *settingsrepo.Repository, cfg config.Config) error {
-	exists, err := settingsRepo.HasStorageSettings(ctx, db)
-	if err != nil || exists {
-		return err
-	}
-	if cfg.S3AccessKeyID == "" || cfg.S3SecretAccessKey == "" || cfg.S3Bucket == "" || cfg.S3Endpoint == "" {
-		return nil
-	}
-	return settingsRepo.SaveStorageSettings(ctx, db, models.StorageSettings{
-		Provider:          "s3",
-		MaxStorageBytes:   0,
-		S3AccessKeyID:     cfg.S3AccessKeyID,
-		S3SecretAccessKey: cfg.S3SecretAccessKey,
-		S3SessionToken:    cfg.S3SessionToken,
-		S3Bucket:          cfg.S3Bucket,
-		S3Endpoint:        cfg.S3Endpoint,
-		S3Region:          cfg.S3Region,
-	})
 }
