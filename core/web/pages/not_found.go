@@ -51,8 +51,8 @@ func NotFoundPage(props NotFoundPageProps) web.Page {
 								Variant: "primary",
 							}),
 							components.Button(components.ButtonProps{
-								Text:    "Contact support",
-								Href:    "/contact",
+								Text:    "Go to dashboard",
+								Href:    "/dashboard",
 								Variant: "secondary",
 							}),
 						),
@@ -62,7 +62,6 @@ func NotFoundPage(props NotFoundPageProps) web.Page {
 							h.P(g.Text("Check the URL or use the search from your dashboard.")),
 						),
 					),
-
 				),
 			),
 		),

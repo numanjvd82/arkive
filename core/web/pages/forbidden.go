@@ -48,8 +48,8 @@ func forbiddenBody() g.Node {
 							Variant: "primary",
 						}),
 						components.Button(components.ButtonProps{
-							Text:    "View pricing",
-							Href:    "/pricing",
+							Text:    "Go to dashboard",
+							Href:    "/dashboard",
 							Variant: "secondary",
 						}),
 					),

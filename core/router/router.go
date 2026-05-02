@@ -1,6 +1,8 @@
 package router
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 
 	"arkive/core/config"
@@ -45,9 +47,9 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 	r.GET("/favicon.ico", handlers.FaviconICO())
 	r.GET("/robots.txt", handlers.RobotsTxt())
 	r.GET("/sitemap.xml", handlers.SitemapXML())
-	r.GET("/", handlers.WebHome())
-	r.GET("/pricing", handlers.WebPricing())
-	r.GET("/contact", handlers.WebContact())
+	r.GET("/", func(c *gin.Context) {
+		c.Redirect(http.StatusSeeOther, "/login")
+	})
 	r.GET("/s/:token", middleware.RateLimit(middleware.RateLimitConfig{
 		RequestsPerMinute: 2,
 		Burst:             2,
