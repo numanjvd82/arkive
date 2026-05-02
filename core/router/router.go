@@ -14,6 +14,7 @@ import (
 	sharerepo "arkive/core/repositories/shares"
 	usersrepo "arkive/core/repositories/users"
 	"arkive/core/services/auth"
+	settingssvc "arkive/core/services/settings"
 	"arkive/core/services/setup"
 	"arkive/core/services/shares"
 	"arkive/core/services/uploads"
@@ -32,6 +33,7 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 		SessionTTL: cfg.SessionTTL,
 	})
 	settingsRepo := settingsrepo.New()
+	settingsService := settingssvc.NewService(db, settingsRepo, usersRepo)
 	setupService := setup.NewService(db, authRepo, usersRepo, settingsRepo)
 	mailerProvider, err := mailer.NewMailerFromConfig(mailer.Config{
 		Provider: cfg.EmailProvider,
@@ -76,8 +78,8 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 	protected.GET("/files", handlers.WebFiles(uploadService))
 	protected.GET("/files/:id/view", handlers.WebFileView(uploadService))
 	protected.GET("/shares", handlers.WebShares(shareService, uploadService))
-	protected.GET("/settings", handlers.WebSettings(uploadService, settingsRepo))
-	protected.POST("/settings/storage", handlers.WebSettingsStoragePost(db, settingsRepo, usersRepo))
+	protected.GET("/settings", handlers.WebSettings(uploadService, settingsService))
+	protected.POST("/settings/storage", handlers.WebSettingsStoragePost(settingsService))
 	protected.POST("/logout", handlers.WebLogout(authService))
 
 	api := r.Group("/api")

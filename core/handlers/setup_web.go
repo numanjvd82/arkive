@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"arkive/core/services/auth"
+	settingssvc "arkive/core/services/settings"
 	"arkive/core/services/setup"
 	"arkive/core/web"
 	"arkive/core/web/pages"
@@ -88,18 +89,18 @@ func WebSetupPost(svc *setup.Service) gin.HandlerFunc {
 			return
 		}
 
-		storageSettings, validationErrors := setup.BuildStorageSettings(
-			form.StorageProvider,
-			form.LocalPath,
-			form.StorageGB,
-			form.S3AccessKeyID,
-			form.S3SecretAccessKey,
-			form.S3SessionToken,
-			form.S3Bucket,
-			form.S3Endpoint,
-			form.S3Region,
-			form.S3UsePathStyle,
-		)
+		storageSettings, validationErrors := settingssvc.BuildStorageSettings(settingssvc.StorageInput{
+			Provider:          form.StorageProvider,
+			LocalPath:         form.LocalPath,
+			StorageGB:         form.StorageGB,
+			S3AccessKeyID:     form.S3AccessKeyID,
+			S3SecretAccessKey: form.S3SecretAccessKey,
+			S3SessionToken:    form.S3SessionToken,
+			S3Bucket:          form.S3Bucket,
+			S3Endpoint:        form.S3Endpoint,
+			S3Region:          form.S3Region,
+			S3UsePathStyle:    form.S3UsePathStyle,
+		})
 		if len(validationErrors) > 0 {
 			renderSetupForm(c, form, validationErrors)
 			return

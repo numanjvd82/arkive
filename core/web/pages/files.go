@@ -17,8 +17,6 @@ import (
 
 type FilesPageProps struct {
 	Ctx           PageContext
-	FolderPath    string
-	Folders       []models.Folder
 	Files         []models.File
 	ArchivedCount int64
 	Query         url.Values
@@ -125,8 +123,7 @@ func FilesPage(props FilesPageProps) web.Page {
 								h.P(g.Text("Everything you have finished uploading.")),
 							),
 							renderListControls(props),
-							renderBreadcrumbs(props.FolderPath),
-							renderCompletedList(props.Folders, props.Files, props.FolderPath),
+							renderCompletedList(props.Files),
 							renderPagination(props),
 						),
 					),
@@ -328,33 +325,6 @@ func renderArchivedBanner(count int64) g.Node {
 	)
 }
 
-func renderBreadcrumbs(folderPath string) g.Node {
-	crumbs := []components.Breadcrumb{
-		{Title: "Files", Href: "/files", IconName: "folder"},
-	}
-	if folderPath != "" {
-		parts := strings.Split(folderPath, "/")
-		path := ""
-		for _, part := range parts {
-			if part == "" {
-				continue
-			}
-			if path == "" {
-				path = part
-			} else {
-				path = path + "/" + part
-			}
-			crumbs = append(crumbs, components.Breadcrumb{
-				Title: part,
-				Href:  "/files?path=" + url.QueryEscape(path),
-			})
-		}
-	}
-	return components.Breadcrumbs(components.BreadcrumbsProps{
-		Items: crumbs,
-	})
-}
-
 func renderListControls(props FilesPageProps) g.Node {
 	options := []components.SortOption{
 		{Label: "Updated (newest)", Value: "updated_desc"},
@@ -376,12 +346,9 @@ func renderListControls(props FilesPageProps) g.Node {
 	)
 }
 
-func renderCompletedList(folders []models.Folder, files []models.File, folderPath string) g.Node {
-	if len(files) == 0 && len(folders) == 0 {
+func renderCompletedList(files []models.File) g.Node {
+	if len(files) == 0 {
 		emptyMessage := "No completed uploads yet."
-		if folderPath != "" {
-			emptyMessage = "This folder is empty."
-		}
 		return h.Div(
 			h.Class("files-empty"),
 			h.P(g.Text(emptyMessage)),
@@ -393,39 +360,7 @@ func renderCompletedList(folders []models.Folder, files []models.File, folderPat
 		)
 	}
 
-	rows := make([]g.Node, 0, len(files)+len(folders))
-	for _, folder := range folders {
-		folderLink := "/files?path=" + url.QueryEscape(folder.Path)
-		rows = append(rows, h.Div(
-			h.Class("files-row files-row-folder"),
-			h.A(
-				h.Class("files-row-link"),
-				h.Href(folderLink),
-				h.Span(
-					h.Class("files-type-icon is-folder"),
-					components.Icon(components.IconProps{
-						Name:       "folder",
-						Size:       "18",
-						Decorative: true,
-					}),
-				),
-				h.Div(
-					h.Class("files-meta"),
-					h.Span(h.Class("files-name"), g.Text(folder.Name)),
-					h.Span(h.Class("files-sub"), g.Text("Folder")),
-				),
-			),
-			h.Div(
-				h.Class("files-actions"),
-				h.A(
-					h.Class("button ghost"),
-					h.Href(folderLink),
-					g.Text("Open"),
-				),
-			),
-		))
-	}
-
+	rows := make([]g.Node, 0, len(files))
 	for _, file := range files {
 		rows = append(rows, renderFileRow(file))
 	}

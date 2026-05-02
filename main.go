@@ -9,18 +9,17 @@ import (
 	"arkive/core/config"
 	"arkive/core/database"
 	filerepo "arkive/core/repositories/files"
-	folderrepo "arkive/core/repositories/folders"
 	settingsrepo "arkive/core/repositories/settings"
 	storagerepo "arkive/core/repositories/storage"
 	uploadrepo "arkive/core/repositories/uploads"
 	usagerepo "arkive/core/repositories/usage"
 	usersrepo "arkive/core/repositories/users"
 	"arkive/core/router"
+	settingssvc "arkive/core/services/settings"
 	"arkive/core/services/storageprovider"
 	"arkive/core/services/uploads"
 	"arkive/migrations"
 	"arkive/pkg/jobs"
-	"arkive/pkg/storage/localclient"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -51,20 +50,13 @@ func main() {
 	}
 
 	settingsRepo := settingsrepo.New()
-	localStorage := localclient.New(func(ctx context.Context) (string, error) {
-		settings, err := settingsRepo.GetStorageSettings(ctx, db)
-		if err != nil {
-			return "", err
-		}
-		return settings.LocalPath, nil
-	})
+	localStorage := settingssvc.NewLocalStorage(db, settingsRepo)
 	storageProvider := storageprovider.New(db, settingsRepo, localStorage)
 
 	uploadService := uploads.NewService(
 		db,
 		storagerepo.New(),
 		filerepo.New(),
-		folderrepo.New(),
 		uploadrepo.New(),
 		usagerepo.New(),
 		usersrepo.New(),

@@ -28,11 +28,12 @@ func WebFiles(uploadService *uploads.Service) gin.HandlerFunc {
 			return
 		}
 
-		folderPath := uploads.NormalizeFolderPath(c.Query("path"))
 		sort := strings.TrimSpace(c.DefaultQuery("sort", "updated_desc"))
 		page := pagination.ParsePageParam(c.DefaultQuery("page", "1"))
 		pageSize := pagination.ParsePageSizeParam(c.DefaultQuery("pageSize", "25"))
-		contents, err := uploadService.ListFolderContents(c.Request.Context(), user.ID, folderPath, sort, page, pageSize)
+		query := c.Request.URL.Query()
+		query.Del("path")
+		contents, err := uploadService.ListCompletedUploads(c.Request.Context(), user.ID, sort, page, pageSize)
 		if err != nil {
 			_ = c.Error(errs.WithStack(err))
 			c.AbortWithStatus(http.StatusInternalServerError)
@@ -47,10 +48,8 @@ func WebFiles(uploadService *uploads.Service) gin.HandlerFunc {
 
 		web.Render(c, pages.FilesPage(pages.FilesPageProps{
 			Ctx:           pages.ContextWithUser(user),
-			FolderPath:    folderPath,
-			Folders:       contents.Folders,
 			Files:         contents.Files,
-			Query:         c.Request.URL.Query(),
+			Query:         query,
 			Sort:          sort,
 			Page:          page,
 			PageSize:      pageSize,

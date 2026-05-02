@@ -282,39 +282,6 @@
   line-height: var(--text-mono-lh);
 }
 
-.ad-slot {
-  border-style: dashed;
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
-.ad-slot .ad-label {
-  text-transform: uppercase;
-  letter-spacing: var(--text-label-ls);
-  font-size: var(--text-label-size);
-  line-height: var(--text-label-lh);
-  font-weight: var(--text-label-wt);
-  color: var(--muted);
-  margin: 0 0 12px;
-}
-
-.ad-body {
-  display: grid;
-  gap: 10px;
-}
-
-.ad-body strong {
-  font-size: var(--text-h3-size);
-  line-height: var(--text-h3-lh);
-  font-weight: var(--text-h3-wt);
-}
-
-.ad-slot.compact p {
-  margin: 0;
-  color: var(--muted);
-  font-size: var(--text-body-sm-size);
-  line-height: var(--text-body-sm-lh);
-}
-
 .media-view.is-cinema .media-shell {
   grid-template-columns: minmax(0, 1fr);
 }

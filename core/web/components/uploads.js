@@ -1,8 +1,6 @@
 (function() {
   const input = document.getElementById("upload-file");
-  const folderInput = document.getElementById("upload-folder");
   const browseFilesButton = document.getElementById("upload-browse-files");
-  const browseFoldersButton = document.getElementById("upload-browse-folders");
   const startButton = document.getElementById("upload-start");
   const abortButton = document.getElementById("upload-abort");
   const dropzone = document.getElementById("upload-dropzone");
@@ -27,16 +25,6 @@
     return;
   }
 
-  function enableFolderPicker() {
-    if (!folderInput) {
-      return;
-    }
-    folderInput.setAttribute("webkitdirectory", "");
-    folderInput.setAttribute("directory", "");
-    folderInput.setAttribute("mozdirectory", "");
-  }
-
-  enableFolderPicker();
   const MAX_QUEUE_ITEMS = 300;
   const MAX_FILE_SIZE = 10 * 1024 * 1024 * 1024;
   const MAX_CONCURRENCY = 10;
@@ -271,12 +259,12 @@
     queueList.appendChild(li);
   }
 
-  function addBatchHeader(batchId, folderPath) {
+  function addBatchHeader(batchId) {
     var header = document.createElement("li");
     header.id = "upload-batch-" + batchId;
     header.className = "upload-batch-header";
     var nameEl = document.createElement("span");
-    nameEl.textContent = folderPath || "Root";
+    nameEl.textContent = "Batch upload";
     var progressEl = document.createElement("span");
     progressEl.className = "upload-batch-progress";
     progressEl.textContent = "0 / 0";
@@ -379,7 +367,6 @@
   function startUpload(task) {
     return api("/api/uploads/start", {
       filename: task.file.name,
-      folderPath: task.folderPath || "",
       size: task.file.size,
       contentType: task.file.type || "application/octet-stream"
     });
@@ -537,7 +524,7 @@
       });
   }
 
-  function enqueueFile(file, folderPath) {
+  function enqueueFile(file) {
     if (queuedTasks.length >= MAX_QUEUE_ITEMS) {
       toastUploadError("Queue limit reached");
       return;
@@ -545,7 +532,6 @@
     var task = {
       id: ++fileCounter,
       file: file,
-      folderPath: folderPath || "",
       status: "queued",
       statusText: "Queued: " + file.name,
       uploadedBytes: 0,
@@ -557,25 +543,25 @@
     processQueue();
   }
 
-  function enqueueFiles(files, basePath) {
+  function enqueueFiles(files) {
     var batchId = ++batchCounter;
     if (files.length > 1) {
-      addBatchHeader(batchId, basePath || "");
+      addBatchHeader(batchId);
     }
     for (var i = 0; i < files.length; i++) {
-      enqueueFile(files[i], basePath || "");
+      enqueueFile(files[i]);
     }
     if (files.length > 1) {
       var items = queueList.querySelectorAll(".upload-queue-item:last-child");
     }
   }
 
-  function handleFiles(files, folderPath) {
+  function handleFiles(files) {
     var fileArray = [];
     for (var i = 0; i < files.length; i++) {
       fileArray.push(files[i]);
     }
-    enqueueFiles(fileArray, folderPath);
+    enqueueFiles(fileArray);
   }
 
   function abortAll() {
@@ -625,28 +611,11 @@
     });
   }
 
-  if (browseFoldersButton && folderInput) {
-    browseFoldersButton.addEventListener("click", function() {
-      folderInput.click();
-    });
-  }
-
   if (input) {
     input.addEventListener("change", function() {
       if (input.files && input.files.length) {
-        handleFiles(input.files, "");
+        handleFiles(input.files);
         input.value = "";
-      }
-    });
-  }
-
-  if (folderInput) {
-    folderInput.addEventListener("change", function() {
-      if (folderInput.files && folderInput.files.length) {
-        var path = folderInput.files[0].webkitRelativePath || "";
-        var root = path.split("/")[0] || "";
-        handleFiles(folderInput.files, root);
-        folderInput.value = "";
       }
     });
   }
@@ -662,56 +631,10 @@
     dropzone.addEventListener("drop", function(e) {
       e.preventDefault();
       dropzone.classList.remove("is-dragover");
-      var entries = [];
-      if (e.dataTransfer.items) {
-        for (var i = 0; i < e.dataTransfer.items.length; i++) {
-          var item = e.dataTransfer.items[i];
-          if (item && item.webkitGetAsEntry) {
-            var entry = item.webkitGetAsEntry();
-            if (entry) {
-              entries.push(entry);
-            }
-          }
-        }
-      }
-      if (entries.length) {
-        handleEntries(entries, "");
-      } else if (e.dataTransfer.files && e.dataTransfer.files.length) {
-        handleFiles(e.dataTransfer.files, "");
+      if (e.dataTransfer.files && e.dataTransfer.files.length) {
+        handleFiles(e.dataTransfer.files);
       }
     });
-  }
-
-  async function collectEntries(entry, collected) {
-    if (entry.isFile) {
-      var file = await new Promise(function(resolve) {
-        entry.file(resolve);
-      });
-      collected.push(file);
-    } else if (entry.isDirectory) {
-      var reader = entry.createReader();
-      var readAll = function() {
-        reader.readEntries(async function(results) {
-          if (results.length) {
-            for (var i = 0; i < results.length; i++) {
-              await collectEntries(results[i], collected);
-            }
-            readAll();
-          }
-        });
-      };
-      readAll();
-    }
-  }
-
-  async function handleEntries(entries, basePath) {
-    var collected = [];
-    for (var i = 0; i < entries.length; i++) {
-      await collectEntries(entries[i], collected);
-    }
-    if (collected.length) {
-      enqueueFiles(collected, basePath);
-    }
   }
 
   if (confirmStart && confirmCancel && confirmBackdrop) {

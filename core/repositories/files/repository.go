@@ -2,7 +2,6 @@ package filerepo
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	"arkive/core/database"
@@ -18,18 +17,17 @@ func New() *Repository {
 func (r *Repository) CreateFile(ctx context.Context, db database.PgExecutor, file models.File) (models.File, error) {
 	var created models.File
 	query := `INSERT INTO files
-		(user_id, bucket, object_key, folder_path, filename, content_type, size_bytes, status, expires_at)
+		(user_id, bucket, object_key, filename, content_type, size_bytes, status, expires_at)
 	VALUES
-		($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		($1, $2, $3, $4, $5, $6, $7, $8)
 	RETURNING
-		id, user_id, bucket, object_key, folder_path, filename, content_type, size_bytes,
+		id, user_id, bucket, object_key, filename, content_type, size_bytes,
 		video_width, video_height, video_duration_seconds,
 		status, created_at, updated_at, expires_at`
 	if err := db.QueryRow(ctx, query,
 		file.UserID,
 		file.Bucket,
 		file.ObjectKey,
-		file.FolderPath,
 		file.Filename,
 		file.ContentType,
 		file.SizeBytes,
@@ -40,7 +38,6 @@ func (r *Repository) CreateFile(ctx context.Context, db database.PgExecutor, fil
 		&created.UserID,
 		&created.Bucket,
 		&created.ObjectKey,
-		&created.FolderPath,
 		&created.Filename,
 		&created.ContentType,
 		&created.SizeBytes,
@@ -160,7 +157,7 @@ func (r *Repository) ClearExpiryForUserCompletedFiles(ctx context.Context, db da
 
 func (r *Repository) ListArchivedFilesForUser(ctx context.Context, db database.PgExecutor, userID string) ([]models.File, error) {
 	query := `SELECT
-		id, user_id, bucket, object_key, folder_path, filename, content_type, size_bytes,
+		id, user_id, bucket, object_key, filename, content_type, size_bytes,
 		video_width, video_height, video_duration_seconds,
 		status, created_at, updated_at, expires_at
 	FROM
@@ -185,7 +182,6 @@ func (r *Repository) ListArchivedFilesForUser(ctx context.Context, db database.P
 			&file.UserID,
 			&file.Bucket,
 			&file.ObjectKey,
-			&file.FolderPath,
 			&file.Filename,
 			&file.ContentType,
 			&file.SizeBytes,
@@ -270,7 +266,7 @@ func (r *Repository) UpdateVideoMetadata(ctx context.Context, db database.PgExec
 func (r *Repository) GetFileByID(ctx context.Context, db database.PgExecutor, fileID string) (models.File, error) {
 	var file models.File
 	query := `SELECT
-		id, user_id, bucket, object_key, folder_path, filename, content_type, size_bytes,
+		id, user_id, bucket, object_key, filename, content_type, size_bytes,
 		video_width, video_height, video_duration_seconds,
 		status, created_at, updated_at, expires_at
 	FROM
@@ -282,7 +278,6 @@ func (r *Repository) GetFileByID(ctx context.Context, db database.PgExecutor, fi
 		&file.UserID,
 		&file.Bucket,
 		&file.ObjectKey,
-		&file.FolderPath,
 		&file.Filename,
 		&file.ContentType,
 		&file.SizeBytes,
@@ -302,7 +297,7 @@ func (r *Repository) GetFileByID(ctx context.Context, db database.PgExecutor, fi
 func (r *Repository) GetFileForUser(ctx context.Context, db database.PgExecutor, fileID, userID string) (models.File, error) {
 	var file models.File
 	query := `SELECT
-		id, user_id, bucket, object_key, folder_path, filename, content_type, size_bytes,
+		id, user_id, bucket, object_key, filename, content_type, size_bytes,
 		video_width, video_height, video_duration_seconds,
 		status, created_at, updated_at, expires_at
 	FROM
@@ -314,7 +309,6 @@ func (r *Repository) GetFileForUser(ctx context.Context, db database.PgExecutor,
 		&file.UserID,
 		&file.Bucket,
 		&file.ObjectKey,
-		&file.FolderPath,
 		&file.Filename,
 		&file.ContentType,
 		&file.SizeBytes,
@@ -333,7 +327,7 @@ func (r *Repository) GetFileForUser(ctx context.Context, db database.PgExecutor,
 
 func (r *Repository) ListPendingForUser(ctx context.Context, db database.PgExecutor, userID string) ([]models.File, error) {
 	query := `SELECT
-		id, user_id, bucket, object_key, folder_path, filename, content_type, size_bytes,
+		id, user_id, bucket, object_key, filename, content_type, size_bytes,
 		video_width, video_height, video_duration_seconds,
 		status, created_at, updated_at, expires_at
 	FROM
@@ -356,7 +350,6 @@ func (r *Repository) ListPendingForUser(ctx context.Context, db database.PgExecu
 			&file.UserID,
 			&file.Bucket,
 			&file.ObjectKey,
-			&file.FolderPath,
 			&file.Filename,
 			&file.ContentType,
 			&file.SizeBytes,
@@ -378,56 +371,7 @@ func (r *Repository) ListPendingForUser(ctx context.Context, db database.PgExecu
 	return files, nil
 }
 
-func (r *Repository) ListCompletedForUser(ctx context.Context, db database.PgExecutor, userID string) ([]models.File, error) {
-	query := `SELECT
-		id, user_id, bucket, object_key, folder_path, filename, content_type, size_bytes,
-		video_width, video_height, video_duration_seconds,
-		status, created_at, updated_at, expires_at
-	FROM
-		files
-	WHERE
-		user_id = $1
-		AND status = 'complete'
-		AND expires_at IS NULL
-	ORDER BY
-		created_at DESC`
-	rows, err := db.Query(ctx, query, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var files []models.File
-	for rows.Next() {
-		var file models.File
-		if err := rows.Scan(
-			&file.ID,
-			&file.UserID,
-			&file.Bucket,
-			&file.ObjectKey,
-			&file.FolderPath,
-			&file.Filename,
-			&file.ContentType,
-			&file.SizeBytes,
-			&file.VideoWidth,
-			&file.VideoHeight,
-			&file.VideoDurationSeconds,
-			&file.Status,
-			&file.CreatedAt,
-			&file.UpdatedAt,
-			&file.ExpiresAt,
-		); err != nil {
-			return nil, err
-		}
-		files = append(files, file)
-	}
-	if rows.Err() != nil {
-		return nil, rows.Err()
-	}
-	return files, nil
-}
-
-func (r *Repository) ListCompletedForUserInFolder(ctx context.Context, db database.PgExecutor, userID, folderPath, sort string, page, pageSize int) ([]models.File, error) {
+func (r *Repository) ListCompletedForUser(ctx context.Context, db database.PgExecutor, userID, sort string, page, pageSize int) ([]models.File, error) {
 	if pageSize <= 0 {
 		pageSize = 25
 	}
@@ -437,19 +381,18 @@ func (r *Repository) ListCompletedForUserInFolder(ctx context.Context, db databa
 	offset := (page - 1) * pageSize
 	orderBy := resolveFilesOrderBy(sort)
 	query := `SELECT
-		id, user_id, bucket, object_key, folder_path, filename, content_type, size_bytes,
+		id, user_id, bucket, object_key, filename, content_type, size_bytes,
 		video_width, video_height, video_duration_seconds,
 		status, created_at, updated_at, expires_at
 	FROM
 		files
 	WHERE
 		user_id = $1
-		AND folder_path = $2
 		AND status = 'complete'
 		AND expires_at IS NULL
 	ORDER BY ` + orderBy + `
-	LIMIT $3 OFFSET $4`
-	rows, err := db.Query(ctx, query, userID, folderPath, pageSize, offset)
+	LIMIT $2 OFFSET $3`
+	rows, err := db.Query(ctx, query, userID, pageSize, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -463,7 +406,6 @@ func (r *Repository) ListCompletedForUserInFolder(ctx context.Context, db databa
 			&file.UserID,
 			&file.Bucket,
 			&file.ObjectKey,
-			&file.FolderPath,
 			&file.Filename,
 			&file.ContentType,
 			&file.SizeBytes,
@@ -485,46 +427,20 @@ func (r *Repository) ListCompletedForUserInFolder(ctx context.Context, db databa
 	return files, nil
 }
 
-func (r *Repository) CountCompletedForUserInFolder(ctx context.Context, db database.PgExecutor, userID, folderPath string) (int, error) {
+func (r *Repository) CountCompletedForUser(ctx context.Context, db database.PgExecutor, userID string) (int, error) {
 	query := `SELECT
 		COUNT(1)
 	FROM
 		files
 	WHERE
 		user_id = $1
-		AND folder_path = $2
 		AND status = 'complete'
 		AND expires_at IS NULL`
 	var count int
-	if err := db.QueryRow(ctx, query, userID, folderPath).Scan(&count); err != nil {
+	if err := db.QueryRow(ctx, query, userID).Scan(&count); err != nil {
 		return 0, err
 	}
 	return count, nil
-}
-
-func (r *Repository) CountFilesInFolderTree(ctx context.Context, db database.PgExecutor, userID, folderPath string) (int, error) {
-	escapedPath := escapeLikePattern(folderPath)
-	likePattern := escapedPath + "/%"
-	query := `SELECT
-		COUNT(1)
-	FROM
-		files
-	WHERE
-		user_id = $1
-		AND status NOT IN ('failed', 'aborted')
-		AND (folder_path = $2 OR folder_path LIKE $3 ESCAPE '\')`
-	var count int
-	if err := db.QueryRow(ctx, query, userID, folderPath, likePattern).Scan(&count); err != nil {
-		return 0, err
-	}
-	return count, nil
-}
-
-func escapeLikePattern(value string) string {
-	value = strings.ReplaceAll(value, "\\", "\\\\")
-	value = strings.ReplaceAll(value, "%", "\\%")
-	value = strings.ReplaceAll(value, "_", "\\_")
-	return value
 }
 
 func resolveFilesOrderBy(sort string) string {
@@ -560,7 +476,7 @@ func (r *Repository) DeleteFileForUser(ctx context.Context, db database.PgExecut
 
 func (r *Repository) ListExpiredCompleteFiles(ctx context.Context, db database.PgExecutor, cutoff time.Time) ([]models.File, error) {
 	query := `SELECT
-		id, user_id, bucket, object_key, folder_path, filename, content_type, size_bytes,
+		id, user_id, bucket, object_key, filename, content_type, size_bytes,
 		video_width, video_height, video_duration_seconds,
 		status, created_at, updated_at, expires_at
 	FROM
@@ -585,7 +501,6 @@ func (r *Repository) ListExpiredCompleteFiles(ctx context.Context, db database.P
 			&file.UserID,
 			&file.Bucket,
 			&file.ObjectKey,
-			&file.FolderPath,
 			&file.Filename,
 			&file.ContentType,
 			&file.SizeBytes,
@@ -609,7 +524,7 @@ func (r *Repository) ListExpiredCompleteFiles(ctx context.Context, db database.P
 
 func (r *Repository) ListExpiredUploads(ctx context.Context, db database.PgExecutor, cutoff time.Time) ([]models.File, error) {
 	query := `SELECT
-		id, user_id, bucket, object_key, folder_path, filename, content_type, size_bytes,
+		id, user_id, bucket, object_key, filename, content_type, size_bytes,
 		video_width, video_height, video_duration_seconds,
 		status, created_at, updated_at, expires_at
 	FROM
@@ -634,7 +549,6 @@ func (r *Repository) ListExpiredUploads(ctx context.Context, db database.PgExecu
 			&file.UserID,
 			&file.Bucket,
 			&file.ObjectKey,
-			&file.FolderPath,
 			&file.Filename,
 			&file.ContentType,
 			&file.SizeBytes,

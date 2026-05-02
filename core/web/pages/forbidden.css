@@ -71,39 +71,12 @@
   margin: 0;
 }
 
-.forbidden-ads {
-  display: grid;
-  gap: 18px;
-}
-
 .forbidden-panel {
   padding: 18px;
   border-radius: 20px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(16, 20, 32, 0.85);
   box-shadow: var(--shadow);
-}
-
-.ad-slot {
-  border-style: dashed;
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
-.ad-label {
-  text-transform: uppercase;
-  letter-spacing: var(--text-label-ls);
-  font-size: var(--text-label-size);
-  line-height: var(--text-label-lh);
-  font-weight: var(--text-label-wt);
-  color: var(--muted);
-  margin: 0 0 12px;
-}
-
-.ad-slot.compact p {
-  margin: 0;
-  color: var(--muted);
-  font-size: var(--text-body-sm-size);
-  line-height: var(--text-body-sm-lh);
 }
 
 @media (max-width: 960px) {

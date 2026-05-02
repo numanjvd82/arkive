@@ -1,0 +1,174 @@
+package settings
+
+import (
+	"context"
+	"math"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+
+	"github.com/jackc/pgx/v5"
+
+	"arkive/core/database"
+	"arkive/core/models"
+	settingsrepo "arkive/core/repositories/settings"
+	usersrepo "arkive/core/repositories/users"
+	"arkive/pkg/storage/localclient"
+	"arkive/pkg/validation"
+)
+
+type Service struct {
+	db           database.PgPool
+	settingsRepo *settingsrepo.Repository
+	userRepo     *usersrepo.Repository
+}
+
+type StorageInput struct {
+	Provider          string
+	LocalPath         string
+	StorageGB         string
+	S3AccessKeyID     string
+	S3SecretAccessKey string
+	S3SessionToken    string
+	S3Bucket          string
+	S3Endpoint        string
+	S3Region          string
+	S3UsePathStyle    string
+}
+
+func NewService(db database.PgPool, settingsRepo *settingsrepo.Repository, userRepo *usersrepo.Repository) *Service {
+	return &Service{
+		db:           db,
+		settingsRepo: settingsRepo,
+		userRepo:     userRepo,
+	}
+}
+
+func NewLocalStorage(db database.PgPool, settingsRepo *settingsrepo.Repository) *localclient.Client {
+	return localclient.New(func(ctx context.Context) (string, error) {
+		settings, err := settingsRepo.GetStorageSettings(ctx, db)
+		if err != nil {
+			return "", err
+		}
+		return settings.LocalPath, nil
+	})
+}
+
+func (s *Service) StorageSettings(ctx context.Context) (models.StorageSettings, error) {
+	return s.settingsRepo.GetStorageSettings(ctx, s.db)
+}
+
+func (s *Service) UpdateStorageSettings(ctx context.Context, userID string, input StorageInput) (models.StorageSettings, validation.Errors, error) {
+	current, _ := s.settingsRepo.GetStorageSettings(ctx, s.db)
+	settings, validationErrors := BuildStorageSettings(input)
+	if settings.Provider == "s3" && strings.TrimSpace(settings.S3SecretAccessKey) == "" {
+		settings.S3SecretAccessKey = current.S3SecretAccessKey
+	}
+	ValidateStorageSettings(settings, validationErrors)
+	if validationErrors.HasAny() {
+		return settings, validationErrors, nil
+	}
+
+	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return models.StorageSettings{}, nil, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if err := SaveStorageSettingsTx(ctx, tx, s.settingsRepo, s.userRepo, userID, settings); err != nil {
+		return models.StorageSettings{}, nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return models.StorageSettings{}, nil, err
+	}
+	return settings, nil, nil
+}
+
+func SaveStorageSettingsTx(ctx context.Context, tx pgx.Tx, settingsRepo *settingsrepo.Repository, userRepo *usersrepo.Repository, userID string, settings models.StorageSettings) error {
+	settings = NormalizeStorageSettings(settings)
+	if settings.Provider == "local" {
+		if err := os.MkdirAll(settings.LocalPath, 0o700); err != nil {
+			return err
+		}
+	}
+	if err := userRepo.UpdateQuota(ctx, tx, userID, quotaBytes(settings.MaxStorageBytes)); err != nil {
+		return err
+	}
+	return settingsRepo.SaveStorageSettings(ctx, tx, settings)
+}
+
+func BuildStorageSettings(input StorageInput) (models.StorageSettings, validation.Errors) {
+	validationErrors := validation.New()
+	storageGB := strings.TrimSpace(input.StorageGB)
+	maxBytes := int64(0)
+	if storageGB != "" {
+		gb, err := strconv.ParseInt(storageGB, 10, 64)
+		if err != nil || gb < 0 {
+			validationErrors.Add("storage_gb", "storage limit must be 0 or a positive number")
+		} else if gb > 0 {
+			maxBytes = gb * 1024 * 1024 * 1024
+		}
+	}
+	return NormalizeStorageSettings(models.StorageSettings{
+		Provider:          strings.ToLower(strings.TrimSpace(input.Provider)),
+		LocalPath:         strings.TrimSpace(input.LocalPath),
+		MaxStorageBytes:   maxBytes,
+		S3AccessKeyID:     strings.TrimSpace(input.S3AccessKeyID),
+		S3SecretAccessKey: strings.TrimSpace(input.S3SecretAccessKey),
+		S3SessionToken:    strings.TrimSpace(input.S3SessionToken),
+		S3Bucket:          strings.TrimSpace(input.S3Bucket),
+		S3Endpoint:        strings.TrimSpace(input.S3Endpoint),
+		S3Region:          strings.TrimSpace(input.S3Region),
+		S3UsePathStyle:    strings.TrimSpace(input.S3UsePathStyle) == "on" || strings.TrimSpace(input.S3UsePathStyle) == "true",
+	}), validationErrors
+}
+
+func NormalizeStorageSettings(settings models.StorageSettings) models.StorageSettings {
+	settings.Provider = strings.ToLower(strings.TrimSpace(settings.Provider))
+	if settings.Provider == "" {
+		settings.Provider = "local"
+	}
+	settings.LocalPath = strings.TrimSpace(settings.LocalPath)
+	if settings.Provider == "local" && settings.LocalPath != "" {
+		if abs, err := filepath.Abs(settings.LocalPath); err == nil {
+			settings.LocalPath = abs
+		}
+	}
+	settings.S3Region = strings.TrimSpace(settings.S3Region)
+	if settings.Provider == "s3" && settings.S3Region == "" {
+		settings.S3Region = "auto"
+	}
+	return settings
+}
+
+func ValidateStorageSettings(settings models.StorageSettings, validationErrors validation.Errors) {
+	switch settings.Provider {
+	case "local":
+		if settings.LocalPath == "" {
+			validationErrors.Add("local_path", "local storage path is required")
+		}
+	case "s3":
+		if settings.S3AccessKeyID == "" {
+			validationErrors.Add("s3_access_key_id", "access key is required")
+		}
+		if settings.S3SecretAccessKey == "" {
+			validationErrors.Add("s3_secret_access_key", "secret key is required")
+		}
+		if settings.S3Bucket == "" {
+			validationErrors.Add("s3_bucket", "bucket is required")
+		}
+		if settings.S3Endpoint == "" {
+			validationErrors.Add("s3_endpoint", "endpoint is required")
+		}
+	default:
+		validationErrors.Add("storage_provider", "choose local or S3-compatible storage")
+	}
+}
+
+func quotaBytes(maxStorageBytes int64) int64 {
+	if maxStorageBytes <= 0 {
+		return math.MaxInt64
+	}
+	return maxStorageBytes
+}

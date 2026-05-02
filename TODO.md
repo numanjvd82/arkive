@@ -11,7 +11,7 @@
 - Extract image metadata via `ffprobe` and store it alongside files.
 - Generate video thumbnails during processing.
 - Generate image thumbnails during processing.
-- Multi-file and folder upload UI (queue, progress per item, folder support).
+- Multi-file upload UI (queue and progress per item).
 - Dedicated paused-uploads list in the dashboard or uploads page (beyond the resume banner).
 - Alert component for inline form and page messaging.
 - Add `ads.txt` for search/revenue support.

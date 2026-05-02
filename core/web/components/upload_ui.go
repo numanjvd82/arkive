@@ -47,19 +47,12 @@ func UploadControls(props UploadControlsProps) g.Node {
 				h.Class("dropzone-copy"),
 				h.P(
 					h.Class("dropzone-title"),
-					g.Text("Drop files or folders here or "),
+					g.Text("Drop files here or "),
 					h.Button(
 						h.Class("dropzone-action"),
 						h.Type("button"),
 						g.Attr("id", "upload-browse-files"),
 						g.Text("Browse files"),
-					),
-					g.Text(" or "),
-					h.Button(
-						h.Class("dropzone-action"),
-						h.Type("button"),
-						g.Attr("id", "upload-browse-folders"),
-						g.Text("Browse folder"),
 					),
 				),
 				h.P(
@@ -76,16 +69,6 @@ func UploadControls(props UploadControlsProps) g.Node {
 			g.Attr("multiple", "multiple"),
 			g.If(props.InputRequired, g.Attr("required", "required")),
 			g.If(props.InputHelper != "", g.Attr("aria-describedby", inputID+"-helper")),
-		),
-		h.Input(
-			h.Type("file"),
-			h.ID("upload-folder"),
-			h.Name("folder"),
-			h.Class("upload-input is-hidden"),
-			g.Attr("webkitdirectory", ""),
-			g.Attr("directory", ""),
-			g.Attr("mozdirectory", ""),
-			g.Attr("multiple", "multiple"),
 		),
 		h.Div(
 			h.Class("upload-chip is-hidden"),
@@ -174,5 +157,3 @@ func UploadControls(props UploadControlsProps) g.Node {
 		}),
 	})
 }
-
-

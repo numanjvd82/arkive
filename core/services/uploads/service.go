@@ -3,7 +3,6 @@ package uploads
 import (
 	"context"
 	"errors"
-	"math"
 	"strings"
 	"time"
 
@@ -12,7 +11,6 @@ import (
 	"arkive/core/database"
 	"arkive/core/models"
 	filerepo "arkive/core/repositories/files"
-	folderrepo "arkive/core/repositories/folders"
 	storagerepo "arkive/core/repositories/storage"
 	uploadrepo "arkive/core/repositories/uploads"
 	usagerepo "arkive/core/repositories/usage"
@@ -33,7 +31,6 @@ type Service struct {
 	db                   database.PgPool
 	storageRepo          *storagerepo.Repository
 	fileRepo             *filerepo.Repository
-	folderRepo           *folderrepo.Repository
 	uploadRepo           *uploadrepo.Repository
 	usageRepo            *usagerepo.Repository
 	userRepo             *usersrepo.Repository
@@ -59,7 +56,6 @@ func NewService(
 	db database.PgPool,
 	storageRepo *storagerepo.Repository,
 	fileRepo *filerepo.Repository,
-	folderRepo *folderrepo.Repository,
 	uploadRepo *uploadrepo.Repository,
 	usageRepo *usagerepo.Repository,
 	userRepo *usersrepo.Repository,
@@ -70,7 +66,6 @@ func NewService(
 		db:                   db,
 		storageRepo:          storageRepo,
 		fileRepo:             fileRepo,
-		folderRepo:           folderRepo,
 		uploadRepo:           uploadRepo,
 		usageRepo:            usageRepo,
 		userRepo:             userRepo,
@@ -82,10 +77,6 @@ func NewService(
 		maxUploadConcurrency: cfg.MaxUploadConcurrency,
 		maxQueueItems:        cfg.MaxQueueItems,
 	}
-}
-
-func (s *Service) DB() database.PgPool {
-	return s.db
 }
 
 func (s *Service) validateStartInput(userID, filename string, sizeBytes int64) (validation.Errors, error) {
@@ -115,23 +106,15 @@ func isExpired(expiresAt *time.Time) bool {
 	return time.Now().After(*expiresAt)
 }
 
-func (s *Service) beginUploadTx(ctx context.Context, userID, objectKey, folderPath, filename, contentType string, sizeBytes int64) (pgx.Tx, models.File, validation.Errors, error) {
+func (s *Service) beginUploadTx(ctx context.Context, userID, objectKey, filename, contentType string, sizeBytes int64) (pgx.Tx, models.File, validation.Errors, error) {
 	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return nil, models.File{}, nil, err
 	}
 
-	if folderPath != "" {
-		if err := s.ensureFolderPath(ctx, tx, userID, folderPath); err != nil {
-			_ = tx.Rollback(ctx)
-			return nil, models.File{}, nil, err
-		}
-	}
-
 	file, err := s.fileRepo.CreateFile(ctx, tx, models.File{
 		UserID:      userID,
 		ObjectKey:   objectKey,
-		FolderPath:  folderPath,
 		Filename:    filename,
 		ContentType: contentType,
 		SizeBytes:   sizeBytes,
@@ -223,10 +206,9 @@ func (s *Service) markUploadFailed(ctx context.Context, userID string, file mode
 		return
 	}
 	_, _ = s.storageRepo.ReleaseReservedStorage(ctx, s.db, userID, file.SizeBytes)
-	_ = s.cleanupFolderPath(ctx, s.db, userID, file.FolderPath)
 }
 
-func (s *Service) StartUpload(ctx context.Context, userID, folderPath, filename string, sizeBytes int64, contentType string) (models.UploadStartResponse, validation.Errors, error) {
+func (s *Service) StartUpload(ctx context.Context, userID, filename string, sizeBytes int64, contentType string) (models.UploadStartResponse, validation.Errors, error) {
 	var err error
 	userID, err = validateUserID(userID)
 	if err != nil {
@@ -251,7 +233,7 @@ func (s *Service) StartUpload(ctx context.Context, userID, folderPath, filename 
 		return models.UploadStartResponse{}, validationErrors, nil
 	}
 
-	resp, validationErrors, err := s.StartSingleUpload(ctx, userID, folderPath, filename, sizeBytes, contentType)
+	resp, validationErrors, err := s.StartSingleUpload(ctx, userID, filename, sizeBytes, contentType)
 	if err != nil || (validationErrors != nil && validationErrors.HasAny()) {
 		return models.UploadStartResponse{}, validationErrors, err
 	}
@@ -292,14 +274,13 @@ func (s *Service) CountArchivedFiles(ctx context.Context, userID string) (int64,
 	return s.fileRepo.CountArchivedFilesForUser(ctx, s.db, userID)
 }
 
-func (s *Service) StartSingleUpload(ctx context.Context, userID, folderPath, filename string, sizeBytes int64, contentType string) (models.SingleStartResponse, validation.Errors, error) {
+func (s *Service) StartSingleUpload(ctx context.Context, userID, filename string, sizeBytes int64, contentType string) (models.SingleStartResponse, validation.Errors, error) {
 	var err error
 	userID, err = validateUserID(userID)
 	if err != nil {
 		return models.SingleStartResponse{}, nil, err
 	}
 	filename = strings.TrimSpace(filename)
-	folderPath = normalizeFolderPath(folderPath)
 	contentType = strings.TrimSpace(contentType)
 
 	validationErrors, err := s.validateStartInput(userID, filename, sizeBytes)
@@ -315,7 +296,7 @@ func (s *Service) StartSingleUpload(ctx context.Context, userID, folderPath, fil
 		return models.SingleStartResponse{}, nil, err
 	}
 
-	tx, file, valErrors, err := s.beginUploadTx(ctx, userID, objectKey, folderPath, filename, contentType, sizeBytes)
+	tx, file, valErrors, err := s.beginUploadTx(ctx, userID, objectKey, filename, contentType, sizeBytes)
 	if err != nil {
 		return models.SingleStartResponse{}, nil, err
 	}
@@ -437,11 +418,6 @@ func (s *Service) AbortSingleUpload(ctx context.Context, userID, fileID string) 
 		_ = tx.Rollback(ctx)
 		return ErrUploadFailed
 	}
-	if err := s.cleanupFolderPath(ctx, tx, userID, file.FolderPath); err != nil {
-		_ = tx.Rollback(ctx)
-		return err
-	}
-
 	if err := tx.Commit(ctx); err != nil {
 		return err
 	}
@@ -544,36 +520,20 @@ func (s *Service) ListPendingUploads(ctx context.Context, userID string) ([]mode
 	return s.fileRepo.ListPendingForUser(ctx, s.db, userID)
 }
 
-func (s *Service) ListCompletedUploads(ctx context.Context, userID string) ([]models.File, error) {
-	var err error
-	userID, err = validateUserID(userID)
-	if err != nil {
-		return nil, err
-	}
-	return s.fileRepo.ListCompletedForUser(ctx, s.db, userID)
-}
-
-type FolderContents struct {
-	Folders    []models.Folder
+type FileList struct {
 	Files      []models.File
 	TotalFiles int
 }
 
-func (s *Service) ListFolderContents(ctx context.Context, userID, folderPath, sort string, page, pageSize int) (FolderContents, error) {
+func (s *Service) ListCompletedUploads(ctx context.Context, userID, sort string, page, pageSize int) (FileList, error) {
 	var err error
 	userID, err = validateUserID(userID)
 	if err != nil {
-		return FolderContents{}, err
+		return FileList{}, err
 	}
-
-	folderPath = normalizeFolderPath(folderPath)
-	folders, err := s.folderRepo.ListByParent(ctx, s.db, userID, folderPath)
+	totalFiles, err := s.fileRepo.CountCompletedForUser(ctx, s.db, userID)
 	if err != nil {
-		return FolderContents{}, err
-	}
-	totalFiles, err := s.fileRepo.CountCompletedForUserInFolder(ctx, s.db, userID, folderPath)
-	if err != nil {
-		return FolderContents{}, err
+		return FileList{}, err
 	}
 	if page < 1 {
 		page = 1
@@ -582,18 +542,17 @@ func (s *Service) ListFolderContents(ctx context.Context, userID, folderPath, so
 		pageSize = 25
 	}
 	if totalFiles > 0 {
-		totalPages := int(math.Ceil(float64(totalFiles) / float64(pageSize)))
+		totalPages := (totalFiles + pageSize - 1) / pageSize
 		if page > totalPages {
 			page = totalPages
 		}
 	}
-	files, err := s.fileRepo.ListCompletedForUserInFolder(ctx, s.db, userID, folderPath, sort, page, pageSize)
+	files, err := s.fileRepo.ListCompletedForUser(ctx, s.db, userID, sort, page, pageSize)
 	if err != nil {
-		return FolderContents{}, err
+		return FileList{}, err
 	}
 
-	return FolderContents{
-		Folders:    folders,
+	return FileList{
 		Files:      files,
 		TotalFiles: totalFiles,
 	}, nil
