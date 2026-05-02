@@ -25,24 +25,6 @@
   width: 100%;
 }
 
-.auth-oauth {
-  margin-top: 20px;
-  display: flex;
-  justify-content: center;
-}
-
-.auth-oauth-button {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-}
-
-.auth-alt {
-  margin: 8px 0 0;
-  text-align: center;
-  color: var(--muted);
-}
-
 .auth-helper {
   margin: 0 0 12px;
   color: var(--muted);

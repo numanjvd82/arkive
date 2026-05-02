@@ -20,7 +20,7 @@ func SetupPage(props SetupPageProps) web.Page {
 	return web.Page{
 		Title:   "Arkive · Setup",
 		Robots:  RobotsNoIndex,
-		CSS:     []string{"/web/pages/signup.css"},
+		CSS:     []string{"/web/pages/setup.css"},
 		Body:    setupBody(props),
 		HideNav: true,
 	}

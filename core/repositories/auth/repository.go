@@ -14,20 +14,6 @@ func New() *Repository {
 	return &Repository{}
 }
 
-func (r *Repository) CreateUser(ctx context.Context, db database.PgExecutor, brandName, email, passwordHash string) (models.User, error) {
-	var user models.User
-	query := `INSERT INTO users
-		(brand_name, email, password_hash)
-	VALUES
-		($1, $2, $3)
-	RETURNING
-		id, brand_name, email`
-	if err := db.QueryRow(ctx, query, brandName, email, passwordHash).Scan(&user.ID, &user.BrandName, &user.Email); err != nil {
-		return models.User{}, err
-	}
-	return user, nil
-}
-
 func (r *Repository) CreateVerifiedUser(ctx context.Context, db database.PgExecutor, brandName, email, passwordHash string) (models.User, error) {
 	var user models.User
 	query := `INSERT INTO users
@@ -87,20 +73,6 @@ func (r *Repository) GetUserByID(ctx context.Context, db database.PgExecutor, us
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	); err != nil {
-		return models.User{}, err
-	}
-	return user, nil
-}
-
-func (r *Repository) GetUserByBrandName(ctx context.Context, db database.PgExecutor, brandName string) (models.User, error) {
-	var user models.User
-	query := `SELECT
-		id, brand_name, email
-	FROM
-		users
-	WHERE
-		brand_name = $1`
-	if err := db.QueryRow(ctx, query, brandName).Scan(&user.ID, &user.BrandName, &user.Email); err != nil {
 		return models.User{}, err
 	}
 	return user, nil
