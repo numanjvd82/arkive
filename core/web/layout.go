@@ -57,13 +57,13 @@ func Layout(data LayoutData, content ...g.Node) g.Node {
 
 func buildHeadNodes(data LayoutData) []g.Node {
 	headNodes := []g.Node{
-			h.Meta(h.Charset("utf-8")),
-			h.Meta(h.Name("viewport"), h.Content("width=device-width, initial-scale=1")),
-			h.Link(h.Rel("preconnect"), h.Href("https://fonts.googleapis.com")),
-			h.Link(h.Rel("preconnect"), h.Href("https://fonts.gstatic.com"), g.Attr("crossorigin", "")),
-			h.Link(
-				h.Rel("preload"),
-				h.As("style"),
+		h.Meta(h.Charset("utf-8")),
+		h.Meta(h.Name("viewport"), h.Content("width=device-width, initial-scale=1")),
+		h.Link(h.Rel("preconnect"), h.Href("https://fonts.googleapis.com")),
+		h.Link(h.Rel("preconnect"), h.Href("https://fonts.gstatic.com"), g.Attr("crossorigin", "")),
+		h.Link(
+			h.Rel("preload"),
+			h.As("style"),
 			h.Href("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&family=Plus+Jakarta+Sans:wght@600&display=swap"),
 		),
 		h.Link(
@@ -87,17 +87,12 @@ func buildHeadNodes(data LayoutData) []g.Node {
 		h.Link(h.Rel("stylesheet"), h.Href("/static/globals.css")),
 		components.InlineStyle(components.ButtonCSS),
 		components.InlineStyle(components.ToastCSS),
-		h.Script(
-			h.Defer(),
-			h.Src("https://static.cloudflareinsights.com/beacon.min.js"),
-			g.Attr("data-cf-beacon", `{"token": "9ef8563310c5432ebe6f10581a7a6b7d"}`),
-		),
 		h.Link(h.Rel("icon"), h.Type("image/x-icon"), h.Href("/static/assets/images/favicon.ico")),
 		h.Link(h.Rel("icon"), h.Type("image/png"), g.Attr("sizes", "32x32"), h.Href("/static/assets/images/favicon-32x32.png")),
 		h.Link(h.Rel("icon"), h.Type("image/png"), g.Attr("sizes", "48x48"), h.Href("/static/assets/images/favicon-48x48.png")),
 		h.Link(h.Rel("icon"), h.Type("image/png"), g.Attr("sizes", "16x16"), h.Href("/static/assets/images/favicon-16x16.png")),
 		h.Link(h.Rel("apple-touch-icon"), g.Attr("sizes", "180x180"), h.Href("/static/assets/images/apple-touch-icon.png")),
-			h.Link(h.Rel("manifest"), h.Href("/static/assets/images/site.webmanifest")),
+		h.Link(h.Rel("manifest"), h.Href("/static/assets/images/site.webmanifest")),
 	}
 	for _, css := range data.CSS {
 		headNodes = append(headNodes, h.Link(h.Rel("stylesheet"), h.Href(css)))

@@ -8,26 +8,40 @@ import (
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
 
+	"arkive/core/models"
 	"arkive/core/web"
 	"arkive/core/web/components"
 	"arkive/pkg/format"
+	"arkive/pkg/validation"
 )
 
 type SettingsPageProps struct {
-	Ctx PageContext
+	Ctx             PageContext
+	StorageSettings models.StorageSettings
+	StorageGB       string
+	Errors          validation.Errors
+	Message         string
 }
 
 func SettingsPage(props SettingsPageProps) web.Page {
 	user := props.Ctx.User
 	brandName := ""
 	email := ""
-	planName := "Arkive"
+	instanceLabel := "Core"
 	memberSince := "Unavailable"
 	lastLogin := "Unavailable"
 	usedStorage := "0 B"
 	quotaStorage := "Unlimited"
 	usagePercent := 0
-	retentionLabel := "While active (archive after inactivity)"
+	storageSettings := props.StorageSettings
+	if storageSettings.Provider == "" {
+		storageSettings.Provider = "local"
+	}
+	storageProviderLabel := strings.ToUpper(storageSettings.Provider)
+	storageGB := props.StorageGB
+	if storageGB == "" {
+		storageGB = settingsStorageGB(storageSettings.MaxStorageBytes)
+	}
 	if user != nil {
 		brandName = strings.TrimSpace(user.BrandName)
 		email = strings.TrimSpace(user.Email)
@@ -38,7 +52,7 @@ func SettingsPage(props SettingsPageProps) web.Page {
 			lastLogin = user.LastLoginAt.Format(time.RFC1123)
 		}
 		usedStorage = format.Bytes(user.UsedBytes)
-		if user.QuotaBytes > 0 {
+		if user.QuotaBytes > 0 && user.QuotaBytes != 9223372036854775807 {
 			quotaStorage = format.Bytes(user.QuotaBytes)
 			if user.UsedBytes > 0 {
 				usagePercent = int((float64(user.UsedBytes) / float64(user.QuotaBytes)) * 100)
@@ -110,8 +124,8 @@ func SettingsPage(props SettingsPageProps) web.Page {
 									h.Class("settings-meta"),
 									h.Div(
 										h.Class("settings-meta-row"),
-										h.Span(g.Text("Plan")),
-										h.Span(h.Class("settings-badge"), g.Text(planName)),
+										h.Span(g.Text("Instance")),
+										h.Span(h.Class("settings-badge"), g.Text(instanceLabel)),
 									),
 									h.Div(
 										h.Class("settings-meta-row"),
@@ -120,8 +134,8 @@ func SettingsPage(props SettingsPageProps) web.Page {
 									),
 									h.Div(
 										h.Class("settings-meta-row"),
-										h.Span(g.Text("Retention")),
-										h.Span(g.Text(retentionLabel)),
+										h.Span(g.Text("Provider")),
+										h.Span(g.Text(storageProviderLabel)),
 									),
 								),
 								h.Div(
@@ -137,8 +151,16 @@ func SettingsPage(props SettingsPageProps) web.Page {
 								),
 								h.P(
 									h.Class("settings-note"),
-									g.Text("Free accounts can store up to 10 GB and 10,000 files. Accounts with no login or file activity for 30 days may be archived; archived files are deleted after 7 days unless restored or upgraded."),
+									g.Text("Storage limits are controlled by this Core instance configuration."),
 								),
+							},
+						}),
+						components.Card(components.CardProps{
+							Title:    "Storage provider",
+							Subtitle: "Change where new uploads are stored.",
+							Class:    "settings-card",
+							Body: []g.Node{
+								storageSettingsForm(storageSettings, storageGB, props.Errors),
 							},
 						}),
 					),
@@ -162,6 +184,119 @@ func SettingsPage(props SettingsPageProps) web.Page {
 			),
 		),
 	}
+}
+
+func storageSettingsForm(settings models.StorageSettings, storageGB string, errors validation.Errors) g.Node {
+	return h.Form(
+		h.Class("settings-form"),
+		g.Attr("method", "POST"),
+		g.Attr("action", "/settings/storage"),
+		g.If(
+			validation.FieldError(errors, validation.GeneralKey) != "",
+			h.P(h.Class("form-error"), g.Text(validation.FieldError(errors, validation.GeneralKey))),
+		),
+		h.Div(
+			h.Class("storage-options"),
+			storageRadio("local", "Local disk", settings.Provider == "local"),
+			storageRadio("s3", "S3-compatible", settings.Provider == "s3"),
+		),
+		components.InputField(components.InputProps{
+			Label:       "Storage limit in GB",
+			Name:        "storage_gb",
+			Type:        components.InputTypeNumber,
+			Value:       storageGB,
+			Description: "Use 0 for unlimited.",
+			HelperText:  validation.FieldError(errors, "storage_gb"),
+			HasError:    validation.FieldError(errors, "storage_gb") != "",
+		}),
+		components.InputField(components.InputProps{
+			Label:      "Local path",
+			Name:       "local_path",
+			Type:       components.InputTypeText,
+			Value:      settings.LocalPath,
+			HelperText: validation.FieldError(errors, "local_path"),
+			HasError:   validation.FieldError(errors, "local_path") != "",
+		}),
+		components.InputField(components.InputProps{
+			Label:      "S3 access key",
+			Name:       "s3_access_key_id",
+			Type:       components.InputTypeText,
+			Value:      settings.S3AccessKeyID,
+			HelperText: validation.FieldError(errors, "s3_access_key_id"),
+			HasError:   validation.FieldError(errors, "s3_access_key_id") != "",
+		}),
+		components.InputField(components.InputProps{
+			Label:       "S3 secret key",
+			Name:        "s3_secret_access_key",
+			Type:        components.InputTypePassword,
+			Placeholder: "Leave blank to keep current secret",
+			HelperText:  validation.FieldError(errors, "s3_secret_access_key"),
+			HasError:    validation.FieldError(errors, "s3_secret_access_key") != "",
+		}),
+		components.InputField(components.InputProps{
+			Label: "S3 session token",
+			Name:  "s3_session_token",
+			Type:  components.InputTypePassword,
+			Value: settings.S3SessionToken,
+		}),
+		components.InputField(components.InputProps{
+			Label:      "S3 bucket",
+			Name:       "s3_bucket",
+			Type:       components.InputTypeText,
+			Value:      settings.S3Bucket,
+			HelperText: validation.FieldError(errors, "s3_bucket"),
+			HasError:   validation.FieldError(errors, "s3_bucket") != "",
+		}),
+		components.InputField(components.InputProps{
+			Label:      "S3 endpoint",
+			Name:       "s3_endpoint",
+			Type:       components.InputTypeText,
+			Value:      settings.S3Endpoint,
+			HelperText: validation.FieldError(errors, "s3_endpoint"),
+			HasError:   validation.FieldError(errors, "s3_endpoint") != "",
+		}),
+		components.InputField(components.InputProps{
+			Label: "S3 region",
+			Name:  "s3_region",
+			Type:  components.InputTypeText,
+			Value: settings.S3Region,
+		}),
+		h.Label(
+			h.Class("setup-checkbox"),
+			h.Input(
+				g.Attr("type", "checkbox"),
+				g.Attr("name", "s3_use_path_style"),
+				g.If(settings.S3UsePathStyle, g.Attr("checked", "checked")),
+			),
+			h.Span(g.Text("Use path-style URLs")),
+		),
+		components.Button(components.ButtonProps{
+			Text:    "Save storage settings",
+			Type:    "submit",
+			Variant: "primary",
+			Class:   "auth-submit",
+		}),
+	)
+}
+
+func storageRadio(value, label string, checked bool) g.Node {
+	return h.Label(
+		h.Class("storage-option compact"),
+		h.Input(
+			g.Attr("type", "radio"),
+			g.Attr("name", "storage_provider"),
+			g.Attr("value", value),
+			g.If(checked, g.Attr("checked", "checked")),
+		),
+		h.Span(g.Text(label)),
+	)
+}
+
+func settingsStorageGB(bytes int64) string {
+	if bytes <= 0 || bytes == 9223372036854775807 {
+		return "0"
+	}
+	return strconv.FormatInt(bytes/(1024*1024*1024), 10)
 }
 
 func formatPercent(value int) string {

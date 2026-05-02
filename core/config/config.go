@@ -24,12 +24,12 @@ type Config struct {
 	MaxFileSizeBytes     int64
 	MaxUploadConcurrency int
 	MaxQueueItems        int
-	EmailProvider string
-	EmailFrom     string
-	SMTPHost      string
-	SMTPPort      int
-	SMTPUser      string
-	SMTPPass      string
+	EmailProvider        string
+	EmailFrom            string
+	SMTPHost             string
+	SMTPPort             int
+	SMTPUser             string
+	SMTPPass             string
 }
 
 func Load() (Config, error) {
@@ -54,25 +54,9 @@ func Load() (Config, error) {
 	}
 
 	s3AccessKeyID := os.Getenv("S3_ACCESS_KEY_ID")
-	if s3AccessKeyID == "" {
-		return Config{}, errors.New("S3_ACCESS_KEY_ID is required")
-	}
-
 	s3SecretAccessKey := os.Getenv("S3_SECRET_ACCESS_KEY")
-	if s3SecretAccessKey == "" {
-		return Config{}, errors.New("S3_SECRET_ACCESS_KEY is required")
-	}
-
 	s3Bucket := os.Getenv("S3_BUCKET")
-	if s3Bucket == "" {
-		return Config{}, errors.New("S3_BUCKET is required")
-	}
-
 	s3Endpoint := os.Getenv("S3_ENDPOINT")
-	if s3Endpoint == "" {
-		return Config{}, errors.New("S3_ENDPOINT is required")
-	}
-
 	s3Region := os.Getenv("S3_REGION")
 	if s3Region == "" {
 		s3Region = "auto"
@@ -150,8 +134,8 @@ func Load() (Config, error) {
 		EmailFrom:            emailFrom,
 		SMTPHost:             smtpHost,
 		SMTPPort:             smtpPort,
-		SMTPUser: smtpUser,
-		SMTPPass: smtpPass,
+		SMTPUser:             smtpUser,
+		SMTPPass:             smtpPass,
 	}, nil
 }
 

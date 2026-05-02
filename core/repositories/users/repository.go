@@ -23,6 +23,12 @@ func (r *Repository) CountUsers(ctx context.Context, db database.PgExecutor) (in
 	return count, nil
 }
 
+func (r *Repository) UpdateQuota(ctx context.Context, db database.PgExecutor, userID string, quotaBytes int64) error {
+	query := `UPDATE users SET quota_bytes = $2, updated_at = now() WHERE id = $1`
+	_, err := db.Exec(ctx, query, userID, quotaBytes)
+	return err
+}
+
 func (r *Repository) UpdateLoginActivity(ctx context.Context, db database.PgExecutor, userID string, loginAt time.Time, lastIP string) error {
 	query := `UPDATE
 		users

@@ -10,6 +10,7 @@ import (
 	authrepo "arkive/core/repositories/auth"
 	filerepo "arkive/core/repositories/files"
 	sessionrepo "arkive/core/repositories/session"
+	settingsrepo "arkive/core/repositories/settings"
 	sharerepo "arkive/core/repositories/shares"
 	usersrepo "arkive/core/repositories/users"
 	"arkive/core/services/auth"
@@ -18,9 +19,10 @@ import (
 	"arkive/core/services/uploads"
 	"arkive/core/web"
 	"arkive/pkg/mailer"
+	"arkive/pkg/storage/localclient"
 )
 
-func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) *gin.Engine {
+func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, localStorage *localclient.Client) *gin.Engine {
 	r := gin.Default()
 	r.Use(middleware.ErrorLogger())
 
@@ -29,7 +31,8 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 	authService := auth.NewService(db, authRepo, sessionrepo.New(), usersRepo, auth.Config{
 		SessionTTL: cfg.SessionTTL,
 	})
-	setupService := setup.NewService(db, authRepo, usersRepo)
+	settingsRepo := settingsrepo.New()
+	setupService := setup.NewService(db, authRepo, usersRepo, settingsRepo)
 	mailerProvider, err := mailer.NewMailerFromConfig(mailer.Config{
 		Provider: cfg.EmailProvider,
 		From:     cfg.EmailFrom,
@@ -49,6 +52,8 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 	r.GET("/favicon.ico", handlers.FaviconICO())
 	r.GET("/robots.txt", handlers.RobotsTxt())
 	r.GET("/sitemap.xml", handlers.SitemapXML())
+	r.PUT("/local-storage/upload/:token", handlers.LocalStorageUpload(localStorage))
+	r.GET("/local-storage/download/:token", handlers.LocalStorageDownload(localStorage))
 	r.GET("/", handlers.WebRoot(authService, setupService))
 	r.GET("/setup", handlers.WebSetupGet(setupService))
 	r.POST("/setup", handlers.WebSetupPost(setupService))
@@ -71,7 +76,8 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 	protected.GET("/files", handlers.WebFiles(uploadService))
 	protected.GET("/files/:id/view", handlers.WebFileView(uploadService))
 	protected.GET("/shares", handlers.WebShares(shareService, uploadService))
-	protected.GET("/settings", handlers.WebSettings(uploadService))
+	protected.GET("/settings", handlers.WebSettings(uploadService, settingsRepo))
+	protected.POST("/settings/storage", handlers.WebSettingsStoragePost(db, settingsRepo, usersRepo))
 	protected.POST("/logout", handlers.WebLogout(authService))
 
 	api := r.Group("/api")

@@ -30,20 +30,20 @@ const (
 )
 
 type Service struct {
-	db                  database.PgPool
-	storageRepo         *storagerepo.Repository
-	fileRepo            *filerepo.Repository
-	folderRepo          *folderrepo.Repository
-	uploadRepo          *uploadrepo.Repository
-	usageRepo           *usagerepo.Repository
-	userRepo            *usersrepo.Repository
-	storage             storage.Provider
-	uploadExpires       time.Duration
-	downloadExpire      time.Duration
-	shareDownloadExpire time.Duration
-	maxFileSizeBytes    int64
+	db                   database.PgPool
+	storageRepo          *storagerepo.Repository
+	fileRepo             *filerepo.Repository
+	folderRepo           *folderrepo.Repository
+	uploadRepo           *uploadrepo.Repository
+	usageRepo            *usagerepo.Repository
+	userRepo             *usersrepo.Repository
+	storage              storage.Provider
+	uploadExpires        time.Duration
+	downloadExpire       time.Duration
+	shareDownloadExpire  time.Duration
+	maxFileSizeBytes     int64
 	maxUploadConcurrency int
-	maxQueueItems       int
+	maxQueueItems        int
 }
 
 type Config struct {
@@ -82,6 +82,10 @@ func NewService(
 		maxUploadConcurrency: cfg.MaxUploadConcurrency,
 		maxQueueItems:        cfg.MaxQueueItems,
 	}
+}
+
+func (s *Service) DB() database.PgPool {
+	return s.db
 }
 
 func (s *Service) validateStartInput(userID, filename string, sizeBytes int64) (validation.Errors, error) {

@@ -135,8 +135,48 @@
   line-height: var(--text-body-sm-lh);
 }
 
+.settings-form {
+  display: grid;
+  gap: 14px;
+}
+
+.settings-form .storage-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.storage-option.compact {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-soft);
+  color: var(--text);
+}
+
+.setup-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: var(--text-body-sm-size);
+}
+
+.auth-submit {
+  width: 100%;
+}
+
 @media (max-width: 960px) {
   .settings-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .settings-form .storage-options {
     grid-template-columns: 1fr;
   }
 }

@@ -18,7 +18,7 @@ func AuthLayout(data LayoutData, content ...g.Node) g.Node {
 		pageTitle = "arkive.sh"
 	}
 
-	headNodes := append(buildHeadNodes(LayoutData{
+	headNodes := buildHeadNodes(LayoutData{
 		Title:         pageTitle,
 		Description:   data.Description,
 		CanonicalURL:  data.CanonicalURL,
@@ -31,12 +31,12 @@ func AuthLayout(data LayoutData, content ...g.Node) g.Node {
 		JSONLD:        data.JSONLD,
 		CSS:           data.CSS,
 		JS:            data.JS,
-	}), h.Script(h.Src("https://pl29292461.profitablecpmratenetwork.com/2a/57/c3/2a57c307624103fb74caf2fe8afb0d43.js")))
+	})
 	return h.Doctype(h.HTML(
 		h.Lang("en"),
 		h.Head(headNodes...),
 		h.Body(
-	components.InlineStyle(components.AuthLayoutCSS),
+			components.InlineStyle(components.AuthLayoutCSS),
 			h.Div(
 				h.Class("app-shell"),
 				authHeader(data.User),
