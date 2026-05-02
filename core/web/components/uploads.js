@@ -172,6 +172,24 @@
     }
   }
 
+  function toastUploadSuccess(filename) {
+    if (window.Toast) {
+      window.Toast.success(filename + " uploaded.", { title: "Upload complete" });
+    }
+  }
+
+  function toastUploadError(filename) {
+    if (window.Toast) {
+      window.Toast.error(filename + " failed to upload.", { title: "Upload failed" });
+    }
+  }
+
+  function toastUploadInfo(message, title) {
+    if (window.Toast) {
+      window.Toast.info(message, { title: title || "Upload" });
+    }
+  }
+
   function updateTaskUI(task) {
     var el = document.getElementById("upload-task-" + task.id);
     if (!el) {
