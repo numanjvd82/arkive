@@ -28,6 +28,25 @@ func (r *Repository) CreateUser(ctx context.Context, db database.PgExecutor, bra
 	return user, nil
 }
 
+func (r *Repository) CreateVerifiedUser(ctx context.Context, db database.PgExecutor, brandName, email, passwordHash string) (models.User, error) {
+	var user models.User
+	query := `INSERT INTO users
+		(brand_name, email, password_hash, is_email_verified)
+	VALUES
+		($1, $2, $3, true)
+	RETURNING
+		id, brand_name, email, is_email_verified`
+	if err := db.QueryRow(ctx, query, brandName, email, passwordHash).Scan(
+		&user.ID,
+		&user.BrandName,
+		&user.Email,
+		&user.IsEmailVerified,
+	); err != nil {
+		return models.User{}, err
+	}
+	return user, nil
+}
+
 func (r *Repository) GetUserByEmail(ctx context.Context, db database.PgExecutor, email string) (models.User, *string, error) {
 	var user models.User
 	var hash *string
@@ -98,5 +117,3 @@ func (r *Repository) UpdateLastLogin(ctx context.Context, db database.PgExecutor
 	_, err := db.Exec(ctx, query, userID, lastIP)
 	return err
 }
-
-

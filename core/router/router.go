@@ -1,8 +1,6 @@
 package router
 
 import (
-	"net/http"
-
 	"github.com/gin-gonic/gin"
 
 	"arkive/core/config"
@@ -15,6 +13,7 @@ import (
 	sharerepo "arkive/core/repositories/shares"
 	usersrepo "arkive/core/repositories/users"
 	"arkive/core/services/auth"
+	"arkive/core/services/setup"
 	"arkive/core/services/shares"
 	"arkive/core/services/uploads"
 	"arkive/core/web"
@@ -25,9 +24,12 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 	r := gin.Default()
 	r.Use(middleware.ErrorLogger())
 
-	authService := auth.NewService(db, authrepo.New(), sessionrepo.New(), usersrepo.New(), auth.Config{
+	authRepo := authrepo.New()
+	usersRepo := usersrepo.New()
+	authService := auth.NewService(db, authRepo, sessionrepo.New(), usersRepo, auth.Config{
 		SessionTTL: cfg.SessionTTL,
 	})
+	setupService := setup.NewService(db, authRepo, usersRepo)
 	mailerProvider, err := mailer.NewMailerFromConfig(mailer.Config{
 		Provider: cfg.EmailProvider,
 		From:     cfg.EmailFrom,
@@ -47,9 +49,9 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 	r.GET("/favicon.ico", handlers.FaviconICO())
 	r.GET("/robots.txt", handlers.RobotsTxt())
 	r.GET("/sitemap.xml", handlers.SitemapXML())
-	r.GET("/", func(c *gin.Context) {
-		c.Redirect(http.StatusSeeOther, "/login")
-	})
+	r.GET("/", handlers.WebRoot(authService, setupService))
+	r.GET("/setup", handlers.WebSetupGet(setupService))
+	r.POST("/setup", handlers.WebSetupPost(setupService))
 	r.GET("/s/:token", middleware.RateLimit(middleware.RateLimitConfig{
 		RequestsPerMinute: 2,
 		Burst:             2,
@@ -60,10 +62,10 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service) 
 		Burst:             2,
 		KeyPrefix:         "share:public:post",
 	}), handlers.PublicShareUnlock(shareService, uploadService))
-	r.GET("/login", handlers.WebLoginGet(authService))
-	r.POST("/login", handlers.WebLoginPost(authService))
-	r.GET("/signup", handlers.WebSignupGet(authService))
-	r.POST("/signup", handlers.WebSignupPost(authService))
+	r.GET("/login", handlers.WebLoginGet(authService, setupService))
+	r.POST("/login", handlers.WebLoginPost(authService, setupService))
+	r.GET("/signup", handlers.WebSignupGet(authService, setupService))
+	r.POST("/signup", handlers.WebSignupPost(authService, setupService))
 	r.GET("/verify-email", handlers.WebVerifyEmail(authService))
 	protected := r.Group("/")
 	protected.Use(middleware.RequireSessionRedirect(authService))

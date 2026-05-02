@@ -14,6 +14,15 @@ func New() *Repository {
 	return &Repository{}
 }
 
+func (r *Repository) CountUsers(ctx context.Context, db database.PgExecutor) (int64, error) {
+	query := `SELECT COUNT(*) FROM users`
+	var count int64
+	if err := db.QueryRow(ctx, query).Scan(&count); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
 func (r *Repository) UpdateLoginActivity(ctx context.Context, db database.PgExecutor, userID string, loginAt time.Time, lastIP string) error {
 	query := `UPDATE
 		users

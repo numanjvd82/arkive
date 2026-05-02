@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"arkive/core/services/auth"
+	"arkive/core/services/setup"
 	"arkive/core/web"
 	"arkive/core/web/pages"
 	appcontext "arkive/pkg/context"
@@ -15,8 +16,11 @@ import (
 	"arkive/pkg/validation"
 )
 
-func WebLoginGet(svc *auth.Service) gin.HandlerFunc {
+func WebLoginGet(svc *auth.Service, setupSvc *setup.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if redirectIfUninitialized(c, setupSvc) {
+			return
+		}
 		if _, ok, err := appcontext.LoadUser(c, svc); err != nil {
 			_ = c.Error(errs.WithStack(err))
 			c.Status(http.StatusInternalServerError)
@@ -43,8 +47,11 @@ func WebLoginGet(svc *auth.Service) gin.HandlerFunc {
 	}
 }
 
-func WebSignupGet(svc *auth.Service) gin.HandlerFunc {
+func WebSignupGet(svc *auth.Service, setupSvc *setup.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if redirectIfUninitialized(c, setupSvc) {
+			return
+		}
 		if _, ok, err := appcontext.LoadUser(c, svc); err != nil {
 			_ = c.Error(errs.WithStack(err))
 			c.Status(http.StatusInternalServerError)
@@ -61,13 +68,16 @@ func WebSignupGet(svc *auth.Service) gin.HandlerFunc {
 	}
 }
 
-func WebLoginPost(svc *auth.Service) gin.HandlerFunc {
+func WebLoginPost(svc *auth.Service, setupSvc *setup.Service) gin.HandlerFunc {
 	type loginForm struct {
 		Email    string `form:"email"`
 		Password string `form:"password"`
 	}
 
 	return func(c *gin.Context) {
+		if redirectIfUninitialized(c, setupSvc) {
+			return
+		}
 		if _, ok, err := appcontext.LoadUser(c, svc); err != nil {
 			_ = c.Error(errs.WithStack(err))
 			c.Status(http.StatusInternalServerError)
@@ -111,7 +121,7 @@ func WebLoginPost(svc *auth.Service) gin.HandlerFunc {
 	}
 }
 
-func WebSignupPost(svc *auth.Service) gin.HandlerFunc {
+func WebSignupPost(svc *auth.Service, setupSvc *setup.Service) gin.HandlerFunc {
 	type signupForm struct {
 		BrandName       string `form:"brand_name"`
 		Email           string `form:"email"`
@@ -120,6 +130,9 @@ func WebSignupPost(svc *auth.Service) gin.HandlerFunc {
 	}
 
 	return func(c *gin.Context) {
+		if redirectIfUninitialized(c, setupSvc) {
+			return
+		}
 		if _, ok, err := appcontext.LoadUser(c, svc); err != nil {
 			_ = c.Error(errs.WithStack(err))
 			c.Status(http.StatusInternalServerError)
@@ -172,6 +185,20 @@ func WebSignupPost(svc *auth.Service) gin.HandlerFunc {
 	}
 }
 
+func redirectIfUninitialized(c *gin.Context, setupSvc *setup.Service) bool {
+	initialized, err := setupSvc.IsInitialized(c.Request.Context())
+	if err != nil {
+		_ = c.Error(errs.WithStack(err))
+		c.Status(http.StatusInternalServerError)
+		return true
+	}
+	if !initialized {
+		c.Redirect(http.StatusSeeOther, "/setup")
+		return true
+	}
+	return false
+}
+
 func WebLogout(svc *auth.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		sessionID := ""
@@ -190,5 +217,3 @@ func WebLogout(svc *auth.Service) gin.HandlerFunc {
 		c.Redirect(http.StatusSeeOther, "/")
 	}
 }
-
-
