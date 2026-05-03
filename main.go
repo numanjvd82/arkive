@@ -11,7 +11,6 @@ import (
 	filerepo "arkive/core/repositories/files"
 	settingsrepo "arkive/core/repositories/settings"
 	storagerepo "arkive/core/repositories/storage"
-	uploadrepo "arkive/core/repositories/uploads"
 	usagerepo "arkive/core/repositories/usage"
 	usersrepo "arkive/core/repositories/users"
 	"arkive/core/router"
@@ -57,7 +56,6 @@ func main() {
 		db,
 		storagerepo.New(),
 		filerepo.New(),
-		uploadrepo.New(),
 		usagerepo.New(),
 		usersrepo.New(),
 		storageProvider,

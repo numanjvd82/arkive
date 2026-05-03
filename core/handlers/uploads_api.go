@@ -55,12 +55,6 @@ func APIUploadStart(svc *uploads.Service) gin.HandlerFunc {
 	}
 }
 
-func APIUploadNext(svc *uploads.Service) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Status(http.StatusNoContent)
-	}
-}
-
 func APIUploadComplete(svc *uploads.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		uploadID := c.Param("id")

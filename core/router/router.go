@@ -97,11 +97,6 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 			Burst:             10,
 			KeyPrefix:         "upload:start",
 		}), handlers.APIUploadStart(uploadService))
-		apiUploads.POST("/:id/next", middleware.RateLimit(middleware.RateLimitConfig{
-			RequestsPerMinute: 120,
-			Burst:             240,
-			KeyPrefix:         "upload:next",
-		}), handlers.APIUploadNext(uploadService))
 		apiUploads.POST("/:id/complete", middleware.RateLimit(middleware.RateLimitConfig{
 			RequestsPerMinute: 10,
 			Burst:             20,

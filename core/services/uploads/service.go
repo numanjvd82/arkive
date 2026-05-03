@@ -12,7 +12,6 @@ import (
 	"arkive/core/models"
 	filerepo "arkive/core/repositories/files"
 	storagerepo "arkive/core/repositories/storage"
-	uploadrepo "arkive/core/repositories/uploads"
 	usagerepo "arkive/core/repositories/usage"
 	usersrepo "arkive/core/repositories/users"
 	"arkive/pkg/storage"
@@ -31,7 +30,6 @@ type Service struct {
 	db                   database.PgPool
 	storageRepo          *storagerepo.Repository
 	fileRepo             *filerepo.Repository
-	uploadRepo           *uploadrepo.Repository
 	usageRepo            *usagerepo.Repository
 	userRepo             *usersrepo.Repository
 	storage              storage.Provider
@@ -56,7 +54,6 @@ func NewService(
 	db database.PgPool,
 	storageRepo *storagerepo.Repository,
 	fileRepo *filerepo.Repository,
-	uploadRepo *uploadrepo.Repository,
 	usageRepo *usagerepo.Repository,
 	userRepo *usersrepo.Repository,
 	storageProvider storage.Provider,
@@ -66,7 +63,6 @@ func NewService(
 		db:                   db,
 		storageRepo:          storageRepo,
 		fileRepo:             fileRepo,
-		uploadRepo:           uploadRepo,
 		usageRepo:            usageRepo,
 		userRepo:             userRepo,
 		storage:              storageProvider,
