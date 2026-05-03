@@ -25,8 +25,17 @@ func WebDashboard(uploadService *uploads.Service) gin.HandlerFunc {
 			return
 		}
 
+		list, err := uploadService.ListCompletedUploads(c.Request.Context(), user.ID, "updated_desc", 1, 4)
+		if err != nil {
+			_ = c.Error(errs.WithStack(err))
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+
 		web.Render(c, pages.DashboardPage(pages.DashboardPageProps{
-			Ctx: pages.ContextWithUser(user),
+			Ctx:         pages.ContextWithUser(user),
+			RecentFiles: list.Files,
+			TotalFiles:  list.TotalFiles,
 		}))
 	}
 }

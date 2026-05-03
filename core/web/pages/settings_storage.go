@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"math"
 	"strconv"
 
 	g "maragu.dev/gomponents"
@@ -115,7 +116,7 @@ func storageRadio(value, label string, checked bool) g.Node {
 }
 
 func settingsStorageGB(bytes int64) string {
-	if bytes <= 0 || bytes == 9223372036854775807 {
+	if bytes <= 0 || bytes == math.MaxInt64 {
 		return "0"
 	}
 	return strconv.FormatInt(bytes/(1024*1024*1024), 10)

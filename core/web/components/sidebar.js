@@ -50,6 +50,12 @@
     setState(false);
   };
 
+  const syncForViewport = function() {
+    if (window.innerWidth > 960) {
+      setState(false);
+    }
+  };
+
   toggle.addEventListener("click", function() {
     const isOpen = body.classList.contains("sidebar-open");
     setState(!isOpen);
@@ -77,4 +83,7 @@
       closeSidebar();
     }
   });
+
+  window.addEventListener("resize", syncForViewport);
+  syncForViewport();
 })();

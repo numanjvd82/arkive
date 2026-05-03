@@ -1,10 +1,9 @@
 package web
 
 import (
-	"fmt"
 	"strings"
-	"time"
 
+	lucide "github.com/eduardolat/gomponents-lucide"
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
 
@@ -39,18 +38,23 @@ func AuthLayout(data LayoutData, content ...g.Node) g.Node {
 			components.InlineStyle(components.AuthLayoutCSS),
 			h.Div(
 				h.Class("app-shell"),
-				authHeader(data.User),
-				components.DashboardSidebar(),
+				authHeader(data.User, data.SearchPlaceholder),
+				components.DashboardSidebar(components.DashboardSidebarProps{
+					User:      data.User,
+					ActiveNav: data.ActiveNav,
+				}),
 				h.Div(h.Class("sidebar-scrim"), g.Attr("aria-hidden", "true")),
 				h.Div(h.Class("app-content"), g.Group(content)),
-				authFooter(),
 			),
 			components.ToastHost(),
 		),
 	))
 }
 
-func authHeader(user *models.User) g.Node {
+func authHeader(user *models.User, placeholder string) g.Node {
+	if strings.TrimSpace(placeholder) == "" {
+		placeholder = "Search system..."
+	}
 	return h.Header(
 		h.Class("app-header"),
 		h.Div(
@@ -58,24 +62,42 @@ func authHeader(user *models.User) g.Node {
 			h.Div(
 				h.Class("app-header-left"),
 				h.Button(
-					h.Class("button secondary icon-button"),
+					h.Class("button secondary icon-button sidebar-toggle"),
 					h.Type("button"),
 					h.ID("sidebar-toggle"),
 					g.Attr("aria-controls", "dashboard-sidebar"),
 					g.Attr("aria-expanded", "false"),
 					g.Attr("aria-label", "Open menu"),
-					h.Span(
-						h.Class("app-header-icon"),
-						components.Icon(components.IconProps{
-							Name:       "menu",
-							Size:       "20",
-							Decorative: true,
-						}),
+					lucide.Menu(
+						h.Class("app-header-lucide"),
+						g.Attr("aria-hidden", "true"),
+					),
+				),
+				h.Div(
+					h.Class("app-search"),
+					lucide.Search(
+						h.Class("app-header-lucide app-search-icon"),
+						g.Attr("aria-hidden", "true"),
+					),
+					h.Input(
+						h.Class("app-search-input"),
+						h.Type("search"),
+						g.Attr("placeholder", placeholder),
+						g.Attr("aria-label", placeholder),
 					),
 				),
 			),
 			h.Div(
 				h.Class("app-header-right"),
+				h.A(
+					h.Class("app-header-action"),
+					h.Href("/dashboard#recent-activity"),
+					g.Attr("aria-label", "Jump to recent activity"),
+					lucide.Bell(
+						h.Class("app-header-lucide"),
+						g.Attr("aria-hidden", "true"),
+					),
+				),
 				renderUserMenu(user),
 			),
 		),
@@ -95,11 +117,11 @@ func renderUserMenu(user *models.User) g.Node {
 	return components.Dropdown(components.DropdownProps{
 		Align: "right",
 		Label: "Open account menu",
-		Trigger: components.Avatar(components.AvatarProps{
-			Text:       brandName,
-			Size:       40,
-			Decorative: true,
-		}),
+		Class: "app-user-dropdown",
+		Trigger: lucide.CircleUser(
+			h.Class("app-header-lucide app-user-icon"),
+			g.Attr("aria-hidden", "true"),
+		),
 		Menu: h.Div(
 			h.Class("dropdown-content"),
 			h.Div(
@@ -121,16 +143,4 @@ func renderUserMenu(user *models.User) g.Node {
 			),
 		),
 	})
-}
-
-func authFooter() g.Node {
-	return h.Footer(
-		h.Class("app-footer"),
-		h.Div(
-			h.Class("app-footer-inner"),
-			h.Span(g.Text("Arkive Workspace. Securely store and share your files.")),
-			h.Span(g.Text("Support: support@arkive.sh")),
-			h.Span(g.Text(fmt.Sprintf("© %d Arkive. All rights reserved.", time.Now().Year()))),
-		),
-	)
 }

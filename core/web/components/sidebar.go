@@ -1,14 +1,29 @@
 package components
 
 import (
+	"strings"
+
+	lucide "github.com/eduardolat/gomponents-lucide"
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
+
+	"arkive/core/models"
 )
 
 const SidebarCSS = "/web/components/sidebar.css"
 const SidebarJS = "/web/components/sidebar.js"
 
-func DashboardSidebar() g.Node {
+type DashboardSidebarProps struct {
+	User      *models.User
+	ActiveNav string
+}
+
+func DashboardSidebar(props DashboardSidebarProps) g.Node {
+	nodeLabel := "Self-hosted core"
+	if props.User != nil && strings.TrimSpace(props.User.BrandName) != "" {
+		nodeLabel = "Node: " + strings.TrimSpace(props.User.BrandName)
+	}
+
 	return g.Group([]g.Node{
 		InlineStyle(SidebarCSS),
 		InlineScript(SidebarJS),
@@ -18,60 +33,86 @@ func DashboardSidebar() g.Node {
 			g.Attr("aria-hidden", "true"),
 			h.Div(
 				h.Class("sidebar-top"),
-				BrandLogo(BrandLogoProps{
-					Href:  "/dashboard",
-					Class: "sidebar-brand",
-				}),
+				h.Div(
+					h.Class("sidebar-brand-block"),
+					h.Span(
+						h.Class("sidebar-brand-avatar"),
+						lucide.CircleUser(
+							h.Class("sidebar-lucide sidebar-lucide-avatar"),
+							g.Attr("aria-hidden", "true"),
+						),
+					),
+					h.Div(
+						h.Class("sidebar-brand-copy"),
+						h.A(
+							h.Class("sidebar-brand"),
+							h.Href("/dashboard"),
+							g.Text("Arkive Core"),
+						),
+						h.Span(h.Class("sidebar-node"), g.Text(nodeLabel)),
+					),
+				),
 				h.Button(
 					h.Class("sidebar-close"),
 					h.Type("button"),
 					g.Attr("aria-label", "Close menu"),
-					Icon(IconProps{
-						Name:       "x",
-						Size:       "16",
-						Decorative: true,
-					}),
+					lucide.X(
+						h.Class("sidebar-lucide sidebar-lucide-close"),
+						g.Attr("aria-hidden", "true"),
+					),
+				),
+			),
+			h.Div(
+				h.Class("sidebar-cta"),
+				h.A(
+					h.Class("button primary sidebar-upload"),
+					h.Href("/dashboard#upload-panel"),
+					g.Text("Upload File"),
 				),
 			),
 			h.Nav(
 				h.Class("sidebar-links"),
-				h.Span(h.Class("sidebar-label"), g.Text("Navigation")),
-				h.A(
-					h.Class("sidebar-link"),
-					h.Href("/dashboard"),
-					g.Text("Dashboard"),
-				),
-				h.A(
-					h.Class("sidebar-link"),
-					h.Href("/files"),
-					g.Text("Files"),
-				),
-				h.A(
-					h.Class("sidebar-link"),
-					h.Href("/shares"),
-					g.Text("Shares"),
-				),
-				h.A(
-					h.Class("sidebar-link"),
-					h.Href("/settings"),
-					g.Text("Settings"),
-				),
+				sidebarLink("/dashboard", "dashboard", props.ActiveNav, "Dashboard", lucide.LayoutDashboard),
+				sidebarLink("/files", "files", props.ActiveNav, "Files", lucide.FolderOpen),
+				sidebarLink("/shares", "shares", props.ActiveNav, "Shares", lucide.Share2),
+				sidebarLink("/settings", "settings", props.ActiveNav, "Settings", lucide.Settings),
 			),
 			h.Div(
 				h.Class("sidebar-footer"),
-				h.Button(
-					h.Class("sidebar-theme theme-toggle"),
-					h.Type("button"),
-					h.ID("theme-toggle"),
-					g.Attr("aria-label", "Theme: system"),
-					h.Span(h.Class("theme-label"), g.Text("system")),
+				h.A(
+					h.Class("sidebar-footer-link"),
+					h.Href("/settings"),
+					lucide.HardDrive(
+						h.Class("sidebar-lucide sidebar-lucide-nav"),
+						g.Attr("aria-hidden", "true"),
+					),
+					h.Span(g.Text("Storage Status")),
 				),
-				h.Form(
-					h.Method("post"),
-					h.Action("/logout"),
-					h.Button(h.Class("sidebar-logout"), h.Type("submit"), g.Text("Logout")),
+				h.Div(
+					h.Class("sidebar-footer-meta"),
+					lucide.Shield(
+						h.Class("sidebar-lucide sidebar-lucide-nav"),
+						g.Attr("aria-hidden", "true"),
+					),
+					h.Span(g.Text("Single-user core")),
 				),
 			),
 		),
 	})
+}
+
+func sidebarLink(href, key, active, label string, icon func(...g.Node) g.Node) g.Node {
+	className := "sidebar-link"
+	if active == key {
+		className += " is-active"
+	}
+	return h.A(
+		h.Class(className),
+		h.Href(href),
+		icon(
+			h.Class("sidebar-lucide sidebar-lucide-nav"),
+			g.Attr("aria-hidden", "true"),
+		),
+		h.Span(g.Text(label)),
+	)
 }

@@ -1,6 +1,7 @@
 package components
 
 import (
+	lucide "github.com/eduardolat/gomponents-lucide"
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
 )
@@ -30,6 +31,14 @@ func UploadControls(props UploadControlsProps) g.Node {
 	if statusText == "" {
 		statusText = ""
 	}
+	inputLabel := props.InputLabel
+	if inputLabel == "" {
+		inputLabel = "Secure Payload Drop"
+	}
+	inputHelper := props.InputHelper
+	if inputHelper == "" {
+		inputHelper = "Drag and drop files here to begin encrypted transfer. All data is zero-knowledge encrypted client-side before transmission."
+	}
 
 	return g.Group([]g.Node{
 		InlineStyle(UploadUICSS),
@@ -41,23 +50,29 @@ func UploadControls(props UploadControlsProps) g.Node {
 			g.Attr("tabindex", "0"),
 			h.Div(
 				h.Class("dropzone-icon"),
-				h.Span(g.Text("⇪")),
+				lucide.CloudUpload(
+					h.Class("upload-lucide upload-lucide-dropzone"),
+					g.Attr("aria-hidden", "true"),
+				),
 			),
 			h.Div(
 				h.Class("dropzone-copy"),
-				h.P(
+				h.H2(
 					h.Class("dropzone-title"),
-					g.Text("Drop files here or "),
-					h.Button(
-						h.Class("dropzone-action"),
-						h.Type("button"),
-						g.Attr("id", "upload-browse-files"),
-						g.Text("Browse files"),
-					),
+					g.Text(inputLabel),
 				),
 				h.P(
 					h.Class("dropzone-sub"),
-					g.Text("Fast, resumable uploads. Files queue automatically."),
+					g.Text(inputHelper),
+				),
+				h.Div(
+					h.Class("dropzone-actions"),
+					h.Button(
+						h.Class("button secondary dropzone-action"),
+						h.Type("button"),
+						g.Attr("id", "upload-browse-files"),
+						g.Text("Select Files Manually"),
+					),
 				),
 			),
 		),

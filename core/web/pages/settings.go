@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -52,7 +53,7 @@ func SettingsPage(props SettingsPageProps) web.Page {
 			lastLogin = user.LastLoginAt.Format(time.RFC1123)
 		}
 		usedStorage = format.Bytes(user.UsedBytes)
-		if user.QuotaBytes > 0 && user.QuotaBytes != 9223372036854775807 {
+		if user.QuotaBytes > 0 && user.QuotaBytes != math.MaxInt64 {
 			quotaStorage = format.Bytes(user.QuotaBytes)
 			if user.UsedBytes > 0 {
 				usagePercent = int((float64(user.UsedBytes) / float64(user.QuotaBytes)) * 100)
@@ -69,6 +70,7 @@ func SettingsPage(props SettingsPageProps) web.Page {
 		CSS:        []string{"/web/pages/settings.css"},
 		AuthLayout: true,
 		User:       user,
+		ActiveNav:  "settings",
 		Body: h.Main(
 			h.Class("settings-page"),
 			h.Div(

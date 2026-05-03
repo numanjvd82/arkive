@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"math"
 	"net/http"
 	"strconv"
 
@@ -103,7 +104,7 @@ func renderSettingsStorage(c *gin.Context, user models.User, settings models.Sto
 }
 
 func storageGB(bytes int64) string {
-	if bytes <= 0 || bytes == 9223372036854775807 {
+	if bytes <= 0 || bytes == math.MaxInt64 {
 		return "0"
 	}
 	return strconv.FormatInt(bytes/(1024*1024*1024), 10)

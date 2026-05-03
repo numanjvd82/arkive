@@ -51,6 +51,7 @@ func SharesPage(props SharesPageProps) web.Page {
 		JS:         []string{"/static/shares.js"},
 		AuthLayout: true,
 		User:       props.Ctx.User,
+		ActiveNav:  "shares",
 		Body: h.Main(
 			h.Class("shares-page"),
 			h.Div(

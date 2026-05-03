@@ -54,6 +54,7 @@ func FilesPage(props FilesPageProps) web.Page {
 		JS:         []string{"/static/files.js"},
 		AuthLayout: true,
 		User:       props.Ctx.User,
+		ActiveNav:  "files",
 
 		Body: g.Group([]g.Node{
 			components.InlineStyle(components.InputCSS),
