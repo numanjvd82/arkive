@@ -1,6 +1,7 @@
 package components
 
 import (
+	lucide "github.com/eduardolat/gomponents-lucide"
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
 )
@@ -24,6 +25,9 @@ type InputProps struct {
 	Required    bool
 	HelperText  string
 	HasError    bool
+	Class       string
+	InputClass  string
+	LabelSuffix g.Node
 }
 
 const InputCSS = "/web/components/input.css"
@@ -43,6 +47,9 @@ func InputField(props InputProps) g.Node {
 	inputClasses := "form-input"
 	if inputType == "password" {
 		inputClasses += " password-input"
+	}
+	if props.InputClass != "" {
+		inputClasses += " " + props.InputClass
 	}
 	if hasError {
 		inputClasses += " is-invalid"
@@ -84,7 +91,8 @@ func InputField(props InputProps) g.Node {
 			h.Label(
 				h.Class("form-label"),
 				g.Attr("for", id),
-				g.Text(props.Label),
+				h.Span(g.Text(props.Label)),
+				g.If(props.LabelSuffix != nil, props.LabelSuffix),
 			),
 			g.If(
 				props.Description != "",
@@ -105,19 +113,17 @@ func InputField(props InputProps) g.Node {
 					g.Attr("data-visible", "false"),
 					h.Span(
 						h.Class("icon-eye"),
-						Icon(IconProps{
-							Name:       "eye-open",
-							Size:       "md",
-							Decorative: true,
-						}),
+						lucide.Eye(
+							h.Class("input-lucide"),
+							g.Attr("aria-hidden", "true"),
+						),
 					),
 					h.Span(
 						h.Class("icon-eye-off"),
-						Icon(IconProps{
-							Name:       "eye-closed",
-							Size:       "md",
-							Decorative: true,
-						}),
+						lucide.EyeOff(
+							h.Class("input-lucide"),
+							g.Attr("aria-hidden", "true"),
+						),
 					),
 				),
 			),
@@ -136,7 +142,8 @@ func InputField(props InputProps) g.Node {
 			h.Label(
 				h.Class("form-label"),
 				g.Attr("for", id),
-				g.Text(props.Label),
+				h.Span(g.Text(props.Label)),
+				g.If(props.LabelSuffix != nil, props.LabelSuffix),
 			),
 			g.If(
 				props.Description != "",
@@ -159,6 +166,7 @@ func InputField(props InputProps) g.Node {
 
 	return g.Group([]g.Node{
 		InlineStyle(InputCSS),
-		node,
+		g.If(props.Class != "", h.Div(h.Class(props.Class), node)),
+		g.If(props.Class == "", node),
 	})
 }

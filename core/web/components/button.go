@@ -1,6 +1,7 @@
 package components
 
 import (
+	lucide "github.com/eduardolat/gomponents-lucide"
 	g "maragu.dev/gomponents"
 	c "maragu.dev/gomponents/components"
 	h "maragu.dev/gomponents/html"
@@ -13,6 +14,7 @@ type ButtonProps struct {
 	Href    string
 	Class   string
 	ID      string
+	Icon    string
 }
 
 const ButtonCSS = "/web/components/button.css"
@@ -37,7 +39,11 @@ func Button(props ButtonProps) g.Node {
 				h.Class(classes.String()),
 				h.Href(props.Href),
 				g.If(props.ID != "", g.Attr("id", props.ID)),
-				g.Text(props.Text),
+				g.If(props.Icon != "", h.Span(
+					h.Class("button-icon"),
+					renderButtonIcon(props.Icon),
+				)),
+				h.Span(g.Text(props.Text)),
 			),
 		})
 	}
@@ -53,7 +59,27 @@ func Button(props ButtonProps) g.Node {
 			h.Class(classes.String()),
 			g.Attr("type", buttonType),
 			g.If(props.ID != "", g.Attr("id", props.ID)),
-			g.Text(props.Text),
+			g.If(props.Icon != "", h.Span(
+				h.Class("button-icon"),
+				renderButtonIcon(props.Icon),
+			)),
+			h.Span(g.Text(props.Text)),
 		),
 	})
+}
+
+func renderButtonIcon(name string) g.Node {
+	switch name {
+	case "key":
+		return lucide.Key(
+			h.Class("button-lucide"),
+			g.Attr("aria-hidden", "true"),
+		)
+	default:
+		return Icon(IconProps{
+			Name:       name,
+			Size:       "18",
+			Decorative: true,
+		})
+	}
 }

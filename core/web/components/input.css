@@ -6,6 +6,10 @@
 }
 
 .form-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   font-size: var(--text-label-size);
   line-height: var(--text-label-lh);
   letter-spacing: var(--text-label-ls);
@@ -91,10 +95,15 @@
   justify-content: center;
 }
 
-.password-toggle .icon {
+.password-toggle .icon,
+.password-toggle .input-lucide {
   width: 20px;
   height: 20px;
   display: block;
+}
+
+.input-lucide {
+  stroke-width: 2;
 }
 
 .password-toggle .icon-eye,
@@ -112,4 +121,10 @@
 
 .password-toggle[data-visible="true"] .icon-eye-off {
   display: block;
+}
+
+.form-label-suffix {
+  display: inline-flex;
+  align-items: center;
+  color: var(--accent-cool);
 }

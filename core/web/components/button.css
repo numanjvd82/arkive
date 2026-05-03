@@ -14,12 +14,18 @@
   font-weight: var(--text-button-wt);
   box-shadow: var(--shadow);
   cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .button.primary {
   background: var(--accent);
   color: var(--accent-ink);
   border-color: transparent;
+}
+
+.button.primary:hover {
+  background: var(--accent-cool);
+  color: var(--accent-ink);
 }
 
 .button.secondary {
@@ -40,4 +46,21 @@
   font-size: var(--text-label-size);
   line-height: var(--text-label-lh);
   font-weight: var(--text-label-wt);
+}
+
+.button-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.button-icon .icon {
+  display: block;
+}
+
+.button-lucide {
+  width: 18px;
+  height: 18px;
+  display: block;
+  stroke-width: 2;
 }

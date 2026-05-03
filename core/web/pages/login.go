@@ -3,6 +3,7 @@ package pages
 import (
 	"strings"
 
+	lucide "github.com/eduardolat/gomponents-lucide"
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
 
@@ -36,56 +37,87 @@ func loginBody(props LoginPageProps) g.Node {
 		h.Class("auth-page"),
 		h.Div(
 			h.Class("auth-container"),
-			components.Card(components.CardProps{
-				Title:    "Login",
-				Subtitle: "Welcome back to Arkive.",
-				Class:    "auth-card",
-				Body: []g.Node{
-					h.Form(
-						h.Class("auth-form"),
-						g.Attr("method", "POST"),
-						g.If(
-							message != "",
-							h.P(
-								h.Class("auth-message"),
-								g.Text(message),
-							),
+			h.Div(
+				h.Class("auth-shell"),
+				h.Header(
+					h.Class("auth-header"),
+					h.Span(
+						h.Class("auth-mark"),
+						lucide.Lock(
+							h.Class("auth-lucide auth-lucide-lock"),
+							g.Attr("aria-hidden", "true"),
 						),
-						g.If(
-							generalError != "",
-							h.P(
-								h.Class("form-error"),
-								g.Text(generalError),
-							),
-						),
-						components.InputField(components.InputProps{
-							Label:       "Email",
-							Name:        "email",
-							Type:        components.InputTypeEmail,
-							Placeholder: "you@example.com",
-							Value:       props.Email,
-							Required:    true,
-							HelperText:  validation.FieldError(props.Errors, "email"),
-							HasError:    validation.FieldError(props.Errors, "email") != "",
-						}),
-						components.InputField(components.InputProps{
-							Label:       "Password",
-							Name:        "password",
-							Type:        components.InputTypePassword,
-							Placeholder: "Enter your password",
-							Required:    true,
-							HelperText:  validation.FieldError(props.Errors, "password"),
-							HasError:    validation.FieldError(props.Errors, "password") != "",
-						}),
-						components.Button(components.ButtonProps{
-							Text:    "Login",
-							Type:    "submit",
-							Variant: "primary",
-							Class:   "auth-submit",
-						}),
 					),
-				},
-			}),
+					h.H1(g.Text("Arkive Core")),
+					h.P(
+						h.Class("auth-subtitle"),
+						g.Text("Secure access to your self-hosted file vault."),
+					),
+				),
+				components.Card(components.CardProps{
+					Class: "auth-card auth-card-login",
+					Body: []g.Node{
+						h.Form(
+							h.Class("auth-form"),
+							g.Attr("method", "POST"),
+							g.If(
+								message != "",
+								h.P(
+									h.Class("auth-message"),
+									g.Text(message),
+								),
+							),
+							g.If(
+								generalError != "",
+								h.P(
+									h.Class("form-error"),
+									g.Text(generalError),
+								),
+							),
+							components.InputField(components.InputProps{
+								Label:       "Node identifier",
+								Name:        "email",
+								Type:        components.InputTypeEmail,
+								Placeholder: "user@local.node",
+								Value:       props.Email,
+								Required:    true,
+								HelperText:  validation.FieldError(props.Errors, "email"),
+								HasError:    validation.FieldError(props.Errors, "email") != "",
+								InputClass:  "form-input-auth mono",
+							}),
+							components.InputField(components.InputProps{
+								Label:       "Decryption key",
+								Name:        "password",
+								Type:        components.InputTypePassword,
+								Placeholder: "Enter your password",
+								Required:    true,
+								HelperText:  validation.FieldError(props.Errors, "password"),
+								HasError:    validation.FieldError(props.Errors, "password") != "",
+								InputClass:  "form-input-auth mono",
+								LabelSuffix: h.Span(
+									h.Class("form-label-suffix"),
+									lucide.Shield(
+										h.Class("auth-lucide auth-lucide-shield"),
+										g.Attr("aria-hidden", "true"),
+									),
+								),
+							}),
+							components.Button(components.ButtonProps{
+								Text:    "Unlock Vault",
+								Type:    "submit",
+								Variant: "primary",
+								Class:   "auth-submit auth-submit-login",
+								Icon:    "key",
+							}),
+						),
+					},
+				}),
+				h.Footer(
+					h.Class("auth-status"),
+					h.Span(h.Class("auth-status-dot")),
+					h.Span(g.Text("System standing by.")),
+				),
+			),
 		),
 	)
 }
