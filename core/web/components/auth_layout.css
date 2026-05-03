@@ -30,7 +30,11 @@
 }
 
 .sidebar-toggle.icon-button {
-  display: none;
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
 }
 
 .app-header-lucide {
@@ -105,6 +109,11 @@
   overflow-x: clip;
 }
 
+body.sidebar-collapsed .app-header,
+body.sidebar-collapsed .app-content {
+  margin-left: 0;
+}
+
 @media (max-width: 960px) {
   .app-header {
     margin-left: 0;
@@ -112,14 +121,6 @@
 
   .app-content {
     margin-left: 0;
-  }
-
-  .sidebar-toggle.icon-button {
-    display: inline-flex;
-    width: 36px;
-    height: 36px;
-    min-height: 36px;
-    padding: 0;
   }
 
   .app-search {

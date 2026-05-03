@@ -183,20 +183,42 @@
     if (!el) {
       return;
     }
-    var nameEl = el.querySelector(".upload-queue-item-name");
-    var progressEl = el.querySelector(".upload-queue-item-progress");
+    var nameEl = el.querySelector(".queue-item-name");
+    var badgeEl = el.querySelector(".queue-item-badge");
+    var fillEl = el.querySelector(".queue-item-fill");
+    var progressEl = el.querySelector(".queue-item-progress");
+    var detailEl = el.querySelector(".queue-item-detail");
+    var speedEl = el.querySelector(".queue-item-speed");
     if (nameEl) {
-      nameEl.textContent = task.statusText || task.file.name;
+      nameEl.textContent = task.file.name;
+    }
+    var pct = task.totalBytes > 0 ? Math.round((task.uploadedBytes || 0) / task.totalBytes * 100) : 0;
+    if (fillEl) {
+      fillEl.style.width = pct + "%";
     }
     if (progressEl) {
-      var pct = task.totalBytes > 0 ? Math.round((task.uploadedBytes || 0) / task.totalBytes * 100) : 0;
-      progressEl.textContent = pct + "%";
+      progressEl.textContent = pct + "% • " + formatBytes(task.uploadedBytes || 0) + " / " + formatBytes(task.totalBytes || task.file.size);
     }
-    el.className = "upload-queue-item" + (task.status === "complete" ? " is-complete" : "") + (task.status === "error" || task.status === "cancelled" ? " is-error" : "");
+    if (detailEl) {
+      detailEl.textContent = queueBadgeText(task);
+    }
+    if (speedEl) {
+      if (task.transferStats && task.transferStats.speed > 0 && task.status === "uploading") {
+        var remaining = (task.totalBytes || task.file.size) - (task.uploadedBytes || 0);
+        speedEl.textContent = formatSpeed(task.transferStats.speed) + " • " + formatETA(remaining, task.transferStats.speed) + " remaining";
+      } else {
+        speedEl.textContent = queueMetaText(task);
+      }
+    }
+    if (badgeEl) {
+      badgeEl.textContent = queueBadgeText(task);
+      badgeEl.className = "queue-item-badge is-" + task.status;
+    }
+    el.className = "queue-item" + (task.status === "complete" ? " is-complete" : "") + (task.status === "error" || task.status === "cancelled" ? " is-error" : "");
   }
 
   function updateBatchUI(batchId) {
-    var items = document.querySelectorAll(".upload-queue-item[data-batch=\"" + batchId + "\"]");
+    var items = document.querySelectorAll(".queue-item[data-batch=\"" + batchId + "\"]");
     var complete = 0;
     var total = items.length;
     for (var i = 0; i < items.length; i++) {
@@ -215,18 +237,24 @@
 
   function updateQueueMeta() {
     var activeCount = 0;
-    var totalBytes = 0;
+    var queuedCount = 0;
     activeTasks.forEach(function(task) {
       if (task.status === "uploading") {
         activeCount++;
-        totalBytes += task.file.size;
       }
     });
+    for (var i = 0; i < queuedTasks.length; i++) {
+      if (queuedTasks[i].status === "queued") {
+        queuedCount++;
+      }
+    }
     if (queueMeta) {
-      if (activeCount === 0) {
-        queueMeta.textContent = queuedTasks.length + " files queued";
+      if (activeCount > 0) {
+        queueMeta.textContent = activeCount + " item" + (activeCount > 1 ? "s" : "") + " active";
+      } else if (queuedCount > 0) {
+        queueMeta.textContent = queuedCount + " queued";
       } else {
-        queueMeta.textContent = "Uploading " + activeCount + " file" + (activeCount > 1 ? "s" : "") + " - " + formatBytes(totalBytes);
+        queueMeta.textContent = "0 items active";
       }
     }
     if (queueEmpty) {
@@ -244,25 +272,83 @@
   function addQueueItem(task) {
     var li = document.createElement("li");
     li.id = "upload-task-" + task.id;
-    li.className = "upload-queue-item" + (task.batch ? " batch" : "");
+    li.className = "queue-item";
     if (task.batch) {
       li.setAttribute("data-batch", task.batch);
     }
+
+    var top = document.createElement("div");
+    top.className = "queue-item-top";
+
+    var fileWrap = document.createElement("div");
+    fileWrap.className = "queue-item-file";
+
+    var icon = document.createElement("span");
+    icon.className = "queue-item-icon";
+    icon.innerHTML = fileIconSVG(task.file);
+
     var nameEl = document.createElement("span");
-    nameEl.className = "upload-queue-item-name";
+    nameEl.className = "queue-item-name";
     nameEl.textContent = task.file.name;
+
+    var badgeEl = document.createElement("span");
+    badgeEl.className = "queue-item-badge is-queued";
+    badgeEl.textContent = "Queued";
+
+    fileWrap.appendChild(icon);
+    fileWrap.appendChild(nameEl);
+    fileWrap.appendChild(badgeEl);
+
+    var actions = document.createElement("div");
+    actions.className = "queue-item-actions";
+
+    var cancelBtn = document.createElement("button");
+    cancelBtn.className = "queue-item-action is-cancel";
+    cancelBtn.type = "button";
+    cancelBtn.setAttribute("data-queue-action", "cancel");
+    cancelBtn.setAttribute("data-task-id", String(task.id));
+    cancelBtn.setAttribute("aria-label", "Cancel upload");
+    cancelBtn.innerHTML = closeIconSVG();
+
+    actions.appendChild(cancelBtn);
+
+    top.appendChild(fileWrap);
+    top.appendChild(actions);
+
+    var track = document.createElement("div");
+    track.className = "queue-item-track";
+    var fill = document.createElement("span");
+    fill.className = "queue-item-fill";
+    track.appendChild(fill);
+
+    var meta = document.createElement("div");
+    meta.className = "queue-item-meta";
+
     var progressEl = document.createElement("span");
-    progressEl.className = "upload-queue-item-progress";
-    progressEl.textContent = "0%";
-    li.appendChild(nameEl);
-    li.appendChild(progressEl);
+    progressEl.className = "queue-item-progress mono";
+    progressEl.textContent = "0% • 0 B / " + formatBytes(task.file.size);
+
+    var speedEl = document.createElement("span");
+    speedEl.className = "queue-item-speed mono";
+    speedEl.textContent = "Waiting to start";
+
+    var detailEl = document.createElement("span");
+    detailEl.className = "queue-item-detail is-hidden";
+
+    meta.appendChild(progressEl);
+    meta.appendChild(speedEl);
+
+    li.appendChild(top);
+    li.appendChild(track);
+    li.appendChild(meta);
+    li.appendChild(detailEl);
     queueList.appendChild(li);
   }
 
   function addBatchHeader(batchId) {
     var header = document.createElement("li");
     header.id = "upload-batch-" + batchId;
-    header.className = "upload-batch-header";
+    header.className = "queue-item queue-batch-header";
     var nameEl = document.createElement("span");
     nameEl.textContent = "Batch upload";
     var progressEl = document.createElement("span");
@@ -276,6 +362,7 @@
   function updateTaskProgress(task, loaded, total) {
     task.uploadedBytes = loaded;
     task.totalBytes = total;
+    updateTransferStats(task, loaded, total);
     updateTaskUI(task);
     updateBatchUI(task.batch);
     updateQueueMeta();
@@ -552,7 +639,6 @@
       enqueueFile(files[i]);
     }
     if (files.length > 1) {
-      var items = queueList.querySelectorAll(".upload-queue-item:last-child");
     }
   }
 
@@ -651,5 +737,107 @@
 
   if (abortButton) {
     abortButton.addEventListener("click", abortAll);
+  }
+
+  if (queueList) {
+    queueList.addEventListener("click", function(event) {
+      var target = event.target;
+      if (!target || !target.closest) {
+        return;
+      }
+      var button = target.closest("[data-queue-action]");
+      if (!button) {
+        return;
+      }
+      var taskId = Number(button.getAttribute("data-task-id"));
+      if (!taskId) {
+        return;
+      }
+      var task = activeTasks.get(taskId);
+      if (!task) {
+        for (var i = 0; i < queuedTasks.length; i++) {
+          if (queuedTasks[i].id === taskId) {
+            task = queuedTasks[i];
+            break;
+          }
+        }
+      }
+      if (!task) {
+        return;
+      }
+      if (task.status === "uploading") {
+        if (task.xhr) {
+          task.xhr.abort();
+        }
+        task.status = "cancelled";
+        task.statusText = "Upload cancelled.";
+        updateTaskUI(task);
+        updateQueueMeta();
+        return;
+      }
+      if (task.status === "queued") {
+        task.status = "cancelled";
+        task.statusText = "Cancelled.";
+        removeQueueItem(taskId);
+        queuedTasks = queuedTasks.filter(function(item) { return item.id !== taskId; });
+        updateQueueMeta();
+        return;
+      }
+      activeTasks.delete(taskId);
+      removeQueueItem(taskId);
+      updateQueueMeta();
+    });
+  }
+
+  function queueBadgeText(task) {
+    switch (task.status) {
+      case "uploading":
+        return "Encrypting...";
+      case "complete":
+        return "Secured";
+      case "error":
+        return "Failed";
+      case "cancelled":
+        return "Cancelled";
+      default:
+        return "Queued";
+    }
+  }
+
+  function queueMetaText(task) {
+    switch (task.status) {
+      case "complete":
+        return "Transfer complete";
+      case "error":
+        return "Upload failed";
+      case "cancelled":
+        return "Upload cancelled";
+      case "queued":
+        return "Waiting to start";
+      default:
+        return "Preparing transfer";
+    }
+  }
+
+  function svgIcon(path) {
+    return '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' + path + '</svg>';
+  }
+
+  function closeIconSVG() {
+    return svgIcon('<path d="M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>');
+  }
+
+  function fileIconSVG(file) {
+    var type = (file.type || "").toLowerCase();
+    if (type.indexOf("zip") >= 0 || file.name.match(/\.(zip|tar|gz|rar)$/i)) {
+      return svgIcon('<path d="M4 7V5C4 3.89543 4.89543 3 6 3H14L20 9V19C20 20.1046 19.1046 21 18 21H6C4.89543 21 4 20.1046 4 19V7Z" stroke="currentColor" stroke-width="2"/><path d="M14 3V9H20" stroke="currentColor" stroke-width="2"/><path d="M10 12H14" stroke="currentColor" stroke-width="2"/><path d="M10 16H14" stroke="currentColor" stroke-width="2"/>');
+    }
+    if (type.indexOf("pdf") >= 0) {
+      return svgIcon('<path d="M4 7V5C4 3.89543 4.89543 3 6 3H14L20 9V19C20 20.1046 19.1046 21 18 21H6C4.89543 21 4 20.1046 4 19V7Z" stroke="currentColor" stroke-width="2"/><path d="M14 3V9H20" stroke="currentColor" stroke-width="2"/><path d="M8 15H16" stroke="currentColor" stroke-width="2"/>');
+    }
+    if (type.indexOf("text/") === 0 || type.indexOf("json") >= 0 || type.indexOf("xml") >= 0 || file.name.match(/\.(sh|js|ts|json|xml|txt|md)$/i)) {
+      return svgIcon('<path d="M4 7V5C4 3.89543 4.89543 3 6 3H14L20 9V19C20 20.1046 19.1046 21 18 21H6C4.89543 21 4 20.1046 4 19V7Z" stroke="currentColor" stroke-width="2"/><path d="M14 3V9H20" stroke="currentColor" stroke-width="2"/><path d="M9 14L7 16L9 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 14L17 16L15 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>');
+    }
+    return svgIcon('<path d="M4 7V5C4 3.89543 4.89543 3 6 3H14L20 9V19C20 20.1046 19.1046 21 18 21H6C4.89543 21 4 20.1046 4 19V7Z" stroke="currentColor" stroke-width="2"/><path d="M14 3V9H20" stroke="currentColor" stroke-width="2"/>');
   }
 })();

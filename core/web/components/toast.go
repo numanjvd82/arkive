@@ -1,6 +1,7 @@
 package components
 
 import (
+	lucide "github.com/eduardolat/gomponents-lucide"
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
 )
@@ -21,23 +22,45 @@ func ToastHost() g.Node {
 			g.Attr("aria-hidden", "true"),
 			h.Span(
 				g.Attr("data-toast-icon", "success"),
-				Icon(IconProps{Name: "check", Size: "20", Decorative: true, Class: "toast-status-icon"}),
+				lucide.CircleCheckBig(
+					h.Class("toast-lucide"),
+					g.Attr("aria-hidden", "true"),
+				),
 			),
 			h.Span(
 				g.Attr("data-toast-icon", "warning"),
-				Icon(IconProps{Name: "warning", Size: "20", Decorative: true, Class: "toast-status-icon"}),
+				lucide.TriangleAlert(
+					h.Class("toast-lucide"),
+					g.Attr("aria-hidden", "true"),
+				),
 			),
 			h.Span(
 				g.Attr("data-toast-icon", "error"),
-				Icon(IconProps{Name: "error", Size: "20", Decorative: true, Class: "toast-status-icon"}),
+				lucide.CircleAlert(
+					h.Class("toast-lucide"),
+					g.Attr("aria-hidden", "true"),
+				),
 			),
 			h.Span(
 				g.Attr("data-toast-icon", "info"),
-				Icon(IconProps{Name: "info", Size: "20", Decorative: true, Class: "toast-status-icon"}),
+				lucide.Info(
+					h.Class("toast-lucide"),
+					g.Attr("aria-hidden", "true"),
+				),
+			),
+			h.Span(
+				g.Attr("data-toast-icon", "processing"),
+				lucide.LoaderCircle(
+					h.Class("toast-lucide"),
+					g.Attr("aria-hidden", "true"),
+				),
 			),
 			h.Span(
 				g.Attr("data-toast-icon", "close"),
-				Icon(IconProps{Name: "x", Size: "16", Decorative: true, Class: "toast-close-icon"}),
+				lucide.X(
+					h.Class("toast-lucide toast-lucide-close"),
+					g.Attr("aria-hidden", "true"),
+				),
 			),
 		),
 	})

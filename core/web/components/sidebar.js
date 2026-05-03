@@ -10,6 +10,10 @@
     return;
   }
 
+  const isDesktop = function() {
+    return window.innerWidth > 960;
+  };
+
   const normalizePath = function(pathname) {
     if (!pathname) {
       return "/";
@@ -41,7 +45,13 @@
   }
 
   const setState = function(isOpen) {
-    body.classList.toggle("sidebar-open", isOpen);
+    if (isDesktop()) {
+      body.classList.toggle("sidebar-collapsed", !isOpen);
+      body.classList.remove("sidebar-open");
+    } else {
+      body.classList.toggle("sidebar-open", isOpen);
+      body.classList.remove("sidebar-collapsed");
+    }
     toggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
     sidebar.setAttribute("aria-hidden", isOpen ? "false" : "true");
   };
@@ -51,13 +61,19 @@
   };
 
   const syncForViewport = function() {
-    if (window.innerWidth > 960) {
-      setState(false);
+    if (isDesktop()) {
+      body.classList.remove("sidebar-open");
+      toggle.setAttribute("aria-expanded", body.classList.contains("sidebar-collapsed") ? "false" : "true");
+      sidebar.setAttribute("aria-hidden", body.classList.contains("sidebar-collapsed") ? "true" : "false");
+    } else {
+      body.classList.remove("sidebar-collapsed");
+      toggle.setAttribute("aria-expanded", body.classList.contains("sidebar-open") ? "true" : "false");
+      sidebar.setAttribute("aria-hidden", body.classList.contains("sidebar-open") ? "false" : "true");
     }
   };
 
   toggle.addEventListener("click", function() {
-    const isOpen = body.classList.contains("sidebar-open");
+    const isOpen = isDesktop() ? !body.classList.contains("sidebar-collapsed") : body.classList.contains("sidebar-open");
     setState(!isOpen);
   });
 
@@ -73,7 +89,7 @@
       return;
     }
     const link = target.closest("a");
-    if (link) {
+    if (link && !isDesktop()) {
       closeSidebar();
     }
   });

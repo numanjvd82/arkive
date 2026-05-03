@@ -136,17 +136,17 @@ func UploadControls(props UploadControlsProps) g.Node {
 			g.Attr("id", "upload-queue"),
 			h.Div(
 				h.Class("queue-header"),
-				h.Span(h.Class("queue-title"), g.Text("Queue")),
-				h.Span(h.Class("queue-meta"), g.Attr("id", "upload-queue-meta"), g.Text("0 items")),
+				h.H3(h.Class("queue-title"), g.Text("Queue")),
+				h.Span(h.Class("queue-meta"), g.Attr("id", "upload-queue-meta"), g.Text("0 items active")),
 			),
-			h.Div(
+			h.Ul(
 				h.Class("queue-list"),
 				g.Attr("id", "upload-queue-list"),
 			),
 			h.P(
 				h.Class("queue-empty"),
 				g.Attr("id", "upload-queue-empty"),
-				g.Text("Nothing queued yet."),
+				g.Text("No active transfers in queue."),
 			),
 		),
 		Dialog(DialogProps{
