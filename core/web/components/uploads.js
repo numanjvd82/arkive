@@ -28,6 +28,8 @@
   const MAX_QUEUE_ITEMS = 300;
   const MAX_FILE_SIZE = 10 * 1024 * 1024 * 1024;
   const MAX_CONCURRENCY = 10;
+  const AUTO_CLEAR_SUCCESS_MS = 1800;
+  const AUTO_CLEAR_CANCELLED_MS = 1200;
 
   let primaryTaskId = null;
   let batchCounter = 0;
@@ -200,7 +202,8 @@
       progressEl.textContent = pct + "% • " + formatBytes(task.uploadedBytes || 0) + " / " + formatBytes(task.totalBytes || task.file.size);
     }
     if (detailEl) {
-      detailEl.textContent = queueBadgeText(task);
+      detailEl.textContent = queueDetailText(task);
+      detailEl.classList.toggle("is-hidden", !task.errorMessage);
     }
     if (speedEl) {
       if (task.transferStats && task.transferStats.speed > 0 && task.status === "uploading") {
@@ -238,14 +241,19 @@
   function updateQueueMeta() {
     var activeCount = 0;
     var queuedCount = 0;
+    var visibleCount = 0;
     activeTasks.forEach(function(task) {
       if (task.status === "uploading") {
         activeCount++;
+      }
+      if (task.status === "uploading" || task.status === "error") {
+        visibleCount++;
       }
     });
     for (var i = 0; i < queuedTasks.length; i++) {
       if (queuedTasks[i].status === "queued") {
         queuedCount++;
+        visibleCount++;
       }
     }
     if (queueMeta) {
@@ -258,15 +266,72 @@
       }
     }
     if (queueEmpty) {
-      queueEmpty.classList.toggle("is-hidden", activeTasks.size > 0 || queuedTasks.length > 0);
+      queueEmpty.classList.toggle("is-hidden", visibleCount > 0);
+    }
+  }
+
+  function removeBatchHeader(batchId) {
+    if (!batchId) {
+      return;
+    }
+    if (document.querySelector(".queue-item[data-batch=\"" + batchId + "\"]")) {
+      return;
+    }
+    var header = document.getElementById("upload-batch-" + batchId);
+    if (header && header.parentNode) {
+      header.parentNode.removeChild(header);
     }
   }
 
   function removeQueueItem(taskId) {
     var el = document.getElementById("upload-task-" + taskId);
     if (el) {
+      var batchId = el.getAttribute("data-batch");
       el.parentNode.removeChild(el);
+      removeBatchHeader(batchId);
     }
+  }
+
+  function purgeTask(task) {
+    if (!task) {
+      return;
+    }
+    activeTasks.delete(task.id);
+    queuedTasks = queuedTasks.filter(function(item) { return item.id !== task.id; });
+    if (primaryTaskId === task.id) {
+      setPrimaryTask(null);
+    }
+    removeQueueItem(task.id);
+    updateBatchUI(task.batch);
+    updateQueueMeta();
+  }
+
+  function scheduleTaskRemoval(task, delay) {
+    if (!task || task.removeTimer) {
+      return;
+    }
+    task.removeTimer = window.setTimeout(function() {
+      task.removeTimer = null;
+      purgeTask(task);
+    }, delay);
+  }
+
+  function uploadErrorMessage(err, fallback) {
+    if (err && err.data) {
+      if (typeof err.data.error === "string" && err.data.error) {
+        return err.data.error;
+      }
+      if (typeof err.data.message === "string" && err.data.message) {
+        return err.data.message;
+      }
+      if (typeof err.data.detail === "string" && err.data.detail) {
+        return err.data.detail;
+      }
+    }
+    if (err && err.message && err.message !== "Request failed") {
+      return err.message;
+    }
+    return fallback || "Upload failed. Try again.";
   }
 
   function addQueueItem(task) {
@@ -529,6 +594,7 @@
       clearState(signature);
       task.status = "complete";
       task.statusText = "Upload complete: " + file.name;
+      task.errorMessage = "";
       updateTaskProgress(task, file.size, file.size);
       toastUploadSuccess(file.name);
     } catch (err) {
@@ -536,15 +602,16 @@
         clearState(signature);
         task.status = "cancelled";
         task.statusText = "Upload cancelled.";
+        task.errorMessage = "";
         toastUploadInfo("Upload cancelled.", "Cancelled");
         return;
       }
-      await cleanupFailure(task, resp ? resp.fileId : null, signature);
+      await cleanupFailure(task, resp ? resp.fileId : null, signature, err);
       throw err;
     }
   }
 
-  async function cleanupFailure(task, fileId, signature) {
+  async function cleanupFailure(task, fileId, signature, err) {
     if (signature) {
       clearState(signature);
     }
@@ -556,6 +623,7 @@
     }
     task.status = "error";
     task.statusText = "Upload failed.";
+    task.errorMessage = uploadErrorMessage(err, "Upload failed. Check the file and try again.");
     updateTaskUI(task);
     if (!fileId) {
       return;
@@ -566,16 +634,26 @@
   }
 
   async function uploadFile(task) {
+    var signature = fileSignature(task.file);
     if (task.file.size > MAX_FILE_SIZE) {
       task.status = "error";
       task.statusText = "File exceeds the maximum upload size.";
+      task.errorMessage = "This file exceeds the current maximum upload size.";
       updateTaskUI(task);
       updateBatchUI(task.batch);
       updateQueueMeta();
       return;
     }
-    var resp = await startUpload(task);
-    await uploadSingle(task, resp);
+    try {
+      var resp = await startUpload(task);
+      await uploadSingle(task, resp);
+    } catch (err) {
+      task.lastError = err;
+      if (task.status !== "error" && task.status !== "cancelled") {
+        await cleanupFailure(task, task.fileId || null, signature, err);
+      }
+      throw err;
+    }
   }
 
   function startTask(task) {
@@ -597,6 +675,11 @@
       })
       .finally(function() {
         task.done = true;
+        if (task.status === "complete") {
+          scheduleTaskRemoval(task, AUTO_CLEAR_SUCCESS_MS);
+        } else if (task.status === "cancelled") {
+          scheduleTaskRemoval(task, AUTO_CLEAR_CANCELLED_MS);
+        }
         if (primaryTaskId === task.id) {
           setPrimaryTask(null);
           activeTasks.forEach(function(t) {
@@ -659,8 +742,10 @@
         }
         task.status = "cancelled";
         task.statusText = "Upload cancelled.";
+        task.errorMessage = "";
         clearStateByUploadId(task.uploadId);
         updateTaskUI(task);
+        scheduleTaskRemoval(task, AUTO_CLEAR_CANCELLED_MS);
         updateQueueMeta();
       }
     });
@@ -669,9 +754,8 @@
       task.status = "cancelled";
       task.statusText = "Cancelled.";
       updateTaskUI(task);
+      scheduleTaskRemoval(task, AUTO_CLEAR_CANCELLED_MS);
     }
-    queuedTasks = [];
-    activeTasks.clear();
     primaryTaskId = null;
     clearMeta();
     setStatus("All uploads cancelled.");
@@ -771,6 +855,7 @@
         }
         task.status = "cancelled";
         task.statusText = "Upload cancelled.";
+        task.errorMessage = "";
         updateTaskUI(task);
         updateQueueMeta();
         return;
@@ -778,14 +863,11 @@
       if (task.status === "queued") {
         task.status = "cancelled";
         task.statusText = "Cancelled.";
-        removeQueueItem(taskId);
-        queuedTasks = queuedTasks.filter(function(item) { return item.id !== taskId; });
-        updateQueueMeta();
+        task.errorMessage = "";
+        purgeTask(task);
         return;
       }
-      activeTasks.delete(taskId);
-      removeQueueItem(taskId);
-      updateQueueMeta();
+      purgeTask(task);
     });
   }
 
@@ -817,6 +899,10 @@
       default:
         return "Preparing transfer";
     }
+  }
+
+  function queueDetailText(task) {
+    return task.errorMessage || "";
   }
 
   function svgIcon(path) {

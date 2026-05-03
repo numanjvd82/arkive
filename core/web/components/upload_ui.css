@@ -345,6 +345,12 @@
   transition: width 0.2s ease;
 }
 
+.queue-item-detail {
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
+  color: var(--danger);
+}
+
 @media (max-width: 760px) {
   .upload-dropzone {
     min-height: 280px;
