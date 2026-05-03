@@ -3,8 +3,9 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 12px 20px;
-  border-radius: 999px;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 6px;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
@@ -20,11 +21,12 @@
 .button.primary {
   background: var(--accent);
   color: var(--accent-ink);
-  border-color: transparent;
+  border-color: var(--accent);
 }
 
 .button.primary:hover {
-  background: var(--accent-cool);
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
   color: var(--accent-ink);
 }
 
@@ -33,10 +35,14 @@
   box-shadow: none;
 }
 
+.button.secondary:hover {
+  background: var(--surface-highest);
+}
+
 .button.danger {
   color: var(--danger);
-  border-color: rgba(255, 92, 92, 0.4);
-  background: rgba(255, 92, 92, 0.08);
+  border-color: var(--border);
+  background: rgba(147, 0, 10, 0.18);
   box-shadow: none;
 }
 

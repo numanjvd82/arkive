@@ -1,84 +1,90 @@
 :root {
-  --bg: #141824;
-  --bg-soft: #1a2030;
-  --surface: #1d2231;
-  --surface-strong: #232a3d;
-  --text: #f6f7fb;
-  --muted: #b9c0d0;
-  --accent: #f2f4ff;
-  --accent-ink: #141824;
-  --accent-strong: #ffffff;
-  --accent-warm: #f3b46c;
-  --accent-cool: #6bd1e6;
+  --bg: #0b0e11;
+  --bg-soft: #161b22;
+  --surface: #161b22;
+  --surface-strong: #1c2128;
+  --surface-raised: #22272e;
+  --surface-highest: #303539;
+  --text: #dee3e8;
+  --muted: #bdc8d1;
+  --muted-strong: #87929a;
+  --accent: #38bdf8;
+  --accent-ink: #001e2c;
+  --accent-strong: #8ed5ff;
+  --accent-warm: #f1a02b;
+  --accent-cool: #7bd0ff;
   --success: #62d6a0;
-  --warning: #f3b46c;
-  --danger: #ff5c5c;
-  --border: #2b3347;
-  --shadow: 0 24px 40px rgba(7, 9, 15, 0.35);
+  --warning: #ffc176;
+  --danger: #ffb4ab;
+  --danger-ink: #690005;
+  --border: #30363d;
+  --border-soft: #2a3137;
+  --outline: #87929a;
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 
-  --font-ui: "Inter", system-ui, -apple-system, "Segoe UI", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
-  --font-heading: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  --font-ui: "Inter", system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-heading: "Inter", system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "Inter", system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 
-  --text-display-size: clamp(2.75rem, 2.2rem + 2.2vw, 5rem);
-  --text-display-lh: 1.05;
-  --text-display-ls: -0.02em;
+  --text-display-size: 1.75rem;
+  --text-display-lh: 1.25;
+  --text-display-ls: 0;
   --text-display-wt: 600;
 
-  --text-h1-size: 2.25rem;
-  --text-h1-lh: 1.15;
-  --text-h1-ls: -0.01em;
+  --text-h1-size: 1.5rem;
+  --text-h1-lh: 2rem;
+  --text-h1-ls: 0;
   --text-h1-wt: 600;
 
-  --text-h2-size: 1.75rem;
-  --text-h2-lh: 1.2;
-  --text-h2-ls: -0.01em;
+  --text-h2-size: 1.125rem;
+  --text-h2-lh: 1.5rem;
+  --text-h2-ls: 0;
   --text-h2-wt: 600;
 
-  --text-h3-size: 1.375rem;
-  --text-h3-lh: 1.25;
+  --text-h3-size: 1rem;
+  --text-h3-lh: 1.375rem;
   --text-h3-ls: 0;
   --text-h3-wt: 600;
 
-  --text-h4-size: 1.125rem;
-  --text-h4-lh: 1.3;
+  --text-h4-size: 0.9375rem;
+  --text-h4-lh: 1.25rem;
   --text-h4-ls: 0;
   --text-h4-wt: 600;
 
-  --text-body-lg-size: 1.125rem;
-  --text-body-lg-lh: 1.6;
+  --text-body-lg-size: 0.9375rem;
+  --text-body-lg-lh: 1.375rem;
   --text-body-lg-ls: 0;
   --text-body-lg-wt: 400;
 
-  --text-body-size: 1rem;
-  --text-body-lh: 1.6;
+  --text-body-size: 0.875rem;
+  --text-body-lh: 1.25rem;
   --text-body-ls: 0;
   --text-body-wt: 400;
 
-  --text-body-sm-size: 0.875rem;
-  --text-body-sm-lh: 1.55;
+  --text-body-sm-size: 0.8125rem;
+  --text-body-sm-lh: 1.125rem;
   --text-body-sm-ls: 0;
   --text-body-sm-wt: 400;
 
   --text-caption-size: 0.75rem;
   --text-caption-lh: 1.4;
-  --text-caption-ls: 0.01em;
+  --text-caption-ls: 0;
   --text-caption-wt: 400;
 
-  --text-label-size: 0.75rem;
-  --text-label-lh: 1.2;
-  --text-label-ls: 0.06em;
+  --text-label-size: 0.6875rem;
+  --text-label-lh: 1rem;
+  --text-label-ls: 0.05em;
   --text-label-wt: 600;
 
   --text-button-size: 0.875rem;
-  --text-button-lh: 1.1;
-  --text-button-ls: 0.01em;
+  --text-button-lh: 1.25rem;
+  --text-button-ls: 0;
   --text-button-wt: 600;
 
   --text-mono-size: 0.8125rem;
-  --text-mono-lh: 1.5;
+  --text-mono-lh: 1.125rem;
   --text-mono-ls: 0;
-  --text-mono-wt: 500;
+  --text-mono-wt: 400;
 }
 
 [data-theme="light"] {
@@ -86,18 +92,24 @@
   --bg-soft: #ffffff;
   --surface: #ffffff;
   --surface-strong: #eef0f7;
+  --surface-raised: #f2f4f8;
+  --surface-highest: #e7ebf1;
   --text: #111522;
   --muted: #4f576b;
-  --accent: #1f2b46;
-  --accent-ink: #f7f8fc;
-  --accent-strong: #0f1422;
+  --muted-strong: #6b7689;
+  --accent: #38bdf8;
+  --accent-ink: #082433;
+  --accent-strong: #00668a;
   --accent-warm: #d99d55;
-  --accent-cool: #3a9bb0;
+  --accent-cool: #0b8dc2;
   --success: #2f9968;
   --warning: #d99d55;
   --danger: #d93025;
-  --border: #dde2ee;
-  --shadow: 0 20px 36px rgba(17, 21, 34, 0.1);
+  --danger-ink: #ffffff;
+  --border: #d7dce4;
+  --border-soft: #e3e7ee;
+  --outline: #87929a;
+  --shadow: 0 4px 12px rgba(17, 21, 34, 0.08);
 }
 
 html {
@@ -153,7 +165,7 @@ h4 {
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(107, 209, 230, 0.5) transparent;
+  scrollbar-color: rgba(135, 146, 154, 0.6) transparent;
 }
 
 *::-webkit-scrollbar {
@@ -166,14 +178,14 @@ h4 {
 }
 
 *::-webkit-scrollbar-thumb {
-  background: rgba(107, 209, 230, 0.4);
+  background: rgba(135, 146, 154, 0.45);
   border-radius: 999px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: rgba(243, 180, 108, 0.55);
+  background: rgba(189, 200, 209, 0.55);
   border: 2px solid transparent;
   background-clip: padding-box;
 }
@@ -184,7 +196,7 @@ a {
 }
 
 .text-link {
-  color: var(--accent-warm);
+  color: var(--accent-strong);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -194,7 +206,7 @@ a {
 }
 
 .container {
-  width: min(1120px, 92vw);
+  width: min(1440px, calc(100vw - 32px));
   margin: 0 auto;
 }
 
@@ -248,6 +260,8 @@ a {
   line-height: var(--text-mono-lh);
   letter-spacing: var(--text-mono-ls);
   font-weight: var(--text-mono-wt);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
 }
 
 .button {
@@ -255,8 +269,9 @@ a {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 12px 20px;
-  border-radius: 999px;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 6px;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);

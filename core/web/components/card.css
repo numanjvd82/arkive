@@ -1,6 +1,6 @@
 .card {
-  padding: 22px;
-  border-radius: 22px;
+  padding: 16px;
+  border-radius: 6px;
   border: 1px solid var(--border);
   background: var(--surface);
   box-shadow: var(--shadow);

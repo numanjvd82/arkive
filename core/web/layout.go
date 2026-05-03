@@ -64,11 +64,11 @@ func buildHeadNodes(data LayoutData) []g.Node {
 		h.Link(
 			h.Rel("preload"),
 			h.As("style"),
-			h.Href("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&family=Plus+Jakarta+Sans:wght@600&display=swap"),
+			h.Href("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"),
 		),
 		h.Link(
 			h.Rel("stylesheet"),
-			h.Href("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&family=Plus+Jakarta+Sans:wght@600&display=swap"),
+			h.Href("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"),
 		),
 		h.TitleEl(g.Text(data.Title)),
 		g.If(data.Description != "", h.Meta(h.Name("description"), h.Content(data.Description))),
