@@ -137,11 +137,11 @@
 }
 
 .files-table th:nth-child(1) {
-  width: 42%;
+  width: 48%;
 }
 
 .files-table th:nth-child(2) {
-  width: 24%;
+  width: 20%;
 }
 
 .files-table th:nth-child(3) {
@@ -153,7 +153,12 @@
 }
 
 .files-table th:nth-child(5) {
-  width: 220px;
+  width: 200px;
+}
+
+.files-table th,
+.files-table td {
+  padding: 8px 12px;
 }
 
 .files-align-right {
@@ -196,8 +201,8 @@
 }
 
 .files-name {
-  font-size: var(--text-h2-size);
-  line-height: var(--text-h2-lh);
+  font-size: 1rem;
+  line-height: 1.4rem;
   font-weight: 600;
   color: var(--text);
   overflow: hidden;
@@ -251,9 +256,9 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-height: 34px;
-  min-width: 34px;
-  padding: 0 10px;
+  min-height: 32px;
+  min-width: 32px;
+  padding: 0 8px;
   flex: 0 0 auto;
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -268,8 +273,38 @@
   color: var(--text);
 }
 
+.files-action-button[title="Share"] {
+  color: var(--accent-strong);
+}
+
+.files-action-button[title="View"] {
+  color: #c4cfdd;
+}
+
+.files-action-button[title="Download"] {
+  color: var(--success);
+}
+
+.files-action-button[title="Share"]:hover {
+  color: var(--accent);
+}
+
+.files-action-button[title="View"]:hover {
+  color: var(--text);
+}
+
+.files-action-button[title="Download"]:hover {
+  color: var(--success);
+}
+
+.files-action-button.is-danger {
+  color: var(--danger);
+}
+
 .files-action-button.is-danger:hover {
   color: var(--danger);
+  background: rgba(147, 0, 10, 0.12);
+  border-color: rgba(147, 0, 10, 0.36);
 }
 
 .files-action-button.is-disabled {
