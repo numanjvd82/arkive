@@ -99,26 +99,28 @@
   const backdrop = document.getElementById("file-share-backdrop");
   const linkInput = document.getElementById("share-link-input");
   const copyButton = document.getElementById("share-copy-button");
+  const fileNameEl = document.getElementById("share-file-name");
   const statusEl = document.getElementById("share-status");
   const saveStateEl = document.getElementById("share-save-state");
+  const saveButton = document.getElementById("share-save-button");
   const expirySelect = document.getElementById("share-expiry-select");
+  const expiryToggle = document.getElementById("share-expiry-toggle");
   const expiryCustomWrap = document.querySelector(".share-expiry-custom");
   const expiryCustomInput = document.getElementById("share-expiry-custom");
+  const expiryTimeInput = document.getElementById("share-expiry-time");
   const passwordToggle = document.getElementById("share-password-toggle");
   const passwordField = document.querySelector(".share-password-field");
   const passwordInput = document.getElementById("share-password");
-  const resetButton = document.getElementById("share-reset-button");
-  const revokeButton = document.getElementById("share-revoke-button");
+  const passwordHelper = document.getElementById("share-password-helper");
   const deleteButton = document.getElementById("share-delete-button");
+  const burnToggle = document.getElementById("share-burn-toggle");
   const closeButton = document.getElementById("share-close-button");
   const errorEl = document.getElementById("share-error");
 
   let activeFileId = null;
   let activeShare = null;
-  let saveTimer = null;
+  let activeFileName = "";
   let saveInFlight = false;
-  let saveQueued = false;
-  let isBootstrapping = false;
 
   if (!shareButtons.length || !backdrop) {
     return;
@@ -153,6 +155,13 @@
     errorEl.classList.add("is-visible");
   }
 
+  function setFileName(name) {
+    activeFileName = name || "";
+    if (fileNameEl) {
+      fileNameEl.textContent = activeFileName || "Selected file";
+    }
+  }
+
   function setStatus(message) {
     if (statusEl) {
       statusEl.textContent = message;
@@ -180,7 +189,7 @@
     }
     if (!token) {
       linkInput.value = "";
-      linkInput.placeholder = "Generating link...";
+      linkInput.placeholder = "Link will appear after saving";
       return;
     }
     linkInput.value = window.location.origin + "/s/" + token;
@@ -190,63 +199,80 @@
     if (copyButton) {
       copyButton.disabled = isDisabled;
     }
-    if (resetButton) {
-      resetButton.disabled = isDisabled;
-    }
-    if (revokeButton) {
-      revokeButton.disabled = isDisabled;
-    }
     if (deleteButton) {
       deleteButton.disabled = isDisabled;
+    }
+    if (saveButton) {
+      saveButton.disabled = isDisabled;
+    }
+    if (passwordToggle) {
+      passwordToggle.disabled = isDisabled;
+    }
+    if (expiryToggle) {
+      expiryToggle.disabled = isDisabled;
+    }
+    if (expirySelect) {
+      expirySelect.disabled = isDisabled || !(expiryToggle && expiryToggle.checked);
+    }
+    if (burnToggle) {
+      burnToggle.disabled = true;
+    }
+    if (passwordInput) {
+      passwordInput.disabled = isDisabled || !(passwordToggle && passwordToggle.checked);
+    }
+    if (expiryCustomInput) {
+      expiryCustomInput.disabled = isDisabled || !(expiryToggle && expiryToggle.checked);
+    }
+    if (expiryTimeInput) {
+      expiryTimeInput.disabled = isDisabled || !(expiryToggle && expiryToggle.checked);
     }
   }
 
   function updateActionAvailability() {
     if (!activeShare) {
+      disableActions(false);
       if (copyButton) {
         copyButton.disabled = true;
-      }
-      if (resetButton) {
-        resetButton.disabled = true;
-      }
-      if (revokeButton) {
-        revokeButton.disabled = true;
       }
       if (deleteButton) {
         deleteButton.disabled = true;
       }
       return;
     }
+    disableActions(false);
     const revoked = activeShare.status === "revoked";
     const expired = activeShare.status === "expired" || activeShare.isExpired;
     if (copyButton) {
       copyButton.disabled = revoked || expired;
     }
-    if (resetButton) {
-      resetButton.disabled = false;
-    }
-    if (revokeButton) {
-      revokeButton.disabled = revoked;
-    }
     if (deleteButton) {
       deleteButton.disabled = false;
+    }
+    if (saveButton) {
+      saveButton.disabled = false;
     }
   }
 
   function resetForm() {
     activeShare = null;
     setLink("");
-    setStatus("Preparing");
+    setStatus("Not shared");
     setSaveState("");
     setError("");
     if (expirySelect) {
-      expirySelect.value = "never";
+      expirySelect.value = "custom";
+    }
+    if (expiryToggle) {
+      expiryToggle.checked = false;
     }
     if (expiryCustomWrap) {
       expiryCustomWrap.classList.remove("is-visible");
     }
     if (expiryCustomInput) {
       expiryCustomInput.value = "";
+    }
+    if (expiryTimeInput) {
+      expiryTimeInput.value = "";
     }
     if (passwordToggle) {
       passwordToggle.checked = false;
@@ -257,28 +283,28 @@
     if (passwordInput) {
       passwordInput.value = "";
     }
+    if (passwordHelper) {
+      passwordHelper.classList.remove("is-visible");
+    }
+    if (burnToggle) {
+      burnToggle.checked = false;
+      burnToggle.disabled = true;
+    }
     updateActionAvailability();
   }
 
-  function toLocalInput(isoString) {
+  function toLocalParts(isoString) {
     const date = new Date(isoString);
     if (Number.isNaN(date.getTime())) {
-      return "";
+      return { date: "", time: "" };
     }
     const pad = function(value) {
       return value < 10 ? "0" + value : "" + value;
     };
-    return (
-      date.getFullYear() +
-      "-" +
-      pad(date.getMonth() + 1) +
-      "-" +
-      pad(date.getDate()) +
-      "T" +
-      pad(date.getHours()) +
-      ":" +
-      pad(date.getMinutes())
-    );
+    return {
+      date: date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate()),
+      time: pad(date.getHours()) + ":" + pad(date.getMinutes())
+    };
   }
 
   function applyShareState(share) {
@@ -295,14 +321,23 @@
     if (expirySelect) {
       if (share.expiresAt) {
         expirySelect.value = "custom";
+        if (expiryToggle) {
+          expiryToggle.checked = true;
+        }
         if (expiryCustomWrap) {
           expiryCustomWrap.classList.add("is-visible");
         }
+        const parts = toLocalParts(share.expiresAt);
         if (expiryCustomInput) {
-          expiryCustomInput.value = toLocalInput(share.expiresAt);
+          expiryCustomInput.value = parts.date;
+        }
+        if (expiryTimeInput) {
+          expiryTimeInput.value = parts.time;
         }
       } else {
-        expirySelect.value = "never";
+        if (expiryToggle) {
+          expiryToggle.checked = false;
+        }
         if (expiryCustomWrap) {
           expiryCustomWrap.classList.remove("is-visible");
         }
@@ -321,78 +356,25 @@
     if (passwordInput) {
       passwordInput.value = "";
     }
+    if (passwordHelper) {
+      passwordHelper.classList.toggle("is-visible", !!share.hasPassword);
+    }
     updateActionAvailability();
-    if (isBootstrapping) {
-      isBootstrapping = false;
-      if (saveQueued) {
-        saveQueued = false;
-        scheduleAutoSave();
-      }
-    }
-  }
-
-  function scheduleAutoSave() {
-    if (!activeFileId) {
-      return;
-    }
-    if (isBootstrapping) {
-      saveQueued = true;
-      return;
-    }
-    if (saveTimer) {
-      clearTimeout(saveTimer);
-    }
-    saveTimer = setTimeout(function() {
-      runAutoSave();
-    }, 400);
-  }
-
-  function runAutoSave() {
-    if (!activeFileId) {
-      return;
-    }
-    if (saveInFlight) {
-      saveQueued = true;
-      return;
-    }
-    setError("");
-    const action = activeShare && activeShare.id ? updateShare() : createShare();
-    setSaveState("Saving...", "is-saving");
-    disableActions(true);
-    saveInFlight = true;
-    action
-      .then(function(share) {
-        applyShareState(share);
-        setSaveState("Saved");
-      })
-      .catch(function(err) {
-        setSaveState("Not saved", "is-error");
-        setError(err.message || "Unable to update share.");
-        updateActionAvailability();
-      })
-      .finally(function() {
-        saveInFlight = false;
-        disableActions(false);
-        if (saveQueued) {
-          saveQueued = false;
-          scheduleAutoSave();
-        }
-      });
   }
 
   function buildExpiry() {
+    if (!expiryToggle || !expiryToggle.checked) {
+      return "";
+    }
     if (!expirySelect) {
       return "";
     }
     const value = expirySelect.value;
-    if (value === "never") {
-      return "";
-    }
     if (value === "custom") {
-      if (!expiryCustomInput || !expiryCustomInput.value) {
+      if (!expiryCustomInput || !expiryTimeInput || !expiryCustomInput.value || !expiryTimeInput.value) {
         return "";
       }
-      const customDate = new Date(expiryCustomInput.value);
+      const customDate = new Date(expiryCustomInput.value + "T" + expiryTimeInput.value);
       if (Number.isNaN(customDate.getTime())) {
         return "";
       }
@@ -427,7 +409,7 @@
     if (passwordEnabled && !password) {
       return Promise.reject(new Error("Password is required"));
     }
-    if (expirySelect && expirySelect.value === "custom" && !expiresAt) {
+    if (expiryToggle && expiryToggle.checked && expirySelect && expirySelect.value === "custom" && !expiresAt) {
       return Promise.reject(new Error("Custom expiry is required"));
     }
     return fetch("/api/files/" + encodeURIComponent(activeFileId) + "/share", {
@@ -458,9 +440,11 @@
     const password = passwordEnabled && passwordInput ? passwordInput.value : "";
     const expiresAt = buildExpiry();
     if (passwordEnabled && !password) {
-      return Promise.reject(new Error("Password is required"));
+      if (!(activeShare && activeShare.hasPassword)) {
+        return Promise.reject(new Error("Password is required"));
+      }
     }
-    if (expirySelect && expirySelect.value === "custom" && !expiresAt) {
+    if (expiryToggle && expiryToggle.checked && expirySelect && expirySelect.value === "custom" && !expiresAt) {
       return Promise.reject(new Error("Custom expiry is required"));
     }
     return fetch("/api/shares/" + encodeURIComponent(activeShare.id), {
@@ -498,53 +482,23 @@
     });
   }
 
-  function revokeShare() {
-    if (!activeShare || !activeShare.id) {
-      return Promise.resolve();
-    }
-    return fetch("/api/shares/" + encodeURIComponent(activeShare.id) + "/revoke", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" }
-    }).then(function(res) {
-      if (!res.ok) {
-        throw new Error("Revoke failed");
-      }
-    });
-  }
-
   function handleCreateFlow() {
-    if (!activeFileId) {
-      return;
-    }
-    setError("");
-    setStatus("Creating");
-    setSaveState("Creating...", "is-saving");
+    setStatus("Not shared");
+    setSaveState("");
     setLink("");
-    disableActions(true);
-    createShare()
-      .then(function(share) {
-        applyShareState(share);
-        disableActions(false);
-      })
-      .catch(function(err) {
-        setStatus("Unavailable");
-        setSaveState("Not saved", "is-error");
-        setError(err.message || "Unable to create share.");
-        disableActions(false);
-        updateActionAvailability();
-        isBootstrapping = false;
-        saveQueued = false;
-      });
+    disableActions(false);
+    updateActionAvailability();
   }
 
   shareButtons.forEach(function(button) {
     button.addEventListener("click", function() {
       activeFileId = button.getAttribute("data-file-id");
+      setFileName(button.getAttribute("data-file-name") || "");
       if (!activeFileId) {
         return;
       }
-      isBootstrapping = true;
       resetForm();
+      setFileName(button.getAttribute("data-file-name") || "");
       disableActions(true);
       openDialog();
       fetchShare()
@@ -561,63 +515,66 @@
           setError("Unable to load share.");
           disableActions(false);
           updateActionAvailability();
-          isBootstrapping = false;
-          saveQueued = false;
         });
     });
   });
 
-  if (expirySelect) {
-    expirySelect.addEventListener("change", function() {
-      if (!expiryCustomWrap) {
-        return;
-      }
-      setError("");
-      if (expirySelect.value === "custom") {
-        expiryCustomWrap.classList.add("is-visible");
-        if (expiryCustomInput) {
-          expiryCustomInput.focus();
-        }
-      } else {
-        expiryCustomWrap.classList.remove("is-visible");
-        scheduleAutoSave();
-      }
-    });
-  }
-
   if (passwordToggle) {
     passwordToggle.addEventListener("change", function() {
-      if (!passwordField) {
-        return;
-      }
       setError("");
-      if (passwordToggle.checked) {
-        passwordField.classList.add("is-visible");
-        if (passwordInput) {
+      if (passwordField) {
+        if (passwordToggle.checked) {
+          passwordField.classList.add("is-visible");
+        } else {
+          passwordField.classList.remove("is-visible");
+          if (passwordInput) {
+            passwordInput.value = "";
+          }
+        }
+      }
+      if (passwordHelper) {
+        passwordHelper.classList.toggle("is-visible", !!(activeShare && activeShare.hasPassword && passwordToggle.checked));
+      }
+      if (passwordInput) {
+        passwordInput.disabled = !(passwordToggle && passwordToggle.checked);
+        if (passwordToggle.checked) {
           passwordInput.focus();
         }
-      } else {
-        passwordField.classList.remove("is-visible");
-        if (passwordInput) {
-          passwordInput.value = "";
-        }
-        scheduleAutoSave();
       }
     });
   }
 
-  if (expiryCustomInput) {
-    expiryCustomInput.addEventListener("change", function() {
+  if (expiryToggle) {
+    expiryToggle.addEventListener("change", function() {
       setError("");
-      scheduleAutoSave();
+      if (expiryCustomWrap) {
+        expiryCustomWrap.classList.toggle("is-visible", expiryToggle.checked);
+      }
+      if (expiryCustomInput) {
+        expiryCustomInput.disabled = !expiryToggle.checked;
+        if (!expiryToggle.checked) {
+          expiryCustomInput.value = "";
+        }
+      }
+      if (expiryTimeInput) {
+        expiryTimeInput.disabled = !expiryToggle.checked;
+        if (!expiryToggle.checked) {
+          expiryTimeInput.value = "";
+        }
+      }
     });
   }
 
-  if (passwordInput) {
-    passwordInput.addEventListener("change", function() {
+  if (expirySelect) {
+    expirySelect.addEventListener("change", function() {
       setError("");
-      if (passwordToggle && passwordToggle.checked) {
-        scheduleAutoSave();
+      if (expirySelect.value !== "custom" && expiryToggle && expiryToggle.checked) {
+        if (expiryCustomInput) {
+          expiryCustomInput.value = "";
+        }
+        if (expiryTimeInput) {
+          expiryTimeInput.value = "";
+        }
       }
     });
   }
@@ -640,58 +597,31 @@
     });
   }
 
-  if (resetButton) {
-    resetButton.addEventListener("click", function() {
-      if (!activeFileId) {
+  if (saveButton) {
+    saveButton.addEventListener("click", function() {
+      if (!activeFileId || saveInFlight) {
         return;
       }
       setError("");
-      setSaveState("Resetting...", "is-saving");
+      setSaveState("Saving...", "is-saving");
       disableActions(true);
-      Promise.resolve()
-        .then(function() {
-          if (activeShare && activeShare.id) {
-            return deleteShare();
-          }
-          return null;
-        })
-        .then(function() {
-          return createShare();
-        })
+      saveInFlight = true;
+      const action = activeShare && activeShare.id ? updateShare() : createShare();
+      action
         .then(function(share) {
           applyShareState(share);
           setSaveState("Saved");
           disableActions(false);
-          window.Toast.success("Share link reset.", { title: "Reset" });
+          window.Toast.success("Share settings updated.", { title: "Saved" });
         })
         .catch(function(err) {
-          disableActions(false);
           setSaveState("Not saved", "is-error");
-          setError(err.message || "Unable to reset share.");
-        });
-    });
-  }
-
-  if (revokeButton) {
-    revokeButton.addEventListener("click", function() {
-      if (!activeShare || !activeShare.id) {
-        return;
-      }
-      disableActions(true);
-      setSaveState("Revoking...", "is-saving");
-      revokeShare()
-        .then(function() {
-          activeShare.status = "revoked";
-          setStatus("Revoked");
-          setSaveState("Saved");
+          setError(err.message || "Unable to update share.");
           disableActions(false);
           updateActionAvailability();
-          window.Toast.success("Share link revoked.", { title: "Revoked" });
         })
-        .catch(function() {
-          disableActions(false);
-          setSaveState("Not saved", "is-error");
-          window.Toast.error("Revoke failed. Try again.");
+        .finally(function() {
+          saveInFlight = false;
         });
     });
   }
@@ -709,6 +639,7 @@
           setStatus("Deleted");
           setSaveState("Saved");
           disableActions(false);
+          updateActionAvailability();
           window.Toast.success("Share link deleted.", { title: "Deleted" });
         })
         .catch(function() {

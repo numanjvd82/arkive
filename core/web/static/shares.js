@@ -16,17 +16,12 @@
       return;
     }
     pendingAction = { action: action, shareId: shareId };
-    const verb = action === "revoke" ? "Revoke" : "Delete";
-    confirmButton.textContent = verb;
-    confirmButton.classList.toggle("danger", action === "delete");
-    confirmButton.classList.toggle("secondary", action === "revoke");
+    confirmButton.textContent = "Delete";
+    confirmButton.classList.add("danger");
+    confirmButton.classList.remove("secondary");
     if (meta) {
       const target = fileName ? "\"" + fileName + "\"" : "this share";
-      if (action === "revoke") {
-        meta.textContent = "Revoke access for " + target + "?";
-      } else {
-        meta.textContent = "Delete " + target + " and remove its link?";
-      }
+      meta.textContent = "Delete " + target + " and remove its link?";
     }
     if (window.Dialog && window.Dialog.open) {
       window.Dialog.open("share-action-backdrop");
@@ -44,20 +39,6 @@
       window.Dialog.close("share-action-backdrop");
     } else {
       backdrop.classList.add("is-hidden");
-    }
-  }
-
-  function updateRowStatus(shareId, status) {
-    const statusEl = document.querySelector("[data-share-status='" + shareId + "']");
-    if (!statusEl) {
-      return;
-    }
-    statusEl.classList.remove("active", "expired", "revoked");
-    statusEl.classList.add(status);
-    statusEl.textContent = status.charAt(0).toUpperCase() + status.slice(1);
-    const revokeButton = document.querySelector("[data-share-action='revoke'][data-share-id='" + shareId + "']");
-    if (revokeButton) {
-      revokeButton.parentNode.removeChild(revokeButton);
     }
   }
 
@@ -132,23 +113,15 @@
       const action = pendingAction.action;
       const shareId = pendingAction.shareId;
       confirmButton.disabled = true;
-      const endpoint = "/api/shares/" + encodeURIComponent(shareId) + (action === "revoke" ? "/revoke" : "");
-      const method = action === "revoke" ? "POST" : "DELETE";
-      fetch(endpoint, { method: method })
+      const endpoint = "/api/shares/" + encodeURIComponent(shareId);
+      fetch(endpoint, { method: "DELETE" })
         .then(function(res) {
           if (!res.ok) {
             throw new Error("request failed");
           }
-          if (action === "revoke") {
-            updateRowStatus(shareId, "revoked");
-            if (window.Toast) {
-              window.Toast.success("Share revoked.", { title: "Revoked" });
-            }
-          } else {
-            removeRow(shareId);
-            if (window.Toast) {
-              window.Toast.success("Share deleted.", { title: "Deleted" });
-            }
+          removeRow(shareId);
+          if (window.Toast) {
+            window.Toast.success("Share deleted.", { title: "Deleted" });
           }
           closeDialog();
         })

@@ -1,10 +1,11 @@
 .dialog-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(11, 15, 20, 0.55);
+  background: rgba(0, 0, 0, 0.78);
   display: grid;
   place-items: center;
   z-index: 40;
+  padding: 16px;
 }
 
 .dialog-backdrop.is-hidden {
@@ -12,23 +13,41 @@
 }
 
 .dialog {
-  width: min(420px, 92vw);
-  background: var(--surface);
-  border-radius: 18px;
+  width: min(460px, 100%);
+  background: #1c2128;
+  border-radius: 8px;
   border: 1px solid var(--border);
-  padding: 20px;
-  display: grid;
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
   max-height: 90vh;
   overflow: auto;
   position: relative;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.48);
+}
+
+.dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 22px 18px;
+  border-bottom: 1px solid var(--border);
 }
 
 .dialog h3 {
   margin: 0;
+  font-size: var(--text-h3-size);
+  line-height: var(--text-h3-lh);
+  font-weight: var(--text-h3-wt);
 }
 
-.dialog p {
+.dialog-body {
+  padding: 20px 22px;
+  display: grid;
+  gap: 16px;
+}
+
+.dialog-body p {
   margin: 0;
   color: var(--muted);
 }
@@ -37,4 +56,30 @@
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+  padding: 16px 22px 20px;
+  border-top: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+@media (max-width: 640px) {
+  .dialog-backdrop {
+    padding: 12px;
+    place-items: end center;
+  }
+
+  .dialog {
+    width: 100%;
+    max-height: min(90vh, 760px);
+  }
+
+  .dialog-header,
+  .dialog-body,
+  .dialog-actions {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .dialog-actions {
+    flex-wrap: wrap;
+  }
 }

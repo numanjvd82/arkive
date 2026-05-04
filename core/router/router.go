@@ -142,11 +142,6 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 	apiShares := api.Group("/shares")
 	apiShares.Use(middleware.RequireSessionJSON(authService))
 	{
-		apiShares.POST("/:id/revoke", middleware.RateLimit(middleware.RateLimitConfig{
-			RequestsPerMinute: 20,
-			Burst:             40,
-			KeyPrefix:         "share:revoke",
-		}), handlers.APIRevokeShare(shareService))
 		apiShares.PATCH("/:id", middleware.RateLimit(middleware.RateLimitConfig{
 			RequestsPerMinute: 20,
 			Burst:             40,

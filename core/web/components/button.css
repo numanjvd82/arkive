@@ -46,6 +46,18 @@
   box-shadow: none;
 }
 
+.button.danger-outline {
+  color: #ffb4ab;
+  border-color: rgba(147, 0, 10, 0.55);
+  background: transparent;
+  box-shadow: none;
+}
+
+.button.danger-outline:hover {
+  background: rgba(147, 0, 10, 0.16);
+  border-color: rgba(147, 0, 10, 0.7);
+}
+
 .theme-toggle {
   text-transform: uppercase;
   letter-spacing: var(--text-label-ls);

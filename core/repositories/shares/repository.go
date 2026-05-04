@@ -125,20 +125,30 @@ func (r *Repository) GetShareForFileForUser(ctx context.Context, db database.PgE
 	return share, nil
 }
 
-func (r *Repository) RevokeShareForUser(ctx context.Context, db database.PgExecutor, shareID, ownerUserID string) (bool, error) {
-	query := `UPDATE
+func (r *Repository) GetShareForUser(ctx context.Context, db database.PgExecutor, shareID, ownerUserID string) (models.Share, error) {
+	var share models.Share
+	query := `SELECT
+		id, file_id, owner_user_id, token, password_hash, expires_at,
+		status, revoked_at, created_at, updated_at
+	FROM
 		shares
-	SET
-		status = 'revoked',
-		revoked_at = now(),
-		updated_at = now()
 	WHERE
-		id = $1 AND owner_user_id = $2 AND status = 'active'`
-	tag, err := db.Exec(ctx, query, shareID, ownerUserID)
-	if err != nil {
-		return false, err
+		id = $1 AND owner_user_id = $2`
+	if err := db.QueryRow(ctx, query, shareID, ownerUserID).Scan(
+		&share.ID,
+		&share.FileID,
+		&share.OwnerUserID,
+		&share.Token,
+		&share.PasswordHash,
+		&share.ExpiresAt,
+		&share.Status,
+		&share.RevokedAt,
+		&share.CreatedAt,
+		&share.UpdatedAt,
+	); err != nil {
+		return models.Share{}, err
 	}
-	return tag.RowsAffected() > 0, nil
+	return share, nil
 }
 
 func (r *Repository) UpdateShareForUser(ctx context.Context, db database.PgExecutor, shareID, ownerUserID string, passwordHash *string, expiresAt *time.Time) (models.Share, error) {

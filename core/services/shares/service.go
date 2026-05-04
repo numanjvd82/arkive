@@ -63,8 +63,10 @@ func (s *Service) CreateShare(ctx context.Context, input CreateInput) (models.Sh
 	if input.ExpiresAt != nil && !input.ExpiresAt.After(time.Now()) {
 		validationErrors.Add("expiresAt", ErrExpiryInvalid.Error())
 	}
-	if input.Password != "" && len(input.Password) < PasswordMinLength {
-		validationErrors.Add("password", ErrPasswordTooShort.Error())
+	if input.Password != "" {
+		if message := sharePasswordValidationMessage(input.Password); message != "" {
+			validationErrors.Add("password", message)
+		}
 	}
 	if validationErrors.HasAny() {
 		return models.Share{}, validationErrors, nil
@@ -145,18 +147,6 @@ func (s *Service) GetShareForFileForUser(ctx context.Context, fileID, ownerUserI
 	return s.shareRepo.GetShareForFileForUser(ctx, s.db, fileID, ownerUserID)
 }
 
-func (s *Service) RevokeShareForUser(ctx context.Context, shareID, ownerUserID string) (bool, error) {
-	shareID = strings.TrimSpace(shareID)
-	ownerUserID = strings.TrimSpace(ownerUserID)
-	if ownerUserID == "" {
-		return false, ErrUnauthorized
-	}
-	if shareID == "" {
-		return false, ErrInvalidInput
-	}
-	return s.shareRepo.RevokeShareForUser(ctx, s.db, shareID, ownerUserID)
-}
-
 func (s *Service) UpdateShareForUser(ctx context.Context, shareID, ownerUserID string, expiresAt *time.Time, password string, requirePassword bool) (models.Share, validation.Errors, error) {
 	shareID = strings.TrimSpace(shareID)
 	ownerUserID = strings.TrimSpace(ownerUserID)
@@ -172,24 +162,40 @@ func (s *Service) UpdateShareForUser(ctx context.Context, shareID, ownerUserID s
 	if expiresAt != nil && !expiresAt.After(time.Now()) {
 		validationErrors.Add("expiresAt", ErrExpiryInvalid.Error())
 	}
-	if requirePassword && password == "" {
-		validationErrors.Add("password", ErrPasswordRequired.Error())
+	existing, err := s.shareRepo.GetShareForUser(ctx, s.db, shareID, ownerUserID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.Share{}, nil, ErrNotFound
+		}
+		return models.Share{}, nil, err
 	}
-	if requirePassword && password != "" && len(password) < PasswordMinLength {
-		validationErrors.Add("password", ErrPasswordTooShort.Error())
+
+	var passwordHash *string
+	if requirePassword {
+		if password == "" && existing.PasswordHash == nil {
+			validationErrors.Add("password", ErrPasswordRequired.Error())
+		}
+		if password != "" {
+			if message := sharePasswordValidationMessage(password); message != "" {
+				validationErrors.Add("password", message)
+			}
+		}
 	}
 	if validationErrors.HasAny() {
 		return models.Share{}, validationErrors, nil
 	}
 
-	var passwordHash *string
 	if requirePassword {
-		hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-		if err != nil {
-			return models.Share{}, nil, ErrPasswordHashFailed
+		if password == "" && existing.PasswordHash != nil {
+			passwordHash = existing.PasswordHash
+		} else {
+			hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+			if err != nil {
+				return models.Share{}, nil, ErrPasswordHashFailed
+			}
+			hashStr := string(hashed)
+			passwordHash = &hashStr
 		}
-		hashStr := string(hashed)
-		passwordHash = &hashStr
 	}
 
 	updated, err := s.shareRepo.UpdateShareForUser(ctx, s.db, shareID, ownerUserID, passwordHash, expiresAt)
@@ -200,6 +206,21 @@ func (s *Service) UpdateShareForUser(ctx context.Context, shareID, ownerUserID s
 		return models.Share{}, nil, err
 	}
 	return updated, nil, nil
+}
+
+func sharePasswordValidationMessage(password string) string {
+	switch validation.PasswordIssueFor(password) {
+	case validation.PasswordTooShort:
+		return ErrPasswordTooShort.Error()
+	case validation.PasswordMissingLower:
+		return ErrPasswordNeedLower.Error()
+	case validation.PasswordMissingUpper:
+		return ErrPasswordNeedUpper.Error()
+	case validation.PasswordMissingSymbol:
+		return ErrPasswordNeedSymbol.Error()
+	default:
+		return ""
+	}
 }
 
 func (s *Service) DeleteShareForUser(ctx context.Context, shareID, ownerUserID string) (bool, error) {

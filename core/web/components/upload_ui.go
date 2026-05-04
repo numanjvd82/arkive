@@ -154,8 +154,7 @@ func UploadControls(props UploadControlsProps) g.Node {
 			TitleID:    "upload-confirm-title",
 			Title:      "Start upload?",
 			Body:       h.P(g.Attr("id", "upload-confirm-meta")),
-			Actions: h.Div(
-				h.Class("dialog-actions"),
+			Actions: g.Group([]g.Node{
 				h.Button(
 					h.Class("button secondary"),
 					h.Type("button"),
@@ -168,7 +167,7 @@ func UploadControls(props UploadControlsProps) g.Node {
 					g.Attr("id", "upload-confirm-start"),
 					g.Text("Start upload"),
 				),
-			),
+			}),
 		}),
 	})
 }

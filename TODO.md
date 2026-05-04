@@ -13,6 +13,7 @@
 - Generate image thumbnails during processing.
 - Multi-file upload UI (queue and progress per item).
 - Dedicated paused-uploads list in the dashboard or uploads page (beyond the resume banner).
+- Burn-after-reading share policy in Core (single-download enforcement, backend state, public share flow, UI wiring).
 - Alert component for inline form and page messaging.
 - Add `ads.txt` for search/revenue support.
 - Add "Show on Google and other search engines" option for public shares; default off, and only index when enabled.

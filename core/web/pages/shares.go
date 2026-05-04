@@ -94,8 +94,7 @@ func SharesPage(props SharesPageProps) web.Page {
 				TitleID:    "share-action-title",
 				Title:      "Update share?",
 				Body:       h.P(g.Attr("id", "share-action-meta"), g.Text("")),
-				Actions: h.Div(
-					h.Class("dialog-actions"),
+				Actions: g.Group([]g.Node{
 					h.Button(
 						h.Class("button secondary"),
 						h.Type("button"),
@@ -108,7 +107,7 @@ func SharesPage(props SharesPageProps) web.Page {
 						g.Attr("id", "share-action-confirm"),
 						g.Text("Confirm"),
 					),
-				),
+				}),
 			}),
 		}),
 	}
@@ -208,14 +207,6 @@ func renderShareList(items []models.ShareWithFile, total, expiringSoonCount, rev
 							g.Attr("aria-hidden", "true"),
 						),
 					),
-					g.If(statusLabel == shares.ShareStatusActive, h.Button(
-						h.Class("shares-action-link is-danger"),
-						h.Type("button"),
-						g.Attr("data-share-action", "revoke"),
-						g.Attr("data-share-id", item.ID),
-						g.Attr("data-share-file", item.FileName),
-						g.Text("Revoke"),
-					)),
 					h.Button(
 						h.Class("shares-action-link"),
 						h.Type("button"),

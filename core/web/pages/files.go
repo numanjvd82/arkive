@@ -79,8 +79,7 @@ func FilesPage(props FilesPageProps) web.Page {
 					TitleID:    "file-delete-title",
 					Title:      "Delete file?",
 					Body:       h.P(g.Attr("id", "file-delete-meta"), g.Text("This will permanently delete the file. This action cannot be undone.")),
-					Actions: h.Div(
-						h.Class("dialog-actions"),
+					Actions: g.Group([]g.Node{
 						h.Button(
 							h.Class("button secondary"),
 							h.Type("button"),
@@ -93,49 +92,181 @@ func FilesPage(props FilesPageProps) web.Page {
 							g.Attr("id", "file-delete-confirm"),
 							g.Text("Delete"),
 						),
-					),
+					}),
 				}),
 				components.Dialog(components.DialogProps{
-					BackdropID: "file-share-backdrop",
-					TitleID:    "file-share-title",
-					Title:      "Share file",
-					Body: h.Div(
-						h.Class("share-dialog"),
+					BackdropID:  "file-share-backdrop",
+					TitleID:     "file-share-title",
+					DialogClass: "share-modal",
+					Header: h.Div(
+						h.Class("dialog-header share-modal-header"),
+						h.H2(
+							h.Class("share-modal-title"),
+							g.Attr("id", "file-share-title"),
+							lucide.Share2(
+								h.Class("share-modal-lucide share-modal-lucide-accent"),
+								g.Attr("aria-hidden", "true"),
+							),
+							h.Span(g.Text("Share File: ")),
+							h.Span(g.Attr("id", "share-file-name"), g.Text("")),
+						),
 						h.Button(
 							h.Class("share-dialog-close"),
 							h.Type("button"),
 							g.Attr("id", "share-close-button"),
 							g.Attr("aria-label", "Close"),
-							components.Icon(components.IconProps{
-								Name:       "x",
-								Size:       "16",
-								Decorative: true,
-							}),
+							lucide.X(
+								h.Class("share-modal-lucide"),
+								g.Attr("aria-hidden", "true"),
+							),
 						),
-						h.P(h.Class("share-subtitle"), g.Text("Link is generated instantly. Changes save automatically.")),
+					),
+					Body: h.Div(
+						h.Class("share-dialog"),
 						h.Div(
-							h.Class("share-link-row"),
+							h.Class("share-section"),
+							h.Label(
+								h.Class("form-label"),
+								g.Attr("for", "share-link-input"),
+								g.Text("Share Link"),
+							),
 							h.Div(
-								h.Class("share-link-field"),
-								h.Label(
-									h.Class("form-label"),
-									g.Attr("for", "share-link-input"),
-									g.Text("Share link"),
-								),
+								h.Class("share-link-row"),
 								h.Input(
-									h.Class("form-input"),
+									h.Class("form-input share-link-input"),
 									g.Attr("id", "share-link-input"),
 									g.Attr("name", "share-link"),
 									g.Attr("type", "text"),
 									g.Attr("readonly", "readonly"),
-									g.Attr("placeholder", "Generating link..."),
+									g.Attr("placeholder", "Link will appear after saving"),
+								),
+								h.Button(
+									h.Class("share-copy-button"),
+									h.Type("button"),
+									g.Attr("id", "share-copy-button"),
+									g.Attr("aria-label", "Copy share link"),
+									lucide.Copy(
+										h.Class("share-modal-lucide"),
+										g.Attr("aria-hidden", "true"),
+									),
 								),
 							),
-							h.Button(
-								h.Class("button secondary"),
-								h.Type("button"),
-								g.Attr("id", "share-copy-button"),
-								g.Text("Copy"),
+						),
+						h.Div(
+							h.Class("share-section"),
+							h.Div(
+								h.Class("share-section-heading"),
+								h.Span(g.Text("Access Settings")),
+							),
+							h.Div(
+								h.Class("share-setting"),
+								h.Div(
+									h.Class("share-setting-main"),
+									h.Label(
+										h.Class("share-setting-label"),
+										g.Attr("for", "share-password-toggle"),
+										lucide.KeyRound(
+											h.Class("share-modal-lucide share-setting-icon"),
+											g.Attr("aria-hidden", "true"),
+										),
+										h.Span(g.Text("Password Protection")),
+									),
+								),
+								h.Label(
+									h.Class("switch"),
+									h.Input(
+										h.Type("checkbox"),
+										g.Attr("id", "share-password-toggle"),
+									),
+									h.Span(h.Class("switch-track"), h.Span(h.Class("switch-thumb"))),
+								),
+								h.Div(
+									h.Class("share-password-field"),
+									h.Input(
+										h.Class("form-input"),
+										g.Attr("id", "share-password"),
+										g.Attr("name", "share-password"),
+										g.Attr("type", "password"),
+										g.Attr("placeholder", "Enter password"),
+									),
+									h.P(
+										h.Class("share-password-helper"),
+										g.Attr("id", "share-password-helper"),
+										g.Text("Leave blank to keep the existing password."),
+									),
+								),
+							),
+							h.Div(
+								h.Class("share-setting"),
+								h.Div(
+									h.Class("share-setting-main"),
+									h.Label(
+										h.Class("share-setting-label"),
+										g.Attr("for", "share-expiry-toggle"),
+										lucide.CalendarDays(
+											h.Class("share-modal-lucide share-setting-icon"),
+											g.Attr("aria-hidden", "true"),
+										),
+										h.Span(g.Text("Expiry Date")),
+									),
+								),
+								h.Label(
+									h.Class("switch"),
+									h.Input(
+										h.Type("checkbox"),
+										g.Attr("id", "share-expiry-toggle"),
+									),
+									h.Span(h.Class("switch-track"), h.Span(h.Class("switch-thumb"))),
+								),
+								h.Div(
+									h.Class("share-expiry-fields"),
+									h.Div(
+										h.Class("share-expiry-custom"),
+										h.Input(
+											h.Class("form-input"),
+											g.Attr("id", "share-expiry-custom"),
+											g.Attr("name", "share-expiry-custom"),
+											g.Attr("type", "date"),
+										),
+										h.Input(
+											h.Class("form-input"),
+											g.Attr("id", "share-expiry-time"),
+											g.Attr("name", "share-expiry-time"),
+											g.Attr("type", "time"),
+										),
+									),
+									h.Select(
+										h.Class("share-expiry-select"),
+										g.Attr("id", "share-expiry-select"),
+										h.Option(g.Attr("value", "custom"), g.Text("Custom date")),
+										h.Option(g.Attr("value", "1d"), g.Text("In 24 hours")),
+										h.Option(g.Attr("value", "7d"), g.Text("In 7 days")),
+										h.Option(g.Attr("value", "30d"), g.Text("In 30 days")),
+									),
+								),
+							),
+							h.Div(
+								h.Class("share-setting share-setting-inline"),
+								h.Div(
+									h.Class("share-setting-main"),
+									h.Label(
+										h.Class("share-setting-label"),
+										g.Attr("for", "share-burn-toggle"),
+										lucide.Flame(
+											h.Class("share-modal-lucide share-setting-icon"),
+											g.Attr("aria-hidden", "true"),
+										),
+										h.Span(g.Text("Burn After Reading (Single Download)")),
+									),
+								),
+								h.Label(
+									h.Class("switch"),
+									h.Input(
+										h.Type("checkbox"),
+										g.Attr("id", "share-burn-toggle"),
+									),
+									h.Span(h.Class("switch-track"), h.Span(h.Class("switch-thumb"))),
+								),
 							),
 						),
 						h.Div(
@@ -143,116 +274,35 @@ func FilesPage(props FilesPageProps) web.Page {
 							h.Div(
 								h.Class("share-status-main"),
 								h.Span(h.Class("share-status-label"), g.Text("Status")),
-								h.Span(h.Class("share-status-value"), g.Attr("id", "share-status"), g.Text("Preparing")),
+								h.Span(h.Class("share-status-value"), g.Attr("id", "share-status"), g.Text("Not shared")),
 							),
 							h.Span(h.Class("share-save-state"), g.Attr("id", "share-save-state"), g.Text("")),
 						),
-						h.Div(
-							h.Class("share-options"),
-							h.Div(
-								h.Class("form-field"),
-								h.Label(h.Class("form-label"), g.Attr("for", "share-expiry-select"), g.Text("Expiry")),
-								h.Select(
-									h.Class("form-input"),
-									g.Attr("id", "share-expiry-select"),
-									h.Option(g.Attr("value", "never"), g.Text("Never")),
-									h.Option(g.Attr("value", "1d"), g.Text("In 24 hours")),
-									h.Option(g.Attr("value", "7d"), g.Text("In 7 days")),
-									h.Option(g.Attr("value", "30d"), g.Text("In 30 days")),
-									h.Option(g.Attr("value", "custom"), g.Text("Custom date")),
-								),
-								h.Div(
-									h.Class("share-expiry-custom"),
-									h.Label(h.Class("form-label"), g.Attr("for", "share-expiry-custom"), g.Text("Custom expiry")),
-									h.Input(
-										h.Class("form-input"),
-										g.Attr("id", "share-expiry-custom"),
-										g.Attr("name", "share-expiry-custom"),
-										g.Attr("type", "datetime-local"),
-									),
-								),
-							),
-							h.Div(
-								h.Class("form-field"),
-								h.Label(h.Class("form-label"), g.Attr("for", "share-password-toggle"), g.Text("Password")),
-								h.Div(
-									h.Class("share-password-toggle"),
-									h.Input(
-										g.Attr("type", "checkbox"),
-										g.Attr("id", "share-password-toggle"),
-									),
-									h.Label(g.Attr("for", "share-password-toggle"), g.Text("Require a password")),
-								),
-								h.Div(
-									h.Class("share-password-field"),
-									h.Div(
-										h.Class("form-field"),
-										h.Label(
-											h.Class("form-label"),
-											g.Attr("for", "share-password"),
-											g.Text("Password"),
-										),
-										h.Div(
-											h.Class("password-wrapper"),
-											h.Input(
-												h.Class("form-input password-input"),
-												g.Attr("id", "share-password"),
-												g.Attr("name", "share-password"),
-												g.Attr("type", "password"),
-												g.Attr("placeholder", "Set a password"),
-											),
-											h.Button(
-												h.Class("password-toggle"),
-												g.Attr("type", "button"),
-												g.Attr("aria-label", "Show password"),
-												g.Attr("aria-pressed", "false"),
-												g.Attr("data-target", "share-password"),
-												g.Attr("data-visible", "false"),
-												h.Span(
-													h.Class("icon-eye"),
-													components.Icon(components.IconProps{
-														Name:       "eye-open",
-														Size:       "md",
-														Decorative: true,
-													}),
-												),
-												h.Span(
-													h.Class("icon-eye-off"),
-													components.Icon(components.IconProps{
-														Name:       "eye-closed",
-														Size:       "md",
-														Decorative: true,
-													}),
-												),
-											),
-										),
-									),
-								),
-							),
-						),
 						h.P(h.Class("form-error share-error"), g.Attr("id", "share-error"), g.Text("")),
 					),
-					Actions: h.Div(
-						h.Class("dialog-actions share-dialog-actions"),
+					ActionsClass: "share-dialog-actions",
+					Actions: g.Group([]g.Node{
 						h.Button(
-							h.Class("button secondary"),
-							h.Type("button"),
-							g.Attr("id", "share-reset-button"),
-							g.Text("Reset link"),
-						),
-						h.Button(
-							h.Class("button danger"),
-							h.Type("button"),
-							g.Attr("id", "share-revoke-button"),
-							g.Text("Revoke access"),
-						),
-						h.Button(
-							h.Class("button danger"),
+							h.Class("button danger-outline"),
 							h.Type("button"),
 							g.Attr("id", "share-delete-button"),
-							g.Text("Delete link"),
+							lucide.Trash2(
+								h.Class("button-lucide"),
+								g.Attr("aria-hidden", "true"),
+							),
+							g.Text("Delete Link"),
 						),
-					),
+						h.Button(
+							h.Class("button primary"),
+							h.Type("button"),
+							g.Attr("id", "share-save-button"),
+							lucide.Save(
+								h.Class("button-lucide"),
+								g.Attr("aria-hidden", "true"),
+							),
+							g.Text("Update Share Settings"),
+						),
+					}),
 				}),
 			),
 		}),
@@ -385,6 +435,7 @@ func renderFileRow(file models.File) g.Node {
 					h.Type("button"),
 					g.Attr("data-file-action", "share"),
 					g.Attr("data-file-id", file.ID),
+					g.Attr("data-file-name", file.Filename),
 				}),
 				lucide.Share2(
 					h.Class("files-lucide files-lucide-action"),

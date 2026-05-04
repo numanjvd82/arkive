@@ -212,42 +212,6 @@ func APIGetShareForFile(svc *shares.Service) gin.HandlerFunc {
 	}
 }
 
-func APIRevokeShare(svc *shares.Service) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		shareID := strings.TrimSpace(c.Param("id"))
-		if shareID == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
-			return
-		}
-
-		userID, ok := c.Get("user_id")
-		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-			return
-		}
-
-		revoked, err := svc.RevokeShareForUser(c.Request.Context(), shareID, userID.(string))
-		if err != nil {
-			switch err {
-			case shares.ErrUnauthorized:
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-			case shares.ErrInvalidInput:
-				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
-			default:
-				_ = c.Error(errs.WithStack(err))
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "share revoke failed"})
-			}
-			return
-		}
-		if !revoked {
-			c.JSON(http.StatusNotFound, gin.H{"error": "share not found"})
-			return
-		}
-
-		c.Status(http.StatusNoContent)
-	}
-}
-
 func APIDeleteShare(svc *shares.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		shareID := strings.TrimSpace(c.Param("id"))
