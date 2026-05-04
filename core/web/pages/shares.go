@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	lucide "github.com/eduardolat/gomponents-lucide"
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
 
@@ -12,7 +13,6 @@ import (
 	"arkive/core/services/shares"
 	"arkive/core/web"
 	"arkive/core/web/components"
-	"arkive/pkg/format"
 )
 
 type SharesPageProps struct {
@@ -52,72 +52,41 @@ func SharesPage(props SharesPageProps) web.Page {
 		AuthLayout: true,
 		User:       props.Ctx.User,
 		ActiveNav:  "shares",
-		Body: h.Main(
-			h.Class("shares-page"),
-			h.Div(
-				h.Class("container"),
+		Body: g.Group([]g.Node{
+			components.InlineStyle(components.DataTableCSS),
+			h.Main(
+				h.Class("shares-page"),
 				h.Div(
-					h.Class("page-header"),
+					h.Class("container"),
 					h.Div(
-						h.Class("page-title"),
-						h.H1(g.Text("Shares")),
-						h.P(g.Text("Track every public link you have created and manage access.")),
-					),
-					h.Div(
-						h.Class("page-actions"),
-						components.Button(components.ButtonProps{
-							Text:    "Share a file",
-							Href:    "/files",
-							Variant: "primary",
-						}),
-						components.Button(components.ButtonProps{
-							Text:    "Files",
-							Href:    "/files",
-							Variant: "secondary",
-						}),
-					),
-				),
-				h.Section(
-					h.Class("shares-summary"),
-					components.Card(components.CardProps{
-						Title:    "Total shares",
-						Subtitle: "All time",
-						Class:    "summary-card",
-						Body: []g.Node{
-							h.Span(h.Class("summary-value"), g.Text(fmt.Sprintf("%d", total))),
-							h.Span(h.Class("summary-meta"), g.Text("Created links")),
-						},
-					}),
-					components.Card(components.CardProps{
-						Title:    "Active",
-						Subtitle: "Publicly available",
-						Class:    "summary-card",
-						Body: []g.Node{
-							h.Span(h.Class("summary-value"), g.Text(fmt.Sprintf("%d", activeCount))),
-							h.Span(h.Class("summary-meta"), g.Text(fmt.Sprintf("%d expiring soon", expiringSoonCount))),
-						},
-					}),
-					components.Card(components.CardProps{
-						Title:    "Restricted",
-						Subtitle: "Expired or revoked",
-						Class:    "summary-card",
-						Body: []g.Node{
-							h.Span(h.Class("summary-value"), g.Text(fmt.Sprintf("%d", expiredCount+revokedCount))),
-							h.Span(h.Class("summary-meta"), g.Text(fmt.Sprintf("%d revoked", revokedCount))),
-						},
-					}),
-				),
-				h.Section(
-					h.Class("shares-panels"),
-					h.Section(
-						h.Class("panel shares-list"),
+						h.Class("page-header"),
 						h.Div(
-							h.Class("panel-header"),
-							h.H2(g.Text("Shared files")),
-							h.P(g.Text("Links are unique per file and update instantly.")),
+							h.Class("page-title"),
+							h.H1(g.Text("Public Shares")),
 						),
-						renderShareList(props.Shares),
 					),
+					h.Section(
+						h.Class("shares-summary"),
+						renderShareSummaryCard(
+							"Total Active Shares",
+							fmt.Sprintf("%d", activeCount),
+							"primary",
+							lucide.Share2(
+								h.Class("shares-lucide shares-lucide-summary"),
+								g.Attr("aria-hidden", "true"),
+							),
+						),
+						renderShareSummaryCard(
+							"Restricted Links",
+							fmt.Sprintf("%d", expiredCount+revokedCount),
+							"warning",
+							lucide.Lock(
+								h.Class("shares-lucide shares-lucide-summary"),
+								g.Attr("aria-hidden", "true"),
+							),
+						),
+					),
+					renderShareList(props.Shares, total, expiringSoonCount, revokedCount),
 				),
 			),
 			components.Dialog(components.DialogProps{
@@ -141,33 +110,47 @@ func SharesPage(props SharesPageProps) web.Page {
 					),
 				),
 			}),
-		),
+		}),
 	}
 }
 
-func renderShareList(items []models.ShareWithFile) g.Node {
+func renderShareSummaryCard(title, value, variant string, icon g.Node) g.Node {
+	return h.Div(
+		h.Class("shares-summary-card shares-summary-card-"+variant),
+		h.Span(
+			h.Class("shares-summary-icon"),
+			icon,
+		),
+		h.Div(
+			h.Class("shares-summary-copy"),
+			h.Span(h.Class("shares-summary-title"), g.Text(title)),
+			h.Span(h.Class("shares-summary-value"), g.Text(value)),
+		),
+	)
+}
+
+func renderShareList(items []models.ShareWithFile, total, expiringSoonCount, revokedCount int) g.Node {
 	if len(items) == 0 {
 		return h.Div(
-			h.Class("shares-empty"),
-			h.P(g.Text("No shared links yet.")),
-			components.Button(components.ButtonProps{
-				Text:    "Share a file",
-				Href:    "/files",
-				Variant: "secondary",
-			}),
+			h.Class("data-table-wrap shares-table-wrap"),
+			h.Div(
+				h.Class("shares-empty"),
+				lucide.Share2(
+					h.Class("shares-lucide shares-lucide-empty"),
+					g.Attr("aria-hidden", "true"),
+				),
+				h.H2(g.Text("No shared links yet.")),
+				h.P(g.Text("Create a public link from the files page to start sharing.")),
+				h.A(
+					h.Class("shares-empty-link"),
+					h.Href("/files"),
+					g.Text("Go to files"),
+				),
+			),
 		)
 	}
 
-	rows := make([]g.Node, 0, len(items)+1)
-	rows = append(rows, h.Div(
-		h.Class("shares-row shares-row-head"),
-		h.Span(g.Text("File")),
-		h.Span(g.Text("Status")),
-		h.Span(g.Text("Expiry")),
-		h.Span(g.Text("Link")),
-		h.Span(g.Text("Actions")),
-	))
-
+	rows := make([]g.Node, 0, len(items))
 	now := time.Now()
 	for _, item := range items {
 		status, expired := shareStatus(item, now)
@@ -175,76 +158,93 @@ func renderShareList(items []models.ShareWithFile) g.Node {
 		if status == shares.ShareStatusActive && expired {
 			statusLabel = "expired"
 		}
-		statusClass := "status-pill " + statusLabel
 		expiresLabel := "Never"
 		if item.ExpiresAt != nil {
 			expiresLabel = item.ExpiresAt.Format("Jan 2, 2006")
 		}
-		protectedLabel := "Public"
-		if item.PasswordHash != nil {
-			protectedLabel = "Password"
-		}
 		sharePath := "/s/" + item.Token
+		shareDisplay := compactSharePath(sharePath)
+		statusTone := statusLabel
+		if statusLabel == shares.ShareStatusActive && item.PasswordHash != nil {
+			statusTone = "restricted"
+		}
 
-		rows = append(rows, h.Div(
+		rows = append(rows, h.Tr(
 			h.Class("shares-row"),
 			g.Attr("data-share-row", item.ID),
-			h.Div(
+			h.Td(
 				h.Class("shares-file"),
-				h.Span(h.Class("shares-badge"), g.Text(fileTypeLabelFromShare(item))),
-				h.Div(
-					h.Class("shares-meta"),
-					h.Span(h.Class("shares-name"), g.Text(item.FileName)),
-					h.Span(h.Class("shares-sub"), g.Text(fmt.Sprintf("%s • %s", protectedLabel, format.Bytes(item.FileSizeBytes)))),
-				),
+				shareFileIcon(item),
+				h.Span(h.Class("shares-name"), g.Text(item.FileName)),
 			),
-			h.Div(
+			h.Td(
 				h.Class("shares-status"),
-				h.Span(h.Class(statusClass), g.Attr("data-share-status", item.ID), g.Text(titleCase(statusLabel))),
-				h.Span(h.Class("shares-sub"), g.Text("Created "+formatTime(item.CreatedAt))),
-			),
-			h.Span(h.Class("shares-expiry"), g.Text(expiresLabel)),
-			h.Div(
-				h.Class("shares-link"),
-				h.Span(h.Class("shares-link-text"), g.Text(sharePath)),
-				h.Button(
-					h.Class("button secondary shares-copy"),
-					h.Type("button"),
-					g.Attr("data-share-copy", sharePath),
-					g.Attr("aria-label", "Copy share link"),
-					g.Text("Copy"),
+				h.Span(
+					h.Class("status-pill "+statusTone),
+					g.Attr("data-share-status", item.ID),
+					g.Text(titleCase(statusLabel)),
 				),
 			),
-			h.Div(
-				h.Class("shares-actions"),
-				h.A(
-					h.Class("button secondary"),
-					h.Href(sharePath),
-					g.Attr("target", "_blank"),
-					g.Attr("rel", "noreferrer"),
-					g.Text("Open"),
+			h.Td(h.Class("shares-expiry"), g.Text(expiresLabel)),
+			h.Td(
+				h.Class("shares-link-cell"),
+				h.Span(
+					h.Class("shares-link-text"),
+					h.Title(sharePath),
+					g.Text(shareDisplay),
 				),
-				g.If(statusLabel == shares.ShareStatusActive, h.Button(
-					h.Class("button secondary"),
-					h.Type("button"),
-					g.Attr("data-share-action", "revoke"),
-					g.Attr("data-share-id", item.ID),
-					g.Attr("data-share-file", item.FileName),
-					g.Text("Revoke"),
-				)),
-				h.Button(
-					h.Class("button danger"),
-					h.Type("button"),
-					g.Attr("data-share-action", "delete"),
-					g.Attr("data-share-id", item.ID),
-					g.Attr("data-share-file", item.FileName),
-					g.Text("Delete"),
+			),
+			h.Td(
+				h.Class("shares-actions-cell"),
+				h.Div(
+					h.Class("shares-actions"),
+					h.Button(
+						h.Class("shares-copy-button"),
+						h.Type("button"),
+						g.Attr("data-share-copy", sharePath),
+						g.Attr("aria-label", "Copy share link"),
+						lucide.Copy(
+							h.Class("shares-lucide shares-lucide-copy"),
+							g.Attr("aria-hidden", "true"),
+						),
+					),
+					g.If(statusLabel == shares.ShareStatusActive, h.Button(
+						h.Class("shares-action-link is-danger"),
+						h.Type("button"),
+						g.Attr("data-share-action", "revoke"),
+						g.Attr("data-share-id", item.ID),
+						g.Attr("data-share-file", item.FileName),
+						g.Text("Revoke"),
+					)),
+					h.Button(
+						h.Class("shares-action-link"),
+						h.Type("button"),
+						g.Attr("data-share-action", "delete"),
+						g.Attr("data-share-id", item.ID),
+						g.Attr("data-share-file", item.FileName),
+						g.Text("Delete"),
+					),
 				),
 			),
 		))
 	}
 
-	return h.Div(h.Class("shares-rows"), g.Group(rows))
+	return h.Div(
+		h.Class("data-table-wrap shares-table-wrap"),
+		h.Table(
+			h.Class("data-table shares-table"),
+			h.THead(
+				h.Tr(
+					h.Th(g.Text("File Name")),
+					h.Th(g.Text("Status")),
+					h.Th(g.Text("Expiry Date")),
+					h.Th(g.Text("Share URL")),
+					h.Th(h.Class("shares-align-right"), g.Text("Actions")),
+				),
+			),
+			h.TBody(g.Group(rows)),
+		),
+	)
 }
 
 func shareStatus(item models.ShareWithFile, now time.Time) (string, bool) {
@@ -277,6 +277,28 @@ func fileTypeLabelFromShare(item models.ShareWithFile) string {
 		return "FILE"
 	}
 	return ext
+}
+
+func shareFileIcon(item models.ShareWithFile) g.Node {
+	contentType := strings.TrimSpace(strings.ToLower(item.FileContentType))
+	switch {
+	case strings.HasPrefix(contentType, "image/"):
+		return lucide.Image(h.Class("shares-lucide shares-lucide-file"), g.Attr("aria-hidden", "true"))
+	case strings.Contains(contentType, "zip") || strings.Contains(contentType, "tar"):
+		return lucide.FileArchive(h.Class("shares-lucide shares-lucide-file"), g.Attr("aria-hidden", "true"))
+	case item.PasswordHash != nil:
+		return lucide.Lock(h.Class("shares-lucide shares-lucide-file"), g.Attr("aria-hidden", "true"))
+	default:
+		return lucide.FileText(h.Class("shares-lucide shares-lucide-file"), g.Attr("aria-hidden", "true"))
+	}
+}
+
+func compactSharePath(path string) string {
+	path = strings.TrimSpace(path)
+	if len(path) <= 18 {
+		return path
+	}
+	return path[:8] + "..." + path[len(path)-6:]
 }
 
 func titleCase(value string) string {
