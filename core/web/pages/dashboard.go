@@ -51,6 +51,7 @@ func DashboardPage(props DashboardPageProps) web.Page {
 			h.Class("dashboard"),
 			h.Div(
 				h.Class("container dashboard-shell"),
+				components.InlineStyle(components.DataTableCSS),
 				h.Div(
 					h.Class("dashboard-summary"),
 					h.Div(
@@ -101,9 +102,9 @@ func DashboardPage(props DashboardPageProps) web.Page {
 						h.H2(g.Text("Recent Activity")),
 					),
 					h.Div(
-						h.Class("activity-table-wrap"),
+						h.Class("data-table-wrap activity-table-wrap"),
 						h.Table(
-							h.Class("activity-table"),
+							h.Class("data-table activity-table"),
 							h.THead(
 								h.Tr(
 									h.Th(g.Text("File Name")),

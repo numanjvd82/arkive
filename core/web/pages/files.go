@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	lucide "github.com/eduardolat/gomponents-lucide"
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
 
@@ -27,25 +28,7 @@ type FilesPageProps struct {
 }
 
 func FilesPage(props FilesPageProps) web.Page {
-	totalSize := int64(0)
-	lastUpdated := time.Time{}
-	for _, file := range props.Files {
-		if file.UpdatedAt.After(lastUpdated) {
-			lastUpdated = file.UpdatedAt
-		}
-	}
-	fileCount := props.TotalFiles
-	if fileCount == 0 {
-		fileCount = len(props.Files)
-	}
-	lastActivity := "No activity yet"
-	if !lastUpdated.IsZero() {
-		lastActivity = formatTime(lastUpdated)
-	}
 	archivedCount := props.ArchivedCount
-	if props.Ctx.User != nil {
-		totalSize = props.Ctx.User.UsedBytes
-	}
 
 	return web.Page{
 		Title:      "Arkive · Files",
@@ -58,6 +41,7 @@ func FilesPage(props FilesPageProps) web.Page {
 
 		Body: g.Group([]g.Node{
 			components.InlineStyle(components.InputCSS),
+			components.InlineStyle(components.DataTableCSS),
 			h.Main(
 				h.Class("files-page"),
 				h.Div(
@@ -67,67 +51,28 @@ func FilesPage(props FilesPageProps) web.Page {
 						h.Div(
 							h.Class("page-title"),
 							h.H1(g.Text("Files")),
-							h.P(g.Text("Browse completed uploads and manage your stored files.")),
+							h.P(g.Text("Manage and secure your encrypted volumes.")),
 						),
 						h.Div(
 							h.Class("page-actions"),
-							components.Button(components.ButtonProps{
-								Text:    "New upload",
-								Href:    "/dashboard",
-								Variant: "primary",
-							}),
-							components.Button(components.ButtonProps{
-								Text:    "Dashboard",
-								Href:    "/dashboard",
-								Variant: "secondary",
-							}),
+							renderListControls(props),
+							h.A(
+								h.Class("files-upload-link"),
+								h.Href("/dashboard"),
+								lucide.Upload(
+									h.Class("files-lucide files-lucide-action"),
+									g.Attr("aria-hidden", "true"),
+								),
+								h.Span(g.Text("Upload")),
+							),
 						),
-					),
-					h.Section(
-						h.Class("files-summary"),
-						components.Card(components.CardProps{
-							Title:    "Stored files",
-							Subtitle: "Completed uploads",
-							Class:    "summary-card",
-							Body: []g.Node{
-								h.Span(h.Class("summary-value"), g.Text(fmt.Sprintf("%d", fileCount))),
-								h.Span(h.Class("summary-meta"), g.Text(fmt.Sprintf("%s total", format.Bytes(totalSize)))),
-							},
-						}),
-						components.Card(components.CardProps{
-							Title:    "Storage used",
-							Subtitle: "Across your workspace",
-							Class:    "summary-card",
-							Body: []g.Node{
-								h.Span(h.Class("summary-value"), g.Text(format.Bytes(totalSize))),
-								h.Span(h.Class("summary-meta"), g.Text("Based on completed uploads")),
-							},
-						}),
-						components.Card(components.CardProps{
-							Title:    "Last activity",
-							Subtitle: "Most recent upload",
-							Class:    "summary-card",
-							Body: []g.Node{
-								h.Span(h.Class("summary-value is-small"), g.Text(lastActivity)),
-								h.Span(h.Class("summary-meta"), g.Text("Updates as files complete")),
-							},
-						}),
 					),
 					renderArchivedBanner(archivedCount),
 					h.Section(
-						h.Class("files-panels"),
-						h.Section(
-							h.Class("panel files-list"),
-							h.Div(
-								h.Class("panel-header"),
-								h.H2(g.Text("Completed files")),
-								h.P(g.Text("Everything you have finished uploading.")),
-							),
-							renderListControls(props),
-							renderCompletedList(props.Files),
-							renderPagination(props),
-						),
+						h.Class("files-table-panel"),
+						renderCompletedList(props.Files),
 					),
+					renderPagination(props),
 				),
 				components.Dialog(components.DialogProps{
 					BackdropID: "file-delete-backdrop",
@@ -349,15 +294,22 @@ func renderListControls(props FilesPageProps) g.Node {
 
 func renderCompletedList(files []models.File) g.Node {
 	if len(files) == 0 {
-		emptyMessage := "No completed uploads yet."
 		return h.Div(
-			h.Class("files-empty"),
-			h.P(g.Text(emptyMessage)),
-			components.Button(components.ButtonProps{
-				Text:    "Upload your first file",
-				Href:    "/dashboard",
-				Variant: "secondary",
-			}),
+			h.Class("data-table-wrap files-table-wrap"),
+			h.Div(
+				h.Class("files-empty"),
+				lucide.FolderOpen(
+					h.Class("files-lucide files-lucide-empty"),
+					g.Attr("aria-hidden", "true"),
+				),
+				h.H2(g.Text("No completed uploads yet.")),
+				h.P(g.Text("Upload a file from the dashboard to start building your vault.")),
+				h.A(
+					h.Class("files-empty-link"),
+					h.Href("/dashboard"),
+					g.Text("Go to upload"),
+				),
+			),
 		)
 	}
 
@@ -366,52 +318,113 @@ func renderCompletedList(files []models.File) g.Node {
 		rows = append(rows, renderFileRow(file))
 	}
 
-	return h.Div(h.Class("files-rows"), g.Group(rows))
+	return h.Div(
+		h.Class("data-table-wrap files-table-wrap"),
+		h.Table(
+			h.Class("data-table files-table"),
+			h.THead(
+				h.Tr(
+					h.Th(g.Text("Name")),
+					h.Th(g.Text("Type")),
+					h.Th(h.Class("files-align-right"), g.Text("Size")),
+					h.Th(h.Class("files-align-right"), g.Text("Modified")),
+					h.Th(h.Class("files-align-center"), g.Text("Actions")),
+				),
+			),
+			h.TBody(g.Group(rows)),
+		),
+	)
 }
 
 func renderFileRow(file models.File) g.Node {
 	previewable := isPreviewableContentType(file.ContentType)
-	fileURL := fileViewURL(file, previewable)
 	timestamp := formatTime(file.UpdatedAt)
 	relative := format.RelativeTime(file.UpdatedAt)
+	viewURL := ""
+	if previewable {
+		viewURL = fmt.Sprintf("/files/%s/view", file.ID)
+	}
 
-	return h.Div(
-		h.Class("files-row files-row-file"),
+	return h.Tr(
+		h.Class("files-row"),
 		g.Attr("data-file-row", file.ID),
-		h.A(
-			h.Class("files-row-link"),
-			h.Href(fileURL),
+		h.Td(
+			h.Class("files-cell files-cell-name"),
 			h.Span(
 				h.Class("files-type-icon"),
-				components.Icon(components.IconProps{
-					Name:       fileTypeIcon(file),
-					Size:       "18",
-					Decorative: true,
-				}),
+				fileTypeGlyph(file),
 			),
 			h.Div(
 				h.Class("files-meta"),
 				h.Span(h.Class("files-name"), g.Text(file.Filename)),
-				h.Span(h.Class("files-sub"), g.Text(fileSubtitle(file))),
-			),
-			h.Span(
-				h.Class("files-meta-inline"),
-				h.Span(h.Class("files-size"), g.Text(format.Bytes(file.SizeBytes))),
-				h.Span(h.Class("files-time"), h.Title(timestamp), g.Text(relative)),
 			),
 		),
-		h.Div(
-			h.Class("files-actions"),
-			h.Div(
-				h.Class("files-action-buttons"),
-				h.Button(
-					h.Class("button ghost"),
+		h.Td(
+			h.Class("files-cell files-cell-type"),
+			h.Span(
+				h.Class("files-code"),
+				h.Title(fileSubtitle(file)),
+				g.Text(fileSubtitle(file)),
+			),
+		),
+		h.Td(
+			h.Class("files-cell files-cell-size"),
+			h.Span(h.Class("files-code"), g.Text(format.Bytes(file.SizeBytes))),
+		),
+		h.Td(
+			h.Class("files-cell files-cell-modified"),
+			h.Span(h.Class("files-code"), h.Title(timestamp), g.Text(relative)),
+		),
+		h.Td(
+			h.Class("files-cell files-cell-actions"),
+			renderActionLink(
+				"Share",
+				"",
+				"button",
+				g.Group([]g.Node{
 					h.Type("button"),
 					g.Attr("data-file-action", "share"),
 					g.Attr("data-file-id", file.ID),
-					g.Text("Share"),
+				}),
+				lucide.Share2(
+					h.Class("files-lucide files-lucide-action"),
+					g.Attr("aria-hidden", "true"),
 				),
-				renderFileOverflow(file, previewable),
+			),
+			renderActionLink(
+				"View",
+				viewURL,
+				"a",
+				nil,
+				lucide.Eye(
+					h.Class("files-lucide files-lucide-action"),
+					g.Attr("aria-hidden", "true"),
+				),
+			),
+			renderActionLink(
+				"Download",
+				fmt.Sprintf("/api/files/%s/download", file.ID),
+				"a",
+				nil,
+				lucide.Download(
+					h.Class("files-lucide files-lucide-action"),
+					g.Attr("aria-hidden", "true"),
+				),
+			),
+			renderActionLink(
+				"Delete",
+				"",
+				"button",
+				g.Group([]g.Node{
+					h.Type("button"),
+					g.Attr("data-file-action", "delete"),
+					g.Attr("data-file-id", file.ID),
+					g.Attr("data-file-name", file.Filename),
+				}),
+				lucide.Trash2(
+					h.Class("files-lucide files-lucide-action"),
+					g.Attr("aria-hidden", "true"),
+				),
 			),
 		),
 	)
@@ -427,49 +440,6 @@ func formatTime(value time.Time) string {
 func isPreviewableContentType(contentType string) bool {
 	contentType = strings.TrimSpace(strings.ToLower(contentType))
 	return strings.HasPrefix(contentType, "image/") || strings.HasPrefix(contentType, "video/")
-}
-
-func fileViewURL(file models.File, previewable bool) string {
-	if previewable {
-		return fmt.Sprintf("/files/%s/view", file.ID)
-	}
-	return fmt.Sprintf("/api/files/%s/download", file.ID)
-}
-
-func renderFileOverflow(file models.File, previewable bool) g.Node {
-	menu := h.Div(
-		h.Class("files-overflow"),
-		g.If(previewable, h.A(
-			h.Class("dropdown-item"),
-			h.Href(fmt.Sprintf("/files/%s/view", file.ID)),
-			g.Text("View"),
-		)),
-		h.A(
-			h.Class("dropdown-item"),
-			h.Href(fmt.Sprintf("/api/files/%s/download", file.ID)),
-			g.Text("Download"),
-		),
-		h.Button(
-			h.Class("dropdown-item danger"),
-			h.Type("button"),
-			g.Attr("data-file-action", "delete"),
-			g.Attr("data-file-id", file.ID),
-			g.Attr("data-file-name", file.Filename),
-			g.Text("Delete"),
-		),
-	)
-
-	return components.Dropdown(components.DropdownProps{
-		Align: "right",
-		Label: "More actions",
-		Trigger: components.Icon(components.IconProps{
-			Name:       "dots",
-			Size:       "18",
-			Decorative: true,
-		}),
-		Menu:  menu,
-		Class: "files-overflow-dropdown",
-	})
 }
 
 func fileSubtitle(file models.File) string {
@@ -498,6 +468,62 @@ func fileTypeIcon(file models.File) string {
 	default:
 		return "file"
 	}
+}
+
+func fileTypeGlyph(file models.File) g.Node {
+	switch fileTypeIcon(file) {
+	case "file-image":
+		return lucide.Image(h.Class("files-lucide files-lucide-type"), g.Attr("aria-hidden", "true"))
+	case "file-video":
+		return lucide.Film(h.Class("files-lucide files-lucide-type"), g.Attr("aria-hidden", "true"))
+	case "file-audio":
+		return lucide.Music4(h.Class("files-lucide files-lucide-type"), g.Attr("aria-hidden", "true"))
+	case "file-archive":
+		return lucide.Archive(h.Class("files-lucide files-lucide-type"), g.Attr("aria-hidden", "true"))
+	case "file-doc":
+		return lucide.FileText(h.Class("files-lucide files-lucide-type"), g.Attr("aria-hidden", "true"))
+	case "file-text":
+		return lucide.Code(h.Class("files-lucide files-lucide-type"), g.Attr("aria-hidden", "true"))
+	default:
+		return lucide.File(h.Class("files-lucide files-lucide-type"), g.Attr("aria-hidden", "true"))
+	}
+}
+
+func renderActionLink(label, href, kind string, attrs g.Node, icon g.Node) g.Node {
+	classes := "files-action-button"
+	if label == "Delete" {
+		classes += " is-danger"
+	}
+	if label == "View" && strings.TrimSpace(href) == "" {
+		classes += " is-disabled"
+	}
+
+	if kind == "a" {
+		if strings.TrimSpace(href) == "" {
+			return h.Span(
+				h.Class(classes),
+				g.Attr("title", "Preview unavailable"),
+				g.Attr("aria-disabled", "true"),
+				icon,
+				h.Span(h.Class("files-action-label"), g.Text(label)),
+			)
+		}
+		return h.A(
+			h.Class(classes),
+			h.Href(href),
+			g.Attr("title", label),
+			icon,
+			h.Span(h.Class("files-action-label"), g.Text(label)),
+		)
+	}
+
+	return h.Button(
+		h.Class(classes),
+		attrs,
+		g.Attr("title", label),
+		icon,
+		h.Span(h.Class("files-action-label"), g.Text(label)),
+	)
 }
 
 func renderPagination(props FilesPageProps) g.Node {
