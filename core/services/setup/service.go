@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"golang.org/x/crypto/bcrypt"
@@ -14,6 +15,7 @@ import (
 	settingsrepo "arkive/core/repositories/settings"
 	usersrepo "arkive/core/repositories/users"
 	settingssvc "arkive/core/services/settings"
+	"arkive/pkg/tokens"
 	"arkive/pkg/validation"
 )
 
@@ -98,6 +100,34 @@ func (s *Service) CreateInitialAdmin(ctx context.Context, input InitialAdminInpu
 		return models.User{}, nil, err
 	}
 	return user, nil, nil
+}
+
+func (s *Service) IssueRecoverySetupToken(ctx context.Context, userID string, ttl time.Duration) (string, error) {
+	token, _, err := tokens.Generate()
+	if err != nil {
+		return "", err
+	}
+	expiresAt := time.Now().Add(ttl)
+	if err := s.userRepo.SetRecoverySetupToken(ctx, s.db, userID, token, expiresAt); err != nil {
+		return "", err
+	}
+	return token, nil
+}
+
+func (s *Service) HasValidRecoverySetupToken(ctx context.Context, token string) (bool, error) {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return false, nil
+	}
+	return s.userRepo.HasValidRecoverySetupToken(ctx, s.db, token, time.Now())
+}
+
+func (s *Service) ClearRecoverySetupToken(ctx context.Context, token string) error {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return nil
+	}
+	return s.userRepo.ClearRecoverySetupToken(ctx, s.db, token)
 }
 
 func validateAdminInput(brandName, email, password, confirmPassword string) validation.Errors {

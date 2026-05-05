@@ -31,6 +31,10 @@ CREATE TABLE users (
   last_login_at     TIMESTAMPTZ,
   last_ip           inet,
 
+  -- Setup recovery flow
+  recovery_setup_token            TEXT UNIQUE,
+  recovery_setup_token_expires_at TIMESTAMPTZ,
+
   -- Auditing
   created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()

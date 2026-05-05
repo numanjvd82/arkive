@@ -3,7 +3,6 @@ package handlers
 import (
 	"errors"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -15,13 +14,13 @@ import (
 	"arkive/core/web"
 	"arkive/core/web/pages"
 	appcontext "arkive/pkg/context"
+	"arkive/pkg/cookies"
 	"arkive/pkg/errs"
 	"arkive/pkg/validation"
 )
 
 const (
 	recoveryPendingCookie = "arkive_setup_recovery_pending"
-	recoveryBrandCookie   = "arkive_setup_recovery_brand"
 	recoveryCookieTTL     = 15 * time.Minute
 )
 
@@ -122,7 +121,7 @@ func WebSetupPost(svc *setup.Service) gin.HandlerFunc {
 			renderSetupForm(c, form, validationErrors)
 			return
 		}
-		_, validationErrors, err := svc.CreateInitialAdmin(c.Request.Context(), setup.InitialAdminInput{
+		user, validationErrors, err := svc.CreateInitialAdmin(c.Request.Context(), setup.InitialAdminInput{
 			BrandName:       form.BrandName,
 			Email:           form.Email,
 			Password:        form.Password,
@@ -144,7 +143,11 @@ func WebSetupPost(svc *setup.Service) gin.HandlerFunc {
 			return
 		}
 
-		setRecoveryPending(c, form.BrandName)
+		if err := setRecoveryPending(c, svc, user.ID); err != nil {
+			_ = c.Error(errs.WithStack(err))
+			c.Status(http.StatusInternalServerError)
+			return
+		}
 		c.Redirect(http.StatusSeeOther, "/setup/recovery-key")
 	}
 }
@@ -161,7 +164,13 @@ func WebSetupRecoveryGet(svc *setup.Service) gin.HandlerFunc {
 			c.Redirect(http.StatusSeeOther, "/setup")
 			return
 		}
-		if !hasRecoveryPending(c) {
+		ok, err := hasRecoveryPending(c, svc)
+		if err != nil {
+			_ = c.Error(errs.WithStack(err))
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+		if !ok {
 			c.Redirect(http.StatusSeeOther, "/login")
 			return
 		}
@@ -185,7 +194,13 @@ func WebSetupRecoveryPost(svc *setup.Service) gin.HandlerFunc {
 			c.Redirect(http.StatusSeeOther, "/setup")
 			return
 		}
-		if !hasRecoveryPending(c) {
+		ok, err := hasRecoveryPending(c, svc)
+		if err != nil {
+			_ = c.Error(errs.WithStack(err))
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+		if !ok {
 			c.Redirect(http.StatusSeeOther, "/login")
 			return
 		}
@@ -201,7 +216,11 @@ func WebSetupRecoveryPost(svc *setup.Service) gin.HandlerFunc {
 			return
 		}
 
-		clearRecoveryPending(c)
+		if err := clearRecoveryPending(c, svc); err != nil {
+			_ = c.Error(errs.WithStack(err))
+			c.Status(http.StatusInternalServerError)
+			return
+		}
 		c.Redirect(http.StatusSeeOther, "/login?msg=account-created")
 	}
 }
@@ -240,60 +259,36 @@ func renderSetupForm(c *gin.Context, form struct {
 	}))
 }
 
-func setRecoveryPending(c *gin.Context, brandName string) {
-	expiresAt := time.Now().Add(recoveryCookieTTL)
-	http.SetCookie(c.Writer, &http.Cookie{
-		Name:     recoveryPendingCookie,
-		Value:    "1",
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   false,
-		SameSite: http.SameSiteLaxMode,
-		Expires:  expiresAt,
-	})
-	http.SetCookie(c.Writer, &http.Cookie{
-		Name:     recoveryBrandCookie,
-		Value:    url.QueryEscape(strings.TrimSpace(brandName)),
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   false,
-		SameSite: http.SameSiteLaxMode,
-		Expires:  expiresAt,
-	})
-}
-
-func hasRecoveryPending(c *gin.Context) bool {
-	cookie, err := c.Request.Cookie(recoveryPendingCookie)
-	return err == nil && strings.TrimSpace(cookie.Value) == "1"
-}
-
-func recoveryBrandName(c *gin.Context) string {
-	cookie, err := c.Request.Cookie(recoveryBrandCookie)
+func setRecoveryPending(c *gin.Context, svc *setup.Service, userID string) error {
+	token, err := svc.IssueRecoverySetupToken(c.Request.Context(), userID, recoveryCookieTTL)
 	if err != nil {
-		return "Arkive Core"
+		return err
 	}
-	value := strings.TrimSpace(cookie.Value)
-	if value == "" {
-		return "Arkive Core"
-	}
-	decoded, err := url.QueryUnescape(value)
-	if err != nil || strings.TrimSpace(decoded) == "" {
-		return "Arkive Core"
-	}
-	return decoded
+	cookies.SetCustom(c, recoveryPendingCookie, token, time.Now().Add(recoveryCookieTTL), false)
+	return nil
 }
 
-func clearRecoveryPending(c *gin.Context) {
-	for _, name := range []string{recoveryPendingCookie, recoveryBrandCookie} {
-		http.SetCookie(c.Writer, &http.Cookie{
-			Name:     name,
-			Value:    "",
-			Path:     "/",
-			HttpOnly: true,
-			Secure:   false,
-			SameSite: http.SameSiteLaxMode,
-			Expires:  time.Unix(0, 0),
-			MaxAge:   -1,
-		})
+func hasRecoveryPending(c *gin.Context, svc *setup.Service) (bool, error) {
+	cookie, err := c.Request.Cookie(recoveryPendingCookie)
+	if err != nil {
+		return false, nil
 	}
+	token := strings.TrimSpace(cookie.Value)
+	if token == "" {
+		return false, nil
+	}
+	return svc.HasValidRecoverySetupToken(c.Request.Context(), token)
+}
+
+func clearRecoveryPending(c *gin.Context, svc *setup.Service) error {
+	if cookie, err := c.Request.Cookie(recoveryPendingCookie); err == nil {
+		token := strings.TrimSpace(cookie.Value)
+		if token != "" {
+			if err := svc.ClearRecoverySetupToken(c.Request.Context(), token); err != nil {
+				return err
+			}
+		}
+	}
+	cookies.ClearCustom(c, recoveryPendingCookie, false)
+	return nil
 }
