@@ -70,6 +70,11 @@ func Button(props ButtonProps) g.Node {
 
 func renderButtonIcon(name string) g.Node {
 	switch name {
+	case "copy":
+		return lucide.Copy(
+			h.Class("button-lucide"),
+			g.Attr("aria-hidden", "true"),
+		)
 	case "key":
 		return lucide.Key(
 			h.Class("button-lucide"),

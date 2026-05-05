@@ -59,6 +59,8 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 	r.GET("/", handlers.WebRoot(authService, setupService))
 	r.GET("/setup", handlers.WebSetupGet(setupService))
 	r.POST("/setup", handlers.WebSetupPost(setupService))
+	r.GET("/setup/recovery-key", handlers.WebSetupRecoveryGet(setupService))
+	r.POST("/setup/recovery-key", handlers.WebSetupRecoveryPost(setupService))
 	r.GET("/s/:token", middleware.RateLimit(middleware.RateLimitConfig{
 		RequestsPerMinute: 2,
 		Burst:             2,

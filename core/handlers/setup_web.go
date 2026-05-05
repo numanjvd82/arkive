@@ -3,7 +3,9 @@ package handlers
 import (
 	"errors"
 	"net/http"
+	"net/url"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -16,6 +18,21 @@ import (
 	"arkive/pkg/errs"
 	"arkive/pkg/validation"
 )
+
+const (
+	recoveryPendingCookie = "arkive_setup_recovery_pending"
+	recoveryBrandCookie   = "arkive_setup_recovery_brand"
+	recoveryCookieTTL     = 15 * time.Minute
+)
+
+var recoveryDemoWords = []string{
+	"abandon", "justice", "degree", "canvas",
+	"theory", "vivid", "script", "matrix",
+	"pioneer", "quantum", "resilient", "sovereign",
+	"utility", "vacuum", "weather", "yonder",
+	"zenith", "alpine", "beacon", "cipher",
+	"dorsal", "engine", "fossil", "glider",
+}
 
 func WebRoot(authSvc *auth.Service, setupSvc *setup.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -127,6 +144,64 @@ func WebSetupPost(svc *setup.Service) gin.HandlerFunc {
 			return
 		}
 
+		setRecoveryPending(c, form.BrandName)
+		c.Redirect(http.StatusSeeOther, "/setup/recovery-key")
+	}
+}
+
+func WebSetupRecoveryGet(svc *setup.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		initialized, err := svc.IsInitialized(c.Request.Context())
+		if err != nil {
+			_ = c.Error(errs.WithStack(err))
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+		if !initialized {
+			c.Redirect(http.StatusSeeOther, "/setup")
+			return
+		}
+		if !hasRecoveryPending(c) {
+			c.Redirect(http.StatusSeeOther, "/login")
+			return
+		}
+
+		web.Render(c, pages.SetupRecoveryPage(pages.SetupRecoveryPageProps{
+			Ctx:   pages.PageContext{},
+			Words: recoveryDemoWords,
+		}))
+	}
+}
+
+func WebSetupRecoveryPost(svc *setup.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		initialized, err := svc.IsInitialized(c.Request.Context())
+		if err != nil {
+			_ = c.Error(errs.WithStack(err))
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+		if !initialized {
+			c.Redirect(http.StatusSeeOther, "/setup")
+			return
+		}
+		if !hasRecoveryPending(c) {
+			c.Redirect(http.StatusSeeOther, "/login")
+			return
+		}
+
+		acknowledged := strings.TrimSpace(c.PostForm("confirm_backup")) == "true"
+		if !acknowledged {
+			web.Render(c, pages.SetupRecoveryPage(pages.SetupRecoveryPageProps{
+				Ctx:          pages.PageContext{},
+				Words:        recoveryDemoWords,
+				Error:        "You must confirm that the recovery key has been securely backed up.",
+				Acknowledged: false,
+			}))
+			return
+		}
+
+		clearRecoveryPending(c)
 		c.Redirect(http.StatusSeeOther, "/login?msg=account-created")
 	}
 }
@@ -163,4 +238,62 @@ func renderSetupForm(c *gin.Context, form struct {
 		S3Region:          strings.TrimSpace(form.S3Region),
 		S3UsePathStyle:    strings.TrimSpace(form.S3UsePathStyle) == "on",
 	}))
+}
+
+func setRecoveryPending(c *gin.Context, brandName string) {
+	expiresAt := time.Now().Add(recoveryCookieTTL)
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     recoveryPendingCookie,
+		Value:    "1",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+		Expires:  expiresAt,
+	})
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     recoveryBrandCookie,
+		Value:    url.QueryEscape(strings.TrimSpace(brandName)),
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+		Expires:  expiresAt,
+	})
+}
+
+func hasRecoveryPending(c *gin.Context) bool {
+	cookie, err := c.Request.Cookie(recoveryPendingCookie)
+	return err == nil && strings.TrimSpace(cookie.Value) == "1"
+}
+
+func recoveryBrandName(c *gin.Context) string {
+	cookie, err := c.Request.Cookie(recoveryBrandCookie)
+	if err != nil {
+		return "Arkive Core"
+	}
+	value := strings.TrimSpace(cookie.Value)
+	if value == "" {
+		return "Arkive Core"
+	}
+	decoded, err := url.QueryUnescape(value)
+	if err != nil || strings.TrimSpace(decoded) == "" {
+		return "Arkive Core"
+	}
+	return decoded
+}
+
+func clearRecoveryPending(c *gin.Context) {
+	for _, name := range []string{recoveryPendingCookie, recoveryBrandCookie} {
+		http.SetCookie(c.Writer, &http.Cookie{
+			Name:     name,
+			Value:    "",
+			Path:     "/",
+			HttpOnly: true,
+			Secure:   false,
+			SameSite: http.SameSiteLaxMode,
+			Expires:  time.Unix(0, 0),
+			MaxAge:   -1,
+		})
+	}
 }

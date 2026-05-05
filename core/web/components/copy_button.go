@@ -8,12 +8,15 @@ import (
 )
 
 type CopyButtonProps struct {
-	Text      string
-	TargetID  string
-	Value     string
-	Class     string
-	Variant   string
-	AriaLabel string
+	Text           string
+	TargetID       string
+	Value          string
+	Class          string
+	Variant        string
+	Icon           string
+	AriaLabel      string
+	SuccessTitle   string
+	SuccessMessage string
 }
 
 const CopyButtonJS = "/web/components/copy_button.js"
@@ -26,8 +29,8 @@ func CopyButton(props CopyButtonProps) g.Node {
 	if strings.TrimSpace(props.Class) != "" {
 		classes = append(classes, strings.TrimSpace(props.Class))
 	}
-	label := props.Text
-	if strings.TrimSpace(label) == "" {
+	label := strings.TrimSpace(props.Text)
+	if label == "" && strings.TrimSpace(props.Icon) == "" {
 		label = "Copy"
 	}
 
@@ -44,12 +47,22 @@ func CopyButton(props CopyButtonProps) g.Node {
 	} else if props.TargetID != "" {
 		attrs = append(attrs, g.Attr("data-copy-target", props.TargetID))
 	}
+	if props.SuccessTitle != "" {
+		attrs = append(attrs, g.Attr("data-copy-success-title", props.SuccessTitle))
+	}
+	if props.SuccessMessage != "" {
+		attrs = append(attrs, g.Attr("data-copy-success-message", props.SuccessMessage))
+	}
 
 	return g.Group([]g.Node{
 		InlineScript(CopyButtonJS),
 		h.Button(
 			g.Group(attrs),
-			g.Text(label),
+			g.If(props.Icon != "", h.Span(
+				h.Class("button-icon"),
+				renderButtonIcon(props.Icon),
+			)),
+			g.If(label != "", g.Text(label)),
 		),
 	})
 }

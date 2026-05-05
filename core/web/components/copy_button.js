@@ -45,10 +45,12 @@
   buttons.forEach(function(button) {
     button.addEventListener("click", function() {
       const value = getCopyValue(button);
+      const successTitle = button.getAttribute("data-copy-success-title") || "Copied";
+      const successMessage = button.getAttribute("data-copy-success-message") || "Link copied.";
       writeToClipboard(value)
         .then(function() {
           if (window.Toast) {
-            window.Toast.success("Link copied.", { title: "Copied" });
+            window.Toast.success(successMessage, { title: successTitle });
           }
         })
         .catch(function() {
