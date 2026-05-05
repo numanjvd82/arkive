@@ -55,6 +55,17 @@ func WebRoot(authSvc *auth.Service, setupSvc *setup.Service) gin.HandlerFunc {
 			return
 		}
 
+		ok, err := hasRecoveryPending(c, setupSvc)
+		if err != nil {
+			_ = c.Error(errs.WithStack(err))
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+		if ok {
+			c.Redirect(http.StatusSeeOther, "/setup/recovery-key")
+			return
+		}
+
 		c.Redirect(http.StatusSeeOther, "/login")
 	}
 }

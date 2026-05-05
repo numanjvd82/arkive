@@ -29,6 +29,16 @@ func WebLoginGet(svc *auth.Service, setupSvc *setup.Service) gin.HandlerFunc {
 			c.Redirect(http.StatusSeeOther, "/dashboard")
 			return
 		}
+		ok, err := hasRecoveryPending(c, setupSvc)
+		if err != nil {
+			_ = c.Error(errs.WithStack(err))
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+		if ok {
+			c.Redirect(http.StatusSeeOther, "/setup/recovery-key")
+			return
+		}
 
 		msg := ""
 		switch strings.TrimSpace(c.Query("msg")) {
@@ -63,6 +73,16 @@ func WebLoginPost(svc *auth.Service, setupSvc *setup.Service) gin.HandlerFunc {
 			return
 		} else if ok {
 			c.Redirect(http.StatusSeeOther, "/dashboard")
+			return
+		}
+		ok, err := hasRecoveryPending(c, setupSvc)
+		if err != nil {
+			_ = c.Error(errs.WithStack(err))
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+		if ok {
+			c.Redirect(http.StatusSeeOther, "/setup/recovery-key")
 			return
 		}
 
