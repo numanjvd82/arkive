@@ -46,6 +46,7 @@ func AuthLayout(data LayoutData, content ...g.Node) g.Node {
 				h.Div(h.Class("sidebar-scrim"), g.Attr("aria-hidden", "true")),
 				h.Div(h.Class("app-content"), g.Group(content)),
 			),
+			components.SearchPalette(data.SearchPlaceholder),
 			components.ToastHost(),
 		),
 	))
@@ -79,11 +80,13 @@ func authHeader(user *models.User, placeholder string) g.Node {
 						h.Class("app-header-lucide app-search-icon"),
 						g.Attr("aria-hidden", "true"),
 					),
-					h.Input(
-						h.Class("app-search-input"),
-						h.Type("search"),
-						g.Attr("placeholder", placeholder),
+					h.Button(
+						h.Class("app-search-trigger"),
+						h.ID("app-search-trigger"),
+						h.Type("button"),
 						g.Attr("aria-label", placeholder),
+						h.Span(h.Class("app-search-trigger-text"), g.Text(placeholder)),
+						h.Kbd(h.Class("app-search-trigger-kbd"), g.Text("/")),
 					),
 				),
 			),

@@ -171,6 +171,7 @@ func renderShareList(items []models.ShareWithFile, total, expiringSoonCount, rev
 		rows = append(rows, h.Tr(
 			h.Class("shares-row"),
 			g.Attr("data-share-row", item.ID),
+			g.Attr("id", "share-"+item.ID),
 			h.Td(
 				h.Class("shares-file"),
 				shareFileIcon(item),

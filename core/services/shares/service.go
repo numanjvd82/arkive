@@ -243,6 +243,18 @@ func (s *Service) ListSharesForUser(ctx context.Context, ownerUserID string) ([]
 	return s.shareRepo.ListSharesForUser(ctx, s.db, ownerUserID)
 }
 
+func (s *Service) SearchSharesForUser(ctx context.Context, ownerUserID, query string, limit int) ([]models.ShareWithFile, error) {
+	ownerUserID = strings.TrimSpace(ownerUserID)
+	query = strings.TrimSpace(query)
+	if ownerUserID == "" {
+		return nil, ErrUnauthorized
+	}
+	if query == "" {
+		return []models.ShareWithFile{}, nil
+	}
+	return s.shareRepo.SearchSharesForUser(ctx, s.db, ownerUserID, query, limit)
+}
+
 func isTokenValid(token string) bool {
 	if len(token) < TokenMinLength || len(token) > TokenMaxLength {
 		return false

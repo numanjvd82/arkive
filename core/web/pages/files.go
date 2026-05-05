@@ -398,6 +398,7 @@ func renderFileRow(file models.File) g.Node {
 	return h.Tr(
 		h.Class("files-row"),
 		g.Attr("data-file-row", file.ID),
+		g.Attr("id", "file-"+file.ID),
 		h.Td(
 			h.Class("files-cell files-cell-name"),
 			h.Span(

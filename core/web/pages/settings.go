@@ -87,84 +87,93 @@ func SettingsPage(props SettingsPageProps) web.Page {
 					h.Class("settings-grid"),
 					h.Div(
 						h.Class("settings-column"),
-						components.Card(components.CardProps{
-							Title:    "Account details",
-							Subtitle: "Your Arkive workspace profile.",
-							Class:    "settings-card",
-							Body: []g.Node{
-								h.Div(
-									h.Class("settings-meta"),
+						h.Div(
+							g.Attr("id", "settings-account"),
+							components.Card(components.CardProps{
+								Title:    "Account details",
+								Subtitle: "Your Arkive workspace profile.",
+								Class:    "settings-card",
+								Body: []g.Node{
 									h.Div(
-										h.Class("settings-meta-row"),
-										h.Span(g.Text("Workspace")),
-										h.Span(g.Text(displayOrDash(brandName))),
-									),
-									h.Div(
-										h.Class("settings-meta-row"),
-										h.Span(g.Text("Email")),
-										h.Span(g.Text(displayOrDash(email))),
-									),
-									h.Div(
-										h.Class("settings-meta-row"),
-										h.Span(g.Text("Member since")),
-										h.Span(g.Text(displayOrDash(memberSince))),
-									),
-									h.Div(
-										h.Class("settings-meta-row"),
-										h.Span(g.Text("Last login")),
-										h.Span(g.Text(displayOrDash(lastLogin))),
-									),
-								),
-							},
-						}),
-						components.Card(components.CardProps{
-							Title:    "Storage usage",
-							Subtitle: "Usage and limits for this Core instance.",
-							Class:    "settings-card",
-							Body: []g.Node{
-								h.Div(
-									h.Class("settings-meta"),
-									h.Div(
-										h.Class("settings-meta-row"),
-										h.Span(g.Text("Instance")),
-										h.Span(h.Class("settings-badge"), g.Text(instanceLabel)),
-									),
-									h.Div(
-										h.Class("settings-meta-row"),
-										h.Span(g.Text("Storage used")),
-										h.Span(g.Text(usedStorage+" / "+quotaStorage)),
-									),
-									h.Div(
-										h.Class("settings-meta-row"),
-										h.Span(g.Text("Provider")),
-										h.Span(g.Text(storageProviderLabel)),
-									),
-								),
-								h.Div(
-									h.Class("settings-progress"),
-									h.Span(h.Class("settings-progress-label"), g.Text("Storage usage")),
-									h.Div(
-										h.Class("settings-progress-track"),
-										h.Span(
-											h.Class("settings-progress-bar"),
-											g.Attr("style", "width: "+formatPercent(usagePercent)),
+										h.Class("settings-meta"),
+										h.Div(
+											h.Class("settings-meta-row"),
+											h.Span(g.Text("Workspace")),
+											h.Span(g.Text(displayOrDash(brandName))),
+										),
+										h.Div(
+											h.Class("settings-meta-row"),
+											h.Span(g.Text("Email")),
+											h.Span(g.Text(displayOrDash(email))),
+										),
+										h.Div(
+											h.Class("settings-meta-row"),
+											h.Span(g.Text("Member since")),
+											h.Span(g.Text(displayOrDash(memberSince))),
+										),
+										h.Div(
+											h.Class("settings-meta-row"),
+											h.Span(g.Text("Last login")),
+											h.Span(g.Text(displayOrDash(lastLogin))),
 										),
 									),
-								),
-								h.P(
-									h.Class("settings-note"),
-									g.Text("Storage limits are controlled by this Core instance configuration."),
-								),
-							},
-						}),
-						components.Card(components.CardProps{
-							Title:    "Storage provider",
-							Subtitle: "Change where new uploads are stored.",
-							Class:    "settings-card",
-							Body: []g.Node{
-								storageSettingsForm(storageSettings, storageGB, props.Errors),
-							},
-						}),
+								},
+							}),
+						),
+						h.Div(
+							g.Attr("id", "settings-usage"),
+							components.Card(components.CardProps{
+								Title:    "Storage usage",
+								Subtitle: "Usage and limits for this Core instance.",
+								Class:    "settings-card",
+								Body: []g.Node{
+									h.Div(
+										h.Class("settings-meta"),
+										h.Div(
+											h.Class("settings-meta-row"),
+											h.Span(g.Text("Instance")),
+											h.Span(h.Class("settings-badge"), g.Text(instanceLabel)),
+										),
+										h.Div(
+											h.Class("settings-meta-row"),
+											h.Span(g.Text("Storage used")),
+											h.Span(g.Text(usedStorage+" / "+quotaStorage)),
+										),
+										h.Div(
+											h.Class("settings-meta-row"),
+											h.Span(g.Text("Provider")),
+											h.Span(g.Text(storageProviderLabel)),
+										),
+									),
+									h.Div(
+										h.Class("settings-progress"),
+										h.Span(h.Class("settings-progress-label"), g.Text("Storage usage")),
+										h.Div(
+											h.Class("settings-progress-track"),
+											h.Span(
+												h.Class("settings-progress-bar"),
+												g.Attr("style", "width: "+formatPercent(usagePercent)),
+											),
+										),
+									),
+									h.P(
+										h.Class("settings-note"),
+										g.Text("Storage limits are controlled by this Core instance configuration."),
+									),
+								},
+							}),
+						),
+						h.Div(
+							g.Attr("id", "settings-provider"),
+							components.Card(components.CardProps{
+								Title:    "Storage provider",
+								Subtitle: "Change where new uploads are stored.",
+								Class:    "settings-card",
+								Body: []g.Node{
+									storageSettingsForm(storageSettings, storageGB, props.Errors),
+								},
+							}),
+						),
 					),
 				),
 			),

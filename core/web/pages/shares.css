@@ -116,6 +116,10 @@
   background: transparent;
 }
 
+.shares-row:target td {
+  background: rgba(56, 189, 248, 0.12);
+}
+
 .shares-file {
   display: flex;
   align-items: center;

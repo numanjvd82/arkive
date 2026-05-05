@@ -86,6 +86,7 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 	{
 		api.GET("/me", middleware.RequireSessionJSON(authService), handlers.APIMe(authService))
 		api.GET("/health", handlers.Health(db))
+		api.GET("/search", middleware.RequireSessionJSON(authService), handlers.APISearch(uploadService, shareService))
 	}
 
 	apiUploads := api.Group("/uploads")

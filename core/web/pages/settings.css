@@ -55,6 +55,19 @@
   gap: 24px;
 }
 
+#settings-account,
+#settings-usage,
+#settings-provider {
+  scroll-margin-top: 84px;
+}
+
+#settings-account:target .card,
+#settings-usage:target .card,
+#settings-provider:target .card {
+  border-color: rgba(56, 189, 248, 0.42);
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.22);
+}
+
 .settings-card .card-body {
   display: grid;
   gap: 16px;

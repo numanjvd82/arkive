@@ -553,3 +553,16 @@ func (s *Service) ListCompletedUploads(ctx context.Context, userID, sort string,
 		TotalFiles: totalFiles,
 	}, nil
 }
+
+func (s *Service) SearchCompletedUploads(ctx context.Context, userID, query string, limit int) ([]models.File, error) {
+	var err error
+	userID, err = validateUserID(userID)
+	if err != nil {
+		return nil, err
+	}
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return []models.File{}, nil
+	}
+	return s.fileRepo.SearchCompletedForUser(ctx, s.db, userID, query, limit)
+}
