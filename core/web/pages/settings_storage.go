@@ -21,10 +21,9 @@ func storageSettingsForm(settings models.StorageSettings, storageGB string, erro
 			validation.FieldError(errors, validation.GeneralKey) != "",
 			h.P(h.Class("form-error"), g.Text(validation.FieldError(errors, validation.GeneralKey))),
 		),
-		h.Div(
-			h.Class("storage-options"),
-			storageRadio("local", "Local disk", settings.Provider == "local"),
-			storageRadio("s3", "S3-compatible", settings.Provider == "s3"),
+		components.StorageSelector("storage_provider",
+			components.StorageSelectorOption{Value: "local", Label: "Local", Checked: settings.Provider == "local"},
+			components.StorageSelectorOption{Value: "s3", Label: "S3 Compatible", Checked: settings.Provider == "s3"},
 		),
 		components.InputField(components.InputProps{
 			Label:       "Storage limit in GB",
@@ -99,19 +98,6 @@ func storageSettingsForm(settings models.StorageSettings, storageGB string, erro
 			Variant: "primary",
 			Class:   "auth-submit",
 		}),
-	)
-}
-
-func storageRadio(value, label string, checked bool) g.Node {
-	return h.Label(
-		h.Class("storage-option compact"),
-		h.Input(
-			g.Attr("type", "radio"),
-			g.Attr("name", "storage_provider"),
-			g.Attr("value", value),
-			g.If(checked, g.Attr("checked", "checked")),
-		),
-		h.Span(g.Text(label)),
 	)
 }
 

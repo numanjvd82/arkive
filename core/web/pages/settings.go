@@ -85,92 +85,152 @@ func SettingsPage(props SettingsPageProps) web.Page {
 				),
 				h.Div(
 					h.Class("settings-grid"),
+					h.Aside(
+						h.Class("settings-tabs"),
+						settingsTabLink("settings-account", "Account"),
+						settingsTabLink("settings-provider", "Storage Provider"),
+						settingsTabLink("settings-security", "Security"),
+					),
 					h.Div(
-						h.Class("settings-column"),
-						h.Div(
+						h.Class("settings-content"),
+						h.Section(
+							h.Class("settings-panel settings-panel-default"),
 							g.Attr("id", "settings-account"),
-							components.Card(components.CardProps{
-								Title:    "Account details",
-								Subtitle: "Your Arkive workspace profile.",
-								Class:    "settings-card",
-								Body: []g.Node{
-									h.Div(
-										h.Class("settings-meta"),
+							h.Div(
+								h.Class("settings-panel-header"),
+								h.Div(
+									h.Class("settings-panel-title"),
+									h.H2(g.Text("Account Overview")),
+									h.P(g.Text("Current account, workspace, and storage details for this Core instance.")),
+								),
+							),
+							h.Div(
+								h.Class("settings-stack"),
+								components.Card(components.CardProps{
+									Title:    "Account details",
+									Subtitle: "Identity and workspace metadata for the active admin session.",
+									Class:    "settings-card",
+									Body: []g.Node{
 										h.Div(
-											h.Class("settings-meta-row"),
-											h.Span(g.Text("Workspace")),
-											h.Span(g.Text(displayOrDash(brandName))),
-										),
-										h.Div(
-											h.Class("settings-meta-row"),
-											h.Span(g.Text("Email")),
-											h.Span(g.Text(displayOrDash(email))),
-										),
-										h.Div(
-											h.Class("settings-meta-row"),
-											h.Span(g.Text("Member since")),
-											h.Span(g.Text(displayOrDash(memberSince))),
-										),
-										h.Div(
-											h.Class("settings-meta-row"),
-											h.Span(g.Text("Last login")),
-											h.Span(g.Text(displayOrDash(lastLogin))),
-										),
-									),
-								},
-							}),
-						),
-						h.Div(
-							g.Attr("id", "settings-usage"),
-							components.Card(components.CardProps{
-								Title:    "Storage usage",
-								Subtitle: "Usage and limits for this Core instance.",
-								Class:    "settings-card",
-								Body: []g.Node{
-									h.Div(
-										h.Class("settings-meta"),
-										h.Div(
-											h.Class("settings-meta-row"),
-											h.Span(g.Text("Instance")),
-											h.Span(h.Class("settings-badge"), g.Text(instanceLabel)),
-										),
-										h.Div(
-											h.Class("settings-meta-row"),
-											h.Span(g.Text("Storage used")),
-											h.Span(g.Text(usedStorage+" / "+quotaStorage)),
-										),
-										h.Div(
-											h.Class("settings-meta-row"),
-											h.Span(g.Text("Provider")),
-											h.Span(g.Text(storageProviderLabel)),
-										),
-									),
-									h.Div(
-										h.Class("settings-progress"),
-										h.Span(h.Class("settings-progress-label"), g.Text("Storage usage")),
-										h.Div(
-											h.Class("settings-progress-track"),
-											h.Span(
-												h.Class("settings-progress-bar"),
-												g.Attr("style", "width: "+formatPercent(usagePercent)),
+											h.Class("settings-meta"),
+											h.Div(
+												h.Class("settings-meta-row"),
+												h.Span(g.Text("Workspace")),
+												h.Span(g.Text(displayOrDash(brandName))),
+											),
+											h.Div(
+												h.Class("settings-meta-row"),
+												h.Span(g.Text("Email")),
+												h.Span(g.Text(displayOrDash(email))),
+											),
+											h.Div(
+												h.Class("settings-meta-row"),
+												h.Span(g.Text("Member since")),
+												h.Span(g.Text(displayOrDash(memberSince))),
+											),
+											h.Div(
+												h.Class("settings-meta-row"),
+												h.Span(g.Text("Last login")),
+												h.Span(g.Text(displayOrDash(lastLogin))),
 											),
 										),
-									),
-									h.P(
-										h.Class("settings-note"),
-										g.Text("Storage limits are controlled by this Core instance configuration."),
-									),
-								},
-							}),
+									},
+								}),
+								components.Card(components.CardProps{
+									Title:    "Storage quota",
+									Subtitle: "Usage and limits for this single-user Core deployment.",
+									Class:    "settings-card",
+									Body: []g.Node{
+										h.Div(
+											h.Class("settings-quota-head"),
+											h.Div(
+												h.Class("settings-quota-copy"),
+												h.Span(h.Class("settings-overline"), g.Text("Current usage")),
+												h.Strong(g.Text(usedStorage)),
+											),
+											h.Div(
+												h.Class("settings-quota-total"),
+												h.Strong(g.Text(quotaStorage)),
+												h.Span(g.Text("configured limit")),
+											),
+										),
+										h.Div(
+											h.Class("settings-progress"),
+											h.Div(
+												h.Class("settings-progress-track"),
+												h.Span(
+													h.Class("settings-progress-bar"),
+													g.Attr("style", "width: "+formatPercent(usagePercent)),
+												),
+											),
+										),
+										h.Div(
+											h.Class("settings-info-grid"),
+											settingsInfoTile("Instance", instanceLabel, "Self-hosted mode"),
+											settingsInfoTile("Provider", storageProviderLabel, "Active upload backend"),
+											settingsInfoTile("Utilization", formatPercent(usagePercent), "Based on the configured quota"),
+										),
+										h.P(
+											h.Class("settings-note"),
+											g.Text("Storage limits are controlled by instance configuration. Set the limit to 0 to allow unlimited storage."),
+										),
+									},
+								}),
+							),
 						),
-						h.Div(
+						h.Section(
+							h.Class("settings-panel"),
 							g.Attr("id", "settings-provider"),
+							h.Div(
+								h.Class("settings-panel-header"),
+								h.Div(
+									h.Class("settings-panel-title"),
+									h.H2(g.Text("Storage Provider")),
+									h.P(g.Text("Choose between local disk and S3-compatible storage for new uploads.")),
+								),
+							),
+							h.Div(
+								h.Class("settings-stack"),
+								components.Card(components.CardProps{
+									Title:    "Provider status",
+									Subtitle: "The active backend determines where encrypted blobs are stored.",
+									Class:    "settings-card",
+									Body: []g.Node{
+										storageProviderSummary(storageSettings),
+									},
+								}),
+								components.Card(components.CardProps{
+									Title:    "Configuration",
+									Subtitle: "Update provider settings for this Core instance.",
+									Class:    "settings-card",
+									Body: []g.Node{
+										storageSettingsForm(storageSettings, storageGB, props.Errors),
+									},
+								}),
+							),
+						),
+						h.Section(
+							h.Class("settings-panel"),
+							g.Attr("id", "settings-security"),
+							h.Div(
+								h.Class("settings-panel-header"),
+								h.Div(
+									h.Class("settings-panel-title"),
+									h.H2(g.Text("Security")),
+									h.P(g.Text("Reserved for future authentication and instance hardening controls.")),
+								),
+							),
 							components.Card(components.CardProps{
-								Title:    "Storage provider",
-								Subtitle: "Change where new uploads are stored.",
+								Title:    "Coming soon",
+								Subtitle: "This section will hold security-focused settings as Core expands.",
 								Class:    "settings-card",
 								Body: []g.Node{
-									storageSettingsForm(storageSettings, storageGB, props.Errors),
+									h.Ul(
+										h.Class("settings-list"),
+										h.Li(g.Text("Password and session controls")),
+										h.Li(g.Text("Email verification and recovery options")),
+										h.Li(g.Text("Instance access and audit details")),
+									),
 								},
 							}),
 						),
@@ -179,6 +239,46 @@ func SettingsPage(props SettingsPageProps) web.Page {
 			),
 		),
 	}
+}
+
+func settingsTabLink(target, label string) g.Node {
+	return h.A(
+		h.Class("settings-tab"),
+		h.Href("#"+target),
+		g.Text(label),
+	)
+}
+
+func settingsInfoTile(label, value, hint string) g.Node {
+	return h.Div(
+		h.Class("settings-info-tile"),
+		h.Span(h.Class("settings-info-label"), g.Text(label)),
+		h.Strong(g.Text(value)),
+		h.P(g.Text(hint)),
+	)
+}
+
+func storageProviderSummary(settings models.StorageSettings) g.Node {
+	provider := strings.ToLower(strings.TrimSpace(settings.Provider))
+	if provider == "" {
+		provider = "local"
+	}
+
+	if provider == "s3" {
+		return h.Div(
+			h.Class("settings-provider-status"),
+			h.Span(h.Class("settings-badge"), g.Text("S3")),
+			h.H4(g.Text("S3-compatible storage is active")),
+			h.P(g.Text("Uploads are stored through the configured S3-compatible provider without exposing provider-specific identifiers here.")),
+		)
+	}
+
+	return h.Div(
+		h.Class("settings-provider-status"),
+		h.Span(h.Class("settings-badge"), g.Text("LOCAL")),
+		h.H4(g.Text("Local storage is active")),
+		h.P(g.Text("Uploads are stored on the instance filesystem without exposing path-level details in this overview.")),
+	)
 }
 
 func formatPercent(value int) string {

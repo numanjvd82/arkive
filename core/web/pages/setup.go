@@ -167,10 +167,9 @@ func setupBody(props SetupPageProps) g.Node {
 						),
 						h.Div(
 							h.Class("storage-section"),
-							h.Div(
-								h.Class("storage-toggle"),
-								storageOption("local", "Local", props.StorageProvider == "local"),
-								storageOption("s3", "S3 Compatible", props.StorageProvider == "s3"),
+							components.StorageSelector("storage_provider",
+								components.StorageSelectorOption{Value: "local", Label: "Local", Checked: props.StorageProvider == "local"},
+								components.StorageSelectorOption{Value: "s3", Label: "S3 Compatible", Checked: props.StorageProvider == "s3"},
 							),
 							components.InputField(components.InputProps{
 								Label:       "Storage limit in GB",
@@ -308,28 +307,5 @@ func setupSection(number, title string, icon g.Node, children ...g.Node) g.Node 
 	return h.Section(
 		h.Class("setup-section"),
 		g.Group(nodes),
-	)
-}
-
-func storageOption(value, title string, checked bool) g.Node {
-	id := "storage-provider-" + value
-	icon := lucide.HardDrive(g.Attr("aria-hidden", "true"), h.Class("setup-lucide setup-lucide-storage"))
-	if value == "s3" {
-		icon = lucide.Cloud(g.Attr("aria-hidden", "true"), h.Class("setup-lucide setup-lucide-storage"))
-	}
-	return h.Label(
-		h.Class("storage-option"),
-		h.Input(
-			g.Attr("type", "radio"),
-			g.Attr("id", id),
-			g.Attr("name", "storage_provider"),
-			g.Attr("value", value),
-			g.If(checked, g.Attr("checked", "checked")),
-		),
-		h.Span(
-			h.Class("storage-option-copy"),
-			icon,
-			h.Strong(g.Text(title)),
-		),
 	)
 }

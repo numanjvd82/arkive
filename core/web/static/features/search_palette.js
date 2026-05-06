@@ -229,6 +229,14 @@ export function initSearchPalette() {
     event.stopPropagation();
   });
 
+  panel.addEventListener("click", function(event) {
+    const item = event.target.closest(".search-item");
+    if (!item) {
+      return;
+    }
+    closePanel();
+  });
+
   document.addEventListener("click", function(event) {
     if (panel.classList.contains("is-hidden")) return;
     if (event.target === trigger || trigger.contains(event.target)) return;
@@ -237,6 +245,11 @@ export function initSearchPalette() {
   });
 
   document.addEventListener("keydown", function(event) {
+    if (event.key === "Escape" && !panel.classList.contains("is-hidden")) {
+      event.preventDefault();
+      closePanel();
+      return;
+    }
     if (event.key === "/" && document.activeElement !== input && document.activeElement !== trigger) {
       const tag = document.activeElement && document.activeElement.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
@@ -245,4 +258,7 @@ export function initSearchPalette() {
       scheduleSearch();
     }
   });
+
+  window.addEventListener("hashchange", closePanel);
+  window.addEventListener("popstate", closePanel);
 }
