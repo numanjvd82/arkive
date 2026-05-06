@@ -19,8 +19,6 @@ type CopyButtonProps struct {
 	SuccessMessage string
 }
 
-const CopyButtonJS = "/web/components/copy_button.js"
-
 func CopyButton(props CopyButtonProps) g.Node {
 	classes := []string{"button"}
 	if strings.TrimSpace(props.Variant) != "" {
@@ -54,15 +52,12 @@ func CopyButton(props CopyButtonProps) g.Node {
 		attrs = append(attrs, g.Attr("data-copy-success-message", props.SuccessMessage))
 	}
 
-	return g.Group([]g.Node{
-		InlineScript(CopyButtonJS),
-		h.Button(
-			g.Group(attrs),
-			g.If(props.Icon != "", h.Span(
-				h.Class("button-icon"),
-				renderButtonIcon(props.Icon),
-			)),
-			g.If(label != "", g.Text(label)),
-		),
-	})
+	return h.Button(
+		g.Group(attrs),
+		g.If(props.Icon != "", h.Span(
+			h.Class("button-icon"),
+			renderButtonIcon(props.Icon),
+		)),
+		g.If(label != "", g.Text(label)),
+	)
 }

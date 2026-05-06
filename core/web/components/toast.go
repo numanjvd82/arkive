@@ -7,7 +7,6 @@ import (
 )
 
 const ToastCSS = "/web/components/toast.css"
-const ToastJS = "/web/components/toast.js"
 
 func ToastHost() g.Node {
 	return g.Group([]g.Node{

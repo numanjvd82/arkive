@@ -26,6 +26,7 @@ import (
 func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, localStorage *localclient.Client) *gin.Engine {
 	r := gin.Default()
 	r.Use(middleware.ErrorLogger())
+	r.Use(middleware.SecurityHeaders())
 
 	authRepo := authrepo.New()
 	usersRepo := usersrepo.New()

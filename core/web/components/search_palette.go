@@ -7,7 +7,6 @@ import (
 )
 
 const SearchPaletteCSS = "/web/components/search_palette.css"
-const SearchPaletteJS = "/web/components/search_palette.js"
 
 func SearchPalette(placeholder string) g.Node {
 	if placeholder == "" {
@@ -16,7 +15,6 @@ func SearchPalette(placeholder string) g.Node {
 
 	return g.Group([]g.Node{
 		InlineStyle(SearchPaletteCSS),
-		InlineScript(SearchPaletteJS),
 		h.Div(
 			h.Class("search-panel is-hidden"),
 			h.ID("search-panel"),

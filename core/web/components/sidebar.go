@@ -11,7 +11,6 @@ import (
 )
 
 const SidebarCSS = "/web/components/sidebar.css"
-const SidebarJS = "/web/components/sidebar.js"
 
 type DashboardSidebarProps struct {
 	User      *models.User
@@ -26,7 +25,6 @@ func DashboardSidebar(props DashboardSidebarProps) g.Node {
 
 	return g.Group([]g.Node{
 		InlineStyle(SidebarCSS),
-		InlineScript(SidebarJS),
 		h.Aside(
 			h.Class("dashboard-sidebar"),
 			h.ID("dashboard-sidebar"),

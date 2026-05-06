@@ -18,7 +18,6 @@ type DropdownProps struct {
 }
 
 const DropdownCSS = "/web/components/dropdown.css"
-const DropdownJS = "/web/components/dropdown.js"
 
 func Dropdown(props DropdownProps) g.Node {
 	id := strings.TrimSpace(props.ID)
@@ -58,7 +57,6 @@ func Dropdown(props DropdownProps) g.Node {
 
 	return g.Group([]g.Node{
 		InlineStyle(DropdownCSS),
-		InlineScript(DropdownJS),
 		h.Div(
 			h.Class(rootClasses),
 			g.Attr("data-dropdown", "true"),

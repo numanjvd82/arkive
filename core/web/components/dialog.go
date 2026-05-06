@@ -18,7 +18,6 @@ type DialogProps struct {
 }
 
 const DialogCSS = "/web/components/dialog.css"
-const DialogJS = "/web/components/dialog.js"
 
 func Dialog(props DialogProps) g.Node {
 	titleID := props.TitleID
@@ -28,7 +27,6 @@ func Dialog(props DialogProps) g.Node {
 
 	return g.Group([]g.Node{
 		InlineStyle(DialogCSS),
-		InlineScript(DialogJS),
 		h.Div(
 			h.Class("dialog-backdrop is-hidden"),
 			g.If(props.BackdropID != "", g.Attr("id", props.BackdropID)),

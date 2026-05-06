@@ -99,8 +99,7 @@ func buildHeadNodes(data LayoutData) []g.Node {
 	for _, css := range data.CSS {
 		headNodes = append(headNodes, h.Link(h.Rel("stylesheet"), h.Href(css)))
 	}
-	headNodes = append(headNodes, h.Script(h.Src("/static/global.js"), h.Defer()))
-	headNodes = append(headNodes, components.InlineScript(components.ToastJS))
+	headNodes = append(headNodes, h.Script(h.Type("module"), h.Src("/static/app.js")))
 	if data.JSONLD != "" {
 		headNodes = append(headNodes, h.Script(h.Type("application/ld+json"), g.Raw(data.JSONLD)))
 	}

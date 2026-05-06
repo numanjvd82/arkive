@@ -6,12 +6,10 @@ import (
 )
 
 const LightboxCSS = "/web/components/lightbox.css"
-const LightboxJS = "/web/components/lightbox.js"
 
 func Lightbox() g.Node {
 	return g.Group([]g.Node{
 		InlineStyle(LightboxCSS),
-		InlineScript(LightboxJS),
 		h.Div(
 			h.ID("lightbox-backdrop"),
 			h.Class("lightbox-backdrop is-hidden"),

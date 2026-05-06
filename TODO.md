@@ -26,9 +26,11 @@
 - Inactivity retention warnings: send emails at 150/180/210 days inactive (archive/deletion notices) once email service is in place.
 - Archived files UX: users may be blocked from freeing space due to 2 GB/day restore cap; add a restore CTA or archive management view.
 - Drop Pages (Collections): product spec + data model + ads mechanics + MVP build plan.
+- CSP hardening follow-up: keep `connect-src`/`img-src`/`media-src` permissive by default in Core because storage origins are user-defined; add config-driven CSP origin allowlists later for hardened self-hosted deployments.
 
 ## Done
 - Install `ffprobe` on the server for video metadata extraction.
+- Replace placeholder setup recovery key with real browser-generated key from `arkive-crypto` WASM; key material must stay client-side and no plaintext recovery phrase should be sent to the server.
 - Rate limiting for upload endpoints and background media processing.
 - Add Cloudflare analytics script to main production layout.
 - Refactor media view page (components, helpers) for better structure and maintainability.

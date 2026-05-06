@@ -16,7 +16,6 @@ type UploadControlsProps struct {
 }
 
 const UploadUICSS = "/web/components/upload_ui.css"
-const UploadUIJS = "/web/components/uploads.js"
 
 func UploadControls(props UploadControlsProps) g.Node {
 	inputID := props.InputID
@@ -42,7 +41,6 @@ func UploadControls(props UploadControlsProps) g.Node {
 
 	return g.Group([]g.Node{
 		InlineStyle(UploadUICSS),
-		InlineScript(UploadUIJS),
 		h.Div(
 			h.Class("upload-dropzone"),
 			g.Attr("id", "upload-dropzone"),
