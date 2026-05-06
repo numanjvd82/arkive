@@ -85,6 +85,11 @@
   line-height: 1.4;
 }
 
+.recovery-refresh-warning {
+  margin-top: 10px !important;
+  color: #ffd28a !important;
+}
+
 .recovery-danger-emphasis {
   color: #ffb4ab;
   font-style: italic;

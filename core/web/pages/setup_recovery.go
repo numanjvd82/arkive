@@ -55,6 +55,10 @@ func setupRecoveryBody(props SetupRecoveryPageProps) g.Node {
 								h.Strong(h.Class("recovery-danger-emphasis"), g.Text("ONLY")),
 								g.Text(" way to recover your data if you lose your password. Arkive Core is a zero-knowledge system; we cannot reset your access."),
 							),
+							h.P(
+								h.Class("recovery-refresh-warning"),
+								g.Text("If you refresh this page before confirming, Arkive Core will generate a new recovery key. Only back up the key currently shown on this page."),
+							),
 						),
 					),
 					h.Form(

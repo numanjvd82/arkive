@@ -14,7 +14,7 @@ func SecurityHeaders() gin.HandlerFunc {
 			"object-src 'none'",
 			"frame-ancestors 'none'",
 			"form-action 'self'",
-			"script-src 'self'",
+			"script-src 'self' 'wasm-unsafe-eval'",
 			"script-src-attr 'none'",
 			"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
 			"font-src 'self' https://fonts.gstatic.com data:",
@@ -28,7 +28,7 @@ func SecurityHeaders() gin.HandlerFunc {
 		c.Header("X-Content-Type-Options", "nosniff")
 		c.Header("X-Frame-Options", "DENY")
 		c.Header("Cross-Origin-Opener-Policy", "same-origin")
-		c.Header("Permissions-Policy", "camera=(), geolocation=(), microphone=()")
+		c.Header("Permissions-Policy", "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()")
 
 		c.Next()
 	}

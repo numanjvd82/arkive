@@ -1,4 +1,5 @@
 import { initCopyButtons } from "./features/copy_button.js";
+import { initCrypto } from "./features/crypto.js";
 import { initDialogs } from "./features/dialog.js";
 import { initDropdowns } from "./features/dropdown.js";
 import { initLightbox } from "./features/lightbox.js";
@@ -146,6 +147,7 @@ function initRateLimitFetch() {
 
 initTheme();
 initPasswordToggles();
+initCrypto();
 initToast();
 initRateLimitFetch();
 initDialogs();

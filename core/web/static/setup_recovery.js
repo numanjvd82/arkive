@@ -7,7 +7,6 @@
   const valueInput = document.querySelector("[data-recovery-value]");
   const runtimeError = document.querySelector("[data-recovery-runtime-error]");
   const form = document.querySelector(".recovery-form");
-  const STORAGE_KEY = "arkive.setup.recovery_key";
 
   function setRuntimeError(message) {
     if (runtimeError) {
@@ -162,21 +161,6 @@
     submit.disabled = !checkbox.checked || !getRecoveryKey() || (runtimeError ? !runtimeError.hidden : false);
   }
 
-  function loadStoredKey(crypto) {
-    const stored = window.sessionStorage.getItem(STORAGE_KEY);
-    if (!stored) {
-      return "";
-    }
-
-    try {
-      crypto.parse_recovery_key(stored);
-      return stored;
-    } catch (_) {
-      window.sessionStorage.removeItem(STORAGE_KEY);
-      return "";
-    }
-  }
-
   function createRecoveryKey(crypto) {
     const recoveryKeyBytes = crypto.generate_recovery_key();
     try {
@@ -189,18 +173,14 @@
   }
 
   function initializeRecoveryKey() {
-    return import("/static/vendor/arkive-crypto/arkive_crypto.js")
-      .then(function(mod) {
-        return mod.default("/static/vendor/arkive-crypto/arkive_crypto_bg.wasm")
-          .then(function() {
-            return mod;
-          });
-      })
-      .then(function(crypto) {
-        const existing = loadStoredKey(crypto);
-        const formattedKey = existing || createRecoveryKey(crypto);
+    if (!window.ArkiveCrypto || typeof window.ArkiveCrypto.ready !== "function") {
+      setRuntimeError("Recovery key generation is unavailable. Reload the page and try again.");
+      return Promise.resolve();
+    }
 
-        window.sessionStorage.setItem(STORAGE_KEY, formattedKey);
+    return window.ArkiveCrypto.ready()
+      .then(function(crypto) {
+        const formattedKey = createRecoveryKey(crypto);
         renderRecoveryKey(formattedKey);
         clearRuntimeError();
         syncSubmitState();
@@ -217,9 +197,7 @@
   }
 
   if (form) {
-    form.addEventListener("submit", function() {
-      window.sessionStorage.removeItem(STORAGE_KEY);
-    });
+    form.addEventListener("submit", syncSubmitState);
   }
 
   downloadButtons.forEach(function(button) {
