@@ -114,7 +114,7 @@ func (c *Client) ServeUpload(w http.ResponseWriter, r *http.Request, token strin
 }
 
 func (c *Client) ServeDownload(w http.ResponseWriter, r *http.Request, token string) {
-	entry, ok := c.consumeToken(token, true)
+	entry, ok := c.getToken(token, true)
 	if !ok {
 		http.NotFound(w, r)
 		return
@@ -148,6 +148,17 @@ func (c *Client) consumeToken(token string, download bool) (tokenEntry, bool) {
 		return tokenEntry{}, false
 	}
 	delete(c.tokens, token)
+	return entry, true
+}
+
+func (c *Client) getToken(token string, download bool) (tokenEntry, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	entry, ok := c.tokens[token]
+	if !ok || entry.Download != download || time.Now().After(entry.ExpiresAt) {
+		delete(c.tokens, token)
+		return tokenEntry{}, false
+	}
 	return entry, true
 }
 

@@ -1,9 +1,10 @@
 package components
 
 import (
+	"strings"
+
 	lucide "github.com/eduardolat/gomponents-lucide"
 	g "maragu.dev/gomponents"
-	c "maragu.dev/gomponents/components"
 	h "maragu.dev/gomponents/html"
 )
 
@@ -20,23 +21,20 @@ type ButtonProps struct {
 const ButtonCSS = "/web/components/button.css"
 
 func Button(props ButtonProps) g.Node {
-	classes := c.Classes{
-		"button": true,
-	}
-
+	classes := []string{"button"}
 	if props.Variant != "" {
-		classes[props.Variant] = true
+		classes = append(classes, strings.TrimSpace(props.Variant))
 	}
-
 	if props.Class != "" {
-		classes[props.Class] = true
+		classes = append(classes, strings.TrimSpace(props.Class))
 	}
+	className := strings.Join(classes, " ")
 
 	if props.Href != "" {
 		return g.Group([]g.Node{
 			InlineStyle(ButtonCSS),
 			h.A(
-				h.Class(classes.String()),
+				h.Class(className),
 				h.Href(props.Href),
 				g.If(props.ID != "", g.Attr("id", props.ID)),
 				g.If(props.Icon != "", h.Span(
@@ -56,7 +54,7 @@ func Button(props ButtonProps) g.Node {
 	return g.Group([]g.Node{
 		InlineStyle(ButtonCSS),
 		h.Button(
-			h.Class(classes.String()),
+			h.Class(className),
 			g.Attr("type", buttonType),
 			g.If(props.ID != "", g.Attr("id", props.ID)),
 			g.If(props.Icon != "", h.Span(
@@ -77,6 +75,26 @@ func renderButtonIcon(name string) g.Node {
 		)
 	case "key":
 		return lucide.Key(
+			h.Class("button-lucide"),
+			g.Attr("aria-hidden", "true"),
+		)
+	case "download":
+		return lucide.Download(
+			h.Class("button-lucide"),
+			g.Attr("aria-hidden", "true"),
+		)
+	case "share":
+		return lucide.Share2(
+			h.Class("button-lucide"),
+			g.Attr("aria-hidden", "true"),
+		)
+	case "trash":
+		return lucide.Trash2(
+			h.Class("button-lucide"),
+			g.Attr("aria-hidden", "true"),
+		)
+	case "arrow-left":
+		return lucide.ArrowLeft(
 			h.Class("button-lucide"),
 			g.Attr("aria-hidden", "true"),
 		)

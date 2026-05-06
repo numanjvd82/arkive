@@ -19,6 +19,7 @@
   const maxZoom = 3;
 
   // Interaction state
+  let interacting = false;
   let settleTimer = null;
 
   // For pinch/pan
