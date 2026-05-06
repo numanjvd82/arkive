@@ -29,12 +29,14 @@ type Service struct {
 }
 
 type InitialAdminInput struct {
-	BrandName       string
-	Email           string
-	Password        string
-	ConfirmPassword string
-	Storage         models.StorageSettings
-	LocalStorageGB  string
+	BrandName          string
+	Email              string
+	Password           string
+	ConfirmPassword    string
+	VaultSalt          []byte
+	EncryptedMasterKey []byte
+	Storage            models.StorageSettings
+	LocalStorageGB     string
 }
 
 func NewService(db database.PgPool, authRepo *authrepo.Repository, userRepo *usersrepo.Repository, settingsRepo *settingsrepo.Repository) *Service {
@@ -62,6 +64,12 @@ func (s *Service) CreateInitialAdmin(ctx context.Context, input InitialAdminInpu
 	input.Storage = settingssvc.NormalizeStorageSettings(input.Storage)
 
 	validationErrors := validateAdminInput(input.BrandName, input.Email, input.Password, input.ConfirmPassword)
+	if len(input.VaultSalt) != 16 {
+		validationErrors.Add(validation.GeneralKey, "vault salt is missing or invalid")
+	}
+	if len(input.EncryptedMasterKey) == 0 {
+		validationErrors.Add(validation.GeneralKey, "encrypted master key is missing")
+	}
 	settingssvc.ValidateStorageSettings(input.Storage, validationErrors)
 	if validationErrors.HasAny() {
 		return models.User{}, validationErrors, nil
@@ -88,7 +96,7 @@ func (s *Service) CreateInitialAdmin(ctx context.Context, input InitialAdminInpu
 		return models.User{}, nil, err
 	}
 
-	user, err := s.authRepo.CreateVerifiedUser(ctx, tx, input.BrandName, input.Email, string(hash))
+	user, err := s.authRepo.CreateVerifiedUser(ctx, tx, input.BrandName, input.Email, string(hash), input.VaultSalt, input.EncryptedMasterKey)
 	if err != nil {
 		return models.User{}, nil, err
 	}

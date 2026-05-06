@@ -11,10 +11,11 @@ CREATE TABLE users (
   brand_name        TEXT UNIQUE NOT NULL,               -- username / brand name
   email             citext UNIQUE NOT NULL,                    -- case-insensitive email
   password_hash          TEXT,                               -- bcrypt/argon2 hash (never store raw password)
+  vault_salt             BYTEA,
+  encrypted_master_key   BYTEA,
   google_sub             TEXT UNIQUE,                        -- google user id
   google_given_name      TEXT,
   google_family_name     TEXT,
-  google_email_verified  boolean NOT NULL DEFAULT false,
   google_picture_url     TEXT,
 
   -- Storage accounting
@@ -23,7 +24,6 @@ CREATE TABLE users (
   reserved_bytes    bigint NOT NULL DEFAULT 0,          -- for "upload initiated" but not completed
 
   -- Platform controls
-  is_email_verified boolean NOT NULL DEFAULT false,
   is_banned         boolean NOT NULL DEFAULT false,
   ban_reason        text,
 
@@ -42,6 +42,9 @@ CREATE TABLE users (
 
 -- Helpful index for admin queries
 CREATE INDEX users_created_at_idx ON users (created_at);
+CREATE INDEX users_vault_ready_idx
+  ON users (id)
+  WHERE vault_salt IS NOT NULL AND encrypted_master_key IS NOT NULL;
 
 -- Safety checks
 ALTER TABLE users

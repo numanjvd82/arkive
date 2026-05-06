@@ -12,7 +12,6 @@ import (
 	"arkive/core/database"
 	"arkive/core/models"
 	authrepo "arkive/core/repositories/auth"
-	emailverifyrepo "arkive/core/repositories/emailverify"
 	sessionrepo "arkive/core/repositories/session"
 	usersrepo "arkive/core/repositories/users"
 	"arkive/pkg/mailer"
@@ -20,11 +19,10 @@ import (
 )
 
 type Service struct {
-	db              database.PgPool
-	authRepo        *authrepo.Repository
-	sessionRepo     *sessionrepo.Repository
-	userRepo        *usersrepo.Repository
-	emailVerifyRepo *emailverifyrepo.Repository
+	db          database.PgPool
+	authRepo    *authrepo.Repository
+	sessionRepo *sessionrepo.Repository
+	userRepo    *usersrepo.Repository
 
 	mailer        mailer.Mailer
 	publicBaseURL string
@@ -35,6 +33,13 @@ type Config struct {
 	SessionTTL time.Duration
 }
 
+type LoginUnlockResult struct {
+	SessionID          string
+	ExpiresAt          time.Time
+	VaultSalt          []byte
+	EncryptedMasterKey []byte
+}
+
 func NewService(
 	db database.PgPool,
 	authRepo *authrepo.Repository,
@@ -43,12 +48,11 @@ func NewService(
 	cfg Config,
 ) *Service {
 	return &Service{
-		db:              db,
-		authRepo:        authRepo,
-		sessionRepo:     sessionRepo,
-		userRepo:        userRepo,
-		emailVerifyRepo: emailverifyrepo.New(),
-		sessionTTL:      cfg.SessionTTL,
+		db:          db,
+		authRepo:    authRepo,
+		sessionRepo: sessionRepo,
+		userRepo:    userRepo,
+		sessionTTL:  cfg.SessionTTL,
 	}
 }
 
@@ -57,7 +61,19 @@ func (s *Service) SetMailer(m mailer.Mailer, publicBaseURL string) {
 	s.publicBaseURL = strings.TrimRight(strings.TrimSpace(publicBaseURL), "/")
 }
 
+func (s *Service) EmailVerificationEnabled() bool {
+	return s.mailer != nil && strings.TrimSpace(s.publicBaseURL) != ""
+}
+
 func (s *Service) WebLogin(ctx context.Context, email, password, lastIP string) (string, time.Time, validation.Errors, error) {
+	result, validationErrors, err := s.LoginAndLoadVault(ctx, email, password, lastIP)
+	if err != nil || (validationErrors != nil && validationErrors.HasAny()) {
+		return "", time.Time{}, validationErrors, err
+	}
+	return result.SessionID, result.ExpiresAt, nil, nil
+}
+
+func (s *Service) LoginAndLoadVault(ctx context.Context, email, password, lastIP string) (LoginUnlockResult, validation.Errors, error) {
 	email = strings.TrimSpace(email)
 	password = strings.TrimSpace(password)
 	if email == "" || password == "" {
@@ -68,12 +84,12 @@ func (s *Service) WebLogin(ctx context.Context, email, password, lastIP string) 
 		if password == "" {
 			validationErrors.Add("password", ErrPasswordRequired.Error())
 		}
-		return "", time.Time{}, validationErrors, nil
+		return LoginUnlockResult{}, validationErrors, nil
 	}
 
 	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		return "", time.Time{}, nil, err
+		return LoginUnlockResult{}, nil, err
 	}
 	defer func() {
 		_ = tx.Rollback(ctx)
@@ -84,33 +100,36 @@ func (s *Service) WebLogin(ctx context.Context, email, password, lastIP string) 
 		if errors.Is(err, ErrInvalidCredentials) {
 			validationErrors := validation.New()
 			validationErrors.Add(validation.GeneralKey, ErrLoginInvalid.Error())
-			return "", time.Time{}, validationErrors, nil
+			return LoginUnlockResult{}, validationErrors, nil
 		}
-		return "", time.Time{}, nil, err
+		return LoginUnlockResult{}, nil, err
 	}
 
-	if s.EmailVerificationEnabled() && !user.IsEmailVerified {
-		validationErrors := validation.New()
-		validationErrors.Add(validation.GeneralKey, ErrEmailNotVerified.Error())
-		return "", time.Time{}, validationErrors, nil
+	if len(user.VaultSalt) == 0 || len(user.EncryptedMasterKey) == 0 {
+		return LoginUnlockResult{}, nil, ErrVaultNotConfigured
 	}
 
 	sessionID, expiresAt, err := s.createSession(ctx, tx, user.ID, lastIP)
 	if err != nil {
-		return "", time.Time{}, nil, err
+		return LoginUnlockResult{}, nil, err
 	}
 
 	loginAt := time.Now()
 	if err := s.userRepo.UpdateLoginActivity(ctx, tx, user.ID, loginAt, lastIP); err != nil {
 		_ = tx.Rollback(ctx)
-		return "", time.Time{}, nil, err
+		return LoginUnlockResult{}, nil, err
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return "", time.Time{}, nil, err
+		return LoginUnlockResult{}, nil, err
 	}
 
-	return sessionID, expiresAt, nil, nil
+	return LoginUnlockResult{
+		SessionID:          sessionID,
+		ExpiresAt:          expiresAt,
+		VaultSalt:          user.VaultSalt,
+		EncryptedMasterKey: user.EncryptedMasterKey,
+	}, nil, nil
 }
 
 func (s *Service) LogoutSession(ctx context.Context, sessionID string) error {
@@ -198,8 +217,4 @@ func (s *Service) createSession(ctx context.Context, db database.PgExecutor, use
 		return "", time.Time{}, err
 	}
 	return sessionID, expiresAt, nil
-}
-
-func (s *Service) EmailVerificationEnabled() bool {
-	return s.mailer != nil && strings.TrimSpace(s.publicBaseURL) != ""
 }

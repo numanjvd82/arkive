@@ -189,8 +189,8 @@
   background: #161b22;
 }
 
-.storage-section:has(#storage-provider-local:checked) .s3-fields,
-.storage-section:has(#storage-provider-s3:checked) .local-fields {
+.storage-section:has(#storage_provider-local:checked) .s3-fields,
+.storage-section:has(#storage_provider-s3:checked) .local-fields {
   display: none;
 }
 

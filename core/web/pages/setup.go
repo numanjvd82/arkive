@@ -44,6 +44,7 @@ func SetupPage(props SetupPageProps) web.Page {
 		Title:   "Arkive · Setup",
 		Robots:  RobotsNoIndex,
 		CSS:     []string{"/web/pages/setup.css"},
+		JS:      []string{"/static/setup.js"},
 		Body:    setupBody(props),
 		HideNav: true,
 	}
@@ -59,6 +60,9 @@ func setupBody(props SetupPageProps) g.Node {
 			h.Form(
 				h.Class("setup-form"),
 				g.Attr("method", "POST"),
+				g.Attr("data-setup-vault-form", "true"),
+				h.Input(h.Type("hidden"), h.Name("vault_salt"), g.Attr("data-vault-salt-input", "true")),
+				h.Input(h.Type("hidden"), h.Name("encrypted_master_key"), g.Attr("data-encrypted-master-key-input", "true")),
 				h.Div(
 					h.Class("setup-header"),
 					h.Span(

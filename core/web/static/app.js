@@ -7,6 +7,7 @@ import { initSearchPalette } from "./features/search_palette.js";
 import { initSidebar } from "./features/sidebar.js";
 import { initToast } from "./features/toast.js";
 import { initUploads } from "./features/uploads.js";
+import { initVault } from "./features/vault.js";
 
 function initTheme() {
   const modes = ["dark", "system", "light"];
@@ -148,6 +149,7 @@ function initRateLimitFetch() {
 initTheme();
 initPasswordToggles();
 initCrypto();
+initVault();
 initToast();
 initRateLimitFetch();
 initDialogs();

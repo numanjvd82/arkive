@@ -24,6 +24,7 @@ func LoginPage(props LoginPageProps) web.Page {
 		Title:   "Arkive · Login",
 		Robots:  RobotsNoIndex,
 		CSS:     []string{"/web/pages/login.css"},
+		JS:      []string{"/static/login.js"},
 		Body:    loginBody(props),
 		HideNav: true,
 	}
@@ -60,6 +61,7 @@ func loginBody(props LoginPageProps) g.Node {
 						h.Form(
 							h.Class("auth-form"),
 							g.Attr("method", "POST"),
+							g.Attr("data-login-form", "true"),
 							g.If(
 								message != "",
 								h.P(

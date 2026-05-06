@@ -6,7 +6,7 @@ var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
 	ErrInvalidInput       = errors.New("invalid input")
 	ErrSessionNotFound    = errors.New("session not found")
-	ErrEmailNotVerified   = errors.New("please verify your email before logging in")
+	ErrVaultNotConfigured = errors.New("vault is not configured")
 
 	ErrEmailRequired    = errors.New("email is required")
 	ErrPasswordRequired = errors.New("password is required")

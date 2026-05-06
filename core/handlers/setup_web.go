@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/base64"
 	"errors"
 	"net/http"
 	"strings"
@@ -23,6 +24,25 @@ const (
 	recoveryPendingCookie = "arkive_setup_recovery_pending"
 	recoveryCookieTTL     = 15 * time.Minute
 )
+
+type setupForm struct {
+	BrandName          string `form:"brand_name"`
+	Email              string `form:"email"`
+	Password           string `form:"password"`
+	ConfirmPassword    string `form:"confirm_password"`
+	VaultSalt          string `form:"vault_salt"`
+	EncryptedMasterKey string `form:"encrypted_master_key"`
+	StorageProvider    string `form:"storage_provider"`
+	LocalPath          string `form:"local_path"`
+	StorageGB          string `form:"storage_gb"`
+	S3AccessKeyID      string `form:"s3_access_key_id"`
+	S3SecretAccessKey  string `form:"s3_secret_access_key"`
+	S3SessionToken     string `form:"s3_session_token"`
+	S3Bucket           string `form:"s3_bucket"`
+	S3Endpoint         string `form:"s3_endpoint"`
+	S3Region           string `form:"s3_region"`
+	S3UsePathStyle     string `form:"s3_use_path_style"`
+}
 
 func WebRoot(authSvc *auth.Service, setupSvc *setup.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -81,23 +101,6 @@ func WebSetupGet(svc *setup.Service) gin.HandlerFunc {
 }
 
 func WebSetupPost(svc *setup.Service) gin.HandlerFunc {
-	type setupForm struct {
-		BrandName         string `form:"brand_name"`
-		Email             string `form:"email"`
-		Password          string `form:"password"`
-		ConfirmPassword   string `form:"confirm_password"`
-		StorageProvider   string `form:"storage_provider"`
-		LocalPath         string `form:"local_path"`
-		StorageGB         string `form:"storage_gb"`
-		S3AccessKeyID     string `form:"s3_access_key_id"`
-		S3SecretAccessKey string `form:"s3_secret_access_key"`
-		S3SessionToken    string `form:"s3_session_token"`
-		S3Bucket          string `form:"s3_bucket"`
-		S3Endpoint        string `form:"s3_endpoint"`
-		S3Region          string `form:"s3_region"`
-		S3UsePathStyle    string `form:"s3_use_path_style"`
-	}
-
 	return func(c *gin.Context) {
 		var form setupForm
 		if err := c.ShouldBind(&form); err != nil {
@@ -123,13 +126,29 @@ func WebSetupPost(svc *setup.Service) gin.HandlerFunc {
 			renderSetupForm(c, form, validationErrors)
 			return
 		}
+		vaultSalt, err := decodeBase64Field(strings.TrimSpace(form.VaultSalt))
+		if err != nil {
+			renderSetupForm(c, form, validation.Errors{
+				validation.GeneralKey: "Vault bootstrap failed. Reload the page and try again.",
+			})
+			return
+		}
+		encryptedMasterKey, err := decodeBase64Field(strings.TrimSpace(form.EncryptedMasterKey))
+		if err != nil {
+			renderSetupForm(c, form, validation.Errors{
+				validation.GeneralKey: "Vault bootstrap failed. Reload the page and try again.",
+			})
+			return
+		}
 		user, validationErrors, err := svc.CreateInitialAdmin(c.Request.Context(), setup.InitialAdminInput{
-			BrandName:       form.BrandName,
-			Email:           form.Email,
-			Password:        form.Password,
-			ConfirmPassword: form.ConfirmPassword,
-			Storage:         storageSettings,
-			LocalStorageGB:  form.StorageGB,
+			BrandName:          form.BrandName,
+			Email:              form.Email,
+			Password:           form.Password,
+			ConfirmPassword:    form.ConfirmPassword,
+			VaultSalt:          vaultSalt,
+			EncryptedMasterKey: encryptedMasterKey,
+			Storage:            storageSettings,
+			LocalStorageGB:     form.StorageGB,
 		})
 		if len(validationErrors) > 0 {
 			renderSetupForm(c, form, validationErrors)
@@ -152,6 +171,13 @@ func WebSetupPost(svc *setup.Service) gin.HandlerFunc {
 		}
 		c.Redirect(http.StatusSeeOther, "/setup/recovery-key")
 	}
+}
+
+func decodeBase64Field(value string) ([]byte, error) {
+	if value == "" {
+		return nil, nil
+	}
+	return base64.StdEncoding.DecodeString(value)
 }
 
 func WebSetupRecoveryGet(svc *setup.Service) gin.HandlerFunc {
@@ -225,22 +251,7 @@ func WebSetupRecoveryPost(svc *setup.Service) gin.HandlerFunc {
 	}
 }
 
-func renderSetupForm(c *gin.Context, form struct {
-	BrandName         string `form:"brand_name"`
-	Email             string `form:"email"`
-	Password          string `form:"password"`
-	ConfirmPassword   string `form:"confirm_password"`
-	StorageProvider   string `form:"storage_provider"`
-	LocalPath         string `form:"local_path"`
-	StorageGB         string `form:"storage_gb"`
-	S3AccessKeyID     string `form:"s3_access_key_id"`
-	S3SecretAccessKey string `form:"s3_secret_access_key"`
-	S3SessionToken    string `form:"s3_session_token"`
-	S3Bucket          string `form:"s3_bucket"`
-	S3Endpoint        string `form:"s3_endpoint"`
-	S3Region          string `form:"s3_region"`
-	S3UsePathStyle    string `form:"s3_use_path_style"`
-}, validationErrors validation.Errors) {
+func renderSetupForm(c *gin.Context, form setupForm, validationErrors validation.Errors) {
 	web.Render(c, pages.SetupPage(pages.SetupPageProps{
 		Ctx:               pages.PageContext{},
 		Errors:            validationErrors,

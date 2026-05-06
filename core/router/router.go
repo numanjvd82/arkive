@@ -73,8 +73,6 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 		KeyPrefix:         "share:public:post",
 	}), handlers.PublicShareUnlock(shareService, uploadService))
 	r.GET("/login", handlers.WebLoginGet(authService, setupService))
-	r.POST("/login", handlers.WebLoginPost(authService, setupService))
-	r.GET("/verify-email", handlers.WebVerifyEmail(authService))
 	protected := r.Group("/")
 	protected.Use(middleware.RequireSessionRedirect(authService))
 	protected.GET("/dashboard", handlers.WebDashboard(uploadService))
@@ -87,6 +85,7 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 
 	api := r.Group("/api")
 	{
+		api.POST("/auth/login", handlers.APILogin(authService))
 		api.GET("/me", middleware.RequireSessionJSON(authService), handlers.APIMe(authService))
 		api.GET("/health", handlers.Health(db))
 		api.GET("/search", middleware.RequireSessionJSON(authService), handlers.APISearch(uploadService, shareService))

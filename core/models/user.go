@@ -3,18 +3,14 @@ package models
 import "time"
 
 type User struct {
-	ID              string
-	BrandName       string
-	Email           string
-	QuotaBytes      int64
-	UsedBytes       int64
-	ReservedBytes   int64
-	IsEmailVerified bool
-	IsBanned        bool
-	BanReason       *string
-	LastLoginAt     *time.Time
-	LastActiveAt    time.Time
-	LastIP          *string
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+	ID                 string
+	BrandName          string
+	Email              string
+	VaultSalt          []byte
+	EncryptedMasterKey []byte
+	QuotaBytes         int64
+	UsedBytes          int64
+	ReservedBytes      int64
+	LastLoginAt        *time.Time
+	CreatedAt          time.Time
 }
