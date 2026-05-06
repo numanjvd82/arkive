@@ -174,6 +174,11 @@
   font-weight: 700;
 }
 
+.recovery-word-placeholder .recovery-word-value {
+  color: rgba(189, 200, 209, 0.72);
+  font-weight: 500;
+}
+
 .recovery-divider {
   display: none;
   border: 1px solid rgba(62, 72, 79, 0.14);

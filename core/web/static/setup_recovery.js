@@ -3,7 +3,62 @@
   const submit = document.querySelector("[data-recovery-submit]");
   const downloadButtons = document.querySelectorAll("[data-recovery-download]");
   const printButtons = document.querySelectorAll("[data-recovery-print]");
-  const words = Array.from(document.querySelectorAll(".recovery-word"));
+  const grid = document.querySelector("[data-recovery-grid]");
+  const valueInput = document.querySelector("[data-recovery-value]");
+  const runtimeError = document.querySelector("[data-recovery-runtime-error]");
+  const form = document.querySelector(".recovery-form");
+  const STORAGE_KEY = "arkive.setup.recovery_key";
+
+  function setRuntimeError(message) {
+    if (runtimeError) {
+      runtimeError.hidden = !message;
+      runtimeError.textContent = message || "";
+    }
+    if (submit) {
+      submit.disabled = true;
+    }
+  }
+
+  function clearRuntimeError() {
+    if (runtimeError) {
+      runtimeError.hidden = true;
+      runtimeError.textContent = "";
+    }
+  }
+
+  function getRecoveryKey() {
+    if (!valueInput) {
+      return "";
+    }
+    return String(valueInput.value || "").trim();
+  }
+
+  function renderRecoveryKey(formattedKey) {
+    if (!valueInput || !grid) {
+      return;
+    }
+
+    const segments = formattedKey.split("-");
+    valueInput.value = formattedKey;
+    grid.innerHTML = "";
+
+    segments.forEach(function(segment, index) {
+      const item = document.createElement("div");
+      item.className = "recovery-word";
+
+      const label = document.createElement("span");
+      label.className = "recovery-word-index";
+      label.textContent = String(index + 1).padStart(2, "0");
+
+      const value = document.createElement("span");
+      value.className = "recovery-word-value";
+      value.textContent = segment;
+
+      item.appendChild(label);
+      item.appendChild(value);
+      grid.appendChild(item);
+    });
+  }
 
   function pdfEscape(text) {
     return String(text)
@@ -13,6 +68,7 @@
   }
 
   function buildRecoveryPDF() {
+    const recoveryKey = getRecoveryKey();
     const lines = [
       "Arkive Core - Vault Recovery Key",
       "",
@@ -20,19 +76,10 @@
       "Store this recovery key securely. Losing it will result in permanent data loss.",
       ""
     ];
+    const segments = recoveryKey ? recoveryKey.split("-") : [];
 
-    const phraseWords = [];
-
-    words.forEach(function(wordNode) {
-      const value = wordNode.querySelector(".recovery-word-value");
-      if (!value) {
-        return;
-      }
-      phraseWords.push(value.textContent.trim());
-    });
-
-    for (let i = 0; i < phraseWords.length; i += 4) {
-      lines.push(phraseWords.slice(i, i + 4).join("    "));
+    for (let i = 0; i < segments.length; i += 3) {
+      lines.push(segments.slice(i, i + 3).join("-"));
     }
 
     lines.push("");
@@ -91,6 +138,10 @@
   }
 
   function downloadRecoveryPDF() {
+    if (!getRecoveryKey()) {
+      setRuntimeError("Recovery key is unavailable. Reload the page and try again.");
+      return;
+    }
     const blob = buildRecoveryPDF();
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
@@ -108,12 +159,67 @@
     if (!checkbox || !submit) {
       return;
     }
-    submit.disabled = !checkbox.checked;
+    submit.disabled = !checkbox.checked || !getRecoveryKey() || (runtimeError ? !runtimeError.hidden : false);
+  }
+
+  function loadStoredKey(crypto) {
+    const stored = window.sessionStorage.getItem(STORAGE_KEY);
+    if (!stored) {
+      return "";
+    }
+
+    try {
+      crypto.parse_recovery_key(stored);
+      return stored;
+    } catch (_) {
+      window.sessionStorage.removeItem(STORAGE_KEY);
+      return "";
+    }
+  }
+
+  function createRecoveryKey(crypto) {
+    const recoveryKeyBytes = crypto.generate_recovery_key();
+    try {
+      return crypto.format_recovery_key(recoveryKeyBytes);
+    } finally {
+      if (crypto.zeroize) {
+        crypto.zeroize(recoveryKeyBytes);
+      }
+    }
+  }
+
+  function initializeRecoveryKey() {
+    return import("/static/vendor/arkive-crypto/arkive_crypto.js")
+      .then(function(mod) {
+        return mod.default("/static/vendor/arkive-crypto/arkive_crypto_bg.wasm")
+          .then(function() {
+            return mod;
+          });
+      })
+      .then(function(crypto) {
+        const existing = loadStoredKey(crypto);
+        const formattedKey = existing || createRecoveryKey(crypto);
+
+        window.sessionStorage.setItem(STORAGE_KEY, formattedKey);
+        renderRecoveryKey(formattedKey);
+        clearRuntimeError();
+        syncSubmitState();
+      })
+      .catch(function(error) {
+        console.error(error);
+        setRuntimeError("Recovery key generation failed. Reload the page and try again.");
+      });
   }
 
   if (checkbox) {
     checkbox.addEventListener("change", syncSubmitState);
     syncSubmitState();
+  }
+
+  if (form) {
+    form.addEventListener("submit", function() {
+      window.sessionStorage.removeItem(STORAGE_KEY);
+    });
   }
 
   downloadButtons.forEach(function(button) {
@@ -127,4 +233,6 @@
       window.print();
     });
   });
+
+  initializeRecoveryKey();
 })();

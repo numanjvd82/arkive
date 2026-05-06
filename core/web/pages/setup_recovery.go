@@ -1,7 +1,6 @@
 package pages
 
 import (
-	"fmt"
 	"strings"
 
 	lucide "github.com/eduardolat/gomponents-lucide"
@@ -14,7 +13,6 @@ import (
 
 type SetupRecoveryPageProps struct {
 	Ctx          PageContext
-	Words        []string
 	Error        string
 	Acknowledged bool
 }
@@ -31,8 +29,6 @@ func SetupRecoveryPage(props SetupRecoveryPageProps) web.Page {
 }
 
 func setupRecoveryBody(props SetupRecoveryPageProps) g.Node {
-	phrase := strings.Join(props.Words, " ")
-
 	return h.Div(
 		h.Class("recovery-page"),
 		h.Main(
@@ -72,7 +68,7 @@ func setupRecoveryBody(props SetupRecoveryPageProps) g.Node {
 								components.CopyButton(components.CopyButtonProps{
 									Text:           "",
 									Icon:           "copy",
-									Value:          phrase,
+									TargetID:       "recovery-key-value",
 									Variant:        "secondary",
 									Class:          "recovery-copy-button",
 									AriaLabel:      "Copy recovery key",
@@ -92,7 +88,29 @@ func setupRecoveryBody(props SetupRecoveryPageProps) g.Node {
 							),
 							h.Div(
 								h.Class("recovery-key-grid"),
-								g.Group(recoveryWordNodes(props.Words)),
+								g.Attr("data-recovery-grid", "true"),
+								h.Div(
+									h.Class("recovery-word recovery-word-placeholder"),
+									h.Span(
+										h.Class("recovery-word-index"),
+										g.Text(".."),
+									),
+									h.Span(
+										h.Class("recovery-word-value"),
+										g.Text("Generating recovery key..."),
+									),
+								),
+							),
+							h.Input(
+								h.Type("hidden"),
+								h.ID("recovery-key-value"),
+								g.Attr("data-recovery-value", "true"),
+								h.Name("recovery_key"),
+							),
+							h.P(
+								h.Class("form-error recovery-form-error"),
+								g.Attr("data-recovery-runtime-error", "true"),
+								g.Attr("hidden", "hidden"),
 							),
 						),
 						h.Div(
@@ -118,7 +136,7 @@ func setupRecoveryBody(props SetupRecoveryPageProps) g.Node {
 							),
 							h.Span(
 								h.Class("recovery-confirm-copy"),
-								g.Text("I have written down or otherwise securely backed up this 24-word recovery phrase. I understand that Arkive Core cannot recover this key for me and losing it will result in "),
+								g.Text("I have written down or otherwise securely backed up this recovery key. I understand that Arkive Core cannot recover this key for me and losing it will result in "),
 								h.Strong(g.Text("permanent data loss")),
 								g.Text("."),
 							),
@@ -152,22 +170,4 @@ func setupRecoveryBody(props SetupRecoveryPageProps) g.Node {
 			),
 		),
 	)
-}
-
-func recoveryWordNodes(words []string) []g.Node {
-	nodes := make([]g.Node, 0, len(words))
-	for i, word := range words {
-		nodes = append(nodes, h.Div(
-			h.Class("recovery-word"),
-			h.Span(
-				h.Class("recovery-word-index"),
-				g.Text(fmt.Sprintf("%02d", i+1)),
-			),
-			h.Span(
-				h.Class("recovery-word-value"),
-				g.Text(strings.TrimSpace(word)),
-			),
-		))
-	}
-	return nodes
 }

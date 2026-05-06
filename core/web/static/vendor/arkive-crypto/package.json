@@ -1,0 +1,15 @@
+{
+  "name": "arkive-crypto",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "arkive_crypto_bg.wasm",
+    "arkive_crypto.js",
+    "arkive_crypto.d.ts"
+  ],
+  "main": "arkive_crypto.js",
+  "types": "arkive_crypto.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

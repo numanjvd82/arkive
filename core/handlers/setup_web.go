@@ -24,15 +24,6 @@ const (
 	recoveryCookieTTL     = 15 * time.Minute
 )
 
-var recoveryDemoWords = []string{
-	"abandon", "justice", "degree", "canvas",
-	"theory", "vivid", "script", "matrix",
-	"pioneer", "quantum", "resilient", "sovereign",
-	"utility", "vacuum", "weather", "yonder",
-	"zenith", "alpine", "beacon", "cipher",
-	"dorsal", "engine", "fossil", "glider",
-}
-
 func WebRoot(authSvc *auth.Service, setupSvc *setup.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		initialized, err := setupSvc.IsInitialized(c.Request.Context())
@@ -187,8 +178,7 @@ func WebSetupRecoveryGet(svc *setup.Service) gin.HandlerFunc {
 		}
 
 		web.Render(c, pages.SetupRecoveryPage(pages.SetupRecoveryPageProps{
-			Ctx:   pages.PageContext{},
-			Words: recoveryDemoWords,
+			Ctx: pages.PageContext{},
 		}))
 	}
 }
@@ -220,7 +210,6 @@ func WebSetupRecoveryPost(svc *setup.Service) gin.HandlerFunc {
 		if !acknowledged {
 			web.Render(c, pages.SetupRecoveryPage(pages.SetupRecoveryPageProps{
 				Ctx:          pages.PageContext{},
-				Words:        recoveryDemoWords,
 				Error:        "You must confirm that the recovery key has been securely backed up.",
 				Acknowledged: false,
 			}))
