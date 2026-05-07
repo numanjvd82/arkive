@@ -39,7 +39,6 @@ export function initUploads() {
   const AUTO_CLEAR_SUCCESS_MS = 1800;
   const AUTO_CLEAR_CANCELLED_MS = 1200;
   const uploadPipeline = new MultipartUploadPipeline({
-    partSize: 32 * 1024 * 1024,
     concurrency: 4,
     retries: 3,
     onProgress: function(task, loaded, total) {

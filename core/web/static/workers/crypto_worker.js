@@ -8,9 +8,9 @@ function ensureCrypto() {
   if (readyPromise) {
     return readyPromise;
   }
-  readyPromise = initArkiveCrypto(
-    "/static/vendor/arkive-crypto/arkive_crypto_bg.wasm",
-  ).then(function () {
+  readyPromise = initArkiveCrypto({
+    module_or_path: "/static/vendor/arkive-crypto/arkive_crypto_bg.wasm",
+  }).then(function () {
     return arkiveCrypto;
   });
   return readyPromise;
@@ -35,6 +35,19 @@ function decodeBase64(value) {
     bytes[i] = binary.charCodeAt(i);
   }
   return bytes;
+}
+
+function toUint8Array(value) {
+  if (value instanceof Uint8Array) {
+    return value;
+  }
+  if (value instanceof ArrayBuffer) {
+    return new Uint8Array(value);
+  }
+  if (ArrayBuffer.isView(value)) {
+    return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+  }
+  return decodeBase64(value);
 }
 
 function aadBytes(value) {
@@ -102,6 +115,49 @@ async function handleMessage(message) {
       lockVault(crypto);
       return { unlocked: false };
     }
+    case "createSessionUnlock": {
+      if (!unlockedMasterKey) {
+        throw new Error("Vault is locked");
+      }
+      const sessionUnwrapKey = toUint8Array(message.params.sessionUnwrapKey);
+      try {
+        const wrappedMasterKey = crypto.wrap_master_key(
+          unlockedMasterKey,
+          sessionUnwrapKey,
+          aadBytes(message.params.aad),
+        );
+        try {
+          return {
+            wrappedMasterKey: encodeBase64(wrappedMasterKey),
+          };
+        } finally {
+          crypto.zeroize(wrappedMasterKey);
+        }
+      } finally {
+        crypto.zeroize(sessionUnwrapKey);
+      }
+    }
+    case "restoreSessionUnlock": {
+      const sessionUnwrapKey = toUint8Array(message.params.sessionUnwrapKey);
+      const wrappedMasterKey = decodeBase64(message.params.wrappedMasterKey);
+      try {
+        const masterKey = crypto.unwrap_master_key(
+          wrappedMasterKey,
+          sessionUnwrapKey,
+          aadBytes(message.params.aad),
+        );
+        try {
+          lockVault(crypto);
+          unlockedMasterKey = masterKey.slice();
+          return { unlocked: true };
+        } finally {
+          crypto.zeroize(masterKey);
+        }
+      } finally {
+        crypto.zeroize(sessionUnwrapKey);
+        crypto.zeroize(wrappedMasterKey);
+      }
+    }
     case "generateFileKey": {
       const fileKey = crypto.generate_file_key();
       try {
@@ -159,7 +215,7 @@ async function handleMessage(message) {
       if (!fileKey) {
         throw new Error("Upload context is missing");
       }
-      const chunkBytes = decodeBase64(message.params.chunkBytes);
+      const chunkBytes = toUint8Array(message.params.chunkBytes);
       try {
         const encryptedChunk = crypto.encrypt_chunk(
           chunkBytes,
@@ -170,7 +226,7 @@ async function handleMessage(message) {
           const encryptedHash = crypto.hash_bytes_blake3(encryptedChunk);
           try {
             return {
-              encryptedChunk: encodeBase64(encryptedChunk),
+              encryptedChunk: encryptedChunk.slice(),
               encryptedHash: encodeBase64(encryptedHash),
               encryptedSize: encryptedChunk.length,
             };
@@ -283,11 +339,15 @@ self.addEventListener("message", function (event) {
   const payload = event.data || {};
   handleMessage(payload)
     .then(function (result) {
+      const transfer = [];
+      if (result && result.encryptedChunk instanceof Uint8Array) {
+        transfer.push(result.encryptedChunk.buffer);
+      }
       self.postMessage({
         id: payload.id,
         ok: true,
         result: result,
-      });
+      }, transfer);
     })
     .catch(function (error) {
       self.postMessage({

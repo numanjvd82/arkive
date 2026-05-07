@@ -96,13 +96,19 @@
     apiLogin(email, password)
       .then(function(data) {
         return window.ArkiveVault.unlockVault(password, data.salt, data.encryptedMasterKey)
-          .then(function() {
+          .then(async function() {
+            if (typeof window.ArkiveVault.persistSessionUnlock === "function") {
+              await window.ArkiveVault.persistSessionUnlock();
+            }
             if (passwordInput) {
               passwordInput.value = "";
             }
             window.location.href = data.redirectTo || "/dashboard";
           })
           .catch(function(error) {
+            if (typeof window.ArkiveVault.clearSessionUnlock === "function") {
+              window.ArkiveVault.clearSessionUnlock();
+            }
             return rollbackSession().then(function() {
               throw error;
             });
