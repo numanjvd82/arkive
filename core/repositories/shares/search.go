@@ -25,9 +25,9 @@ func (r *Repository) SearchSharesForUser(ctx context.Context, db database.PgExec
 		s.revoked_at,
 		s.created_at,
 		s.updated_at,
-		f.filename,
-		f.content_type,
-		f.size_bytes,
+		concat('file-', left(f.id::text, 8)),
+		'application/octet-stream',
+		f.plaintext_size,
 		f.updated_at
 	FROM
 		shares s
@@ -36,7 +36,7 @@ func (r *Repository) SearchSharesForUser(ctx context.Context, db database.PgExec
 	WHERE
 		s.owner_user_id = $1
 		AND (
-			f.filename ILIKE $2
+			f.id::text ILIKE $2
 			OR s.token ILIKE $2
 		)
 	ORDER BY

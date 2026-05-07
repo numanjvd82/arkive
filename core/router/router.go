@@ -100,6 +100,16 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 			Burst:             10,
 			KeyPrefix:         "upload:start",
 		}), handlers.APIUploadStart(uploadService))
+		apiUploads.POST("/:id/parts", middleware.RateLimit(middleware.RateLimitConfig{
+			RequestsPerMinute: 120,
+			Burst:             240,
+			KeyPrefix:         "upload:part:record",
+		}), handlers.APIUploadPartRecord(uploadService))
+		apiUploads.POST("/:id/parts/:part/presign", middleware.RateLimit(middleware.RateLimitConfig{
+			RequestsPerMinute: 120,
+			Burst:             240,
+			KeyPrefix:         "upload:part:presign",
+		}), handlers.APIUploadPartPresign(uploadService))
 		apiUploads.POST("/:id/complete", middleware.RateLimit(middleware.RateLimitConfig{
 			RequestsPerMinute: 10,
 			Burst:             20,

@@ -1,5 +1,199 @@
 /* @ts-self-types="./arkive_crypto.d.ts" */
 
+export class Blake3Hasher {
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        Blake3HasherFinalization.unregister(this);
+        return ptr;
+    }
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_blake3hasher_free(ptr, 0);
+    }
+    /**
+     * @returns {Uint8Array}
+     */
+    digest() {
+        const ret = wasm.blake3hasher_digest(this.__wbg_ptr);
+        if (ret[3]) {
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        var v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v1;
+    }
+    /**
+     * @returns {string}
+     */
+    digest_hex() {
+        let deferred2_0;
+        let deferred2_1;
+        try {
+            const ret = wasm.blake3hasher_digest_hex(this.__wbg_ptr);
+            var ptr1 = ret[0];
+            var len1 = ret[1];
+            if (ret[3]) {
+                ptr1 = 0; len1 = 0;
+                throw takeFromExternrefTable0(ret[2]);
+            }
+            deferred2_0 = ptr1;
+            deferred2_1 = len1;
+            return getStringFromWasm0(ptr1, len1);
+        } finally {
+            wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+        }
+    }
+    /**
+     * @returns {Uint8Array}
+     */
+    finalize() {
+        const ret = wasm.blake3hasher_finalize(this.__wbg_ptr);
+        if (ret[3]) {
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        var v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v1;
+    }
+    /**
+     * @returns {string}
+     */
+    finalize_hex() {
+        let deferred2_0;
+        let deferred2_1;
+        try {
+            const ret = wasm.blake3hasher_finalize_hex(this.__wbg_ptr);
+            var ptr1 = ret[0];
+            var len1 = ret[1];
+            if (ret[3]) {
+                ptr1 = 0; len1 = 0;
+                throw takeFromExternrefTable0(ret[2]);
+            }
+            deferred2_0 = ptr1;
+            deferred2_1 = len1;
+            return getStringFromWasm0(ptr1, len1);
+        } finally {
+            wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+        }
+    }
+    constructor() {
+        const ret = wasm.blake3hasher_new();
+        this.__wbg_ptr = ret;
+        Blake3HasherFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+    /**
+     * @param {Uint8Array} data
+     */
+    update(data) {
+        const ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.blake3hasher_update(this.__wbg_ptr, ptr0, len0);
+        if (ret[1]) {
+            throw takeFromExternrefTable0(ret[0]);
+        }
+    }
+}
+if (Symbol.dispose) Blake3Hasher.prototype[Symbol.dispose] = Blake3Hasher.prototype.free;
+
+export class Sha256Hasher {
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        Sha256HasherFinalization.unregister(this);
+        return ptr;
+    }
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_sha256hasher_free(ptr, 0);
+    }
+    /**
+     * @returns {Uint8Array}
+     */
+    digest() {
+        const ret = wasm.sha256hasher_digest(this.__wbg_ptr);
+        if (ret[3]) {
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        var v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v1;
+    }
+    /**
+     * @returns {string}
+     */
+    digest_hex() {
+        let deferred2_0;
+        let deferred2_1;
+        try {
+            const ret = wasm.sha256hasher_digest_hex(this.__wbg_ptr);
+            var ptr1 = ret[0];
+            var len1 = ret[1];
+            if (ret[3]) {
+                ptr1 = 0; len1 = 0;
+                throw takeFromExternrefTable0(ret[2]);
+            }
+            deferred2_0 = ptr1;
+            deferred2_1 = len1;
+            return getStringFromWasm0(ptr1, len1);
+        } finally {
+            wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+        }
+    }
+    /**
+     * @returns {Uint8Array}
+     */
+    finalize() {
+        const ret = wasm.sha256hasher_finalize(this.__wbg_ptr);
+        if (ret[3]) {
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        var v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v1;
+    }
+    /**
+     * @returns {string}
+     */
+    finalize_hex() {
+        let deferred2_0;
+        let deferred2_1;
+        try {
+            const ret = wasm.sha256hasher_finalize_hex(this.__wbg_ptr);
+            var ptr1 = ret[0];
+            var len1 = ret[1];
+            if (ret[3]) {
+                ptr1 = 0; len1 = 0;
+                throw takeFromExternrefTable0(ret[2]);
+            }
+            deferred2_0 = ptr1;
+            deferred2_1 = len1;
+            return getStringFromWasm0(ptr1, len1);
+        } finally {
+            wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+        }
+    }
+    constructor() {
+        const ret = wasm.sha256hasher_new();
+        this.__wbg_ptr = ret;
+        Sha256HasherFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+    /**
+     * @param {Uint8Array} data
+     */
+    update(data) {
+        const ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.sha256hasher_update(this.__wbg_ptr, ptr0, len0);
+        if (ret[1]) {
+            throw takeFromExternrefTable0(ret[0]);
+        }
+    }
+}
+if (Symbol.dispose) Sha256Hasher.prototype[Symbol.dispose] = Sha256Hasher.prototype.free;
+
 /**
  * @param {Uint8Array} encrypted
  * @param {Uint8Array} key
@@ -14,6 +208,28 @@ export function decrypt_chunk(encrypted, key, aad) {
     const ptr2 = passArray8ToWasm0(aad, wasm.__wbindgen_malloc);
     const len2 = WASM_VECTOR_LEN;
     const ret = wasm.decrypt_chunk(ptr0, len0, ptr1, len1, ptr2, len2);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v4 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v4;
+}
+
+/**
+ * @param {Uint8Array} encrypted_metadata
+ * @param {Uint8Array} master_key
+ * @param {Uint8Array} aad
+ * @returns {Uint8Array}
+ */
+export function decrypt_file_metadata(encrypted_metadata, master_key, aad) {
+    const ptr0 = passArray8ToWasm0(encrypted_metadata, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(master_key, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(aad, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ret = wasm.decrypt_file_metadata(ptr0, len0, ptr1, len1, ptr2, len2);
     if (ret[3]) {
         throw takeFromExternrefTable0(ret[2]);
     }
@@ -55,6 +271,28 @@ export function encrypt_chunk(chunk, key, aad) {
     const ptr2 = passArray8ToWasm0(aad, wasm.__wbindgen_malloc);
     const len2 = WASM_VECTOR_LEN;
     const ret = wasm.encrypt_chunk(ptr0, len0, ptr1, len1, ptr2, len2);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v4 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v4;
+}
+
+/**
+ * @param {Uint8Array} metadata_json
+ * @param {Uint8Array} master_key
+ * @param {Uint8Array} aad
+ * @returns {Uint8Array}
+ */
+export function encrypt_file_metadata(metadata_json, master_key, aad) {
+    const ptr0 = passArray8ToWasm0(metadata_json, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(master_key, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(aad, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ret = wasm.encrypt_file_metadata(ptr0, len0, ptr1, len1, ptr2, len2);
     if (ret[3]) {
         throw takeFromExternrefTable0(ret[2]);
     }
@@ -136,6 +374,70 @@ export function generate_share_key() {
     var v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
     return v1;
+}
+
+/**
+ * @param {Uint8Array} data
+ * @returns {Uint8Array}
+ */
+export function hash_bytes_blake3(data) {
+    const ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.hash_bytes_blake3(ptr0, len0);
+    var v2 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v2;
+}
+
+/**
+ * @param {Uint8Array} data
+ * @returns {string}
+ */
+export function hash_bytes_blake3_hex(data) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.hash_bytes_blake3_hex(ptr0, len0);
+        deferred2_0 = ret[0];
+        deferred2_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
+ * @param {Uint8Array} data
+ * @returns {Uint8Array}
+ */
+export function hash_bytes_sha256(data) {
+    const ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.hash_bytes_sha256(ptr0, len0);
+    var v2 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v2;
+}
+
+/**
+ * @param {Uint8Array} data
+ * @returns {string}
+ */
+export function hash_bytes_sha256_hex(data) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.hash_bytes_sha256_hex(ptr0, len0);
+        deferred2_0 = ret[0];
+        deferred2_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+    }
 }
 
 /**
@@ -404,6 +706,13 @@ function __wbg_get_imports() {
         "./arkive_crypto_bg.js": import0,
     };
 }
+
+const Blake3HasherFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_blake3hasher_free(ptr, 1));
+const Sha256HasherFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_sha256hasher_free(ptr, 1));
 
 function addToExternrefTable0(obj) {
     const idx = wasm.__externref_table_alloc();

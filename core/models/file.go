@@ -17,4 +17,16 @@ type File struct {
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
 	ExpiresAt            *time.Time
+
+	EncryptedMetadata []byte
+	EncryptedFileKey  []byte
+	EncryptionVersion int16
+	ChunkSize         int64
+	ChunkCount        int
+	PlaintextSize     int64
+	EncryptedSize     *int64
+	EncryptedHash     []byte
+	UploadStatus      string
+	StorageBackend    string
+	CompletedAt       *time.Time
 }

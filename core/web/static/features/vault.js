@@ -83,16 +83,15 @@ export function initVault() {
 
   window.ArkiveVault = {
     __arkiveReady: true,
-    unlockVault: function(password, salt, encryptedMasterKey) {
-      return callWorker("unlockVault", {
+    unlockVault: async function(password, salt, encryptedMasterKey) {
+      const result = await callWorker("unlockVault", {
         password: String(password || ""),
         salt: String(salt || ""),
         encryptedMasterKey: String(encryptedMasterKey || ""),
         aad: "arkive:master-key:v1"
-      }).then(function(result) {
-        unlocked = !!(result && result.unlocked);
-        return result;
       });
+      unlocked = !!(result && result.unlocked);
+      return result;
     },
     lock: async function() {
       unlocked = false;
@@ -103,6 +102,27 @@ export function initVault() {
     },
     generateFileKey: function() {
       return callWorker("generateFileKey", {});
+    },
+    prepareUpload: function(uploadToken, metadata, totalParts) {
+      return callWorker("prepareUpload", {
+        uploadToken: String(uploadToken || ""),
+        metadata: metadata || {},
+        totalParts: Number(totalParts || 0),
+        metadataAad: "arkive:file-metadata:v1",
+        fileKeyAad: "arkive:file-key:v1"
+      });
+    },
+    encryptUploadPart: function(uploadToken, chunkBytes, aad) {
+      return callWorker("encryptUploadPart", {
+        uploadToken: String(uploadToken || ""),
+        chunkBytes: toBase64(chunkBytes),
+        aad: aad || ""
+      });
+    },
+    finalizeUpload: function(uploadToken) {
+      return callWorker("finalizeUpload", {
+        uploadToken: String(uploadToken || "")
+      });
     },
     encryptFileMetadata: function(metadata, masterKey) {
       return callWorker("encryptFileMetadata", {

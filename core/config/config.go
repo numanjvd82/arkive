@@ -81,7 +81,7 @@ func Load() (Config, error) {
 		maxFileSizeBytes = n
 	}
 
-	maxUploadConcurrency := 10
+	maxUploadConcurrency := 4
 	if v := os.Getenv("MAX_UPLOAD_CONCURRENCY"); v != "" {
 		n, err := parseInt(v)
 		if err != nil || n <= 0 {

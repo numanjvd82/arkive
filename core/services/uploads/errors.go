@@ -14,6 +14,7 @@ var (
 	ErrQueueLimitReached = errors.New("upload queue limit reached")
 	ErrConcurrentLimit   = errors.New("upload already in progress")
 	ErrUploadCancelled   = errors.New("upload cancelled")
+	ErrPartsRequired     = errors.New("all upload parts are required")
 )
 
 var (

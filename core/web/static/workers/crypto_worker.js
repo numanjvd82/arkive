@@ -2,6 +2,7 @@ import initArkiveCrypto, * as arkiveCrypto from "../vendor/arkive-crypto/arkive_
 
 let readyPromise = null;
 let unlockedMasterKey = null;
+let activeUploads = new Map();
 
 function ensureCrypto() {
   if (readyPromise) {
@@ -51,6 +52,10 @@ function lockVault(crypto) {
     crypto.zeroize(unlockedMasterKey);
     unlockedMasterKey = null;
   }
+  activeUploads.forEach(function(fileKey) {
+    crypto.zeroize(fileKey);
+  });
+  activeUploads.clear();
 }
 
 function activeMasterKey(supplied) {
@@ -104,6 +109,89 @@ async function handleMessage(message) {
       } finally {
         crypto.zeroize(fileKey);
       }
+    }
+    case "prepareUpload": {
+      const uploadToken = String(message.params.uploadToken || "");
+      if (!uploadToken) {
+        throw new Error("Missing upload token");
+      }
+      if (!unlockedMasterKey) {
+        throw new Error("Vault is locked");
+      }
+      const metadata = new TextEncoder().encode(
+        JSON.stringify(message.params.metadata || {}),
+      );
+      const fileKey = crypto.generate_file_key();
+      try {
+        const encryptedMetadata = crypto.encrypt_chunk(
+          metadata,
+          unlockedMasterKey,
+          aadBytes(message.params.metadataAad),
+        );
+        try {
+          const encryptedFileKey = crypto.wrap_file_key(
+            fileKey,
+            unlockedMasterKey,
+            aadBytes(message.params.fileKeyAad),
+          );
+          try {
+            activeUploads.set(uploadToken, fileKey.slice());
+            return {
+              encryptedMetadata: encodeBase64(encryptedMetadata),
+              encryptedFileKey: encodeBase64(encryptedFileKey),
+              totalParts: Number(message.params.totalParts || 0),
+              encryptionVersion: 1,
+            };
+          } finally {
+            crypto.zeroize(encryptedFileKey);
+          }
+        } finally {
+          crypto.zeroize(encryptedMetadata);
+        }
+      } finally {
+        crypto.zeroize(metadata);
+        crypto.zeroize(fileKey);
+      }
+    }
+    case "encryptUploadPart": {
+      const uploadToken = String(message.params.uploadToken || "");
+      const fileKey = activeUploads.get(uploadToken);
+      if (!fileKey) {
+        throw new Error("Upload context is missing");
+      }
+      const chunkBytes = decodeBase64(message.params.chunkBytes);
+      try {
+        const encryptedChunk = crypto.encrypt_chunk(
+          chunkBytes,
+          fileKey,
+          aadBytes(message.params.aad),
+        );
+        try {
+          const encryptedHash = crypto.hash_bytes_blake3(encryptedChunk);
+          try {
+            return {
+              encryptedChunk: encodeBase64(encryptedChunk),
+              encryptedHash: encodeBase64(encryptedHash),
+              encryptedSize: encryptedChunk.length,
+            };
+          } finally {
+            crypto.zeroize(encryptedHash);
+          }
+        } finally {
+          crypto.zeroize(encryptedChunk);
+        }
+      } finally {
+        crypto.zeroize(chunkBytes);
+      }
+    }
+    case "finalizeUpload": {
+      const uploadToken = String(message.params.uploadToken || "");
+      const fileKey = activeUploads.get(uploadToken);
+      if (fileKey) {
+        crypto.zeroize(fileKey);
+        activeUploads.delete(uploadToken);
+      }
+      return { cleared: true };
     }
     case "encryptFileMetadata": {
       const master = activeMasterKey(message.params.masterKey);

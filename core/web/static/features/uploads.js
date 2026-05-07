@@ -1,3 +1,6 @@
+import { resolveUploadChunkSize } from "./file_chunks.js";
+import { MultipartUploadPipeline } from "./upload_pipeline.js";
+
 export function initUploads() {
   if (document.body.hasAttribute("data-uploads-ready")) {
     return;
@@ -32,9 +35,18 @@ export function initUploads() {
 
   const MAX_QUEUE_ITEMS = 300;
   const MAX_FILE_SIZE = 10 * 1024 * 1024 * 1024;
-  const MAX_CONCURRENCY = 10;
+  const MAX_CONCURRENCY = 4;
   const AUTO_CLEAR_SUCCESS_MS = 1800;
   const AUTO_CLEAR_CANCELLED_MS = 1200;
+  const uploadPipeline = new MultipartUploadPipeline({
+    partSize: 32 * 1024 * 1024,
+    concurrency: 4,
+    retries: 3,
+    onProgress: function(task, loaded, total) {
+      updateTaskProgress(task, loaded, total);
+      updatePrimaryProgress();
+    }
+  });
 
   let primaryTaskId = null;
   let batchCounter = 0;
@@ -626,6 +638,9 @@ export function initUploads() {
     if (task.xhr) {
       task.xhr.abort();
     }
+    if (task.uploadSessionId) {
+      uploadPipeline.abort(task);
+    }
     task.status = "error";
     task.statusText = "Upload failed.";
     task.errorMessage = uploadErrorMessage(err, "Upload failed. Check the file and try again.");
@@ -634,7 +649,11 @@ export function initUploads() {
       return;
     }
     try {
-      await cancelUpload(fileId);
+      if (task.uploadSessionId) {
+        await uploadPipeline.cancelSession(task.uploadSessionId);
+      } else {
+        await cancelUpload(fileId);
+      }
     } catch (_) {}
   }
 
@@ -650,10 +669,18 @@ export function initUploads() {
       return;
     }
     try {
-      var resp = await startUpload(task);
-      await uploadSingle(task, resp);
+      await uploadPipeline.upload(task);
+      clearState(signature);
+      task.status = "complete";
+      task.statusText = "Upload complete: " + task.file.name;
+      task.errorMessage = "";
+      updateTaskProgress(task, task.file.size, task.file.size);
+      toastUploadSuccess(task.file.name);
     } catch (err) {
       task.lastError = err;
+      if (task.uploadSessionId && task.status !== "cancelled") {
+        await window.ArkiveVault.finalizeUpload(task.uploadToken || "").catch(function() {});
+      }
       if (task.status !== "error" && task.status !== "cancelled") {
         await cleanupFailure(task, task.fileId || null, signature, err);
       }
@@ -707,6 +734,7 @@ export function initUploads() {
     var task = {
       id: ++fileCounter,
       file: file,
+      chunkSize: resolveUploadChunkSize(file.size),
       status: "queued",
       statusText: "Queued: " + file.name,
       uploadedBytes: 0,
@@ -742,6 +770,7 @@ export function initUploads() {
     activeTasks.forEach(function(task) {
       if (task.status === "uploading") {
         task.canceled = true;
+        uploadPipeline.abort(task);
         if (task.xhr) {
           task.xhr.abort();
         }
@@ -855,6 +884,7 @@ export function initUploads() {
         return;
       }
       if (task.status === "uploading") {
+        uploadPipeline.abort(task);
         if (task.xhr) {
           task.xhr.abort();
         }

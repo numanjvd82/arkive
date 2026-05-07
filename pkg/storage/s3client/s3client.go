@@ -9,8 +9,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 
 	"arkive/pkg/header"
+	"arkive/pkg/storage"
 )
 
 type Config struct {
@@ -116,6 +118,107 @@ func (c *Client) DeleteObject(ctx context.Context, key string) error {
 	_, err := c.s3.DeleteObject(ctx, &s3.DeleteObjectInput{
 		Bucket: aws.String(c.bucket),
 		Key:    aws.String(key),
+	})
+	return err
+}
+
+func (c *Client) CreateMultipartUpload(ctx context.Context, key, contentType string) (string, error) {
+	if key == "" {
+		return "", errors.New("key is required")
+	}
+
+	input := &s3.CreateMultipartUploadInput{
+		Bucket: aws.String(c.bucket),
+		Key:    aws.String(key),
+	}
+	if contentType != "" {
+		input.ContentType = aws.String(contentType)
+	}
+
+	out, err := c.s3.CreateMultipartUpload(ctx, input)
+	if err != nil {
+		return "", err
+	}
+	return aws.ToString(out.UploadId), nil
+}
+
+func (c *Client) PresignUploadPart(ctx context.Context, key, uploadID string, partNumber int32, expires time.Duration) (string, error) {
+	if key == "" {
+		return "", errors.New("key is required")
+	}
+	if uploadID == "" {
+		return "", errors.New("uploadID is required")
+	}
+	if partNumber <= 0 {
+		return "", errors.New("partNumber must be greater than 0")
+	}
+
+	input := &s3.UploadPartInput{
+		Bucket:     aws.String(c.bucket),
+		Key:        aws.String(key),
+		UploadId:   aws.String(uploadID),
+		PartNumber: aws.Int32(partNumber),
+	}
+
+	var opts []func(*s3.PresignOptions)
+	if expires > 0 {
+		opts = append(opts, s3.WithPresignExpires(expires))
+	}
+
+	out, err := c.presign.PresignUploadPart(ctx, input, opts...)
+	if err != nil {
+		return "", err
+	}
+	return out.URL, nil
+}
+
+func (c *Client) CompleteMultipartUpload(ctx context.Context, key, uploadID string, parts []storage.CompletedPart) error {
+	if key == "" {
+		return errors.New("key is required")
+	}
+	if uploadID == "" {
+		return errors.New("uploadID is required")
+	}
+	if len(parts) == 0 {
+		return errors.New("parts are required")
+	}
+
+	completed := make([]types.CompletedPart, 0, len(parts))
+	for _, part := range parts {
+		if part.PartNumber <= 0 || part.ETag == "" {
+			return errors.New("invalid completed part")
+		}
+		partNumber := part.PartNumber
+		etag := part.ETag
+		completed = append(completed, types.CompletedPart{
+			PartNumber: &partNumber,
+			ETag:       &etag,
+		})
+	}
+
+	_, err := c.s3.CompleteMultipartUpload(ctx, &s3.CompleteMultipartUploadInput{
+		Bucket:   aws.String(c.bucket),
+		Key:      aws.String(key),
+		UploadId: aws.String(uploadID),
+		MultipartUpload: &types.CompletedMultipartUpload{
+			Parts: completed,
+		},
+	})
+	return err
+}
+
+func (c *Client) AbortMultipartUpload(ctx context.Context, key, uploadID string) error {
+	if key == "" {
+		return errors.New("key is required")
+	}
+	if uploadID == "" {
+		return errors.New("uploadID is required")
+	}
+
+	_, err := c.s3.AbortMultipartUpload(ctx, &s3.AbortMultipartUploadInput{
+		Bucket:   aws.String(c.bucket),
+		Key:      aws.String(key),
+		UploadId: aws.String(uploadID),
 	})
 	return err
 }

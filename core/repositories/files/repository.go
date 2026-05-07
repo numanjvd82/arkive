@@ -14,51 +14,191 @@ func New() *Repository {
 	return &Repository{}
 }
 
+func hydrateLegacyFile(file *models.File) {
+	if file == nil {
+		return
+	}
+	if file.Filename == "" {
+		file.Filename = "file-" + shortID(file.ID)
+	}
+	if file.ContentType == "" {
+		file.ContentType = "application/octet-stream"
+	}
+	if file.SizeBytes == 0 {
+		file.SizeBytes = file.PlaintextSize
+	}
+	if file.Status == "" {
+		file.Status = file.UploadStatus
+	}
+	if file.Bucket == "" {
+		file.Bucket = file.StorageBackend
+	}
+}
+
+func shortID(value string) string {
+	if len(value) >= 8 {
+		return value[:8]
+	}
+	return value
+}
+
 func (r *Repository) CreateFile(ctx context.Context, db database.PgExecutor, file models.File) (models.File, error) {
 	var created models.File
 	query := `INSERT INTO files
-		(user_id, bucket, object_key, filename, content_type, size_bytes, status, expires_at)
+		(user_id, encrypted_metadata, encrypted_file_key, encryption_version, chunk_size, chunk_count, plaintext_size, encrypted_size, encrypted_hash, upload_status, storage_backend, expires_at)
 	VALUES
-		($1, $2, $3, $4, $5, $6, $7, $8)
+		($1, $2, $3, 1, $4, 1, $5, $5, NULL, $6, $7, $8)
 	RETURNING
-		id, user_id, bucket, object_key, filename, content_type, size_bytes,
-		video_width, video_height, video_duration_seconds,
-		status, created_at, updated_at, expires_at`
+		id, user_id, encrypted_metadata, encrypted_file_key, encryption_version, chunk_size, chunk_count,
+		plaintext_size, encrypted_size, encrypted_hash, upload_status, storage_backend, completed_at, created_at, updated_at, expires_at`
 	if err := db.QueryRow(ctx, query,
 		file.UserID,
-		file.Bucket,
-		file.ObjectKey,
-		file.Filename,
-		file.ContentType,
+		[]byte{},
+		[]byte{},
 		file.SizeBytes,
-		file.Status,
+		file.SizeBytes,
+		"pending",
+		"local",
 		file.ExpiresAt,
 	).Scan(
 		&created.ID,
 		&created.UserID,
-		&created.Bucket,
-		&created.ObjectKey,
-		&created.Filename,
-		&created.ContentType,
-		&created.SizeBytes,
-		&created.VideoWidth,
-		&created.VideoHeight,
-		&created.VideoDurationSeconds,
-		&created.Status,
+		&created.EncryptedMetadata,
+		&created.EncryptedFileKey,
+		&created.EncryptionVersion,
+		&created.ChunkSize,
+		&created.ChunkCount,
+		&created.PlaintextSize,
+		&created.EncryptedSize,
+		&created.EncryptedHash,
+		&created.UploadStatus,
+		&created.StorageBackend,
+		&created.CompletedAt,
 		&created.CreatedAt,
 		&created.UpdatedAt,
 		&created.ExpiresAt,
 	); err != nil {
 		return models.File{}, err
 	}
+	hydrateLegacyFile(&created)
 	return created, nil
+}
+
+func (r *Repository) CreateEncryptedFile(ctx context.Context, db database.PgExecutor, file models.File) (models.File, error) {
+	var created models.File
+	query := `INSERT INTO files
+		(user_id, encrypted_metadata, encrypted_file_key, encryption_version, chunk_size, chunk_count, plaintext_size, encrypted_size, encrypted_hash, upload_status, storage_backend, expires_at)
+	VALUES
+		($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+	RETURNING
+		id, user_id, encrypted_metadata, encrypted_file_key, encryption_version, chunk_size, chunk_count,
+		plaintext_size, encrypted_size, encrypted_hash, upload_status, storage_backend, completed_at, created_at, updated_at, expires_at`
+	if err := db.QueryRow(ctx, query,
+		file.UserID,
+		file.EncryptedMetadata,
+		file.EncryptedFileKey,
+		file.EncryptionVersion,
+		file.ChunkSize,
+		file.ChunkCount,
+		file.PlaintextSize,
+		file.EncryptedSize,
+		file.EncryptedHash,
+		file.UploadStatus,
+		file.StorageBackend,
+		file.ExpiresAt,
+	).Scan(
+		&created.ID,
+		&created.UserID,
+		&created.EncryptedMetadata,
+		&created.EncryptedFileKey,
+		&created.EncryptionVersion,
+		&created.ChunkSize,
+		&created.ChunkCount,
+		&created.PlaintextSize,
+		&created.EncryptedSize,
+		&created.EncryptedHash,
+		&created.UploadStatus,
+		&created.StorageBackend,
+		&created.CompletedAt,
+		&created.CreatedAt,
+		&created.UpdatedAt,
+		&created.ExpiresAt,
+	); err != nil {
+		return models.File{}, err
+	}
+	hydrateLegacyFile(&created)
+	return created, nil
+}
+
+func (r *Repository) GetEncryptedFileForUser(ctx context.Context, db database.PgExecutor, fileID, userID string) (models.File, error) {
+	var file models.File
+	query := `SELECT
+		id, user_id, encrypted_metadata, encrypted_file_key, encryption_version, chunk_size, chunk_count,
+		plaintext_size, encrypted_size, encrypted_hash, upload_status, storage_backend, completed_at, created_at, updated_at, expires_at
+	FROM
+		files
+	WHERE
+		id = $1 AND user_id = $2`
+	if err := db.QueryRow(ctx, query, fileID, userID).Scan(
+		&file.ID,
+		&file.UserID,
+		&file.EncryptedMetadata,
+		&file.EncryptedFileKey,
+		&file.EncryptionVersion,
+		&file.ChunkSize,
+		&file.ChunkCount,
+		&file.PlaintextSize,
+		&file.EncryptedSize,
+		&file.EncryptedHash,
+		&file.UploadStatus,
+		&file.StorageBackend,
+		&file.CompletedAt,
+		&file.CreatedAt,
+		&file.UpdatedAt,
+		&file.ExpiresAt,
+	); err != nil {
+		return models.File{}, err
+	}
+	hydrateLegacyFile(&file)
+	return file, nil
+}
+
+func (r *Repository) MarkEncryptedFileComplete(ctx context.Context, db database.PgExecutor, fileID string, encryptedSize int64, encryptedHash []byte) error {
+	query := `UPDATE
+		files
+	SET
+		encrypted_size = $2,
+		encrypted_hash = $3,
+		upload_status = 'complete',
+		completed_at = now(),
+		expires_at = NULL,
+		updated_at = now()
+	WHERE
+		id = $1`
+	_, err := db.Exec(ctx, query, fileID, encryptedSize, encryptedHash)
+	return err
+}
+
+func (r *Repository) UpdateEncryptedFileStatusIf(ctx context.Context, db database.PgExecutor, fileID, status string, allowed []string) (bool, error) {
+	query := `UPDATE
+		files
+	SET
+		upload_status = $2,
+		updated_at = now()
+	WHERE
+		id = $1 AND upload_status = ANY($3)`
+	tag, err := db.Exec(ctx, query, fileID, status, allowed)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() > 0, nil
 }
 
 func (r *Repository) UpdateFileStatus(ctx context.Context, db database.PgExecutor, fileID, status string) error {
 	query := `UPDATE
 		files
 	SET
-		status = $2, updated_at = now()
+		upload_status = $2, updated_at = now()
 	WHERE
 		id = $1`
 	_, err := db.Exec(ctx, query, fileID, status)
@@ -69,9 +209,9 @@ func (r *Repository) UpdateFileStatusIf(ctx context.Context, db database.PgExecu
 	query := `UPDATE
 		files
 	SET
-		status = $2, updated_at = now()
+		upload_status = $2, updated_at = now()
 	WHERE
-		id = $1 AND status = ANY($3)`
+		id = $1 AND upload_status = ANY($3)`
 	tag, err := db.Exec(ctx, query, fileID, status, allowed)
 	if err != nil {
 		return false, err
@@ -83,7 +223,7 @@ func (r *Repository) UpdateFileSize(ctx context.Context, db database.PgExecutor,
 	query := `UPDATE
 		files
 	SET
-		size_bytes = $2, updated_at = now()
+		plaintext_size = $2, updated_at = now()
 	WHERE
 		id = $1`
 	_, err := db.Exec(ctx, query, fileID, sizeBytes)
@@ -91,14 +231,7 @@ func (r *Repository) UpdateFileSize(ctx context.Context, db database.PgExecutor,
 }
 
 func (r *Repository) UpdateFileContentType(ctx context.Context, db database.PgExecutor, fileID, contentType string) error {
-	query := `UPDATE
-		files
-	SET
-		content_type = $2, updated_at = now()
-	WHERE
-		id = $1`
-	_, err := db.Exec(ctx, query, fileID, contentType)
-	return err
+	return nil
 }
 
 func (r *Repository) UpdateFileExpiry(ctx context.Context, db database.PgExecutor, fileID string, expiresAt time.Time) error {
@@ -130,7 +263,7 @@ func (r *Repository) MarkInactiveFilesForUser(ctx context.Context, db database.P
 		expires_at = $2, updated_at = now()
 	WHERE
 		user_id = $1
-		AND status = 'complete'
+		AND upload_status = 'complete'
 		AND expires_at IS NULL`
 	tag, err := db.Exec(ctx, query, userID, expiresAt)
 	if err != nil {
@@ -146,7 +279,7 @@ func (r *Repository) ClearExpiryForUserCompletedFiles(ctx context.Context, db da
 		expires_at = NULL, updated_at = now()
 	WHERE
 		user_id = $1
-		AND status = 'complete'
+		AND upload_status = 'complete'
 		AND expires_at IS NOT NULL`
 	tag, err := db.Exec(ctx, query, userID)
 	if err != nil {
@@ -157,14 +290,13 @@ func (r *Repository) ClearExpiryForUserCompletedFiles(ctx context.Context, db da
 
 func (r *Repository) ListArchivedFilesForUser(ctx context.Context, db database.PgExecutor, userID string) ([]models.File, error) {
 	query := `SELECT
-		id, user_id, bucket, object_key, filename, content_type, size_bytes,
-		video_width, video_height, video_duration_seconds,
-		status, created_at, updated_at, expires_at
+		id, user_id, encrypted_metadata, encrypted_file_key, encryption_version, chunk_size, chunk_count,
+		plaintext_size, encrypted_size, encrypted_hash, upload_status, storage_backend, completed_at, created_at, updated_at, expires_at
 	FROM
 		files
 	WHERE
 		user_id = $1
-		AND status = 'complete'
+		AND upload_status = 'complete'
 		AND expires_at IS NOT NULL
 	ORDER BY
 		expires_at ASC`
@@ -180,21 +312,24 @@ func (r *Repository) ListArchivedFilesForUser(ctx context.Context, db database.P
 		if err := rows.Scan(
 			&file.ID,
 			&file.UserID,
-			&file.Bucket,
-			&file.ObjectKey,
-			&file.Filename,
-			&file.ContentType,
-			&file.SizeBytes,
-			&file.VideoWidth,
-			&file.VideoHeight,
-			&file.VideoDurationSeconds,
-			&file.Status,
+			&file.EncryptedMetadata,
+			&file.EncryptedFileKey,
+			&file.EncryptionVersion,
+			&file.ChunkSize,
+			&file.ChunkCount,
+			&file.PlaintextSize,
+			&file.EncryptedSize,
+			&file.EncryptedHash,
+			&file.UploadStatus,
+			&file.StorageBackend,
+			&file.CompletedAt,
 			&file.CreatedAt,
 			&file.UpdatedAt,
 			&file.ExpiresAt,
 		); err != nil {
 			return nil, err
 		}
+		hydrateLegacyFile(&file)
 		files = append(files, file)
 	}
 	if rows.Err() != nil {
@@ -211,7 +346,7 @@ func (r *Repository) CountActiveFilesForUser(ctx context.Context, db database.Pg
 		files
 	WHERE
 		user_id = $1
-		AND status IN ('pending', 'uploading', 'complete')`
+		AND upload_status IN ('pending', 'uploading', 'complete')`
 	if err := db.QueryRow(ctx, query, userID).Scan(&total); err != nil {
 		return 0, err
 	}
@@ -226,7 +361,7 @@ func (r *Repository) CountInFlightForUser(ctx context.Context, db database.PgExe
 		files
 	WHERE
 		user_id = $1
-		AND status IN ('pending', 'uploading')`
+		AND upload_status IN ('pending', 'uploading')`
 	if err := db.QueryRow(ctx, query, userID).Scan(&total); err != nil {
 		return 0, err
 	}
@@ -241,7 +376,7 @@ func (r *Repository) CountArchivedFilesForUser(ctx context.Context, db database.
 		files
 	WHERE
 		user_id = $1
-		AND status = 'complete'
+		AND upload_status = 'complete'
 		AND expires_at IS NOT NULL`
 	if err := db.QueryRow(ctx, query, userID).Scan(&total); err != nil {
 		return 0, err
@@ -250,25 +385,14 @@ func (r *Repository) CountArchivedFilesForUser(ctx context.Context, db database.
 }
 
 func (r *Repository) UpdateVideoMetadata(ctx context.Context, db database.PgExecutor, fileID string, width, height int, durationSeconds int64) error {
-	query := `UPDATE
-		files
-	SET
-		video_width = $2,
-		video_height = $3,
-		video_duration_seconds = $4,
-		updated_at = now()
-	WHERE
-		id = $1`
-	_, err := db.Exec(ctx, query, fileID, width, height, durationSeconds)
-	return err
+	return nil
 }
 
 func (r *Repository) GetFileByID(ctx context.Context, db database.PgExecutor, fileID string) (models.File, error) {
 	var file models.File
 	query := `SELECT
-		id, user_id, bucket, object_key, filename, content_type, size_bytes,
-		video_width, video_height, video_duration_seconds,
-		status, created_at, updated_at, expires_at
+		id, user_id, encrypted_metadata, encrypted_file_key, encryption_version, chunk_size, chunk_count,
+		plaintext_size, encrypted_size, encrypted_hash, upload_status, storage_backend, completed_at, created_at, updated_at, expires_at
 	FROM
 		files
 	WHERE
@@ -276,15 +400,17 @@ func (r *Repository) GetFileByID(ctx context.Context, db database.PgExecutor, fi
 	if err := db.QueryRow(ctx, query, fileID).Scan(
 		&file.ID,
 		&file.UserID,
-		&file.Bucket,
-		&file.ObjectKey,
-		&file.Filename,
-		&file.ContentType,
-		&file.SizeBytes,
-		&file.VideoWidth,
-		&file.VideoHeight,
-		&file.VideoDurationSeconds,
-		&file.Status,
+		&file.EncryptedMetadata,
+		&file.EncryptedFileKey,
+		&file.EncryptionVersion,
+		&file.ChunkSize,
+		&file.ChunkCount,
+		&file.PlaintextSize,
+		&file.EncryptedSize,
+		&file.EncryptedHash,
+		&file.UploadStatus,
+		&file.StorageBackend,
+		&file.CompletedAt,
 		&file.CreatedAt,
 		&file.UpdatedAt,
 		&file.ExpiresAt,
@@ -297,9 +423,8 @@ func (r *Repository) GetFileByID(ctx context.Context, db database.PgExecutor, fi
 func (r *Repository) GetFileForUser(ctx context.Context, db database.PgExecutor, fileID, userID string) (models.File, error) {
 	var file models.File
 	query := `SELECT
-		id, user_id, bucket, object_key, filename, content_type, size_bytes,
-		video_width, video_height, video_duration_seconds,
-		status, created_at, updated_at, expires_at
+		id, user_id, encrypted_metadata, encrypted_file_key, encryption_version, chunk_size, chunk_count,
+		plaintext_size, encrypted_size, encrypted_hash, upload_status, storage_backend, completed_at, created_at, updated_at, expires_at
 	FROM
 		files
 	WHERE
@@ -307,15 +432,17 @@ func (r *Repository) GetFileForUser(ctx context.Context, db database.PgExecutor,
 	if err := db.QueryRow(ctx, query, fileID, userID).Scan(
 		&file.ID,
 		&file.UserID,
-		&file.Bucket,
-		&file.ObjectKey,
-		&file.Filename,
-		&file.ContentType,
-		&file.SizeBytes,
-		&file.VideoWidth,
-		&file.VideoHeight,
-		&file.VideoDurationSeconds,
-		&file.Status,
+		&file.EncryptedMetadata,
+		&file.EncryptedFileKey,
+		&file.EncryptionVersion,
+		&file.ChunkSize,
+		&file.ChunkCount,
+		&file.PlaintextSize,
+		&file.EncryptedSize,
+		&file.EncryptedHash,
+		&file.UploadStatus,
+		&file.StorageBackend,
+		&file.CompletedAt,
 		&file.CreatedAt,
 		&file.UpdatedAt,
 		&file.ExpiresAt,
@@ -327,13 +454,12 @@ func (r *Repository) GetFileForUser(ctx context.Context, db database.PgExecutor,
 
 func (r *Repository) ListPendingForUser(ctx context.Context, db database.PgExecutor, userID string) ([]models.File, error) {
 	query := `SELECT
-		id, user_id, bucket, object_key, filename, content_type, size_bytes,
-		video_width, video_height, video_duration_seconds,
-		status, created_at, updated_at, expires_at
+		id, user_id, encrypted_metadata, encrypted_file_key, encryption_version, chunk_size, chunk_count,
+		plaintext_size, encrypted_size, encrypted_hash, upload_status, storage_backend, completed_at, created_at, updated_at, expires_at
 	FROM
 		files
 	WHERE
-		user_id = $1 AND status IN ('pending', 'uploading')
+		user_id = $1 AND upload_status IN ('pending', 'uploading')
 	ORDER BY
 		created_at DESC`
 	rows, err := db.Query(ctx, query, userID)
@@ -348,21 +474,24 @@ func (r *Repository) ListPendingForUser(ctx context.Context, db database.PgExecu
 		if err := rows.Scan(
 			&file.ID,
 			&file.UserID,
-			&file.Bucket,
-			&file.ObjectKey,
-			&file.Filename,
-			&file.ContentType,
-			&file.SizeBytes,
-			&file.VideoWidth,
-			&file.VideoHeight,
-			&file.VideoDurationSeconds,
-			&file.Status,
+			&file.EncryptedMetadata,
+			&file.EncryptedFileKey,
+			&file.EncryptionVersion,
+			&file.ChunkSize,
+			&file.ChunkCount,
+			&file.PlaintextSize,
+			&file.EncryptedSize,
+			&file.EncryptedHash,
+			&file.UploadStatus,
+			&file.StorageBackend,
+			&file.CompletedAt,
 			&file.CreatedAt,
 			&file.UpdatedAt,
 			&file.ExpiresAt,
 		); err != nil {
 			return nil, err
 		}
+		hydrateLegacyFile(&file)
 		files = append(files, file)
 	}
 	if rows.Err() != nil {
@@ -381,14 +510,13 @@ func (r *Repository) ListCompletedForUser(ctx context.Context, db database.PgExe
 	offset := (page - 1) * pageSize
 	orderBy := resolveFilesOrderBy(sort)
 	query := `SELECT
-		id, user_id, bucket, object_key, filename, content_type, size_bytes,
-		video_width, video_height, video_duration_seconds,
-		status, created_at, updated_at, expires_at
+		id, user_id, encrypted_metadata, encrypted_file_key, encryption_version, chunk_size, chunk_count,
+		plaintext_size, encrypted_size, encrypted_hash, upload_status, storage_backend, completed_at, created_at, updated_at, expires_at
 	FROM
 		files
 	WHERE
 		user_id = $1
-		AND status = 'complete'
+		AND upload_status = 'complete'
 		AND expires_at IS NULL
 	ORDER BY ` + orderBy + `
 	LIMIT $2 OFFSET $3`
@@ -404,21 +532,24 @@ func (r *Repository) ListCompletedForUser(ctx context.Context, db database.PgExe
 		if err := rows.Scan(
 			&file.ID,
 			&file.UserID,
-			&file.Bucket,
-			&file.ObjectKey,
-			&file.Filename,
-			&file.ContentType,
-			&file.SizeBytes,
-			&file.VideoWidth,
-			&file.VideoHeight,
-			&file.VideoDurationSeconds,
-			&file.Status,
+			&file.EncryptedMetadata,
+			&file.EncryptedFileKey,
+			&file.EncryptionVersion,
+			&file.ChunkSize,
+			&file.ChunkCount,
+			&file.PlaintextSize,
+			&file.EncryptedSize,
+			&file.EncryptedHash,
+			&file.UploadStatus,
+			&file.StorageBackend,
+			&file.CompletedAt,
 			&file.CreatedAt,
 			&file.UpdatedAt,
 			&file.ExpiresAt,
 		); err != nil {
 			return nil, err
 		}
+		hydrateLegacyFile(&file)
 		files = append(files, file)
 	}
 	if rows.Err() != nil {
@@ -434,7 +565,7 @@ func (r *Repository) CountCompletedForUser(ctx context.Context, db database.PgEx
 		files
 	WHERE
 		user_id = $1
-		AND status = 'complete'
+		AND upload_status = 'complete'
 		AND expires_at IS NULL`
 	var count int
 	if err := db.QueryRow(ctx, query, userID).Scan(&count); err != nil {
@@ -446,13 +577,13 @@ func (r *Repository) CountCompletedForUser(ctx context.Context, db database.PgEx
 func resolveFilesOrderBy(sort string) string {
 	switch sort {
 	case "name_asc":
-		return "filename ASC"
+		return "created_at ASC"
 	case "name_desc":
-		return "filename DESC"
+		return "created_at DESC"
 	case "size_asc":
-		return "size_bytes ASC"
+		return "plaintext_size ASC"
 	case "size_desc":
-		return "size_bytes DESC"
+		return "plaintext_size DESC"
 	case "updated_asc":
 		return "updated_at ASC"
 	case "updated_desc":
@@ -476,13 +607,12 @@ func (r *Repository) DeleteFileForUser(ctx context.Context, db database.PgExecut
 
 func (r *Repository) ListExpiredCompleteFiles(ctx context.Context, db database.PgExecutor, cutoff time.Time) ([]models.File, error) {
 	query := `SELECT
-		id, user_id, bucket, object_key, filename, content_type, size_bytes,
-		video_width, video_height, video_duration_seconds,
-		status, created_at, updated_at, expires_at
+		id, user_id, encrypted_metadata, encrypted_file_key, encryption_version, chunk_size, chunk_count,
+		plaintext_size, encrypted_size, encrypted_hash, upload_status, storage_backend, completed_at, created_at, updated_at, expires_at
 	FROM
 		files
 	WHERE
-		status = 'complete'
+		upload_status = 'complete'
 		AND expires_at IS NOT NULL
 		AND expires_at <= $1
 	ORDER BY
@@ -499,21 +629,24 @@ func (r *Repository) ListExpiredCompleteFiles(ctx context.Context, db database.P
 		if err := rows.Scan(
 			&file.ID,
 			&file.UserID,
-			&file.Bucket,
-			&file.ObjectKey,
-			&file.Filename,
-			&file.ContentType,
-			&file.SizeBytes,
-			&file.VideoWidth,
-			&file.VideoHeight,
-			&file.VideoDurationSeconds,
-			&file.Status,
+			&file.EncryptedMetadata,
+			&file.EncryptedFileKey,
+			&file.EncryptionVersion,
+			&file.ChunkSize,
+			&file.ChunkCount,
+			&file.PlaintextSize,
+			&file.EncryptedSize,
+			&file.EncryptedHash,
+			&file.UploadStatus,
+			&file.StorageBackend,
+			&file.CompletedAt,
 			&file.CreatedAt,
 			&file.UpdatedAt,
 			&file.ExpiresAt,
 		); err != nil {
 			return nil, err
 		}
+		hydrateLegacyFile(&file)
 		files = append(files, file)
 	}
 	if rows.Err() != nil {
@@ -524,13 +657,12 @@ func (r *Repository) ListExpiredCompleteFiles(ctx context.Context, db database.P
 
 func (r *Repository) ListExpiredUploads(ctx context.Context, db database.PgExecutor, cutoff time.Time) ([]models.File, error) {
 	query := `SELECT
-		id, user_id, bucket, object_key, filename, content_type, size_bytes,
-		video_width, video_height, video_duration_seconds,
-		status, created_at, updated_at, expires_at
+		id, user_id, encrypted_metadata, encrypted_file_key, encryption_version, chunk_size, chunk_count,
+		plaintext_size, encrypted_size, encrypted_hash, upload_status, storage_backend, completed_at, created_at, updated_at, expires_at
 	FROM
 		files
 	WHERE
-		status IN ('pending', 'uploading')
+		upload_status IN ('pending', 'uploading')
 		AND expires_at IS NOT NULL
 		AND expires_at <= $1
 	ORDER BY
@@ -547,21 +679,24 @@ func (r *Repository) ListExpiredUploads(ctx context.Context, db database.PgExecu
 		if err := rows.Scan(
 			&file.ID,
 			&file.UserID,
-			&file.Bucket,
-			&file.ObjectKey,
-			&file.Filename,
-			&file.ContentType,
-			&file.SizeBytes,
-			&file.VideoWidth,
-			&file.VideoHeight,
-			&file.VideoDurationSeconds,
-			&file.Status,
+			&file.EncryptedMetadata,
+			&file.EncryptedFileKey,
+			&file.EncryptionVersion,
+			&file.ChunkSize,
+			&file.ChunkCount,
+			&file.PlaintextSize,
+			&file.EncryptedSize,
+			&file.EncryptedHash,
+			&file.UploadStatus,
+			&file.StorageBackend,
+			&file.CompletedAt,
 			&file.CreatedAt,
 			&file.UpdatedAt,
 			&file.ExpiresAt,
 		); err != nil {
 			return nil, err
 		}
+		hydrateLegacyFile(&file)
 		files = append(files, file)
 	}
 	if rows.Err() != nil {

@@ -316,6 +316,7 @@ Removed:
 * Errors centralized in services
 * Minimal dependencies
 * No SaaS logic in Core
+* Keep SQL projections tight and only select columns the caller actually needs
 * Don't add unnecessary code or helper functions; only extract helpers when duplication is substantial or the abstraction is clearly necessary
 * In JavaScript, prefer `async`/`await` where practical instead of promise chains
 

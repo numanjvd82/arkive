@@ -1,2 +1,4 @@
-DROP TABLE IF EXISTS multipart_uploads;
+DROP TABLE IF EXISTS upload_parts;
+DROP TABLE IF EXISTS upload_sessions;
+DROP TABLE IF EXISTS file_chunks;
 DROP TABLE IF EXISTS files;

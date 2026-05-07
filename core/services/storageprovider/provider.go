@@ -9,6 +9,7 @@ import (
 	"arkive/core/database"
 	"arkive/core/models"
 	settingsrepo "arkive/core/repositories/settings"
+	"arkive/pkg/storage"
 	"arkive/pkg/storage/localclient"
 	"arkive/pkg/storage/s3client"
 )
@@ -72,6 +73,74 @@ func (p *Provider) DeleteObject(ctx context.Context, key string) error {
 		return err
 	}
 	return client.DeleteObject(ctx, key)
+}
+
+func (p *Provider) CreateMultipartUpload(ctx context.Context, key, contentType string) (string, error) {
+	settings, err := p.load(ctx)
+	if err != nil {
+		return "", err
+	}
+	if settings.Provider == "local" {
+		return p.local.CreateMultipartUpload(ctx, key, contentType)
+	}
+	client, err := p.s3(ctx, settings)
+	if err != nil {
+		return "", err
+	}
+	return client.CreateMultipartUpload(ctx, key, contentType)
+}
+
+func (p *Provider) PresignUploadPart(ctx context.Context, key, uploadID string, partNumber int32, expires time.Duration) (string, error) {
+	settings, err := p.load(ctx)
+	if err != nil {
+		return "", err
+	}
+	if settings.Provider == "local" {
+		return p.local.PresignUploadPart(ctx, key, uploadID, partNumber, expires)
+	}
+	client, err := p.s3(ctx, settings)
+	if err != nil {
+		return "", err
+	}
+	return client.PresignUploadPart(ctx, key, uploadID, partNumber, expires)
+}
+
+func (p *Provider) CompleteMultipartUpload(ctx context.Context, key, uploadID string, parts []storage.CompletedPart) error {
+	settings, err := p.load(ctx)
+	if err != nil {
+		return err
+	}
+	if settings.Provider == "local" {
+		return p.local.CompleteMultipartUpload(ctx, key, uploadID, parts)
+	}
+	client, err := p.s3(ctx, settings)
+	if err != nil {
+		return err
+	}
+	return client.CompleteMultipartUpload(ctx, key, uploadID, parts)
+}
+
+func (p *Provider) AbortMultipartUpload(ctx context.Context, key, uploadID string) error {
+	settings, err := p.load(ctx)
+	if err != nil {
+		return err
+	}
+	if settings.Provider == "local" {
+		return p.local.AbortMultipartUpload(ctx, key, uploadID)
+	}
+	client, err := p.s3(ctx, settings)
+	if err != nil {
+		return err
+	}
+	return client.AbortMultipartUpload(ctx, key, uploadID)
+}
+
+func (p *Provider) ActiveProvider(ctx context.Context) (string, error) {
+	settings, err := p.load(ctx)
+	if err != nil {
+		return "", err
+	}
+	return settings.Provider, nil
 }
 
 func (p *Provider) load(ctx context.Context) (models.StorageSettings, error) {

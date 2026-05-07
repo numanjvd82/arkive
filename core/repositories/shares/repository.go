@@ -205,9 +205,9 @@ func (r *Repository) ListSharesForUser(ctx context.Context, db database.PgExecut
 		s.revoked_at,
 		s.created_at,
 		s.updated_at,
-		f.filename,
-		f.content_type,
-		f.size_bytes,
+		concat('file-', left(f.id::text, 8)),
+		'application/octet-stream',
+		f.plaintext_size,
 		f.updated_at
 	FROM
 		shares s
