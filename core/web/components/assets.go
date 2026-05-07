@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-//go:embed *.css *.js
+//go:embed *.css
 var embeddedFiles embed.FS
 
 func readAsset(path string) ([]byte, error) {

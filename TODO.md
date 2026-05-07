@@ -3,7 +3,6 @@
 ## Not Implemented Yet
 - Periodic cleanup for stale multipart uploads (database records + R2 uploads/objects).
 - Upload lifecycle metrics/logging (start/part/complete/abort/fail counters and durations).
-- Extract image metadata via `ffprobe` and store it alongside files.
 - Generate video thumbnails during processing.
 - Generate image thumbnails during processing.
 - Dedicated paused-uploads list in the dashboard or uploads page (beyond the resume banner).
@@ -11,6 +10,11 @@
 - Inactivity retention warnings: send emails at 150/180/210 days inactive (archive/deletion notices) once email service is in place.
 - CSP hardening follow-up: keep `connect-src`/`img-src`/`media-src` permissive by default in Core because storage origins are user-defined; add config-driven CSP origin allowlists later for hardened self-hosted deployments.
 - Remove backend pagination and use db pagination instead.
+- Add grid/list view
+- Add folder capabilities so we can move files to it.
+- The ability to create simple text files inside the file manager
+- Add Exif toggle in the settings and show a dialog to strip exif or keep it before uploading.
+- Add session management to the settings. 
 
 ## Done
 - Install `ffprobe` on the server for video metadata extraction.
