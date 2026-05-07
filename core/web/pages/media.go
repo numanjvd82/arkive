@@ -206,11 +206,18 @@ func mediaFrameClass(props MediaViewPageProps) string {
 }
 
 func buildMediaCSS(props MediaViewPageProps) []string {
-	return []string{"/web/pages/media.css"}
+	return []string{
+		"/static/vendor/plyr/plyr.css",
+		"/web/pages/media.css",
+	}
 }
 
 func buildMediaJS(props MediaViewPageProps) []string {
-	return []string{"/static/media.js"}
+	return []string{
+		"/static/vendor/plyr/plyr.polyfilled.js",
+		"/static/plyr.js",
+		"/static/media.js",
+	}
 }
 
 func metaRow(label, value, id string) g.Node {

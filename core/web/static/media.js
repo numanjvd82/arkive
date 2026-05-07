@@ -24,7 +24,8 @@
 
   function setStatus(message) {
     if (status) {
-      status.textContent = message;
+      status.textContent = message || "";
+      status.parentElement.classList.toggle("is-hidden", !message);
     }
   }
 
@@ -68,24 +69,55 @@
     setStage(shell);
   }
 
-  function imagePreview(blob, alt) {
+  function setDimensions(width, height) {
+    if (!dimensionsField) {
+      return;
+    }
+    dimensionsField.textContent =
+      width > 0 && height > 0 ? width + "×" + height : "Not available";
+  }
+
+  function imagePreview(blob, alt, titleText) {
     const img = document.createElement("img");
     img.className = "media-image";
     img.alt = alt || "Image preview";
     img.src = URL.createObjectURL(blob);
+    img.setAttribute("data-lightbox-trigger", "true");
+    img.setAttribute("data-lightbox-src", img.src);
+    img.setAttribute("data-lightbox-title", titleText || alt || "Image preview");
+    img.addEventListener("load", function() {
+      setDimensions(img.naturalWidth || 0, img.naturalHeight || 0);
+    });
     const wrap = document.createElement("div");
     wrap.className = "media-image-wrap";
     wrap.appendChild(img);
+    const button = document.createElement("button");
+    button.className = "media-fullscreen-button";
+    button.type = "button";
+    button.setAttribute("aria-label", "Open full screen");
+    button.setAttribute("data-lightbox-src", img.src);
+    button.setAttribute("data-lightbox-title", titleText || alt || "Image preview");
+    button.innerHTML =
+      '<svg class="media-fullscreen-lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M16 3h3a2 2 0 0 1 2 2v3"/><path d="M8 21H5a2 2 0 0 1-2-2v-3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>';
+    wrap.appendChild(button);
     setStage(wrap);
+    stage.firstElementChild.classList.add("is-image");
   }
 
   function videoPreview(blob) {
     const video = document.createElement("video");
-    video.className = "media-video";
+    video.className = "media-video plyr";
     video.controls = true;
     video.playsInline = true;
+    video.setAttribute("data-video-element", "true");
     video.src = URL.createObjectURL(blob);
+    video.addEventListener("loadedmetadata", function() {
+      setDimensions(video.videoWidth || 0, video.videoHeight || 0);
+    });
     setStage(video);
+    if (window.ArkiveInitPlyr) {
+      window.ArkiveInitPlyr(video);
+    }
   }
 
   function textPreview(text) {
@@ -108,13 +140,8 @@
     if (sizeField) {
       sizeField.textContent = formatBytes(metadata.size || record.plaintextSize);
     }
-    if (dimensionsField) {
-      const preview = metadata.preview || {};
-      const width = preview.width || 0;
-      const height = preview.height || 0;
-      dimensionsField.textContent =
-        width > 0 && height > 0 ? width + "×" + height : "Not available";
-    }
+    const preview = metadata.preview || {};
+    setDimensions(preview.width || 0, preview.height || 0);
     if (hashValue) {
       hashValue.textContent = record.encryptedHash || "Unavailable";
     }
@@ -144,9 +171,8 @@
     updateMetadata(metadata, manifest, record);
 
     if (mime.startsWith("image/")) {
-      setStatus("Decrypting image preview.");
-      imagePreview(await reader.createBlob(), metadata.name);
-      setStatus("Image preview ready.");
+      imagePreview(await reader.createBlob(), metadata.name, metadata.name);
+      setStatus("");
       return;
     }
     if (mime === "application/pdf") {
@@ -157,7 +183,7 @@
     if (isTextMime(mime)) {
       setStatus("Decrypting text preview.");
       textPreview(await reader.textPreview(TEXT_PREVIEW_MAX_BYTES));
-      setStatus("Text preview ready.");
+      setStatus("");
       return;
     }
     if (mime.startsWith("video/")) {
@@ -166,9 +192,8 @@
         setStatus("Large encrypted video. Download recommended.");
         return;
       }
-      setStatus("Decrypting video preview.");
       videoPreview(await reader.createBlob());
-      setStatus("Video preview ready.");
+      setStatus("");
       return;
     }
 

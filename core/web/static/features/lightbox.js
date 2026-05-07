@@ -12,9 +12,7 @@ export function initLightbox() {
   const zoomOutButton = document.querySelector("[data-lightbox-action='zoom-out']");
   const stage = document.querySelector(".lightbox-stage");
   const actionButtons = document.querySelectorAll("[data-lightbox-action]");
-  const triggerImages = document.querySelectorAll("[data-lightbox-src]");
-
-  if (!backdrop || !imageEl || !stage || !triggerImages.length) return;
+  if (!backdrop || !imageEl || !stage) return;
 
   let zoom = 1;
   let offsetX = 0;
@@ -206,10 +204,14 @@ export function initLightbox() {
   }
 
   // Events: open/close
-  triggerImages.forEach((img) => {
-    img.addEventListener("click", () => {
-      openLightbox(img.getAttribute("data-lightbox-src"), img.getAttribute("data-lightbox-title"));
-    });
+  document.addEventListener("click", (event) => {
+    const trigger = event.target.closest("[data-lightbox-src]");
+    if (!trigger) return;
+    event.preventDefault();
+    openLightbox(
+      trigger.getAttribute("data-lightbox-src"),
+      trigger.getAttribute("data-lightbox-title"),
+    );
   });
 
   if (closeButton) closeButton.addEventListener("click", closeLightbox);

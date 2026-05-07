@@ -193,6 +193,10 @@
   color: var(--muted);
 }
 
+.media-alert.is-hidden {
+  display: none;
+}
+
 .media-alert.is-warning {
   color: var(--text);
 }
