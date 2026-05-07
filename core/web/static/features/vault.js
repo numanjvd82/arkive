@@ -42,6 +42,17 @@ function binaryTransfer(value) {
   return [];
 }
 
+function transferList(values) {
+  const transfers = [];
+  for (let i = 0; i < values.length; i++) {
+    const current = binaryTransfer(values[i]);
+    for (let j = 0; j < current.length; j++) {
+      transfers.push(current[j]);
+    }
+  }
+  return transfers;
+}
+
 export function initVault() {
   if (window.ArkiveVault && window.ArkiveVault.__arkiveReady) {
     return;
@@ -265,14 +276,16 @@ export function initVault() {
       touchSessionUnlock();
       return callWorker("generateFileKey", {});
     },
-    prepareUpload: function(uploadToken, metadata, totalParts) {
+    prepareUpload: function(uploadToken, vaultId, fileId, metadata, totalParts) {
       touchSessionUnlock();
       return callWorker("prepareUpload", {
         uploadToken: String(uploadToken || ""),
+        vaultId: String(vaultId || ""),
+        fileId: String(fileId || ""),
         metadata: metadata || {},
         totalParts: Number(totalParts || 0),
-        metadataAad: "arkive:file-metadata:v1",
-        fileKeyAad: "arkive:file-key:v1"
+        metadataAad: "arkive:file-metadata:v1:" + String(vaultId || "") + ":" + String(fileId || ""),
+        fileKeyAad: "arkive:file-key:v1:" + String(vaultId || "") + ":" + String(fileId || "")
       });
     },
     encryptUploadPart: function(uploadToken, chunkBytes, aad) {
@@ -289,11 +302,51 @@ export function initVault() {
         aad: aad || ""
       }, binaryTransfer(payload));
     },
-    finalizeUpload: function(uploadToken) {
+    finalizeUpload: function(uploadToken, vaultId, fileId, manifest, partHashes) {
       touchSessionUnlock();
       return callWorker("finalizeUpload", {
-        uploadToken: String(uploadToken || "")
+        uploadToken: String(uploadToken || ""),
+        manifest: manifest || {},
+        partHashes: partHashes || [],
+        manifestAad: "arkive:file-manifest:v1:" + String(vaultId || "") + ":" + String(fileId || "")
       });
+    },
+    clearUploadContext: function(uploadToken) {
+      return callWorker("clearUploadContext", {
+        uploadToken: String(uploadToken || ""),
+      });
+    },
+    openFileContext: function(contextId, record) {
+      touchSessionUnlock();
+      return callWorker("openFileContext", {
+        contextId: String(contextId || ""),
+        encryptedFileKey: String((record && record.encryptedFileKey) || ""),
+        encryptedMetadata: String((record && record.encryptedMetadata) || ""),
+        encryptedManifest: String((record && record.encryptedManifest) || ""),
+        fileKeyAad: "arkive:file-key:v1:" + String((record && record.vaultId) || "") + ":" + String((record && record.fileId) || ""),
+        metadataAad: "arkive:file-metadata:v1:" + String((record && record.vaultId) || "") + ":" + String((record && record.fileId) || ""),
+        manifestAad: "arkive:file-manifest:v1:" + String((record && record.vaultId) || "") + ":" + String((record && record.fileId) || ""),
+      });
+    },
+    closeFileContext: function(contextId) {
+      return callWorker("closeFileContext", {
+        contextId: String(contextId || ""),
+      });
+    },
+    decryptFileChunk: function(contextId, encryptedChunk, aad, expectedHash) {
+      touchSessionUnlock();
+      const payload =
+        encryptedChunk instanceof Uint8Array
+          ? encryptedChunk.slice()
+          : encryptedChunk instanceof ArrayBuffer
+            ? encryptedChunk.slice(0)
+            : encryptedChunk;
+      return callWorker("decryptFileChunk", {
+        contextId: String(contextId || ""),
+        encryptedChunk: payload,
+        aad: aad || "",
+        expectedHash: expectedHash || "",
+      }, transferList([payload]));
     },
     encryptFileMetadata: function(metadata, masterKey) {
       touchSessionUnlock();

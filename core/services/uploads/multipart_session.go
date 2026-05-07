@@ -32,12 +32,17 @@ const (
 )
 
 type MultipartUploadStartInput struct {
-	EncryptedMetadata string
-	EncryptedFileKey  string
 	OriginalSize      int64
 	PartSize          int64
 	TotalParts        int
 	EncryptionVersion int16
+}
+
+type MultipartUploadCompleteInput struct {
+	EncryptedMetadata string
+	EncryptedFileKey  string
+	EncryptedManifest string
+	EncryptedHash     string
 }
 
 type UploadPartRecordInput struct {
@@ -77,12 +82,6 @@ func (s *Service) StartMultipartUploadSession(ctx context.Context, userID string
 	if input.TotalParts <= 0 {
 		validationErrors.Add("totalParts", "total parts is required")
 	}
-	if input.EncryptedMetadata == "" {
-		validationErrors.Add("encryptedMetadata", "encrypted metadata is required")
-	}
-	if input.EncryptedFileKey == "" {
-		validationErrors.Add("encryptedFileKey", "encrypted file key is required")
-	}
 	if validationErrors.HasAny() {
 		return models.UploadStartResponse{}, validationErrors, nil
 	}
@@ -90,17 +89,6 @@ func (s *Service) StartMultipartUploadSession(ctx context.Context, userID string
 	expectedParts := int((input.OriginalSize + input.PartSize - 1) / input.PartSize)
 	if expectedParts != input.TotalParts {
 		validationErrors.Add("totalParts", "total parts does not match original size")
-		return models.UploadStartResponse{}, validationErrors, nil
-	}
-
-	encryptedMetadata, err := base64.StdEncoding.DecodeString(input.EncryptedMetadata)
-	if err != nil {
-		validationErrors.Add("encryptedMetadata", "encrypted metadata must be base64")
-		return models.UploadStartResponse{}, validationErrors, nil
-	}
-	encryptedFileKey, err := base64.StdEncoding.DecodeString(input.EncryptedFileKey)
-	if err != nil {
-		validationErrors.Add("encryptedFileKey", "encrypted file key must be base64")
 		return models.UploadStartResponse{}, validationErrors, nil
 	}
 
@@ -124,8 +112,9 @@ func (s *Service) StartMultipartUploadSession(ctx context.Context, userID string
 
 	file, err := s.fileRepo.CreateEncryptedFile(ctx, tx, models.File{
 		UserID:            userID,
-		EncryptedMetadata: encryptedMetadata,
-		EncryptedFileKey:  encryptedFileKey,
+		EncryptedMetadata: []byte{},
+		EncryptedFileKey:  []byte{},
+		EncryptedManifest: []byte{},
 		EncryptionVersion: input.EncryptionVersion,
 		ChunkSize:         input.PartSize,
 		ChunkCount:        input.TotalParts,
@@ -174,6 +163,7 @@ func (s *Service) StartMultipartUploadSession(ctx context.Context, userID string
 
 	return models.UploadStartResponse{
 		FileID:           file.ID,
+		VaultID:          file.UserID,
 		UploadSessionID:  session.ID,
 		ProviderUploadID: providerUploadID,
 		PartSize:         input.PartSize,
@@ -254,7 +244,7 @@ func (s *Service) RecordMultipartUploadPart(ctx context.Context, userID, uploadS
 	return err
 }
 
-func (s *Service) CompleteMultipartUploadSession(ctx context.Context, userID, uploadSessionID string) error {
+func (s *Service) CompleteMultipartUploadSession(ctx context.Context, userID, uploadSessionID string, input MultipartUploadCompleteInput) error {
 	var err error
 	userID, err = validateUserID(userID)
 	if err != nil {
@@ -275,6 +265,9 @@ func (s *Service) CompleteMultipartUploadSession(ctx context.Context, userID, up
 	if uploadSession.Status != UploadStatusActive {
 		return ErrUploadCancelled
 	}
+	if strings.TrimSpace(input.EncryptedMetadata) == "" || strings.TrimSpace(input.EncryptedFileKey) == "" || strings.TrimSpace(input.EncryptedManifest) == "" {
+		return ErrInvalidInput
+	}
 
 	file, err := s.fileRepo.GetEncryptedFileForUser(ctx, s.db, uploadSession.FileID, userID)
 	if err != nil {
@@ -291,8 +284,28 @@ func (s *Service) CompleteMultipartUploadSession(ctx context.Context, userID, up
 	if len(parts) != file.ChunkCount {
 		return ErrPartsRequired
 	}
+	encryptedMetadata, err := base64.StdEncoding.DecodeString(strings.TrimSpace(input.EncryptedMetadata))
+	if err != nil {
+		return ErrInvalidInput
+	}
+	encryptedFileKey, err := base64.StdEncoding.DecodeString(strings.TrimSpace(input.EncryptedFileKey))
+	if err != nil {
+		return ErrInvalidInput
+	}
+	encryptedManifest, err := base64.StdEncoding.DecodeString(strings.TrimSpace(input.EncryptedManifest))
+	if err != nil {
+		return ErrInvalidInput
+	}
+	var encryptedHash []byte
+	if strings.TrimSpace(input.EncryptedHash) != "" {
+		encryptedHash, err = base64.StdEncoding.DecodeString(strings.TrimSpace(input.EncryptedHash))
+		if err != nil {
+			return ErrInvalidInput
+		}
+	}
 
 	completedParts := make([]storage.CompletedPart, 0, len(parts))
+	fileChunks := make([]models.FileChunk, 0, len(parts))
 	var encryptedSize int64
 	for idx, part := range parts {
 		if part.PartNumber != idx+1 {
@@ -301,6 +314,23 @@ func (s *Service) CompleteMultipartUploadSession(ctx context.Context, userID, up
 		completedParts = append(completedParts, storage.CompletedPart{
 			PartNumber: int32(part.PartNumber),
 			ETag:       part.ETag,
+		})
+		plaintextSize := file.ChunkSize
+		if idx == len(parts)-1 {
+			remainder := file.PlaintextSize - int64(idx)*file.ChunkSize
+			if remainder > 0 {
+				plaintextSize = remainder
+			}
+		}
+		fileChunks = append(fileChunks, models.FileChunk{
+			FileID:        file.ID,
+			ChunkIndex:    idx,
+			StorageKey:    uploadSession.StorageKey,
+			PlaintextSize: plaintextSize,
+			EncryptedSize: part.EncryptedSize,
+			EncryptedHash: part.EncryptedHash,
+			UploadStatus:  UploadPartComplete,
+			UploadedAt:    part.UploadedAt,
 		})
 		encryptedSize += part.EncryptedSize
 	}
@@ -319,7 +349,15 @@ func (s *Service) CompleteMultipartUploadSession(ctx context.Context, userID, up
 		_ = tx.Rollback(ctx)
 		return err
 	}
-	if err := s.fileRepo.MarkEncryptedFileComplete(ctx, tx, file.ID, encryptedSize, nil); err != nil {
+	if err := s.fileRepo.UpdateEncryptedFileEnvelope(ctx, tx, file.ID, encryptedMetadata, encryptedFileKey, encryptedManifest, encryptedHash); err != nil {
+		_ = tx.Rollback(ctx)
+		return err
+	}
+	if err := s.uploadRepo.ReplaceFileChunks(ctx, tx, file.ID, fileChunks); err != nil {
+		_ = tx.Rollback(ctx)
+		return err
+	}
+	if err := s.fileRepo.MarkEncryptedFileComplete(ctx, tx, file.ID, encryptedSize, encryptedHash); err != nil {
 		_ = tx.Rollback(ctx)
 		return err
 	}

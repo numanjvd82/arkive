@@ -5,6 +5,7 @@ import "time"
 type UploadStartResponse struct {
 	UploadID         string
 	FileID           string
+	VaultID          string
 	ObjectKey        string
 	Mode             string
 	UploadURL        string

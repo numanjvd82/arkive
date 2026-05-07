@@ -1,4 +1,115 @@
 (function() {
+  const rows = document.querySelectorAll("[data-file-row]");
+  if (!rows.length || !window.ArkiveFileReader || !window.ArkiveVault) {
+    return;
+  }
+
+  function isPreviewable(mime) {
+    const value = String(mime || "").toLowerCase();
+    return (
+      value.startsWith("image/") ||
+      value.startsWith("video/") ||
+      value.startsWith("text/") ||
+      value.includes("json")
+    );
+  }
+
+  function updateRow(row, metadata) {
+    const nameEl = row.querySelector("[data-file-field='name']");
+    const typeEl = row.querySelector("[data-file-field='type']");
+    const viewEl = row.querySelector("[data-file-action='view']");
+    const shareEl = row.querySelector("[data-file-action='share']");
+    const deleteEl = row.querySelector("[data-file-action='delete']");
+    const realName = metadata && metadata.name ? metadata.name : "";
+    const realType = metadata && metadata.mime ? metadata.mime : "";
+
+    if (nameEl) {
+      nameEl.textContent = realName;
+      nameEl.removeAttribute("aria-hidden");
+    }
+    if (typeEl) {
+      typeEl.textContent = realType;
+      typeEl.removeAttribute("aria-hidden");
+      if (realType) {
+        typeEl.setAttribute("title", realType);
+      } else {
+        typeEl.removeAttribute("title");
+      }
+    }
+    if (shareEl) {
+      shareEl.setAttribute("data-file-name", realName);
+    }
+    if (deleteEl) {
+      deleteEl.setAttribute("data-file-name", realName);
+    }
+    if (viewEl) {
+      if (isPreviewable(realType)) {
+        viewEl.classList.remove("is-disabled");
+        viewEl.removeAttribute("aria-disabled");
+        viewEl.removeAttribute("title");
+      } else {
+        viewEl.classList.add("is-disabled");
+        viewEl.setAttribute("aria-disabled", "true");
+        viewEl.setAttribute("title", "Preview unavailable");
+      }
+    }
+
+    row.classList.add("is-hydrated");
+    row.removeAttribute("aria-busy");
+  }
+
+  async function hydrateRow(row) {
+    const fileId = row.getAttribute("data-file-row");
+    if (!fileId) {
+      return;
+    }
+    const reader = new window.ArkiveFileReader({ fileId: fileId });
+    try {
+      await reader.load();
+      updateRow(row, reader.getMetadata());
+    } catch (_) {
+    } finally {
+      await reader.dispose();
+    }
+  }
+
+  async function hydrateRows() {
+    if (typeof window.ArkiveVault.waitUntilReady === "function") {
+      await window.ArkiveVault.waitUntilReady();
+    }
+    for (let i = 0; i < rows.length; i++) {
+      await hydrateRow(rows[i]);
+    }
+  }
+
+  document.addEventListener("click", async function(event) {
+    const target = event.target.closest("[data-file-action='download']");
+    if (!target) {
+      return;
+    }
+    event.preventDefault();
+    const fileId = target.getAttribute("data-file-id");
+    if (!fileId) {
+      return;
+    }
+    target.disabled = true;
+    const reader = new window.ArkiveFileReader({ fileId: fileId });
+    try {
+      await reader.download();
+    } catch (error) {
+      if (window.Toast) {
+        window.Toast.error((error && error.message) || "Download failed.");
+      }
+    } finally {
+      target.disabled = false;
+      await reader.dispose();
+    }
+  });
+
+  hydrateRows();
+})();
+
+(function() {
   const deleteButtons = document.querySelectorAll("[data-file-action='delete']");
   const backdrop = document.getElementById("file-delete-backdrop");
   const meta = document.getElementById("file-delete-meta");

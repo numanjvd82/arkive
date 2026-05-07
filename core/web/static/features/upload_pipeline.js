@@ -12,6 +12,15 @@ function createUploadToken() {
   return "upload-" + Date.now() + "-" + Math.random().toString(36).slice(2);
 }
 
+function fileExtension(name) {
+  const value = String(name || "");
+  const dot = value.lastIndexOf(".");
+  if (dot <= 0 || dot === value.length - 1) {
+    return "";
+  }
+  return value.slice(dot + 1).toLowerCase();
+}
+
 export class MultipartUploadPipeline {
   constructor(options) {
     this.apiBase = options.apiBase || "/api/uploads";
@@ -35,10 +44,20 @@ export class MultipartUploadPipeline {
     const requestedPartSize = task.chunkSize || this.partSize;
     const requestedTotalParts = Math.ceil(file.size / requestedPartSize);
     const metadata = {
-      filename: file.name,
-      mimeType: file.type || "application/octet-stream",
+      schema: "arkive.file.metadata",
+      version: 1,
+      name: file.name,
+      mime: file.type || "application/octet-stream",
+      extension: fileExtension(file.name),
       size: file.size,
-      lastModified: file.lastModified || 0,
+      created_at_client: new Date().toISOString(),
+      modified_at_client: file.lastModified
+        ? new Date(file.lastModified).toISOString()
+        : null,
+      preview: {
+        thumbnail_file_id: null,
+        has_thumbnail: false,
+      },
     };
 
     if (
@@ -54,30 +73,47 @@ export class MultipartUploadPipeline {
     task.totalBytes = file.size;
     task.uploadedBytes = 0;
 
-    const prepared = await window.ArkiveVault.prepareUpload(
-      uploadToken,
-      metadata,
-      requestedTotalParts,
-    );
     const started = await this.startSession({
-      encryptedMetadata: prepared.encryptedMetadata,
-      encryptedFileKey: prepared.encryptedFileKey,
       originalSize: file.size,
       partSize: requestedPartSize,
       totalParts: requestedTotalParts,
-      encryptionVersion: prepared.encryptionVersion || 1,
+      encryptionVersion: 1,
     });
 
     task.fileId = started.fileId;
+    task.vaultId = started.vaultId;
     task.uploadSessionId = started.uploadSessionId;
     task.chunkSize = started.partSize || requestedPartSize;
     task.totalParts = started.totalParts || requestedTotalParts;
+    task.partRecords = [];
+
+    const prepared = await window.ArkiveVault.prepareUpload(
+      uploadToken,
+      task.vaultId,
+      task.fileId,
+      metadata,
+      task.totalParts,
+    );
 
     let completed = false;
 
     try {
       await this.uploadParts(task, task.chunkSize, task.totalParts);
-      await this.completeSession(task.uploadSessionId);
+      const finalized = await window.ArkiveVault.finalizeUpload(
+        uploadToken,
+        task.vaultId,
+        task.fileId,
+        this.buildManifest(task, metadata),
+        task.partRecords.map(function (part) {
+          return part.encryptedHash;
+        }),
+      );
+      await this.completeSession(task.uploadSessionId, {
+        encryptedMetadata: prepared.encryptedMetadata,
+        encryptedFileKey: prepared.encryptedFileKey,
+        encryptedManifest: finalized.encryptedManifest,
+        encryptedHash: finalized.encryptedHash,
+      });
       completed = true;
     } catch (error) {
       if (task.uploadSessionId) {
@@ -85,7 +121,7 @@ export class MultipartUploadPipeline {
       }
       throw error;
     } finally {
-      await window.ArkiveVault.finalizeUpload(uploadToken).catch(
+      await window.ArkiveVault.clearUploadContext(uploadToken).catch(
         function () {},
       );
       if (!completed) {
@@ -127,9 +163,10 @@ export class MultipartUploadPipeline {
     });
   }
 
-  async completeSession(uploadSessionId) {
+  async completeSession(uploadSessionId, body) {
     await this.api("/" + encodeURIComponent(uploadSessionId) + "/complete", {
       method: "POST",
+      body: body,
     });
   }
 
@@ -230,6 +267,13 @@ export class MultipartUploadPipeline {
         encryptedHash: encrypted.encryptedHash,
         etag: etag,
       });
+      task.partRecords[partNumber - 1] = {
+        n: partNumber - 1,
+        offset: start,
+        plain_size: end - start,
+        cipher_size: encrypted.encryptedSize,
+        hash: encrypted.encryptedHash,
+      };
       return end - start;
     } finally {
       if (chunkBytes) {
@@ -267,17 +311,39 @@ export class MultipartUploadPipeline {
 
   buildPartAAD(task, partNumber, partSize) {
     return (
-      "arkive:v1:file:" +
+      "arkive:file-chunk:v1:" +
+      task.vaultId +
+      ":" +
       task.fileId +
-      ":session:" +
-      task.uploadSessionId +
-      ":part:" +
+      ":" +
       partNumber +
-      ":part-size:" +
+      ":" +
       partSize +
-      ":total-parts:" +
+      ":" +
       task.totalParts
     );
+  }
+
+  buildManifest(task, metadata) {
+    return {
+      schema: "arkive.file.manifest",
+      version: 1,
+      file_id: task.fileId,
+      name: metadata.name,
+      mime: metadata.mime,
+      extension: metadata.extension,
+      size: metadata.size,
+      chunk_size: task.chunkSize,
+      chunks: task.partRecords.map(function (part) {
+        return {
+          n: part.n,
+          offset: part.offset,
+          plain_size: part.plain_size,
+          cipher_size: part.cipher_size,
+          hash: part.hash,
+        };
+      }),
+    };
   }
 
   async waitForRetry(attempt, signal) {

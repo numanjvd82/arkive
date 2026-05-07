@@ -3,6 +3,7 @@ CREATE TABLE files (
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   encrypted_metadata BYTEA NOT NULL,
   encrypted_file_key BYTEA NOT NULL,
+  encrypted_manifest BYTEA NOT NULL,
   encryption_version SMALLINT NOT NULL DEFAULT 1,
   chunk_size BIGINT NOT NULL,
   chunk_count INTEGER NOT NULL,

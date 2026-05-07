@@ -49,8 +49,8 @@ func PublicShareViewPage(props PublicShareViewProps) web.Page {
 	return web.Page{
 		Title:   fmt.Sprintf("Arkive · %s", file.Filename),
 		Robots:  RobotsNoIndex,
-		CSS:     append(buildMediaCSS(MediaViewPageProps{IsVideo: isVideo}), "/web/pages/share.css"),
-		JS:      buildMediaJS(MediaViewPageProps{IsVideo: isVideo}),
+		CSS:     append(buildMediaCSS(MediaViewPageProps{}), "/web/pages/share.css"),
+		JS:      buildMediaJS(MediaViewPageProps{}),
 		HideNav: true,
 		Body: g.Group([]g.Node{
 			components.InlineStyle(components.InputCSS),
@@ -93,7 +93,7 @@ func PublicShareViewPage(props PublicShareViewProps) web.Page {
 							h.Div(
 								h.Class("media-frame"),
 								h.Div(
-									h.Class(mediaFrameClass(MediaViewPageProps{IsImage: isImage})),
+									h.Class(mediaFrameClass(MediaViewPageProps{})),
 									renderShareMedia(props),
 								),
 							),
@@ -113,12 +113,12 @@ func PublicShareViewPage(props PublicShareViewProps) web.Page {
 								h.H3(g.Text("Details")),
 								h.Div(
 									h.Class("media-meta"),
-									metaRow("Filename", file.Filename),
-									metaRow("Type", fallbackText(contentType, "Unknown")),
-									metaRow("Size", format.Bytes(file.SizeBytes)),
-									metaRow("Resolution", video.FormatResolution(file.VideoWidth, file.VideoHeight, isVideo)),
-									metaRow("Duration", video.FormatDuration(file.VideoDurationSeconds, isVideo)),
-									metaRow("Updated", fallbackText(formatTime(file.UpdatedAt), "Not available")),
+									metaRow("Filename", file.Filename, ""),
+									metaRow("Type", fallbackText(contentType, "Unknown"), ""),
+									metaRow("Size", format.Bytes(file.SizeBytes), ""),
+									metaRow("Resolution", video.FormatResolution(file.VideoWidth, file.VideoHeight, isVideo), ""),
+									metaRow("Duration", video.FormatDuration(file.VideoDurationSeconds, isVideo), ""),
+									metaRow("Updated", fallbackText(formatTime(file.UpdatedAt), "Not available"), ""),
 								),
 							),
 							h.Div(
@@ -144,7 +144,6 @@ func PublicShareViewPage(props PublicShareViewProps) web.Page {
 									g.Text("Share this link with anyone you want to access the file."),
 								),
 							),
-
 						),
 					),
 				),

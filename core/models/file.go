@@ -20,6 +20,7 @@ type File struct {
 
 	EncryptedMetadata []byte
 	EncryptedFileKey  []byte
+	EncryptedManifest []byte
 	EncryptionVersion int16
 	ChunkSize         int64
 	ChunkCount        int
@@ -29,4 +30,17 @@ type File struct {
 	UploadStatus      string
 	StorageBackend    string
 	CompletedAt       *time.Time
+}
+
+type FileChunk struct {
+	ID            string
+	FileID        string
+	ChunkIndex    int
+	StorageKey    string
+	PlaintextSize int64
+	EncryptedSize int64
+	EncryptedHash []byte
+	UploadStatus  string
+	UploadedAt    *time.Time
+	CreatedAt     time.Time
 }

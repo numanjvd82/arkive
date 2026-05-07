@@ -48,9 +48,9 @@ func PublicSharePassword(props PublicSharePasswordProps) web.Page {
 					),
 					h.Div(
 						h.Class("share-file-meta"),
-						metaRow("Filename", file.Filename),
-						metaRow("Type", contentType),
-						metaRow("Size", format.Bytes(file.SizeBytes)),
+						metaRow("Filename", file.Filename, ""),
+						metaRow("Type", contentType, ""),
+						metaRow("Size", format.Bytes(file.SizeBytes), ""),
 					),
 					h.Form(
 						h.Class("share-form"),

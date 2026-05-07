@@ -11,12 +11,10 @@ import (
 )
 
 type uploadStartRequest struct {
-	EncryptedMetadata string `json:"encryptedMetadata"`
-	EncryptedFileKey  string `json:"encryptedFileKey"`
-	OriginalSize      int64  `json:"originalSize"`
-	PartSize          int64  `json:"partSize"`
-	TotalParts        int    `json:"totalParts"`
-	EncryptionVersion int16  `json:"encryptionVersion"`
+	OriginalSize      int64 `json:"originalSize"`
+	PartSize          int64 `json:"partSize"`
+	TotalParts        int   `json:"totalParts"`
+	EncryptionVersion int16 `json:"encryptionVersion"`
 }
 
 type uploadPartRecordRequest struct {
@@ -24,6 +22,13 @@ type uploadPartRecordRequest struct {
 	EncryptedSize int64  `json:"encryptedSize"`
 	EncryptedHash string `json:"encryptedHash"`
 	ETag          string `json:"etag"`
+}
+
+type uploadCompleteRequest struct {
+	EncryptedMetadata string `json:"encryptedMetadata"`
+	EncryptedFileKey  string `json:"encryptedFileKey"`
+	EncryptedManifest string `json:"encryptedManifest"`
+	EncryptedHash     string `json:"encryptedHash"`
 }
 
 func APIUploadStart(svc *uploads.Service) gin.HandlerFunc {
@@ -41,8 +46,6 @@ func APIUploadStart(svc *uploads.Service) gin.HandlerFunc {
 		}
 
 		resp, validationErrors, err := svc.StartMultipartUploadSession(c.Request.Context(), userID.(string), uploads.MultipartUploadStartInput{
-			EncryptedMetadata: req.EncryptedMetadata,
-			EncryptedFileKey:  req.EncryptedFileKey,
 			OriginalSize:      req.OriginalSize,
 			PartSize:          req.PartSize,
 			TotalParts:        req.TotalParts,
@@ -65,6 +68,7 @@ func APIUploadStart(svc *uploads.Service) gin.HandlerFunc {
 
 		c.JSON(http.StatusOK, gin.H{
 			"fileId":           resp.FileID,
+			"vaultId":          resp.VaultID,
 			"uploadSessionId":  resp.UploadSessionID,
 			"providerUploadId": resp.ProviderUploadID,
 			"partSize":         resp.PartSize,
@@ -163,6 +167,11 @@ func APIUploadComplete(svc *uploads.Service) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
 			return
 		}
+		var req uploadCompleteRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			return
+		}
 
 		userID, ok := c.Get("user_id")
 		if !ok {
@@ -170,7 +179,12 @@ func APIUploadComplete(svc *uploads.Service) gin.HandlerFunc {
 			return
 		}
 
-		if err := svc.CompleteMultipartUploadSession(c.Request.Context(), userID.(string), uploadSessionID); err != nil {
+		if err := svc.CompleteMultipartUploadSession(c.Request.Context(), userID.(string), uploadSessionID, uploads.MultipartUploadCompleteInput{
+			EncryptedMetadata: req.EncryptedMetadata,
+			EncryptedFileKey:  req.EncryptedFileKey,
+			EncryptedManifest: req.EncryptedManifest,
+			EncryptedHash:     req.EncryptedHash,
+		}); err != nil {
 			switch err {
 			case uploads.ErrUnauthorized:
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
@@ -293,5 +307,45 @@ func APIMediaRedirect(svc *uploads.Service) gin.HandlerFunc {
 		}
 
 		c.Redirect(http.StatusFound, url)
+	}
+}
+
+func APIFileRecord(svc *uploads.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		fileID := c.Param("id")
+		userID, ok := c.Get("user_id")
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			return
+		}
+		record, err := svc.GetEncryptedFileRecord(c.Request.Context(), userID.(string), fileID)
+		if err != nil {
+			switch err {
+			case uploads.ErrUnauthorized:
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			case uploads.ErrNotFound:
+				c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+			case uploads.ErrInvalidInput:
+				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			default:
+				_ = c.Error(errs.WithStack(err))
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "file record failed"})
+			}
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"fileId":            record.FileID,
+			"vaultId":           record.VaultID,
+			"encryptionVersion": record.EncryptionVersion,
+			"chunkSize":         record.ChunkSize,
+			"totalChunks":       record.TotalChunks,
+			"plaintextSize":     record.PlaintextSize,
+			"encryptedSize":     record.EncryptedSize,
+			"encryptedHash":     record.EncryptedHash,
+			"encryptedMetadata": record.EncryptedMetadata,
+			"encryptedFileKey":  record.EncryptedFileKey,
+			"encryptedManifest": record.EncryptedManifest,
+			"sourceUrl":         record.SourceURL,
+		})
 	}
 }

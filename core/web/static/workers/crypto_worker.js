@@ -3,6 +3,7 @@ import initArkiveCrypto, * as arkiveCrypto from "../vendor/arkive-crypto/arkive_
 let readyPromise = null;
 let unlockedMasterKey = null;
 let activeUploads = new Map();
+let activeReaders = new Map();
 
 function ensureCrypto() {
   if (readyPromise) {
@@ -66,9 +67,15 @@ function lockVault(crypto) {
     unlockedMasterKey = null;
   }
   activeUploads.forEach(function(fileKey) {
-    crypto.zeroize(fileKey);
+    if (fileKey && fileKey.fileKey) {
+      crypto.zeroize(fileKey.fileKey);
+    }
   });
   activeUploads.clear();
+  activeReaders.forEach(function(fileKey) {
+    crypto.zeroize(fileKey);
+  });
+  activeReaders.clear();
 }
 
 function activeMasterKey(supplied) {
@@ -181,7 +188,7 @@ async function handleMessage(message) {
       try {
         const encryptedMetadata = crypto.encrypt_chunk(
           metadata,
-          unlockedMasterKey,
+          fileKey,
           aadBytes(message.params.metadataAad),
         );
         try {
@@ -191,7 +198,9 @@ async function handleMessage(message) {
             aadBytes(message.params.fileKeyAad),
           );
           try {
-            activeUploads.set(uploadToken, fileKey.slice());
+            activeUploads.set(uploadToken, {
+              fileKey: fileKey.slice(),
+            });
             return {
               encryptedMetadata: encodeBase64(encryptedMetadata),
               encryptedFileKey: encodeBase64(encryptedFileKey),
@@ -211,15 +220,15 @@ async function handleMessage(message) {
     }
     case "encryptUploadPart": {
       const uploadToken = String(message.params.uploadToken || "");
-      const fileKey = activeUploads.get(uploadToken);
-      if (!fileKey) {
+      const upload = activeUploads.get(uploadToken);
+      if (!upload || !upload.fileKey) {
         throw new Error("Upload context is missing");
       }
       const chunkBytes = toUint8Array(message.params.chunkBytes);
       try {
         const encryptedChunk = crypto.encrypt_chunk(
           chunkBytes,
-          fileKey,
+          upload.fileKey,
           aadBytes(message.params.aad),
         );
         try {
@@ -242,12 +251,155 @@ async function handleMessage(message) {
     }
     case "finalizeUpload": {
       const uploadToken = String(message.params.uploadToken || "");
-      const fileKey = activeUploads.get(uploadToken);
-      if (fileKey) {
-        crypto.zeroize(fileKey);
+      const upload = activeUploads.get(uploadToken);
+      if (!upload || !upload.fileKey) {
+        throw new Error("Upload context is missing");
+      }
+      const manifest = new TextEncoder().encode(
+        JSON.stringify(message.params.manifest || {}),
+      );
+      let encryptedHash = new Uint8Array();
+      try {
+        const encryptedManifest = crypto.encrypt_chunk(
+          manifest,
+          upload.fileKey,
+          aadBytes(message.params.manifestAad),
+        );
+        try {
+          const partHashes = message.params.partHashes || [];
+          let totalLength = 0;
+          const decoded = [];
+          for (let i = 0; i < partHashes.length; i++) {
+            const hashBytes = decodeBase64(partHashes[i]);
+            decoded.push(hashBytes);
+            totalLength += hashBytes.length;
+          }
+          const combined = new Uint8Array(totalLength);
+          let offset = 0;
+          for (let i = 0; i < decoded.length; i++) {
+            combined.set(decoded[i], offset);
+            offset += decoded[i].length;
+            crypto.zeroize(decoded[i]);
+          }
+          try {
+            encryptedHash = crypto.hash_bytes_blake3(combined);
+          } finally {
+            crypto.zeroize(combined);
+          }
+          return {
+            encryptedManifest: encodeBase64(encryptedManifest),
+            encryptedHash: encodeBase64(encryptedHash),
+          };
+        } finally {
+          crypto.zeroize(encryptedManifest);
+        }
+      } finally {
+        crypto.zeroize(manifest);
+        crypto.zeroize(encryptedHash);
+        crypto.zeroize(upload.fileKey);
+        activeUploads.delete(uploadToken);
+      }
+    }
+    case "clearUploadContext": {
+      const uploadToken = String(message.params.uploadToken || "");
+      const upload = activeUploads.get(uploadToken);
+      if (upload && upload.fileKey) {
+        crypto.zeroize(upload.fileKey);
         activeUploads.delete(uploadToken);
       }
       return { cleared: true };
+    }
+    case "openFileContext": {
+      const contextID = String(message.params.contextId || "");
+      if (!contextID) {
+        throw new Error("Missing file context");
+      }
+      if (!unlockedMasterKey) {
+        throw new Error("Vault is locked");
+      }
+      const encryptedFileKey = decodeBase64(message.params.encryptedFileKey);
+      const encryptedMetadata = decodeBase64(message.params.encryptedMetadata);
+      const encryptedManifest = decodeBase64(message.params.encryptedManifest);
+      try {
+        const fileKey = crypto.unwrap_file_key(
+          encryptedFileKey,
+          unlockedMasterKey,
+          aadBytes(message.params.fileKeyAad),
+        );
+        try {
+          const metadataBytes = crypto.decrypt_chunk(
+            encryptedMetadata,
+            fileKey,
+            aadBytes(message.params.metadataAad),
+          );
+          try {
+            const manifestBytes = crypto.decrypt_chunk(
+              encryptedManifest,
+              fileKey,
+              aadBytes(message.params.manifestAad),
+            );
+            try {
+              activeReaders.set(contextID, fileKey.slice());
+              return {
+                metadata: new TextDecoder().decode(metadataBytes),
+                manifest: new TextDecoder().decode(manifestBytes),
+              };
+            } finally {
+              crypto.zeroize(manifestBytes);
+            }
+          } finally {
+            crypto.zeroize(metadataBytes);
+          }
+        } finally {
+          crypto.zeroize(fileKey);
+        }
+      } finally {
+        crypto.zeroize(encryptedFileKey);
+        crypto.zeroize(encryptedMetadata);
+        crypto.zeroize(encryptedManifest);
+      }
+    }
+    case "closeFileContext": {
+      const contextID = String(message.params.contextId || "");
+      const fileKey = activeReaders.get(contextID);
+      if (fileKey) {
+        crypto.zeroize(fileKey);
+        activeReaders.delete(contextID);
+      }
+      return { cleared: true };
+    }
+    case "decryptFileChunk": {
+      const contextID = String(message.params.contextId || "");
+      const fileKey = activeReaders.get(contextID);
+      if (!fileKey) {
+        throw new Error("File context is missing");
+      }
+      const encryptedChunk = toUint8Array(message.params.encryptedChunk);
+      try {
+        const expectedHash = String(message.params.expectedHash || "");
+        if (expectedHash) {
+          const actualHash = crypto.hash_bytes_blake3(encryptedChunk);
+          try {
+            if (encodeBase64(actualHash) !== expectedHash) {
+              throw new Error("Encrypted chunk hash mismatch");
+            }
+          } finally {
+            crypto.zeroize(actualHash);
+          }
+        }
+        const chunkBytes = crypto.decrypt_chunk(
+          encryptedChunk,
+          fileKey,
+          aadBytes(message.params.aad),
+        );
+        try {
+          return { chunkBytes: chunkBytes.slice() };
+        } finally {
+          crypto.zeroize(chunkBytes);
+        }
+      } finally {
+        crypto.zeroize(encryptedChunk);
+      }
     }
     case "encryptFileMetadata": {
       const master = activeMasterKey(message.params.masterKey);
@@ -342,6 +494,9 @@ self.addEventListener("message", function (event) {
       const transfer = [];
       if (result && result.encryptedChunk instanceof Uint8Array) {
         transfer.push(result.encryptedChunk.buffer);
+      }
+      if (result && result.chunkBytes instanceof Uint8Array) {
+        transfer.push(result.chunkBytes.buffer);
       }
       self.postMessage({
         id: payload.id,

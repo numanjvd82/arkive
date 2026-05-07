@@ -387,35 +387,37 @@ func renderCompletedList(files []models.File) g.Node {
 }
 
 func renderFileRow(file models.File) g.Node {
-	previewable := isPreviewableContentType(file.ContentType)
 	timestamp := formatTime(file.UpdatedAt)
 	relative := format.RelativeTime(file.UpdatedAt)
-	viewURL := ""
-	if previewable {
-		viewURL = fmt.Sprintf("/files/%s/view", file.ID)
-	}
+	viewURL := fmt.Sprintf("/files/%s/view", file.ID)
 
 	return h.Tr(
 		h.Class("files-row"),
+		g.Attr("aria-busy", "true"),
 		g.Attr("data-file-row", file.ID),
 		g.Attr("id", "file-"+file.ID),
 		h.Td(
 			h.Class("files-cell files-cell-name"),
 			h.Span(
 				h.Class("files-type-icon"),
+				g.Attr("data-file-field", "icon"),
 				fileTypeGlyph(file),
 			),
 			h.Div(
 				h.Class("files-meta"),
-				h.Span(h.Class("files-name"), g.Text(file.Filename)),
+				h.Span(
+					h.Class("files-name files-skeleton files-skeleton-name"),
+					g.Attr("data-file-field", "name"),
+					g.Attr("aria-hidden", "true"),
+				),
 			),
 		),
 		h.Td(
 			h.Class("files-cell files-cell-type"),
 			h.Span(
-				h.Class("files-code"),
-				h.Title(fileSubtitle(file)),
-				g.Text(fileSubtitle(file)),
+				h.Class("files-code files-skeleton files-skeleton-type"),
+				g.Attr("data-file-field", "type"),
+				g.Attr("aria-hidden", "true"),
 			),
 		),
 		h.Td(
@@ -436,7 +438,7 @@ func renderFileRow(file models.File) g.Node {
 					h.Type("button"),
 					g.Attr("data-file-action", "share"),
 					g.Attr("data-file-id", file.ID),
-					g.Attr("data-file-name", file.Filename),
+					g.Attr("data-file-name", ""),
 				}),
 				lucide.Share2(
 					h.Class("files-lucide files-lucide-action"),
@@ -447,7 +449,7 @@ func renderFileRow(file models.File) g.Node {
 				"View",
 				viewURL,
 				"a",
-				nil,
+				g.Attr("data-file-action", "view"),
 				lucide.Eye(
 					h.Class("files-lucide files-lucide-action"),
 					g.Attr("aria-hidden", "true"),
@@ -455,9 +457,13 @@ func renderFileRow(file models.File) g.Node {
 			),
 			renderActionLink(
 				"Download",
-				fmt.Sprintf("/api/files/%s/download", file.ID),
-				"a",
-				nil,
+				"",
+				"button",
+				g.Group([]g.Node{
+					h.Type("button"),
+					g.Attr("data-file-action", "download"),
+					g.Attr("data-file-id", file.ID),
+				}),
 				lucide.Download(
 					h.Class("files-lucide files-lucide-action"),
 					g.Attr("aria-hidden", "true"),
@@ -471,7 +477,7 @@ func renderFileRow(file models.File) g.Node {
 					h.Type("button"),
 					g.Attr("data-file-action", "delete"),
 					g.Attr("data-file-id", file.ID),
-					g.Attr("data-file-name", file.Filename),
+					g.Attr("data-file-name", ""),
 				}),
 				lucide.Trash2(
 					h.Class("files-lucide files-lucide-action"),
@@ -487,19 +493,6 @@ func formatTime(value time.Time) string {
 		return ""
 	}
 	return value.Format("Jan 2, 2006 15:04")
-}
-
-func isPreviewableContentType(contentType string) bool {
-	contentType = strings.TrimSpace(strings.ToLower(contentType))
-	return strings.HasPrefix(contentType, "image/") || strings.HasPrefix(contentType, "video/")
-}
-
-func fileSubtitle(file models.File) string {
-	contentType := strings.TrimSpace(file.ContentType)
-	if contentType == "" {
-		contentType = "Unknown type"
-	}
-	return contentType
 }
 
 func fileTypeIcon(file models.File) string {
@@ -563,6 +556,7 @@ func renderActionLink(label, href, kind string, attrs g.Node, icon g.Node) g.Nod
 		return h.A(
 			h.Class(classes),
 			h.Href(href),
+			attrs,
 			g.Attr("title", label),
 			icon,
 			h.Span(h.Class("files-action-label"), g.Text(label)),

@@ -2,12 +2,15 @@ import { initCopyButtons } from "./features/copy_button.js";
 import { initCrypto } from "./features/crypto.js";
 import { initDialogs } from "./features/dialog.js";
 import { initDropdowns } from "./features/dropdown.js";
+import { ArkiveFileReader } from "./features/file_reader.js";
 import { initLightbox } from "./features/lightbox.js";
 import { initSearchPalette } from "./features/search_palette.js";
 import { initSidebar } from "./features/sidebar.js";
 import { initToast } from "./features/toast.js";
 import { initUploads } from "./features/uploads.js";
 import { initVault } from "./features/vault.js";
+
+window.ArkiveFileReader = ArkiveFileReader;
 
 function initTheme() {
   const modes = ["dark", "system", "light"];

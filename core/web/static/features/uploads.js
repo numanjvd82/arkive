@@ -677,9 +677,6 @@ export function initUploads() {
       toastUploadSuccess(task.file.name);
     } catch (err) {
       task.lastError = err;
-      if (task.uploadSessionId && task.status !== "cancelled") {
-        await window.ArkiveVault.finalizeUpload(task.uploadToken || "").catch(function() {});
-      }
       if (task.status !== "error" && task.status !== "cancelled") {
         await cleanupFailure(task, task.fileId || null, signature, err);
       }

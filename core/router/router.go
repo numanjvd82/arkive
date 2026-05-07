@@ -125,6 +125,11 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 	apiFiles := api.Group("/files")
 	apiFiles.Use(middleware.RequireSessionJSON(authService))
 	{
+		apiFiles.GET("/:id/record", middleware.RateLimit(middleware.RateLimitConfig{
+			RequestsPerMinute: 120,
+			Burst:             240,
+			KeyPrefix:         "file:record",
+		}), handlers.APIFileRecord(uploadService))
 		apiFiles.GET("/:id/share", middleware.RateLimit(middleware.RateLimitConfig{
 			RequestsPerMinute: 60,
 			Burst:             120,

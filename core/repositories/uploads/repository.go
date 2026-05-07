@@ -200,3 +200,67 @@ func (r *Repository) ListUploadParts(ctx context.Context, db database.PgExecutor
 	}
 	return parts, nil
 }
+
+func (r *Repository) ReplaceFileChunks(ctx context.Context, db database.PgExecutor, fileID string, chunks []models.FileChunk) error {
+	if _, err := db.Exec(ctx, `DELETE FROM file_chunks WHERE file_id = $1`, fileID); err != nil {
+		return err
+	}
+	for _, chunk := range chunks {
+		query := `INSERT INTO file_chunks
+			(file_id, chunk_index, storage_key, plaintext_size, encrypted_size, encrypted_hash, upload_status, uploaded_at)
+		VALUES
+			($1, $2, $3, $4, $5, $6, $7, $8)`
+		if _, err := db.Exec(ctx, query,
+			chunk.FileID,
+			chunk.ChunkIndex,
+			chunk.StorageKey,
+			chunk.PlaintextSize,
+			chunk.EncryptedSize,
+			chunk.EncryptedHash,
+			chunk.UploadStatus,
+			chunk.UploadedAt,
+		); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *Repository) ListFileChunksByFile(ctx context.Context, db database.PgExecutor, fileID string) ([]models.FileChunk, error) {
+	rows, err := db.Query(ctx, `SELECT
+		id, file_id, chunk_index, storage_key, plaintext_size, encrypted_size, encrypted_hash, upload_status, uploaded_at, created_at
+	FROM
+		file_chunks
+	WHERE
+		file_id = $1
+	ORDER BY
+		chunk_index ASC`, fileID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var chunks []models.FileChunk
+	for rows.Next() {
+		var chunk models.FileChunk
+		if err := rows.Scan(
+			&chunk.ID,
+			&chunk.FileID,
+			&chunk.ChunkIndex,
+			&chunk.StorageKey,
+			&chunk.PlaintextSize,
+			&chunk.EncryptedSize,
+			&chunk.EncryptedHash,
+			&chunk.UploadStatus,
+			&chunk.UploadedAt,
+			&chunk.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		chunks = append(chunks, chunk)
+	}
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+	return chunks, nil
+}

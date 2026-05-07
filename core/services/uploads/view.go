@@ -28,8 +28,8 @@ func (s *Service) GetFileForDisplay(ctx context.Context, userID, fileID string) 
 		return models.File{}, err
 	}
 
-	if file.Status != FileStatusComplete {
-		if file.Status == FileStatusFailed || file.Status == FileStatusAborted {
+	if file.UploadStatus != FileUploadComplete {
+		if file.UploadStatus == FileUploadFailed || file.UploadStatus == FileUploadAborted {
 			return models.File{}, ErrUploadCancelled
 		}
 		return models.File{}, ErrNotFound
@@ -66,8 +66,8 @@ func (s *Service) GetFileForShare(ctx context.Context, fileID string) (models.Fi
 		return models.File{}, err
 	}
 
-	if file.Status != FileStatusComplete {
-		if file.Status == FileStatusFailed || file.Status == FileStatusAborted {
+	if file.UploadStatus != FileUploadComplete {
+		if file.UploadStatus == FileUploadFailed || file.UploadStatus == FileUploadAborted {
 			return models.File{}, ErrUploadCancelled
 		}
 		return models.File{}, ErrNotFound
