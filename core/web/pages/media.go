@@ -106,7 +106,7 @@ func MediaViewPage(props MediaViewPageProps) web.Page {
 										h.Span(h.Class("media-hash-label"), g.Attr("data-media-hash-label", "true"), g.Text("BLAKE3")),
 										components.CopyButton(components.CopyButtonProps{
 											Text:           "Copy",
-											Value:          integrityHash,
+											TargetID:       "media-hash-value",
 											Variant:        "secondary",
 											Icon:           "copy",
 											AriaLabel:      "Copy integrity hash",
@@ -114,7 +114,7 @@ func MediaViewPage(props MediaViewPageProps) web.Page {
 											SuccessMessage: "Integrity hash copied.",
 										}),
 									),
-									h.Code(h.Class("media-hash-value"), g.Attr("data-media-hash", "true"), g.Text(integrityHash)),
+									h.Code(h.Class("media-hash-value"), g.Attr("id", "media-hash-value"), g.Attr("data-media-hash", "true"), g.Text(integrityHash)),
 								),
 								h.P(
 									h.Class("media-panel-note"),

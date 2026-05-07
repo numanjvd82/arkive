@@ -105,7 +105,7 @@ export class MultipartUploadPipeline {
         task.fileId,
         this.buildManifest(task, metadata),
         task.partRecords.map(function (part) {
-          return part.encryptedHash;
+          return part.hash;
         }),
       );
       await this.completeSession(task.uploadSessionId, {

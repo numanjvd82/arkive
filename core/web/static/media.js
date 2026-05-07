@@ -50,6 +50,23 @@
     return sized.toFixed(index === 0 ? 0 : 1) + " " + units[index];
   }
 
+  function base64ToHex(value) {
+    const normalized = String(value || "").trim();
+    if (!normalized) {
+      return "";
+    }
+    try {
+      const binary = atob(normalized);
+      let hex = "";
+      for (let i = 0; i < binary.length; i++) {
+        hex += binary.charCodeAt(i).toString(16).padStart(2, "0");
+      }
+      return hex;
+    } catch (_) {
+      return normalized;
+    }
+  }
+
   function copyText(value) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       return navigator.clipboard.writeText(value);
@@ -143,7 +160,7 @@
     const preview = metadata.preview || {};
     setDimensions(preview.width || 0, preview.height || 0);
     if (hashValue) {
-      hashValue.textContent = record.encryptedHash || "Unavailable";
+      hashValue.textContent = base64ToHex(record.encryptedHash) || "Unavailable";
     }
     if (hashNote) {
       hashNote.textContent = "BLAKE3 over encrypted object bytes.";
