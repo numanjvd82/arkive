@@ -1,0 +1,28 @@
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  enable:
+    - govet
+    - staticcheck
+    - unused
+    - ineffassign
+    - errcheck
+    - unparam
+    - gocritic
+    - revive
+    - dupl
+    - misspell
+    - prealloc
+    - bodyclose
+    - nilerr
+    - wastedassign
+    - whitespace
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
