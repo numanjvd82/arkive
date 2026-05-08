@@ -3,7 +3,6 @@ package pages
 import (
 	"fmt"
 	"math"
-	"strings"
 
 	lucide "github.com/eduardolat/gomponents-lucide"
 	g "maragu.dev/gomponents"
@@ -143,39 +142,23 @@ func renderDashboardRows(files []models.File) []g.Node {
 			h.Td(
 				h.Div(
 					h.Class("activity-file"),
-					fileIcon(file),
-					h.Span(h.Class("activity-file-name"), g.Text(file.Filename)),
+					fileIcon(),
+					h.Span(h.Class("activity-file-name"), g.Text("Encrypted file")),
 					lucide.Lock(
 						h.Class("dashboard-lucide dashboard-lucide-lock"),
 						g.Attr("aria-hidden", "true"),
 					),
 				),
 			),
-			h.Td(h.Class("mono"), g.Text(format.Bytes(file.SizeBytes))),
+			h.Td(h.Class("mono"), g.Text("Encrypted")),
 			h.Td(h.Class("activity-muted"), g.Text(format.RelativeTime(file.UpdatedAt))),
 		))
 	}
 	return rows
 }
 
-func fileIcon(file models.File) g.Node {
-	contentType := strings.TrimSpace(strings.ToLower(file.ContentType))
-	switch {
-	case strings.HasPrefix(contentType, "image/"):
-		return lucide.FileImage(h.Class("dashboard-lucide activity-file-icon"), g.Attr("aria-hidden", "true"))
-	case strings.HasPrefix(contentType, "video/"):
-		return lucide.File(h.Class("dashboard-lucide activity-file-icon"), g.Attr("aria-hidden", "true"))
-	case strings.HasPrefix(contentType, "audio/"):
-		return lucide.FileMusic(h.Class("dashboard-lucide activity-file-icon"), g.Attr("aria-hidden", "true"))
-	case strings.Contains(contentType, "zip") || strings.Contains(contentType, "tar"):
-		return lucide.FileArchive(h.Class("dashboard-lucide activity-file-icon"), g.Attr("aria-hidden", "true"))
-	case strings.Contains(contentType, "pdf") || strings.Contains(contentType, "word") || strings.Contains(contentType, "officedocument"):
-		return lucide.FileText(h.Class("dashboard-lucide activity-file-icon"), g.Attr("aria-hidden", "true"))
-	case strings.HasPrefix(contentType, "text/") || strings.Contains(contentType, "json") || strings.Contains(contentType, "xml"):
-		return lucide.FileCode(h.Class("dashboard-lucide activity-file-icon"), g.Attr("aria-hidden", "true"))
-	default:
-		return lucide.File(h.Class("dashboard-lucide activity-file-icon"), g.Attr("aria-hidden", "true"))
-	}
+func fileIcon() g.Node {
+	return lucide.File(h.Class("dashboard-lucide activity-file-icon"), g.Attr("aria-hidden", "true"))
 }
 
 func formatPercentText(value float64) string {

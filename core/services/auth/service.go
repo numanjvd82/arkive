@@ -192,12 +192,22 @@ func (s *Service) GetUserByID(ctx context.Context, userID string) (models.User, 
 }
 
 func (s *Service) authenticateUser(ctx context.Context, db database.PgExecutor, email, password string) (models.User, error) {
-	user, hash, err := s.authRepo.GetUserByEmail(ctx, db, email)
+	user, err := s.authRepo.GetUserByEmail(ctx, db, email)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return models.User{}, ErrInvalidCredentials
 		}
 		return models.User{}, err
+	}
+	hash, err := s.authRepo.GetPasswordHashByEmail(ctx, db, email)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.User{}, ErrInvalidCredentials
+		}
+		return models.User{}, err
+	}
+	if hash == nil {
+		return models.User{}, ErrInvalidCredentials
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(*hash), []byte(password)); err != nil {

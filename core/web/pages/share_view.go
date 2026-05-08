@@ -1,17 +1,12 @@
 package pages
 
 import (
-	"fmt"
-	"strings"
-
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
 
 	"arkive/core/models"
 	"arkive/core/web"
 	"arkive/core/web/components"
-	"arkive/pkg/format"
-	"arkive/pkg/video"
 )
 
 type PublicShareViewProps struct {
@@ -26,12 +21,8 @@ type PublicShareViewProps struct {
 
 func PublicShareViewPage(props PublicShareViewProps) web.Page {
 	file := props.File
-	contentType := strings.TrimSpace(file.ContentType)
 	headerChips := []g.Node{
-		h.Span(h.Class("chip"), g.Text(format.Bytes(file.SizeBytes))),
-	}
-	if contentType != "" {
-		headerChips = append(headerChips, h.Span(h.Class("chip chip-muted"), g.Text(contentType)))
+		h.Span(h.Class("chip"), g.Text("Encrypted")),
 	}
 	if !file.UpdatedAt.IsZero() {
 		headerChips = append(headerChips, h.Span(h.Class("chip chip-muted"), g.Text(formatTime(file.UpdatedAt))))
@@ -39,15 +30,10 @@ func PublicShareViewPage(props PublicShareViewProps) web.Page {
 
 	isImage := props.IsImage
 	isVideo := props.IsVideo
-	largeVideo := isVideo && video.IsLarge(
-		file.SizeBytes,
-		file.VideoDurationSeconds,
-		file.VideoWidth,
-		file.VideoHeight,
-	)
+	largeVideo := false
 
 	return web.Page{
-		Title:   fmt.Sprintf("Arkive · %s", file.Filename),
+		Title:   "Arkive · Shared file",
 		Robots:  RobotsNoIndex,
 		CSS:     append(buildMediaCSS(MediaViewPageProps{}), "/web/pages/share.css"),
 		JS:      buildMediaJS(MediaViewPageProps{}),
@@ -74,7 +60,7 @@ func PublicShareViewPage(props PublicShareViewProps) web.Page {
 						h.Div(
 							h.Class("media-title"),
 							h.P(h.Class("media-eyebrow"), g.Text("Media preview")),
-							h.H1(g.Text(file.Filename)),
+							h.H1(g.Text("Encrypted file")),
 							h.Div(h.Class("media-chips"), g.Group(headerChips)),
 						),
 						h.Div(
@@ -113,11 +99,11 @@ func PublicShareViewPage(props PublicShareViewProps) web.Page {
 								h.H3(g.Text("Details")),
 								h.Div(
 									h.Class("media-meta"),
-									metaRow("Filename", file.Filename, ""),
-									metaRow("Type", fallbackText(contentType, "Unknown"), ""),
-									metaRow("Size", format.Bytes(file.SizeBytes), ""),
-									metaRow("Resolution", video.FormatResolution(file.VideoWidth, file.VideoHeight, isVideo), ""),
-									metaRow("Duration", video.FormatDuration(file.VideoDurationSeconds, isVideo), ""),
+							metaRow("Filename", "Encrypted", ""),
+							metaRow("Type", "Encrypted", ""),
+							metaRow("Size", "Encrypted", ""),
+							metaRow("Resolution", "Encrypted", ""),
+							metaRow("Duration", "Encrypted", ""),
 									metaRow("Updated", fallbackText(formatTime(file.UpdatedAt), "Not available"), ""),
 								),
 							),
@@ -194,10 +180,10 @@ func renderShareMedia(props PublicShareViewProps) g.Node {
 				h.Img(
 					h.Class("media-image"),
 					h.Src(props.ViewURL),
-					h.Alt(props.File.Filename),
+								h.Alt("Encrypted file"),
 					g.Attr("data-lightbox-trigger", "true"),
 					g.Attr("data-lightbox-src", props.ViewURL),
-					g.Attr("data-lightbox-title", props.File.Filename),
+								g.Attr("data-lightbox-title", "Encrypted file"),
 					g.Attr("loading", "lazy"),
 				),
 				h.Button(
@@ -205,7 +191,7 @@ func renderShareMedia(props PublicShareViewProps) g.Node {
 					g.Attr("type", "button"),
 					g.Attr("aria-label", "Open full screen"),
 					g.Attr("data-lightbox-src", props.ViewURL),
-					g.Attr("data-lightbox-title", props.File.Filename),
+								g.Attr("data-lightbox-title", "Encrypted file"),
 					components.Icon(components.IconProps{Name: "fullscreen", Size: "18", Decorative: true}),
 				),
 			)

@@ -2,7 +2,6 @@ package pages
 
 import (
 	"encoding/hex"
-	"fmt"
 	"strings"
 
 	lucide "github.com/eduardolat/gomponents-lucide"
@@ -12,8 +11,6 @@ import (
 	"arkive/core/models"
 	"arkive/core/web"
 	"arkive/core/web/components"
-	"arkive/pkg/format"
-	"arkive/pkg/video"
 )
 
 type MediaViewPageProps struct {
@@ -23,14 +20,13 @@ type MediaViewPageProps struct {
 
 func MediaViewPage(props MediaViewPageProps) web.Page {
 	file := props.File
-	contentType := strings.TrimSpace(file.ContentType)
 	integrityHash := "Unavailable"
 	if len(file.EncryptedHash) > 0 {
 		integrityHash = hex.EncodeToString(file.EncryptedHash)
 	}
 
 	return web.Page{
-		Title:      fmt.Sprintf("Arkive · %s", file.Filename),
+		Title:      "Arkive · Encrypted file",
 		Robots:     RobotsNoIndex,
 		CSS:        buildMediaCSS(props),
 		JS:         buildMediaJS(props),
@@ -74,10 +70,10 @@ func MediaViewPage(props MediaViewPageProps) web.Page {
 								h.Class("media-sidebar-card"),
 								h.Div(
 									h.Class("media-sidebar-head"),
-									h.H1(g.Attr("data-media-title", "true"), g.Text(file.Filename)),
+									h.H1(g.Attr("data-media-title", "true"), g.Text("Encrypted file")),
 									h.Div(
 										h.Class("media-chips"),
-										h.Span(h.Class("chip chip-muted"), g.Attr("data-media-chip-type", "true"), g.Text(mediaChipLabel(contentType))),
+										h.Span(h.Class("chip chip-muted"), g.Attr("data-media-chip-type", "true"), g.Text("Encrypted")),
 										h.Span(h.Class("chip"), g.Text("ZERO-KNOWLEDGE")),
 									),
 								),
@@ -88,10 +84,10 @@ func MediaViewPage(props MediaViewPageProps) web.Page {
 									h.Class("media-panel-lucide"),
 									g.Attr("aria-hidden", "true"),
 								),
-								metaRow("Dimensions", fallbackText(video.FormatResolution(file.VideoWidth, file.VideoHeight, false), "Not available"), "media-dimensions"),
-								metaRow("File Size", format.Bytes(file.SizeBytes), "media-size"),
+								metaRow("Dimensions", "Encrypted", "media-dimensions"),
+								metaRow("File Size", "Encrypted", "media-size"),
 								metaRow("Uploaded", fallbackText(formatTime(file.CreatedAt), "Not available"), "media-uploaded"),
-								metaRow("MIME Type", fallbackText(contentType, "Unknown"), "media-mime"),
+								metaRow("MIME Type", "Encrypted", "media-mime"),
 							),
 							renderMediaPanel(
 								"Integrity Hash",
@@ -139,7 +135,7 @@ func MediaViewPage(props MediaViewPageProps) web.Page {
 							h.Div(
 								h.Class("media-actions-panel"),
 								g.Attr("data-media-file-id", file.ID),
-								g.Attr("data-media-file-name", file.Filename),
+								g.Attr("data-media-file-name", "Encrypted file"),
 								components.Button(components.ButtonProps{
 									Text:    "Download File",
 									Variant: "primary",
@@ -226,13 +222,6 @@ func metaRow(label, value, id string) g.Node {
 		h.Span(h.Class("meta-label"), g.Text(label)),
 		h.Span(h.Class("meta-value"), g.If(id != "", g.Attr("data-media-field", id)), g.Text(value)),
 	)
-}
-
-func mediaChipLabel(contentType string) string {
-	if strings.TrimSpace(contentType) == "" {
-		return "UNKNOWN"
-	}
-	return strings.ToUpper(contentType)
 }
 
 func fallbackText(value, fallback string) string {

@@ -14,52 +14,28 @@ func New() *Repository {
 	return &Repository{}
 }
 
-func hydrateLegacyFile(file *models.File) {
-	if file == nil {
-		return
-	}
-	if file.Filename == "" {
-		file.Filename = "file-" + shortID(file.ID)
-	}
-	if file.ContentType == "" {
-		file.ContentType = "application/octet-stream"
-	}
-	if file.SizeBytes == 0 {
-		file.SizeBytes = file.PlaintextSize
-	}
-	if file.Status == "" {
-		file.Status = file.UploadStatus
-	}
-	if file.Bucket == "" {
-		file.Bucket = file.StorageBackend
-	}
-}
-
-func shortID(value string) string {
-	if len(value) >= 8 {
-		return value[:8]
-	}
-	return value
-}
-
 func (r *Repository) CreateFile(ctx context.Context, db database.PgExecutor, file models.File) (models.File, error) {
 	var created models.File
 	query := `INSERT INTO files
 		(user_id, encrypted_metadata, encrypted_file_key, encrypted_manifest, encryption_version, chunk_size, chunk_count, plaintext_size, encrypted_size, encrypted_hash, upload_status, storage_backend, expires_at)
 	VALUES
-		($1, $2, $3, $4, 1, $5, 1, $6, $6, NULL, $7, $8, $9)
+		($1, $2, $3, $4, $5, $6, $7, $8, $9, NULL, $10, $11, $12)
 	RETURNING
 		id, user_id, encrypted_metadata, encrypted_file_key, encrypted_manifest, encryption_version, chunk_size, chunk_count,
 		plaintext_size, encrypted_size, encrypted_hash, upload_status, storage_backend, completed_at, created_at, updated_at, expires_at`
 	if err := db.QueryRow(ctx, query,
 		file.UserID,
-		[]byte{},
-		[]byte{},
-		[]byte{},
-		file.SizeBytes,
-		file.SizeBytes,
-		"pending",
-		"local",
+		file.EncryptedMetadata,
+		file.EncryptedFileKey,
+		file.EncryptedManifest,
+		file.EncryptionVersion,
+		file.ChunkSize,
+		file.ChunkCount,
+		file.PlaintextSize,
+		file.EncryptedSize,
+		file.EncryptedHash,
+		file.UploadStatus,
+		file.StorageBackend,
 		file.ExpiresAt,
 	).Scan(
 		&created.ID,
@@ -82,7 +58,6 @@ func (r *Repository) CreateFile(ctx context.Context, db database.PgExecutor, fil
 	); err != nil {
 		return models.File{}, err
 	}
-	hydrateLegacyFile(&created)
 	return created, nil
 }
 
@@ -130,7 +105,6 @@ func (r *Repository) CreateEncryptedFile(ctx context.Context, db database.PgExec
 	); err != nil {
 		return models.File{}, err
 	}
-	hydrateLegacyFile(&created)
 	return created, nil
 }
 
@@ -164,7 +138,6 @@ func (r *Repository) GetEncryptedFileForUser(ctx context.Context, db database.Pg
 	); err != nil {
 		return models.File{}, err
 	}
-	hydrateLegacyFile(&file)
 	return file, nil
 }
 
@@ -406,7 +379,6 @@ func (r *Repository) ListArchivedFilesForUser(ctx context.Context, db database.P
 		); err != nil {
 			return nil, err
 		}
-		hydrateLegacyFile(&file)
 		files = append(files, file)
 	}
 	if rows.Err() != nil {
@@ -459,10 +431,6 @@ func (r *Repository) CountArchivedFilesForUser(ctx context.Context, db database.
 		return 0, err
 	}
 	return total, nil
-}
-
-func (r *Repository) UpdateVideoMetadata(ctx context.Context, db database.PgExecutor, fileID string, width, height int, durationSeconds int64) error {
-	return nil
 }
 
 func (r *Repository) GetFileByID(ctx context.Context, db database.PgExecutor, fileID string) (models.File, error) {
@@ -571,7 +539,6 @@ func (r *Repository) ListPendingForUser(ctx context.Context, db database.PgExecu
 		); err != nil {
 			return nil, err
 		}
-		hydrateLegacyFile(&file)
 		files = append(files, file)
 	}
 	if rows.Err() != nil {
@@ -630,7 +597,6 @@ func (r *Repository) ListCompletedForUser(ctx context.Context, db database.PgExe
 		); err != nil {
 			return nil, err
 		}
-		hydrateLegacyFile(&file)
 		files = append(files, file)
 	}
 	if rows.Err() != nil {
@@ -728,7 +694,6 @@ func (r *Repository) ListExpiredCompleteFiles(ctx context.Context, db database.P
 		); err != nil {
 			return nil, err
 		}
-		hydrateLegacyFile(&file)
 		files = append(files, file)
 	}
 	if rows.Err() != nil {
@@ -779,7 +744,6 @@ func (r *Repository) ListExpiredUploads(ctx context.Context, db database.PgExecu
 		); err != nil {
 			return nil, err
 		}
-		hydrateLegacyFile(&file)
 		files = append(files, file)
 	}
 	if rows.Err() != nil {

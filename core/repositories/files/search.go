@@ -58,7 +58,6 @@ func (r *Repository) SearchCompletedForUser(ctx context.Context, db database.PgE
 		); err != nil {
 			return nil, err
 		}
-		hydrateLegacyFile(&file)
 		files = append(files, file)
 	}
 	if err := rows.Err(); err != nil {

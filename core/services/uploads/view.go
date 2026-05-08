@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"arkive/core/models"
+	"arkive/pkg/storage"
 )
 
 func (s *Service) GetFileForDisplay(ctx context.Context, userID, fileID string) (models.File, error) {
@@ -46,10 +47,14 @@ func (s *Service) PresignView(ctx context.Context, userID, fileID string) (strin
 	if err != nil {
 		return "", err
 	}
-	if !isViewableContentType(file.ContentType) {
+	if file.UploadStatus != FileUploadComplete {
 		return "", ErrInvalidInput
 	}
-	return s.storage.PresignDownload(ctx, file.ObjectKey, file.Filename, "inline", s.downloadExpire)
+	objectKey, err := storage.BuildObjectKey(userID, file.ID)
+	if err != nil {
+		return "", err
+	}
+	return s.storage.PresignDownload(ctx, objectKey, file.ID, "inline", s.downloadExpire)
 }
 
 func (s *Service) GetFileForShare(ctx context.Context, fileID string) (models.File, error) {
@@ -86,11 +91,15 @@ func (s *Service) PresignShare(ctx context.Context, fileID string) (string, erro
 	}
 
 	disposition := "attachment"
-	if isViewableContentType(file.ContentType) {
+	if isViewableContentType(file.UploadStatus) {
 		disposition = "inline"
 	}
 
-	return s.storage.PresignDownload(ctx, file.ObjectKey, file.Filename, disposition, s.downloadExpire)
+	objectKey, err := storage.BuildObjectKey(file.UserID, file.ID)
+	if err != nil {
+		return "", err
+	}
+	return s.storage.PresignDownload(ctx, objectKey, file.ID, disposition, s.downloadExpire)
 }
 
 func (s *Service) PresignShareView(ctx context.Context, fileID string) (string, error) {
@@ -110,10 +119,14 @@ func (s *Service) PresignShareDownload(ctx context.Context, fileID string) (stri
 }
 
 func (s *Service) PresignShareViewForFile(ctx context.Context, file models.File) (string, error) {
-	if !isViewableContentType(file.ContentType) {
+	if file.UploadStatus != FileUploadComplete {
 		return "", ErrInvalidInput
 	}
-	return s.storage.PresignDownload(ctx, file.ObjectKey, file.Filename, "inline", s.downloadExpire)
+	objectKey, err := storage.BuildObjectKey(file.UserID, file.ID)
+	if err != nil {
+		return "", err
+	}
+	return s.storage.PresignDownload(ctx, objectKey, file.ID, "inline", s.downloadExpire)
 }
 
 func (s *Service) PresignShareDownloadForFile(ctx context.Context, file models.File) (string, error) {
@@ -121,7 +134,11 @@ func (s *Service) PresignShareDownloadForFile(ctx context.Context, file models.F
 	if expiry <= 0 {
 		expiry = s.downloadExpire
 	}
-	return s.storage.PresignDownload(ctx, file.ObjectKey, file.Filename, "attachment", expiry)
+	objectKey, err := storage.BuildObjectKey(file.UserID, file.ID)
+	if err != nil {
+		return "", err
+	}
+	return s.storage.PresignDownload(ctx, objectKey, file.ID, "attachment", expiry)
 }
 
 func isViewableContentType(contentType string) bool {

@@ -34,26 +34,34 @@ func (r *Repository) CreateVerifiedUser(ctx context.Context, db database.PgExecu
 	return user, nil
 }
 
-func (r *Repository) GetUserByEmail(ctx context.Context, db database.PgExecutor, email string) (models.User, *string, error) {
+func (r *Repository) GetUserByEmail(ctx context.Context, db database.PgExecutor, email string) (models.User, error) {
 	var user models.User
-	var hash *string
 	query := `SELECT
-		id, brand_name, email, password_hash, vault_salt, encrypted_master_key
+		id, brand_name, email, vault_salt, encrypted_master_key
 	FROM
 		users
 	WHERE
 		email = $1`
-	if err := db.QueryRow(ctx, query, email).Scan(&user.ID, &user.BrandName, &user.Email, &hash, &user.VaultSalt, &user.EncryptedMasterKey); err != nil {
-		return models.User{}, nil, err
+	if err := db.QueryRow(ctx, query, email).Scan(&user.ID, &user.BrandName, &user.Email, &user.VaultSalt, &user.EncryptedMasterKey); err != nil {
+		return models.User{}, err
 	}
-	return user, hash, nil
+	return user, nil
+}
+
+func (r *Repository) GetPasswordHashByEmail(ctx context.Context, db database.PgExecutor, email string) (*string, error) {
+	var hash *string
+	query := `SELECT password_hash FROM users WHERE email = $1`
+	if err := db.QueryRow(ctx, query, email).Scan(&hash); err != nil {
+		return nil, err
+	}
+	return hash, nil
 }
 
 func (r *Repository) GetUserByID(ctx context.Context, db database.PgExecutor, userID string) (models.User, error) {
 	var user models.User
 	query := `SELECT
 		id, brand_name, email, vault_salt, encrypted_master_key, quota_bytes, used_bytes, reserved_bytes,
-		last_login_at, created_at
+		last_login_at, recovery_setup_token, recovery_setup_token_expires_at, updated_at, created_at
 	FROM
 		users
 	WHERE
@@ -68,6 +76,9 @@ func (r *Repository) GetUserByID(ctx context.Context, db database.PgExecutor, us
 		&user.UsedBytes,
 		&user.ReservedBytes,
 		&user.LastLoginAt,
+		&user.RecoverySetupToken,
+		&user.RecoverySetupTokenExpiresAt,
+		&user.UpdatedAt,
 		&user.CreatedAt,
 	); err != nil {
 		return models.User{}, err
@@ -79,10 +90,9 @@ func (r *Repository) UpdateLastLogin(ctx context.Context, db database.PgExecutor
 	query := `UPDATE
 		users
 	SET
-		last_login_at = now(),
-		last_ip = NULLIF($2, '')::inet
+		last_login_at = now()
 	WHERE
 		id = $1`
-	_, err := db.Exec(ctx, query, userID, lastIP)
+	_, err := db.Exec(ctx, query, userID)
 	return err
 }

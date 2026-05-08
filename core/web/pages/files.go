@@ -422,7 +422,7 @@ func renderFileRow(file models.File) g.Node {
 		),
 		h.Td(
 			h.Class("files-cell files-cell-size"),
-			h.Span(h.Class("files-code"), g.Text(format.Bytes(file.SizeBytes))),
+			h.Span(h.Class("files-code"), g.Text("Encrypted")),
 		),
 		h.Td(
 			h.Class("files-cell files-cell-modified"),
@@ -496,23 +496,7 @@ func formatTime(value time.Time) string {
 }
 
 func fileTypeIcon(file models.File) string {
-	contentType := strings.TrimSpace(strings.ToLower(file.ContentType))
-	switch {
-	case strings.HasPrefix(contentType, "image/"):
-		return "file-image"
-	case strings.HasPrefix(contentType, "video/"):
-		return "file-video"
-	case strings.HasPrefix(contentType, "audio/"):
-		return "file-audio"
-	case strings.Contains(contentType, "zip") || strings.Contains(contentType, "rar") || strings.Contains(contentType, "tar"):
-		return "file-archive"
-	case strings.Contains(contentType, "pdf") || strings.Contains(contentType, "word") || strings.Contains(contentType, "officedocument"):
-		return "file-doc"
-	case strings.HasPrefix(contentType, "text/") || strings.Contains(contentType, "json") || strings.Contains(contentType, "xml"):
-		return "file-text"
-	default:
-		return "file"
-	}
+	return "file"
 }
 
 func fileTypeGlyph(file models.File) g.Node {

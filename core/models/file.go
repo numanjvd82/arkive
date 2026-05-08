@@ -3,21 +3,8 @@ package models
 import "time"
 
 type File struct {
-	ID                   string
-	UserID               string
-	Bucket               string
-	ObjectKey            string
-	Filename             string
-	ContentType          string
-	SizeBytes            int64
-	VideoWidth           int
-	VideoHeight          int
-	VideoDurationSeconds int64
-	Status               string
-	CreatedAt            time.Time
-	UpdatedAt            time.Time
-	ExpiresAt            *time.Time
-
+	ID                string
+	UserID            string
 	EncryptedMetadata []byte
 	EncryptedFileKey  []byte
 	EncryptedManifest []byte
@@ -30,6 +17,9 @@ type File struct {
 	UploadStatus      string
 	StorageBackend    string
 	CompletedAt       *time.Time
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	ExpiresAt         *time.Time
 }
 
 type FileChunk struct {

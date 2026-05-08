@@ -23,13 +23,7 @@ CREATE TABLE users (
   used_bytes        bigint NOT NULL DEFAULT 0,
   reserved_bytes    bigint NOT NULL DEFAULT 0,          -- for "upload initiated" but not completed
 
-  -- Platform controls
-  is_banned         boolean NOT NULL DEFAULT false,
-  ban_reason        text,
-
-  -- Abuse / rate limiting (optional but useful)
   last_login_at     TIMESTAMPTZ,
-  last_ip           inet,
 
   -- Setup recovery flow
   recovery_setup_token            TEXT UNIQUE,

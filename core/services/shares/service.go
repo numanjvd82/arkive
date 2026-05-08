@@ -79,7 +79,7 @@ func (s *Service) CreateShare(ctx context.Context, input CreateInput) (models.Sh
 		}
 		return models.Share{}, nil, err
 	}
-	if file.Status != FileStatusComplete {
+	if file.UploadStatus != FileStatusComplete {
 		return models.Share{}, nil, ErrInvalidInput
 	}
 

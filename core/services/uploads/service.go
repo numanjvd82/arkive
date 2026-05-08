@@ -106,20 +106,21 @@ func isExpired(expiresAt *time.Time) bool {
 	return time.Now().After(*expiresAt)
 }
 
-func (s *Service) beginUploadTx(ctx context.Context, userID, objectKey, filename, contentType string, sizeBytes int64) (pgx.Tx, models.File, validation.Errors, error) {
+func (s *Service) beginUploadTx(ctx context.Context, userID string, sizeBytes int64, storageBackend string) (pgx.Tx, models.File, validation.Errors, error) {
 	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return nil, models.File{}, nil, err
 	}
 
 	file, err := s.fileRepo.CreateFile(ctx, tx, models.File{
-		UserID:      userID,
-		ObjectKey:   objectKey,
-		Filename:    filename,
-		ContentType: contentType,
-		SizeBytes:   sizeBytes,
-		Status:      FileStatusPending,
-		ExpiresAt:   expiresAtPtr(time.Now().Add(s.uploadExpires)),
+		UserID:            userID,
+		EncryptionVersion: 1,
+		ChunkSize:         sizeBytes,
+		ChunkCount:        1,
+		PlaintextSize:     sizeBytes,
+		UploadStatus:      FileStatusPending,
+		StorageBackend:    storageBackend,
+		ExpiresAt:         expiresAtPtr(time.Now().Add(s.uploadExpires)),
 	})
 	if err != nil {
 		_ = tx.Rollback(ctx)
@@ -167,8 +168,8 @@ func (s *Service) finalizeFileCompletion(ctx context.Context, tx pgx.Tx, userID 
 		return err
 	}
 
-	if actualSize > file.SizeBytes {
-		extra := actualSize - file.SizeBytes
+	if actualSize > file.PlaintextSize {
+		extra := actualSize - file.PlaintextSize
 		reserved, err := s.storageRepo.ReserveStorage(ctx, tx, userID, extra)
 		if err != nil {
 			return err
@@ -186,8 +187,8 @@ func (s *Service) finalizeFileCompletion(ctx context.Context, tx pgx.Tx, userID 
 		return ErrUploadFailed
 	}
 
-	if actualSize < file.SizeBytes {
-		extra := file.SizeBytes - actualSize
+	if actualSize < file.PlaintextSize {
+		extra := file.PlaintextSize - actualSize
 		released, err := s.storageRepo.ReleaseReservedStorage(ctx, tx, userID, extra)
 		if err != nil {
 			return err
@@ -205,7 +206,7 @@ func (s *Service) markUploadFailed(ctx context.Context, userID string, file mode
 	if err != nil || !updated {
 		return
 	}
-	_, _ = s.storageRepo.ReleaseReservedStorage(ctx, s.db, userID, file.SizeBytes)
+	_, _ = s.storageRepo.ReleaseReservedStorage(ctx, s.db, userID, file.PlaintextSize)
 }
 
 func (s *Service) StartUpload(ctx context.Context, userID, filename string, sizeBytes int64, contentType string) (models.UploadStartResponse, validation.Errors, error) {
@@ -240,7 +241,6 @@ func (s *Service) StartUpload(ctx context.Context, userID, filename string, size
 	return models.UploadStartResponse{
 		UploadID:  resp.FileID,
 		FileID:    resp.FileID,
-		ObjectKey: resp.ObjectKey,
 		Mode:      "single",
 		UploadURL: resp.UploadURL,
 	}, nil, nil
@@ -291,19 +291,22 @@ func (s *Service) StartSingleUpload(ctx context.Context, userID, filename string
 		return models.SingleStartResponse{}, validationErrors, nil
 	}
 
-	objectKey, err := storage.BuildObjectKey(userID)
+	storageBackend, err := s.storage.ActiveProvider(ctx)
 	if err != nil {
 		return models.SingleStartResponse{}, nil, err
 	}
-
-	tx, file, valErrors, err := s.beginUploadTx(ctx, userID, objectKey, filename, contentType, sizeBytes)
+	tx, file, valErrors, err := s.beginUploadTx(ctx, userID, sizeBytes, storageBackend)
 	if err != nil {
 		return models.SingleStartResponse{}, nil, err
 	}
 	if valErrors != nil && valErrors.HasAny() {
 		return models.SingleStartResponse{}, valErrors, nil
 	}
-
+	objectKey, err := storage.BuildObjectKey(userID, file.ID)
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		return models.SingleStartResponse{}, nil, err
+	}
 	uploadURL, err := s.storage.PresignUpload(ctx, objectKey, contentType, s.uploadExpires)
 	if err != nil {
 		_ = tx.Rollback(ctx)
@@ -317,7 +320,6 @@ func (s *Service) StartSingleUpload(ctx context.Context, userID, filename string
 
 	return models.SingleStartResponse{
 		FileID:    file.ID,
-		ObjectKey: objectKey,
 		UploadURL: uploadURL,
 	}, nil, nil
 }
@@ -340,10 +342,10 @@ func (s *Service) CompleteSingleUpload(ctx context.Context, userID, fileID strin
 		}
 		return err
 	}
-	if file.Status == FileStatusComplete {
+	if file.UploadStatus == FileStatusComplete {
 		return nil
 	}
-	if file.Status == FileStatusAborted || file.Status == FileStatusFailed {
+	if file.UploadStatus == FileStatusAborted || file.UploadStatus == FileStatusFailed {
 		return ErrUploadCancelled
 	}
 	if isExpired(file.ExpiresAt) {
@@ -356,17 +358,18 @@ func (s *Service) CompleteSingleUpload(ctx context.Context, userID, fileID strin
 		return err
 	}
 
-	if err := s.finalizeFileCompletion(ctx, tx, userID, file, file.SizeBytes); err != nil {
+	if err := s.finalizeFileCompletion(ctx, tx, userID, file, file.PlaintextSize); err != nil {
 		_ = tx.Rollback(ctx)
 		s.markUploadFailed(ctx, userID, file)
-		_ = s.storage.DeleteObject(ctx, file.ObjectKey)
+		if objectKey, keyErr := storage.BuildObjectKey(userID, file.ID); keyErr == nil {
+			_ = s.storage.DeleteObject(ctx, objectKey)
+		}
 		return err
 	}
 
 	if err := tx.Commit(ctx); err != nil {
 		return err
 	}
-	s.scheduleVideoMetadata(file)
 	return nil
 }
 
@@ -394,7 +397,7 @@ func (s *Service) AbortSingleUpload(ctx context.Context, userID, fileID string) 
 		}
 		return err
 	}
-	if file.Status == FileStatusComplete || file.Status == FileStatusAborted || file.Status == FileStatusFailed {
+	if file.UploadStatus == FileStatusComplete || file.UploadStatus == FileStatusAborted || file.UploadStatus == FileStatusFailed {
 		_ = tx.Rollback(ctx)
 		return nil
 	}
@@ -409,7 +412,7 @@ func (s *Service) AbortSingleUpload(ctx context.Context, userID, fileID string) 
 		return nil
 	}
 
-	released, err := s.storageRepo.ReleaseReservedStorage(ctx, tx, userID, file.SizeBytes)
+	released, err := s.storageRepo.ReleaseReservedStorage(ctx, tx, userID, file.PlaintextSize)
 	if err != nil {
 		_ = tx.Rollback(ctx)
 		return err
@@ -422,7 +425,9 @@ func (s *Service) AbortSingleUpload(ctx context.Context, userID, fileID string) 
 		return err
 	}
 
-	_ = s.storage.DeleteObject(ctx, file.ObjectKey)
+	if objectKey, keyErr := storage.BuildObjectKey(userID, file.ID); keyErr == nil {
+		_ = s.storage.DeleteObject(ctx, objectKey)
+	}
 	return nil
 }
 
@@ -444,8 +449,8 @@ func (s *Service) PresignDownload(ctx context.Context, userID, fileID string) (s
 		}
 		return "", err
 	}
-	if file.Status != FileStatusComplete {
-		if file.Status == FileStatusFailed || file.Status == FileStatusAborted {
+	if file.UploadStatus != FileStatusComplete {
+		if file.UploadStatus == FileStatusFailed || file.UploadStatus == FileStatusAborted {
 			return "", ErrUploadCancelled
 		}
 		return "", ErrNotFound
@@ -454,7 +459,11 @@ func (s *Service) PresignDownload(ctx context.Context, userID, fileID string) (s
 		return "", ErrNotFound
 	}
 
-	return s.storage.PresignDownload(ctx, file.ObjectKey, file.Filename, "attachment", s.downloadExpire)
+	objectKey, err := storage.BuildObjectKey(userID, file.ID)
+	if err != nil {
+		return "", err
+	}
+	return s.storage.PresignDownload(ctx, objectKey, file.ID, "attachment", s.downloadExpire)
 }
 
 func (s *Service) DeleteFile(ctx context.Context, userID, fileID string) error {
@@ -482,9 +491,9 @@ func (s *Service) DeleteFile(ctx context.Context, userID, fileID string) error {
 		return err
 	}
 
-	switch file.Status {
+	switch file.UploadStatus {
 	case FileStatusComplete:
-		if err := s.storageRepo.DecreaseUsedStorage(ctx, tx, userID, file.SizeBytes); err != nil {
+		if err := s.storageRepo.DecreaseUsedStorage(ctx, tx, userID, file.PlaintextSize); err != nil {
 			_ = tx.Rollback(ctx)
 			return err
 		}
@@ -507,7 +516,9 @@ func (s *Service) DeleteFile(ctx context.Context, userID, fileID string) error {
 		return err
 	}
 
-	_ = s.storage.DeleteObject(ctx, file.ObjectKey)
+	if objectKey, keyErr := storage.BuildObjectKey(userID, file.ID); keyErr == nil {
+		_ = s.storage.DeleteObject(ctx, objectKey)
+	}
 	return nil
 }
 

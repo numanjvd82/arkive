@@ -1,16 +1,12 @@
 package pages
 
 import (
-	"fmt"
-	"strings"
-
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
 
 	"arkive/core/models"
 	"arkive/core/web"
 	"arkive/core/web/components"
-	"arkive/pkg/format"
 )
 
 type PublicSharePasswordProps struct {
@@ -20,14 +16,8 @@ type PublicSharePasswordProps struct {
 }
 
 func PublicSharePassword(props PublicSharePasswordProps) web.Page {
-	file := props.File
-	contentType := strings.TrimSpace(file.ContentType)
-	if contentType == "" {
-		contentType = "Unknown"
-	}
-
 	return web.Page{
-		Title:   fmt.Sprintf("Arkive · %s", file.Filename),
+		Title:   "Arkive · Shared file",
 		Robots:  RobotsNoIndex,
 		CSS:     []string{"/web/pages/share.css"},
 		HideNav: true,
@@ -48,9 +38,9 @@ func PublicSharePassword(props PublicSharePasswordProps) web.Page {
 					),
 					h.Div(
 						h.Class("share-file-meta"),
-						metaRow("Filename", file.Filename, ""),
-						metaRow("Type", contentType, ""),
-						metaRow("Size", format.Bytes(file.SizeBytes), ""),
+						metaRow("Filename", "Encrypted file", ""),
+						metaRow("Type", "Encrypted", ""),
+						metaRow("Size", "Encrypted", ""),
 					),
 					h.Form(
 						h.Class("share-form"),

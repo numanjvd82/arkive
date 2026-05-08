@@ -6,7 +6,6 @@ type UploadStartResponse struct {
 	UploadID         string
 	FileID           string
 	VaultID          string
-	ObjectKey        string
 	Mode             string
 	UploadURL        string
 	UploadSessionID  string
@@ -17,7 +16,6 @@ type UploadStartResponse struct {
 
 type SingleStartResponse struct {
 	FileID    string
-	ObjectKey string
 	UploadURL string
 	ExpiresAt time.Time
 }

@@ -92,15 +92,7 @@ func (s *Service) StartMultipartUploadSession(ctx context.Context, userID string
 		return models.UploadStartResponse{}, validationErrors, nil
 	}
 
-	objectKey, err := storage.BuildObjectKey(userID)
-	if err != nil {
-		return models.UploadStartResponse{}, nil, err
-	}
 	provider, err := s.storage.ActiveProvider(ctx)
-	if err != nil {
-		return models.UploadStartResponse{}, nil, err
-	}
-	providerUploadID, err := s.storage.CreateMultipartUpload(ctx, objectKey, "application/octet-stream")
 	if err != nil {
 		return models.UploadStartResponse{}, nil, err
 	}
@@ -125,19 +117,26 @@ func (s *Service) StartMultipartUploadSession(ctx context.Context, userID string
 	})
 	if err != nil {
 		_ = tx.Rollback(ctx)
-		_ = s.storage.AbortMultipartUpload(ctx, objectKey, providerUploadID)
+		return models.UploadStartResponse{}, nil, err
+	}
+	objectKey, err := storage.BuildObjectKey(userID, file.ID)
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		return models.UploadStartResponse{}, nil, err
+	}
+	providerUploadID, err := s.storage.CreateMultipartUpload(ctx, objectKey, "application/octet-stream")
+	if err != nil {
+		_ = tx.Rollback(ctx)
 		return models.UploadStartResponse{}, nil, err
 	}
 
 	reserved, err := s.storageRepo.ReserveStorage(ctx, tx, userID, input.OriginalSize)
 	if err != nil {
 		_ = tx.Rollback(ctx)
-		_ = s.storage.AbortMultipartUpload(ctx, objectKey, providerUploadID)
 		return models.UploadStartResponse{}, nil, err
 	}
 	if !reserved {
 		_ = tx.Rollback(ctx)
-		_ = s.storage.AbortMultipartUpload(ctx, objectKey, providerUploadID)
 		return models.UploadStartResponse{}, nil, ErrQuotaExceeded
 	}
 
@@ -152,7 +151,6 @@ func (s *Service) StartMultipartUploadSession(ctx context.Context, userID string
 	})
 	if err != nil {
 		_ = tx.Rollback(ctx)
-		_ = s.storage.AbortMultipartUpload(ctx, objectKey, providerUploadID)
 		return models.UploadStartResponse{}, nil, err
 	}
 

@@ -12,7 +12,6 @@ import (
 	"arkive/core/services/shares"
 	"arkive/core/services/uploads"
 	appcontext "arkive/pkg/context"
-	"arkive/pkg/format"
 )
 
 type searchResult struct {
@@ -65,14 +64,14 @@ func mapFileResults(files []models.File) []searchResult {
 	results := make([]searchResult, 0, len(files))
 	for _, file := range files {
 		url := "/api/files/" + file.ID + "/download"
-		if isSearchPreviewable(file.ContentType) {
+		if isSearchPreviewable(file.UploadStatus) {
 			url = "/files/" + file.ID + "/view"
 		}
 		results = append(results, searchResult{
 			ID:       file.ID,
 			Kind:     "file",
-			Title:    file.Filename,
-			Meta:     format.Bytes(file.SizeBytes),
+			Title:    "Encrypted file",
+			Meta:     "Encrypted",
 			URL:      url,
 			Category: "Files",
 		})
@@ -141,7 +140,6 @@ func searchSettingsResults(query string) []searchResult {
 	return results
 }
 
-func isSearchPreviewable(contentType string) bool {
-	contentType = strings.TrimSpace(strings.ToLower(contentType))
-	return strings.HasPrefix(contentType, "image/") || strings.HasPrefix(contentType, "video/")
+func isSearchPreviewable(status string) bool {
+	return strings.TrimSpace(status) == "complete"
 }
