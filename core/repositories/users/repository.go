@@ -28,17 +28,16 @@ func (r *Repository) UpdateQuota(ctx context.Context, db database.PgExecutor, us
 	return err
 }
 
-func (r *Repository) UpdateLoginActivity(ctx context.Context, db database.PgExecutor, userID string, loginAt time.Time, lastIP string) error {
+func (r *Repository) UpdateLoginActivity(ctx context.Context, db database.PgExecutor, userID string, loginAt time.Time) error {
 	query := `UPDATE
 		users
 	SET
 		last_login_at = $2,
 		last_active_at = $2,
-		last_ip = $3,
 		updated_at = now()
 	WHERE
 		id = $1`
-	_, err := db.Exec(ctx, query, userID, loginAt, lastIP)
+	_, err := db.Exec(ctx, query, userID, loginAt)
 	return err
 }
 

@@ -15,6 +15,7 @@
 - The ability to create simple text files inside the file manager
 - Add Exif toggle in the settings and show a dialog to strip exif or keep it before uploading.
 - Add session management to the settings. 
+- Process files in a queue like one by one => Priorty: HIGH
 
 ## Done
 - Install `ffprobe` on the server for video metadata extraction.
