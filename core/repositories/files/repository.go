@@ -269,7 +269,7 @@ func (r *Repository) GetFileForUser(ctx context.Context, db database.PgExecutor,
 	return file, nil
 }
 
-func (r *Repository) ListCompletedForUser(ctx context.Context, db database.PgExecutor, userID, sort string, page, pageSize int) ([]models.File, error) {
+func (r *Repository) ListCompletedForUser(ctx context.Context, db database.PgExecutor, userID string, page, pageSize int) ([]models.File, error) {
 	if pageSize <= 0 {
 		pageSize = 25
 	}
@@ -277,7 +277,6 @@ func (r *Repository) ListCompletedForUser(ctx context.Context, db database.PgExe
 		page = 1
 	}
 	offset := (page - 1) * pageSize
-	orderBy := resolveFilesOrderBy(sort)
 	query := `SELECT
 		id, user_id, encrypted_metadata, encrypted_file_key, encrypted_manifest, encryption_version, chunk_size, chunk_count,
 		plaintext_size, encrypted_size, encrypted_hash, upload_status, storage_backend, completed_at, created_at, updated_at, expires_at
@@ -287,7 +286,7 @@ func (r *Repository) ListCompletedForUser(ctx context.Context, db database.PgExe
 		user_id = $1
 		AND upload_status = 'complete'
 		AND expires_at IS NULL
-	ORDER BY ` + orderBy + `
+	ORDER BY updated_at DESC
 	LIMIT $2 OFFSET $3`
 	rows, err := db.Query(ctx, query, userID, pageSize, offset)
 	if err != nil {
@@ -341,25 +340,6 @@ func (r *Repository) CountCompletedForUser(ctx context.Context, db database.PgEx
 		return 0, err
 	}
 	return count, nil
-}
-
-func resolveFilesOrderBy(sort string) string {
-	switch sort {
-	case "name_asc":
-		return "created_at ASC"
-	case "name_desc":
-		return "created_at DESC"
-	case "size_asc":
-		return "plaintext_size ASC"
-	case "size_desc":
-		return "plaintext_size DESC"
-	case "updated_asc":
-		return "updated_at ASC"
-	case "updated_desc":
-		return "updated_at DESC"
-	default:
-		return "updated_at DESC"
-	}
 }
 
 func (r *Repository) DeleteFileForUser(ctx context.Context, db database.PgExecutor, fileID, userID string) (bool, error) {

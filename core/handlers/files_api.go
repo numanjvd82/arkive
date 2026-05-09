@@ -9,6 +9,10 @@ import (
 	"arkive/pkg/errs"
 )
 
+type bulkDeleteFilesRequest struct {
+	FileIDs []string `json:"fileIds"`
+}
+
 func APIDeleteFile(svc *uploads.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		fileID := c.Param("id")
@@ -36,5 +40,41 @@ func APIDeleteFile(svc *uploads.Service) gin.HandlerFunc {
 		}
 
 		c.Status(http.StatusNoContent)
+	}
+}
+
+func APIBulkDeleteFiles(svc *uploads.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID, ok := c.Get("user_id")
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			return
+		}
+
+		var req bulkDeleteFilesRequest
+		if err := c.ShouldBindJSON(&req); err != nil || len(req.FileIDs) == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			return
+		}
+
+		deletedCount, err := svc.DeleteFiles(c.Request.Context(), userID.(string), req.FileIDs)
+		if err != nil {
+			switch err {
+			case uploads.ErrUnauthorized:
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			case uploads.ErrUploadCancelled:
+				c.JSON(http.StatusConflict, gin.H{"error": "upload in progress"})
+			case uploads.ErrNotFound:
+				c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+			case uploads.ErrInvalidInput:
+				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			default:
+				_ = c.Error(errs.WithStack(err))
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "delete failed"})
+			}
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"deleted": deletedCount})
 	}
 }

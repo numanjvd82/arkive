@@ -106,6 +106,7 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 	apiFiles := api.Group("/files")
 	apiFiles.Use(middleware.RequireSessionJSON(authService))
 	{
+		apiFiles.POST("/bulk-delete", handlers.APIBulkDeleteFiles(uploadService))
 		apiFiles.GET("/:id/record", handlers.APIFileRecord(uploadService))
 		apiFiles.GET("/:id/share", handlers.APIGetShareForFile(shareService))
 		apiFiles.GET("/:id/download", handlers.APIDownloadFile(uploadService))

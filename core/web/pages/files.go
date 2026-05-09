@@ -21,7 +21,6 @@ type FilesPageProps struct {
 	Files         []models.File
 	ArchivedCount int64
 	Query         url.Values
-	Sort          string
 	Page          int
 	PageSize      int
 	TotalFiles    int
@@ -55,7 +54,6 @@ func FilesPage(props FilesPageProps) web.Page {
 						),
 						h.Div(
 							h.Class("page-actions"),
-							renderListControls(props),
 							h.A(
 								h.Class("files-upload-link"),
 								h.Href("/dashboard"),
@@ -70,9 +68,8 @@ func FilesPage(props FilesPageProps) web.Page {
 					renderArchivedBanner(archivedCount),
 					h.Section(
 						h.Class("files-table-panel"),
-						renderCompletedList(props.Files),
+						renderCompletedList(props),
 					),
-					renderPagination(props),
 				),
 				components.Dialog(components.DialogProps{
 					BackdropID: "file-delete-backdrop",
@@ -321,29 +318,8 @@ func renderArchivedBanner(count int64) g.Node {
 	)
 }
 
-func renderListControls(props FilesPageProps) g.Node {
-	options := []components.SortOption{
-		{Label: "Updated (newest)", Value: "updated_desc"},
-		{Label: "Updated (oldest)", Value: "updated_asc"},
-		{Label: "Name (A-Z)", Value: "name_asc"},
-		{Label: "Name (Z-A)", Value: "name_desc"},
-		{Label: "Size (smallest)", Value: "size_asc"},
-		{Label: "Size (largest)", Value: "size_desc"},
-	}
-	return h.Div(
-		h.Class("files-controls"),
-		components.SortSelect(components.SortSelectProps{
-			Label:   "Sort",
-			Value:   props.Sort,
-			Options: options,
-			BaseURL: "/files",
-			Query:   props.Query,
-		}),
-	)
-}
-
-func renderCompletedList(files []models.File) g.Node {
-	if len(files) == 0 {
+func renderCompletedList(props FilesPageProps) g.Node {
+	if len(props.Files) == 0 {
 		return h.Div(
 			h.Class("data-table-wrap files-table-wrap"),
 			h.Div(
@@ -363,25 +339,58 @@ func renderCompletedList(files []models.File) g.Node {
 		)
 	}
 
-	rows := make([]g.Node, 0, len(files))
-	for _, file := range files {
+	rows := make([]g.Node, 0, len(props.Files))
+	for _, file := range props.Files {
 		rows = append(rows, renderFileRow(file))
 	}
 
-	return h.Div(
-		h.Class("data-table-wrap files-table-wrap"),
-		h.Table(
-			h.Class("data-table files-table"),
-			h.THead(
-				h.Tr(
-					h.Th(g.Text("Name")),
-					h.Th(g.Text("Type")),
-					h.Th(h.Class("files-align-right"), g.Text("Size")),
-					h.Th(h.Class("files-align-right"), g.Text("Modified")),
-					h.Th(h.Class("files-align-center"), g.Text("Actions")),
+	return components.DataTable(components.DataTableProps{
+		WrapClass:  "files-table-wrap",
+		TableClass: "files-table",
+		TopActions: renderTableActions(),
+		Pagination: &components.PaginationProps{
+			TotalRecords: props.TotalFiles,
+			CurrentPage:  props.Page,
+			PageSize:     props.PageSize,
+			BaseURL:      "/files",
+			Query:        props.Query,
+			PageSizes:    []int{25, 50, 100},
+		},
+		Header: h.THead(
+			h.Tr(
+				h.Th(
+					h.Class("files-select-cell"),
+					h.Input(
+						h.Type("checkbox"),
+						g.Attr("id", "files-select-all"),
+						g.Attr("aria-label", "Select all files"),
+					),
 				),
+				h.Th(g.Text("Name")),
+				h.Th(g.Text("Type")),
+				h.Th(h.Class("files-align-right"), g.Text("Size")),
+				h.Th(h.Class("files-align-right"), g.Text("Modified")),
+				h.Th(h.Class("files-align-center"), g.Text("Actions")),
 			),
-			h.TBody(g.Group(rows)),
+		),
+		Body: h.TBody(g.Group(rows)),
+	})
+}
+
+func renderTableActions() g.Node {
+	return h.Div(
+		h.Class("files-table-actions"),
+		h.Button(
+			h.Class("button danger files-bulk-delete"),
+			h.Type("button"),
+			g.Attr("id", "files-delete-selected"),
+			g.Attr("disabled", "disabled"),
+			g.Text("Delete selected"),
+		),
+		h.Span(
+			h.Class("files-selection-count"),
+			g.Attr("id", "files-selection-count"),
+			g.Text("0 selected"),
 		),
 	)
 }
@@ -395,7 +404,16 @@ func renderFileRow(file models.File) g.Node {
 		h.Class("files-row"),
 		g.Attr("aria-busy", "true"),
 		g.Attr("data-file-row", file.ID),
+		g.Attr("data-file-name", ""),
 		g.Attr("id", "file-"+file.ID),
+		h.Td(
+			h.Class("files-cell files-select-cell"),
+			h.Input(
+				h.Type("checkbox"),
+				g.Attr("data-file-select", file.ID),
+				g.Attr("aria-label", "Select file"),
+			),
+		),
 		h.Td(
 			h.Class("files-cell files-cell-name"),
 			h.Span(
@@ -554,18 +572,4 @@ func renderActionLink(label, href, kind string, attrs g.Node, icon g.Node) g.Nod
 		icon,
 		h.Span(h.Class("files-action-label"), g.Text(label)),
 	)
-}
-
-func renderPagination(props FilesPageProps) g.Node {
-	if props.TotalFiles <= 0 {
-		return nil
-	}
-	return components.Pagination(components.PaginationProps{
-		TotalRecords: props.TotalFiles,
-		CurrentPage:  props.Page,
-		PageSize:     props.PageSize,
-		BaseURL:      "/files",
-		Query:        props.Query,
-		PageSizes:    []int{25, 50, 100},
-	})
 }

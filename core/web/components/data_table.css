@@ -5,6 +5,26 @@
   background: var(--surface-raised);
 }
 
+.data-table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 0;
+  flex-wrap: wrap;
+}
+
+.data-table-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 40px;
+}
+
+.data-table-toolbar-pagination {
+  margin-left: auto;
+}
+
 .data-table {
   width: 100%;
   border-collapse: collapse;
@@ -50,6 +70,16 @@
 }
 
 @media (max-width: 960px) {
+  .data-table-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .data-table-toolbar-pagination {
+    margin-left: 0;
+    width: 100%;
+  }
+
   .data-table-wrap {
     overflow-x: auto;
   }

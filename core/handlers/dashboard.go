@@ -26,7 +26,7 @@ func WebDashboard(uploadService *uploads.Service, settingsService *settingssvc.S
 			return
 		}
 
-		list, err := uploadService.ListCompletedUploads(c.Request.Context(), user.ID, "updated_desc", 1, 4)
+		list, err := uploadService.ListCompletedUploads(c.Request.Context(), user.ID, 1, 4)
 		if err != nil {
 			_ = c.Error(errs.WithStack(err))
 			c.AbortWithStatus(http.StatusInternalServerError)

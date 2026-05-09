@@ -42,6 +42,7 @@
     if (deleteEl) {
       deleteEl.setAttribute("data-file-name", realName);
     }
+    row.setAttribute("data-file-name", realName);
     if (viewEl) {
       if (isPreviewable(realType)) {
         viewEl.classList.remove("is-disabled");
@@ -111,32 +112,81 @@
 
 (function() {
   const deleteButtons = document.querySelectorAll("[data-file-action='delete']");
+  const selectAll = document.getElementById("files-select-all");
+  const bulkDeleteButton = document.getElementById("files-delete-selected");
+  const selectionCount = document.getElementById("files-selection-count");
   const backdrop = document.getElementById("file-delete-backdrop");
   const meta = document.getElementById("file-delete-meta");
   const cancelButton = document.getElementById("file-delete-cancel");
   const confirmButton = document.getElementById("file-delete-confirm");
-  let pendingDelete = null;
+  let pendingDeleteIds = [];
 
-  if (!deleteButtons.length) {
+  if (!deleteButtons.length && !bulkDeleteButton) {
     return;
   }
 
-  function removeRow(fileId) {
-    const row = document.querySelector("[data-file-row='" + fileId + "']");
-    if (row && row.parentNode) {
-      row.parentNode.removeChild(row);
+  function fileCheckboxes() {
+    return Array.from(document.querySelectorAll("[data-file-select]"));
+  }
+
+  function selectedFileIds() {
+    return fileCheckboxes()
+      .filter(function(checkbox) { return checkbox.checked; })
+      .map(function(checkbox) { return checkbox.getAttribute("data-file-select") || ""; })
+      .filter(Boolean);
+  }
+
+  function selectedFileNames(ids) {
+    return ids
+      .map(function(fileId) {
+        const row = document.querySelector("[data-file-row='" + fileId + "']");
+        return row ? String(row.getAttribute("data-file-name") || "") : "";
+      })
+      .filter(Boolean);
+  }
+
+  function updateSelectionState() {
+    const checkboxes = fileCheckboxes();
+    const checked = checkboxes.filter(function(checkbox) { return checkbox.checked; }).length;
+    if (selectAll) {
+      selectAll.checked = checkboxes.length > 0 && checked === checkboxes.length;
+      selectAll.indeterminate = checked > 0 && checked < checkboxes.length;
+    }
+    if (bulkDeleteButton) {
+      bulkDeleteButton.disabled = checked === 0;
+    }
+    if (selectionCount) {
+      selectionCount.textContent = checked === 1 ? "1 selected" : checked + " selected";
     }
   }
 
-  function openDialog(fileId, filename) {
+  function removeRows(fileIds) {
+    fileIds.forEach(function(fileId) {
+      const row = document.querySelector("[data-file-row='" + fileId + "']");
+      if (row && row.parentNode) {
+        row.parentNode.removeChild(row);
+      }
+    });
+    updateSelectionState();
+  }
+
+  function pageHasRows() {
+    return document.querySelector("[data-file-row]") !== null;
+  }
+
+  function openDialog(fileIds, names) {
     if (!backdrop || !confirmButton) {
       return;
     }
-    pendingDelete = fileId;
+    pendingDeleteIds = fileIds.slice();
     if (meta) {
-      meta.textContent = filename
-        ? "This will permanently delete " + filename + ". This action cannot be undone."
-        : "This will permanently delete the file. This action cannot be undone.";
+      if (pendingDeleteIds.length === 1) {
+        meta.textContent = names[0]
+          ? "This will permanently delete " + names[0] + ". This action cannot be undone."
+          : "This will permanently delete the file. This action cannot be undone.";
+      } else {
+        meta.textContent = "This will permanently delete " + pendingDeleteIds.length + " files. This action cannot be undone.";
+      }
     }
     if (window.Dialog && window.Dialog.open) {
       window.Dialog.open("file-delete-backdrop");
@@ -150,7 +200,7 @@
     if (!backdrop) {
       return;
     }
-    pendingDelete = null;
+    pendingDeleteIds = [];
     if (window.Dialog && window.Dialog.close) {
       window.Dialog.close("file-delete-backdrop");
     } else {
@@ -165,9 +215,33 @@
         return;
       }
       const filename = button.getAttribute("data-file-name") || "";
-      openDialog(fileId, filename);
+      openDialog([fileId], filename ? [filename] : []);
     });
   });
+
+  fileCheckboxes().forEach(function(checkbox) {
+    checkbox.addEventListener("change", updateSelectionState);
+  });
+
+  if (selectAll) {
+    selectAll.addEventListener("change", function() {
+      const checked = !!selectAll.checked;
+      fileCheckboxes().forEach(function(checkbox) {
+        checkbox.checked = checked;
+      });
+      updateSelectionState();
+    });
+  }
+
+  if (bulkDeleteButton) {
+    bulkDeleteButton.addEventListener("click", function() {
+      const ids = selectedFileIds();
+      if (!ids.length) {
+        return;
+      }
+      openDialog(ids, selectedFileNames(ids));
+    });
+  }
 
   if (cancelButton) {
     cancelButton.addEventListener("click", function() {
@@ -177,22 +251,35 @@
 
   if (confirmButton) {
     confirmButton.addEventListener("click", function() {
-      if (!pendingDelete) {
+      if (!pendingDeleteIds.length) {
         closeDialog();
         return;
       }
       confirmButton.disabled = true;
-      fetch("/api/files/" + encodeURIComponent(pendingDelete), {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" }
-      })
+      const isBulk = pendingDeleteIds.length > 1;
+      const request = isBulk
+        ? fetch("/api/files/bulk-delete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ fileIds: pendingDeleteIds.slice() })
+          })
+        : fetch("/api/files/" + encodeURIComponent(pendingDeleteIds[0]), {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" }
+          });
+      request
         .then(function(res) {
           if (!res.ok) {
             throw new Error("Delete failed");
           }
-          removeRow(pendingDelete);
+          const removedIds = pendingDeleteIds.slice();
+          removeRows(removedIds);
           closeDialog();
-          window.Toast.success("File deleted.", { title: "Deleted" });
+          if (!pageHasRows() || removedIds.length > 1) {
+            window.location.reload();
+            return;
+          }
+          window.Toast.success(removedIds.length === 1 ? "File deleted." : "Files deleted.", { title: "Deleted" });
         })
         .catch(function() {
           window.Toast.error("Delete failed. Try again.");
@@ -203,6 +290,8 @@
         });
     });
   }
+
+  updateSelectionState();
 })();
 
 (function() {
