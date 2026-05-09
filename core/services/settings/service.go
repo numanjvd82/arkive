@@ -37,6 +37,21 @@ type StorageInput struct {
 	S3UsePathStyle    string
 }
 
+type EmailInput struct {
+	Provider      string
+	From          string
+	PublicBaseURL string
+	SMTPHost      string
+	SMTPPort      string
+	SMTPUser      string
+	SMTPPass      string
+}
+
+type UploadInput struct {
+	MaxUploadConcurrency string
+	MaxQueueItems        string
+}
+
 func NewService(db database.PgPool, settingsRepo *settingsrepo.Repository, userRepo *usersrepo.Repository) *Service {
 	return &Service{
 		db:           db,
@@ -57,6 +72,14 @@ func NewLocalStorage(db database.PgPool, settingsRepo *settingsrepo.Repository) 
 
 func (s *Service) StorageSettings(ctx context.Context) (models.StorageSettings, error) {
 	return s.settingsRepo.GetStorageSettings(ctx, s.db)
+}
+
+func (s *Service) EmailSettings(ctx context.Context) (models.EmailSettings, error) {
+	return s.settingsRepo.GetEmailSettings(ctx, s.db)
+}
+
+func (s *Service) UploadSettings(ctx context.Context) (models.UploadSettings, error) {
+	return s.settingsRepo.GetUploadSettings(ctx, s.db)
 }
 
 func (s *Service) UpdateStorageSettings(ctx context.Context, userID string, input StorageInput) (models.StorageSettings, validation.Errors, error) {
@@ -81,6 +104,54 @@ func (s *Service) UpdateStorageSettings(ctx context.Context, userID string, inpu
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return models.StorageSettings{}, nil, err
+	}
+	return settings, nil, nil
+}
+
+func (s *Service) UpdateEmailSettings(ctx context.Context, userID string, input EmailInput) (models.EmailSettings, validation.Errors, error) {
+	current, _ := s.settingsRepo.GetEmailSettings(ctx, s.db)
+	settings, validationErrors := BuildEmailSettings(input)
+	if settings.Provider == "smtp" && strings.TrimSpace(settings.From) == "" {
+		settings.From = current.From
+	}
+	ValidateEmailSettings(settings, validationErrors)
+	if validationErrors.HasAny() {
+		return settings, validationErrors, nil
+	}
+
+	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return models.EmailSettings{}, nil, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if err := s.settingsRepo.SaveEmailSettings(ctx, tx, settings); err != nil {
+		return models.EmailSettings{}, nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return models.EmailSettings{}, nil, err
+	}
+	return settings, nil, nil
+}
+
+func (s *Service) UpdateUploadSettings(ctx context.Context, userID string, input UploadInput) (models.UploadSettings, validation.Errors, error) {
+	settings, validationErrors := BuildUploadSettings(input)
+	ValidateUploadSettings(settings, validationErrors)
+	if validationErrors.HasAny() {
+		return settings, validationErrors, nil
+	}
+
+	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return models.UploadSettings{}, nil, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if err := s.settingsRepo.SaveUploadSettings(ctx, tx, settings); err != nil {
+		return models.UploadSettings{}, nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return models.UploadSettings{}, nil, err
 	}
 	return settings, nil, nil
 }
@@ -163,6 +234,85 @@ func ValidateStorageSettings(settings models.StorageSettings, validationErrors v
 		}
 	default:
 		validationErrors.Add("storage_provider", "choose local or S3-compatible storage")
+	}
+}
+
+func BuildEmailSettings(input EmailInput) (models.EmailSettings, validation.Errors) {
+	validationErrors := validation.New()
+	smtpPort := 0
+	if strings.TrimSpace(input.SMTPPort) != "" {
+		port, err := strconv.Atoi(strings.TrimSpace(input.SMTPPort))
+		if err != nil || port <= 0 {
+			validationErrors.Add("smtp_port", "smtp port must be a positive number")
+		} else {
+			smtpPort = port
+		}
+	}
+	if smtpPort == 0 {
+		smtpPort = 587
+	}
+	return models.EmailSettings{
+		Provider:      strings.ToLower(strings.TrimSpace(input.Provider)),
+		From:          strings.TrimSpace(input.From),
+		PublicBaseURL: strings.TrimSpace(input.PublicBaseURL),
+		SMTPHost:      strings.TrimSpace(input.SMTPHost),
+		SMTPPort:      smtpPort,
+		SMTPUser:      strings.TrimSpace(input.SMTPUser),
+		SMTPPass:      strings.TrimSpace(input.SMTPPass),
+	}, validationErrors
+}
+
+func ValidateEmailSettings(settings models.EmailSettings, validationErrors validation.Errors) {
+	switch settings.Provider {
+	case "noop":
+		return
+	case "smtp":
+		if settings.From == "" {
+			validationErrors.Add("email_from", "from address is required")
+		}
+		if settings.SMTPHost == "" {
+			validationErrors.Add("smtp_host", "smtp host is required")
+		}
+	default:
+		validationErrors.Add("email_provider", "choose noop or smtp")
+	}
+}
+
+func BuildUploadSettings(input UploadInput) (models.UploadSettings, validation.Errors) {
+	validationErrors := validation.New()
+	maxUploadConcurrency := 0
+	if strings.TrimSpace(input.MaxUploadConcurrency) != "" {
+		n, err := strconv.Atoi(strings.TrimSpace(input.MaxUploadConcurrency))
+		if err != nil || n <= 0 {
+			validationErrors.Add("max_upload_concurrency", "must be a positive number")
+		} else {
+			maxUploadConcurrency = n
+		}
+	}
+	if maxUploadConcurrency == 0 {
+		maxUploadConcurrency = 4
+	}
+	maxQueueItems := 0
+	if strings.TrimSpace(input.MaxQueueItems) != "" {
+		n, err := strconv.Atoi(strings.TrimSpace(input.MaxQueueItems))
+		if err != nil || n <= 0 {
+			validationErrors.Add("max_queue_items", "must be a positive number")
+		} else {
+			maxQueueItems = n
+		}
+	}
+	if maxQueueItems == 0 {
+		maxQueueItems = 300
+	}
+	return models.UploadSettings{MaxUploadConcurrency: maxUploadConcurrency, MaxQueueItems: maxQueueItems}, validationErrors
+}
+
+func ValidateUploadSettings(settings models.UploadSettings, validationErrors validation.Errors) {
+	if settings.MaxUploadConcurrency <= 0 {
+		validationErrors.Add("max_upload_concurrency", "must be a positive number")
+	}
+	if settings.MaxQueueItems <= 0 {
+		validationErrors.Add("max_queue_items", "must be a positive number")
 	}
 }
 

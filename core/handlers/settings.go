@@ -30,6 +30,21 @@ type storageSettingsForm struct {
 	S3UsePathStyle    string `form:"s3_use_path_style"`
 }
 
+type emailSettingsForm struct {
+	Provider      string `form:"email_provider"`
+	From          string `form:"email_from"`
+	PublicBaseURL string `form:"public_base_url"`
+	SMTPHost      string `form:"smtp_host"`
+	SMTPPort      string `form:"smtp_port"`
+	SMTPUser      string `form:"smtp_user"`
+	SMTPPass      string `form:"smtp_pass"`
+}
+
+type uploadSettingsForm struct {
+	MaxUploadConcurrency string `form:"max_upload_concurrency"`
+	MaxQueueItems        string `form:"max_queue_items"`
+}
+
 func WebSettings(uploadService *uploads.Service, settingsService *settingssvc.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user, ok := appcontext.UserFromContext(c)
@@ -43,9 +58,13 @@ func WebSettings(uploadService *uploads.Service, settingsService *settingssvc.Se
 		}
 
 		storageSettings, _ := settingsService.StorageSettings(c.Request.Context())
+		emailSettings, _ := settingsService.EmailSettings(c.Request.Context())
+		uploadSettings, _ := settingsService.UploadSettings(c.Request.Context())
 		web.Render(c, pages.SettingsPage(pages.SettingsPageProps{
 			Ctx:             pages.ContextWithUser(user),
 			StorageSettings: storageSettings,
+			EmailSettings:   emailSettings,
+			UploadSettings:  uploadSettings,
 		}))
 	}
 }
@@ -79,6 +98,64 @@ func WebSettingsStoragePost(settingsService *settingssvc.Service) gin.HandlerFun
 	}
 }
 
+func WebSettingsEmailPost(settingsService *settingssvc.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		user, ok := appcontext.UserFromContext(c)
+		if !ok || user.ID == "" {
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
+		var form emailSettingsForm
+		if err := c.ShouldBind(&form); err != nil {
+			renderSettingsEmail(c, user, models.EmailSettings{}, validation.Errors{validation.GeneralKey: "Please fill out the form."})
+			return
+		}
+
+		settings, validationErrors, err := settingsService.UpdateEmailSettings(c.Request.Context(), user.ID, emailSettingsFromForm(form))
+		if validationErrors != nil && validationErrors.HasAny() {
+			renderSettingsEmail(c, user, settings, validationErrors)
+			return
+		}
+		if err != nil {
+			_ = c.Error(errs.WithStack(err))
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+
+		c.Redirect(http.StatusSeeOther, "/settings?msg=email-updated")
+	}
+}
+
+func WebSettingsUploadPost(settingsService *settingssvc.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		user, ok := appcontext.UserFromContext(c)
+		if !ok || user.ID == "" {
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
+		var form uploadSettingsForm
+		if err := c.ShouldBind(&form); err != nil {
+			renderSettingsUpload(c, user, models.UploadSettings{}, validation.Errors{validation.GeneralKey: "Please fill out the form."})
+			return
+		}
+
+		settings, validationErrors, err := settingsService.UpdateUploadSettings(c.Request.Context(), user.ID, uploadSettingsFromForm(form))
+		if validationErrors != nil && validationErrors.HasAny() {
+			renderSettingsUpload(c, user, settings, validationErrors)
+			return
+		}
+		if err != nil {
+			_ = c.Error(errs.WithStack(err))
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+
+		c.Redirect(http.StatusSeeOther, "/settings?msg=upload-updated")
+	}
+}
+
 func settingsInputFromForm(form storageSettingsForm) settingssvc.StorageInput {
 	return settingssvc.StorageInput{
 		Provider:          form.StorageProvider,
@@ -94,12 +171,47 @@ func settingsInputFromForm(form storageSettingsForm) settingssvc.StorageInput {
 	}
 }
 
+func emailSettingsFromForm(form emailSettingsForm) settingssvc.EmailInput {
+	return settingssvc.EmailInput{
+		Provider:      form.Provider,
+		From:          form.From,
+		PublicBaseURL: form.PublicBaseURL,
+		SMTPHost:      form.SMTPHost,
+		SMTPPort:      form.SMTPPort,
+		SMTPUser:      form.SMTPUser,
+		SMTPPass:      form.SMTPPass,
+	}
+}
+
+func uploadSettingsFromForm(form uploadSettingsForm) settingssvc.UploadInput {
+	return settingssvc.UploadInput{
+		MaxUploadConcurrency: form.MaxUploadConcurrency,
+		MaxQueueItems:        form.MaxQueueItems,
+	}
+}
+
 func renderSettingsStorage(c *gin.Context, user models.User, settings models.StorageSettings, validationErrors validation.Errors) {
 	web.Render(c, pages.SettingsPage(pages.SettingsPageProps{
 		Ctx:             pages.ContextWithUser(user),
 		StorageSettings: settings,
 		StorageGB:       storageGB(settings.MaxStorageBytes),
 		Errors:          validationErrors,
+	}))
+}
+
+func renderSettingsEmail(c *gin.Context, user models.User, settings models.EmailSettings, validationErrors validation.Errors) {
+	web.Render(c, pages.SettingsPage(pages.SettingsPageProps{
+		Ctx:          pages.ContextWithUser(user),
+		EmailSettings: settings,
+		Errors:       validationErrors,
+	}))
+}
+
+func renderSettingsUpload(c *gin.Context, user models.User, settings models.UploadSettings, validationErrors validation.Errors) {
+	web.Render(c, pages.SettingsPage(pages.SettingsPageProps{
+		Ctx:           pages.ContextWithUser(user),
+		UploadSettings: settings,
+		Errors:        validationErrors,
 	}))
 }
 

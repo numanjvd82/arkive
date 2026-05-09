@@ -11,6 +11,7 @@ import (
 	"arkive/core/database"
 	"arkive/core/models"
 	filerepo "arkive/core/repositories/files"
+	settingsrepo "arkive/core/repositories/settings"
 	storagerepo "arkive/core/repositories/storage"
 	uploadrepo "arkive/core/repositories/uploads"
 	usersrepo "arkive/core/repositories/users"
@@ -29,28 +30,26 @@ type Service struct {
 	db                   database.PgPool
 	storageRepo          *storagerepo.Repository
 	fileRepo             *filerepo.Repository
+	settingsRepo         *settingsrepo.Repository
 	uploadRepo           *uploadrepo.Repository
 	userRepo             *usersrepo.Repository
 	storage              storage.Provider
 	uploadExpires        time.Duration
 	downloadExpire       time.Duration
 	shareDownloadExpire  time.Duration
-	maxUploadConcurrency int
-	maxQueueItems        int
 }
 
 type Config struct {
 	UploadExpires        time.Duration
 	DownloadExpire       time.Duration
 	ShareDownloadExpire  time.Duration
-	MaxUploadConcurrency int
-	MaxQueueItems        int
 }
 
 func NewService(
 	db database.PgPool,
 	storageRepo *storagerepo.Repository,
 	fileRepo *filerepo.Repository,
+	settingsRepo *settingsrepo.Repository,
 	uploadRepo *uploadrepo.Repository,
 	userRepo *usersrepo.Repository,
 	storageProvider storage.Provider,
@@ -60,14 +59,13 @@ func NewService(
 		db:                   db,
 		storageRepo:          storageRepo,
 		fileRepo:             fileRepo,
+		settingsRepo:         settingsRepo,
 		uploadRepo:           uploadRepo,
 		userRepo:             userRepo,
 		storage:              storageProvider,
 		uploadExpires:        cfg.UploadExpires,
 		downloadExpire:       cfg.DownloadExpire,
 		shareDownloadExpire:  cfg.ShareDownloadExpire,
-		maxUploadConcurrency: cfg.MaxUploadConcurrency,
-		maxQueueItems:        cfg.MaxQueueItems,
 	}
 }
 

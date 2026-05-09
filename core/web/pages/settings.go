@@ -19,6 +19,8 @@ import (
 type SettingsPageProps struct {
 	Ctx             PageContext
 	StorageSettings models.StorageSettings
+	EmailSettings   models.EmailSettings
+	UploadSettings  models.UploadSettings
 	StorageGB       string
 	Errors          validation.Errors
 	Message         string
@@ -35,10 +37,22 @@ func SettingsPage(props SettingsPageProps) web.Page {
 	quotaStorage := "Unlimited"
 	usagePercent := 0
 	storageSettings := props.StorageSettings
+	emailSettings := props.EmailSettings
+	uploadSettings := props.UploadSettings
 	if storageSettings.Provider == "" {
 		storageSettings.Provider = "local"
 	}
+	if emailSettings.Provider == "" {
+		emailSettings.Provider = "noop"
+	}
+	if uploadSettings.MaxUploadConcurrency == 0 {
+		uploadSettings.MaxUploadConcurrency = 4
+	}
+	if uploadSettings.MaxQueueItems == 0 {
+		uploadSettings.MaxQueueItems = 300
+	}
 	storageProviderLabel := strings.ToUpper(storageSettings.Provider)
+	emailProviderLabel := strings.ToUpper(emailSettings.Provider)
 	storageGB := props.StorageGB
 	if storageGB == "" {
 		storageGB = settingsStorageGB(storageSettings.MaxStorageBytes)
@@ -87,9 +101,11 @@ func SettingsPage(props SettingsPageProps) web.Page {
 					h.Class("settings-grid"),
 					h.Aside(
 						h.Class("settings-tabs"),
-						settingsTabLink("settings-account", "Account"),
-						settingsTabLink("settings-provider", "Storage Provider"),
-						settingsTabLink("settings-security", "Security"),
+					settingsTabLink("settings-account", "Account"),
+					settingsTabLink("settings-provider", "Storage Provider"),
+					settingsTabLink("settings-email", "Email"),
+					settingsTabLink("settings-upload", "Uploads"),
+					settingsTabLink("settings-security", "Security"),
 					),
 					h.Div(
 						h.Class("settings-content"),
@@ -205,6 +221,77 @@ func SettingsPage(props SettingsPageProps) web.Page {
 									Class:    "settings-card",
 									Body: []g.Node{
 										storageSettingsForm(storageSettings, storageGB, props.Errors),
+									},
+								}),
+							),
+						),
+						h.Section(
+							h.Class("settings-panel"),
+							g.Attr("id", "settings-email"),
+							h.Div(
+								h.Class("settings-panel-header"),
+								h.Div(
+									h.Class("settings-panel-title"),
+									h.H2(g.Text("Email")),
+									h.P(g.Text("Configure the instance mailer from settings instead of environment variables.")),
+								),
+							),
+							h.Div(
+								h.Class("settings-stack"),
+								components.Card(components.CardProps{
+									Title:    "Mailer status",
+									Subtitle: "Active email provider for auth and recovery flows.",
+									Class:    "settings-card",
+									Body: []g.Node{
+										h.Div(
+											h.Class("settings-provider-status"),
+											h.Span(h.Class("settings-badge"), g.Text(emailProviderLabel)),
+											h.H4(g.Text("Mailer configured from settings")),
+											h.P(g.Text("The app reads provider, sender, host, and credentials from instance settings.")),
+										),
+									},
+								}),
+								components.Card(components.CardProps{
+									Title:    "Configuration",
+									Subtitle: "Update email delivery settings for this Core instance.",
+									Class:    "settings-card",
+									Body: []g.Node{
+										emailSettingsForm(emailSettings, props.Errors),
+									},
+								}),
+							),
+						),
+						h.Section(
+							h.Class("settings-panel"),
+							g.Attr("id", "settings-upload"),
+							h.Div(
+								h.Class("settings-panel-header"),
+								h.Div(
+									h.Class("settings-panel-title"),
+									h.H2(g.Text("Uploads")),
+									h.P(g.Text("Configure queue and concurrency limits from settings instead of environment variables.")),
+								),
+							),
+							h.Div(
+								h.Class("settings-stack"),
+								components.Card(components.CardProps{
+									Title:    "Current limits",
+									Subtitle: "Upload limits applied by the server.",
+									Class:    "settings-card",
+									Body: []g.Node{
+										h.Div(
+											h.Class("settings-meta"),
+											h.Div(h.Class("settings-meta-row"), h.Span(g.Text("Concurrency")), h.Span(g.Text(strconv.Itoa(uploadSettings.MaxUploadConcurrency)))),
+											h.Div(h.Class("settings-meta-row"), h.Span(g.Text("Queue items")), h.Span(g.Text(strconv.Itoa(uploadSettings.MaxQueueItems)))),
+										),
+									},
+								}),
+								components.Card(components.CardProps{
+									Title:    "Configuration",
+									Subtitle: "Update upload queue settings for this Core instance.",
+									Class:    "settings-card",
+									Body: []g.Node{
+										uploadSettingsForm(uploadSettings, props.Errors),
 									},
 								}),
 							),

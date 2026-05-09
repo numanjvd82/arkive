@@ -67,10 +67,14 @@ func (s *Service) StartMultipartUploadSession(ctx context.Context, userID string
 		return models.UploadStartResponse{}, nil, err
 	}
 	validationErrors := validation.New()
-	if inFlight >= int64(s.maxQueueItems) {
+	settings, err := s.settingsRepo.GetUploadSettings(ctx, s.db)
+	if err != nil {
+		settings = models.UploadSettings{MaxUploadConcurrency: 4, MaxQueueItems: 300}
+	}
+	if inFlight >= int64(settings.MaxQueueItems) {
 		validationErrors.Add("queue", ErrQueueLimitReached.Error())
 	}
-	if inFlight >= int64(s.maxUploadConcurrency) {
+	if inFlight >= int64(settings.MaxUploadConcurrency) {
 		validationErrors.Add("queue", ErrConcurrentLimit.Error())
 	}
 	if input.OriginalSize <= 0 {

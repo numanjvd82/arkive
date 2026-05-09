@@ -12,3 +12,18 @@ type StorageSettings struct {
 	S3Region          string
 	S3UsePathStyle    bool
 }
+
+type EmailSettings struct {
+	Provider      string
+	From          string
+	PublicBaseURL string
+	SMTPHost      string
+	SMTPPort      int
+	SMTPUser      string
+	SMTPPass      string
+}
+
+type UploadSettings struct {
+	MaxUploadConcurrency int
+	MaxQueueItems        int
+}

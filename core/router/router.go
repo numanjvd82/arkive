@@ -1,12 +1,15 @@
 package router
 
 import (
+	"context"
+
 	"github.com/gin-gonic/gin"
 
 	"arkive/core/config"
 	"arkive/core/database"
 	"arkive/core/handlers"
 	"arkive/core/middleware"
+	"arkive/core/models"
 	authrepo "arkive/core/repositories/auth"
 	filerepo "arkive/core/repositories/files"
 	sessionrepo "arkive/core/repositories/session"
@@ -36,18 +39,22 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 	settingsRepo := settingsrepo.New()
 	settingsService := settingssvc.NewService(db, settingsRepo, usersRepo)
 	setupService := setup.NewService(db, authRepo, usersRepo, settingsRepo)
+	emailSettings, err := settingsService.EmailSettings(context.Background())
+	if err != nil {
+		emailSettings = models.EmailSettings{Provider: "noop"}
+	}
 	mailerProvider, err := mailer.NewMailerFromConfig(mailer.Config{
-		Provider: cfg.EmailProvider,
-		From:     cfg.EmailFrom,
-		SMTPHost: cfg.SMTPHost,
-		SMTPPort: cfg.SMTPPort,
-		SMTPUser: cfg.SMTPUser,
-		SMTPPass: cfg.SMTPPass,
+		Provider: emailSettings.Provider,
+		From:     emailSettings.From,
+		SMTPHost: emailSettings.SMTPHost,
+		SMTPPort: emailSettings.SMTPPort,
+		SMTPUser: emailSettings.SMTPUser,
+		SMTPPass: emailSettings.SMTPPass,
 	})
 	if err != nil {
 		panic("mailer setup failed: " + err.Error())
 	}
-	authService.SetMailer(mailerProvider, cfg.PublicBaseURL)
+	authService.SetMailer(mailerProvider, emailSettings.PublicBaseURL)
 	shareService := shares.NewService(db, filerepo.New(), sharerepo.New())
 
 	r.StaticFS("/static", web.StaticFS("static"))
@@ -71,7 +78,7 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 		RequestsPerMinute: 2,
 		Burst:             2,
 		KeyPrefix:         "share:public:post",
-	}), handlers.PublicShareUnlock(shareService, uploadService))
+		}), handlers.PublicShareUnlock(shareService, uploadService))
 	r.GET("/login", handlers.WebLoginGet(authService, setupService))
 	protected := r.Group("/")
 	protected.Use(middleware.RequireSessionRedirect(authService))
@@ -81,6 +88,8 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 	protected.GET("/shares", handlers.WebShares(shareService, uploadService))
 	protected.GET("/settings", handlers.WebSettings(uploadService, settingsService))
 	protected.POST("/settings/storage", handlers.WebSettingsStoragePost(settingsService))
+	protected.POST("/settings/email", handlers.WebSettingsEmailPost(settingsService))
+	protected.POST("/settings/uploads", handlers.WebSettingsUploadPost(settingsService))
 	protected.POST("/logout", handlers.WebLogout(authService))
 
 	api := r.Group("/api")

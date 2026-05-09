@@ -55,16 +55,15 @@ func main() {
 		db,
 		storagerepo.New(),
 		filerepo.New(),
+		settingsRepo,
 		uploadrepo.New(),
 		usersrepo.New(),
 		storageProvider,
-			uploads.Config{
-				UploadExpires:        15 * time.Minute,
-				DownloadExpire:       3 * time.Hour,
-				ShareDownloadExpire:  30 * time.Minute,
-				MaxUploadConcurrency: cfg.MaxUploadConcurrency,
-				MaxQueueItems:        cfg.MaxQueueItems,
-			})
+		uploads.Config{
+			UploadExpires:       15 * time.Minute,
+			DownloadExpire:      3 * time.Hour,
+			ShareDownloadExpire: 30 * time.Minute,
+		})
 
 	if strings.EqualFold(cfg.Env, "dev") {
 		gin.SetMode(gin.DebugMode)
