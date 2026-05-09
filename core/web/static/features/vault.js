@@ -219,6 +219,16 @@ export function initVault() {
     );
   }
 
+  function getSessionUnlock() {
+    return loadSessionUnlock();
+  }
+
+  function onSessionUnlock(callback) {
+    if (typeof callback === "function") {
+      callback(loadSessionUnlock());
+    }
+  }
+
   function ensureRestored() {
     if (!restorePromise) {
       restorePromise = restoreSessionUnlock().catch(function () {
@@ -379,7 +389,9 @@ export function initVault() {
         fileKey: toBase64(fileKey),
         aad: aad || ""
       });
-    }
+    },
+    getSessionUnlock: getSessionUnlock,
+    onSessionUnlock: onSessionUnlock
   };
 
   ensureRestored();
