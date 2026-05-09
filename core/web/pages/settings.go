@@ -76,12 +76,13 @@ func SettingsPage(props SettingsPageProps) web.Page {
 	}
 
 	return web.Page{
-		Title:      "Arkive · Settings",
-		Robots:     RobotsNoIndex,
-		CSS:        []string{"/web/pages/settings.css"},
-		AuthLayout: true,
-		User:       user,
-		ActiveNav:  "settings",
+		Title:              "Arkive · Settings",
+		Robots:             RobotsNoIndex,
+		CSS:                []string{"/web/pages/settings.css"},
+		AuthLayout:         true,
+		RequireVaultUnlock: true,
+		User:               user,
+		ActiveNav:          "settings",
 		Body: h.Main(
 			h.Class("settings-page"),
 			h.Div(

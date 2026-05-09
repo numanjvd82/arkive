@@ -52,6 +52,32 @@ func WebLoginGet(svc *auth.Service, setupSvc *setup.Service) gin.HandlerFunc {
 	}
 }
 
+func WebLockGet() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		user, ok := appcontext.UserFromContext(c)
+		if !ok || user.ID == "" {
+			c.Redirect(http.StatusSeeOther, "/login")
+			return
+		}
+
+		web.Render(c, pages.LockPage(pages.LockPageProps{
+			Ctx:  pages.ContextWithUser(user),
+			Next: sanitizeNextPath(c.Query("next")),
+		}))
+	}
+}
+
+func sanitizeNextPath(raw string) string {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return ""
+	}
+	if !strings.HasPrefix(value, "/") || strings.HasPrefix(value, "//") {
+		return ""
+	}
+	return value
+}
+
 func redirectIfUninitialized(c *gin.Context, setupSvc *setup.Service) bool {
 	initialized, err := setupSvc.IsInitialized(c.Request.Context())
 	if err != nil {

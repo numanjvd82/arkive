@@ -11,25 +11,26 @@ import (
 )
 
 type Page struct {
-	Title             string
-	Description       string
-	CanonicalURL      string
-	CanonicalPath     string
-	Robots            string
-	OGTitle           string
-	OGDescription     string
-	OGImage           string
-	OGType            string
-	TwitterCard       string
-	JSONLD            string
-	CSS               []string
-	JS                []string
-	Body              g.Node
-	HideNav           bool
-	AuthLayout        bool
-	User              *models.User
-	ActiveNav         string
-	SearchPlaceholder string
+	Title              string
+	Description        string
+	CanonicalURL       string
+	CanonicalPath      string
+	Robots             string
+	OGTitle            string
+	OGDescription      string
+	OGImage            string
+	OGType             string
+	TwitterCard        string
+	JSONLD             string
+	CSS                []string
+	JS                 []string
+	Body               g.Node
+	HideNav            bool
+	AuthLayout         bool
+	RequireVaultUnlock bool
+	User               *models.User
+	ActiveNav          string
+	SearchPlaceholder  string
 }
 
 func Render(c *gin.Context, page Page) {
@@ -65,39 +66,41 @@ func Render(c *gin.Context, page Page) {
 	if page.AuthLayout {
 		if page.Body == nil {
 			node = AuthLayout(LayoutData{
-				Title:             page.Title,
-				Description:       page.Description,
-				CanonicalURL:      canonicalURL,
-				Robots:            page.Robots,
-				OGTitle:           ogTitle,
-				OGDescription:     ogDescription,
-				OGImage:           ogImage,
-				OGType:            ogType,
-				TwitterCard:       twitterCard,
-				JSONLD:            page.JSONLD,
-				CSS:               page.CSS,
-				JS:                page.JS,
-				User:              page.User,
-				ActiveNav:         page.ActiveNav,
-				SearchPlaceholder: page.SearchPlaceholder,
+				Title:              page.Title,
+				Description:        page.Description,
+				CanonicalURL:       canonicalURL,
+				Robots:             page.Robots,
+				OGTitle:            ogTitle,
+				OGDescription:      ogDescription,
+				OGImage:            ogImage,
+				OGType:             ogType,
+				TwitterCard:        twitterCard,
+				JSONLD:             page.JSONLD,
+				CSS:                page.CSS,
+				JS:                 page.JS,
+				User:               page.User,
+				ActiveNav:          page.ActiveNav,
+				SearchPlaceholder:  page.SearchPlaceholder,
+				RequireVaultUnlock: page.RequireVaultUnlock,
 			})
 		} else {
 			node = AuthLayout(LayoutData{
-				Title:             page.Title,
-				Description:       page.Description,
-				CanonicalURL:      canonicalURL,
-				Robots:            page.Robots,
-				OGTitle:           ogTitle,
-				OGDescription:     ogDescription,
-				OGImage:           ogImage,
-				OGType:            ogType,
-				TwitterCard:       twitterCard,
-				JSONLD:            page.JSONLD,
-				CSS:               page.CSS,
-				JS:                page.JS,
-				User:              page.User,
-				ActiveNav:         page.ActiveNav,
-				SearchPlaceholder: page.SearchPlaceholder,
+				Title:              page.Title,
+				Description:        page.Description,
+				CanonicalURL:       canonicalURL,
+				Robots:             page.Robots,
+				OGTitle:            ogTitle,
+				OGDescription:      ogDescription,
+				OGImage:            ogImage,
+				OGType:             ogType,
+				TwitterCard:        twitterCard,
+				JSONLD:             page.JSONLD,
+				CSS:                page.CSS,
+				JS:                 page.JS,
+				User:               page.User,
+				ActiveNav:          page.ActiveNav,
+				SearchPlaceholder:  page.SearchPlaceholder,
+				RequireVaultUnlock: page.RequireVaultUnlock,
 			}, page.Body)
 		}
 	} else if page.Body == nil {

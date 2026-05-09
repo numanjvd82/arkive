@@ -5,6 +5,7 @@ import "errors"
 var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
 	ErrInvalidInput       = errors.New("invalid input")
+	ErrUnauthorized       = errors.New("unauthorized")
 	ErrSessionNotFound    = errors.New("session not found")
 	ErrVaultNotConfigured = errors.New("vault is not configured")
 

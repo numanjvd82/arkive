@@ -62,7 +62,35 @@ export function initVault() {
   let requestID = 0;
   let unlocked = false;
   let restorePromise = null;
+  let sessionExpiryTimer = null;
   const pending = new Map();
+
+  function emitVaultState() {
+    window.dispatchEvent(new CustomEvent("arkive:vault-state", {
+      detail: { unlocked: !!unlocked }
+    }));
+  }
+
+  function clearSessionExpiryTimer() {
+    if (!sessionExpiryTimer) {
+      return;
+    }
+    window.clearTimeout(sessionExpiryTimer);
+    sessionExpiryTimer = null;
+  }
+
+  function scheduleSessionExpiry(expiresAt) {
+    clearSessionExpiryTimer();
+    if (typeof expiresAt !== "number" || expiresAt <= Date.now()) {
+      return;
+    }
+    sessionExpiryTimer = window.setTimeout(function() {
+      clearSessionUnlock();
+      unlocked = false;
+      callWorker("lockVault", {}).catch(function() {});
+      emitVaultState();
+    }, Math.max(0, expiresAt - Date.now()));
+  }
 
   function loadSessionUnlock() {
     try {
@@ -83,6 +111,7 @@ export function initVault() {
         clearSessionUnlock();
         return null;
       }
+      scheduleSessionExpiry(parsed.expiresAt);
       return parsed;
     } catch (_) {
       return null;
@@ -91,18 +120,21 @@ export function initVault() {
 
   function storeSessionUnlock(sessionUnwrapKey, wrappedMasterKey) {
     try {
+      const expiresAt = Date.now() + SESSION_UNLOCK_TTL_MS;
       sessionStorage.setItem(
         SESSION_UNLOCK_KEY,
         JSON.stringify({
           sessionUnwrapKey: String(sessionUnwrapKey || ""),
           wrappedMasterKey: String(wrappedMasterKey || ""),
-          expiresAt: Date.now() + SESSION_UNLOCK_TTL_MS,
+          expiresAt: expiresAt,
         }),
       );
+      scheduleSessionExpiry(expiresAt);
     } catch (_) {}
   }
 
   function clearSessionUnlock() {
+    clearSessionExpiryTimer();
     try {
       sessionStorage.removeItem(SESSION_UNLOCK_KEY);
     } catch (_) {}
@@ -134,6 +166,7 @@ export function initVault() {
       pending.clear();
       worker = null;
       unlocked = false;
+      emitVaultState();
       if (event && event.preventDefault) {
         event.preventDefault();
       }
@@ -162,6 +195,7 @@ export function initVault() {
       aad: "arkive:master-key:v1"
     });
     unlocked = !!(result && result.unlocked);
+    emitVaultState();
     return result;
   }
 
@@ -200,10 +234,12 @@ export function initVault() {
       if (unlocked) {
         storeSessionUnlock(stored.sessionUnwrapKey, stored.wrappedMasterKey);
       }
+      emitVaultState();
       return result;
     } catch (error) {
       clearSessionUnlock();
       unlocked = false;
+      emitVaultState();
       throw error;
     }
   }
@@ -249,6 +285,7 @@ export function initVault() {
     }
     clearSessionUnlock();
     unlocked = false;
+    emitVaultState();
     callWorker("lockVault", {}).catch(function () {});
   });
 
@@ -278,6 +315,7 @@ export function initVault() {
       unlocked = false;
       clearSessionUnlock();
       await callWorker("lockVault", {});
+      emitVaultState();
     },
     isUnlocked: function() {
       return unlocked;

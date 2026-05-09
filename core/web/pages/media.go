@@ -26,13 +26,14 @@ func MediaViewPage(props MediaViewPageProps) web.Page {
 	}
 
 	return web.Page{
-		Title:      "Arkive · Encrypted file",
-		Robots:     RobotsNoIndex,
-		CSS:        buildMediaCSS(props),
-		JS:         buildMediaJS(props),
-		AuthLayout: true,
-		User:       props.Ctx.User,
-		ActiveNav:  "files",
+		Title:              "Arkive · Encrypted file",
+		Robots:             RobotsNoIndex,
+		CSS:                buildMediaCSS(props),
+		JS:                 buildMediaJS(props),
+		AuthLayout:         true,
+		RequireVaultUnlock: true,
+		User:               props.Ctx.User,
+		ActiveNav:          "files",
 		Body: g.Group([]g.Node{
 			components.InlineStyle(components.InputCSS),
 			h.Main(

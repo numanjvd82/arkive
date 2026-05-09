@@ -104,8 +104,13 @@
   justify-content: center;
   width: 36px;
   height: 36px;
+  padding: 0;
+  border: none;
   border-radius: 4px;
+  background: transparent;
   color: var(--muted);
+  cursor: pointer;
+  appearance: none;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 

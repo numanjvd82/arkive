@@ -9,22 +9,23 @@ import (
 )
 
 type LayoutData struct {
-	Title             string
-	Description       string
-	CanonicalURL      string
-	Robots            string
-	OGTitle           string
-	OGDescription     string
-	OGImage           string
-	OGType            string
-	TwitterCard       string
-	JSONLD            string
-	CSS               []string
-	JS                []string
-	HideNav           bool
-	User              *models.User
-	ActiveNav         string
-	SearchPlaceholder string
+	Title              string
+	Description        string
+	CanonicalURL       string
+	Robots             string
+	OGTitle            string
+	OGDescription      string
+	OGImage            string
+	OGType             string
+	TwitterCard        string
+	JSONLD             string
+	CSS                []string
+	JS                 []string
+	HideNav            bool
+	User               *models.User
+	ActiveNav          string
+	SearchPlaceholder  string
+	RequireVaultUnlock bool
 }
 
 func Layout(data LayoutData, content ...g.Node) g.Node {

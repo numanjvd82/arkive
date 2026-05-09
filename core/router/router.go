@@ -74,6 +74,7 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 	r.GET("/login", handlers.WebLoginGet(authService, setupService))
 	protected := r.Group("/")
 	protected.Use(middleware.RequireSessionRedirect(authService))
+	protected.GET("/lock", handlers.WebLockGet())
 	protected.GET("/dashboard", handlers.WebDashboard(uploadService, settingsService))
 	protected.GET("/files", handlers.WebFiles(uploadService))
 	protected.GET("/files/:id/view", handlers.WebFileView(uploadService))
@@ -87,6 +88,7 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 	api := r.Group("/api")
 	{
 		api.POST("/auth/login", handlers.APILogin(authService))
+		api.POST("/auth/unlock", middleware.RequireSessionJSON(authService), handlers.APIUnlockVault(authService))
 		api.GET("/me", middleware.RequireSessionJSON(authService), handlers.APIMe(authService))
 		api.GET("/health", handlers.Health(db))
 		api.GET("/search", middleware.RequireSessionJSON(authService), handlers.APISearch(uploadService, shareService))

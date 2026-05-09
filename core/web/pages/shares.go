@@ -45,13 +45,14 @@ func SharesPage(props SharesPageProps) web.Page {
 	}
 
 	return web.Page{
-		Title:      "Arkive · Shares",
-		Robots:     RobotsNoIndex,
-		CSS:        []string{"/web/pages/shares.css"},
-		JS:         []string{"/static/shares.js"},
-		AuthLayout: true,
-		User:       props.Ctx.User,
-		ActiveNav:  "shares",
+		Title:              "Arkive · Shares",
+		Robots:             RobotsNoIndex,
+		CSS:                []string{"/web/pages/shares.css"},
+		JS:                 []string{"/static/shares.js"},
+		AuthLayout:         true,
+		RequireVaultUnlock: true,
+		User:               props.Ctx.User,
+		ActiveNav:          "shares",
 		Body: g.Group([]g.Node{
 			components.InlineStyle(components.DataTableCSS),
 			h.Main(

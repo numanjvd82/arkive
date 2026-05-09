@@ -51,13 +51,14 @@ func DashboardPage(props DashboardPageProps) web.Page {
 	}
 
 	return web.Page{
-		Title:             "Arkive · Dashboard",
-		Robots:            RobotsNoIndex,
-		CSS:               []string{"/web/pages/dashboard.css"},
-		AuthLayout:        true,
-		User:              props.Ctx.User,
-		ActiveNav:         "dashboard",
-		SearchPlaceholder: "Search system...",
+		Title:              "Arkive · Dashboard",
+		Robots:             RobotsNoIndex,
+		CSS:                []string{"/web/pages/dashboard.css"},
+		AuthLayout:         true,
+		RequireVaultUnlock: true,
+		User:               props.Ctx.User,
+		ActiveNav:          "dashboard",
+		SearchPlaceholder:  "Search system...",
 		Body: h.Main(
 			h.Class("dashboard"),
 			h.Div(

@@ -36,9 +36,10 @@ func AuthLayout(data LayoutData, content ...g.Node) g.Node {
 		h.Head(headNodes...),
 		h.Body(
 			components.InlineStyle(components.AuthLayoutCSS),
+			g.If(data.RequireVaultUnlock, g.Attr("data-require-vault-unlock", "true")),
 			h.Div(
 				h.Class("app-shell"),
-				authHeader(data.User, data.SearchPlaceholder),
+				authHeader(data.User, data.SearchPlaceholder, data.RequireVaultUnlock),
 				components.DashboardSidebar(components.DashboardSidebarProps{
 					User:      data.User,
 					ActiveNav: data.ActiveNav,
@@ -52,7 +53,7 @@ func AuthLayout(data LayoutData, content ...g.Node) g.Node {
 	))
 }
 
-func authHeader(user *models.User, placeholder string) g.Node {
+func authHeader(user *models.User, placeholder string, showLockButton bool) g.Node {
 	if strings.TrimSpace(placeholder) == "" {
 		placeholder = "Search system..."
 	}
@@ -92,6 +93,18 @@ func authHeader(user *models.User, placeholder string) g.Node {
 			),
 			h.Div(
 				h.Class("app-header-right"),
+				g.If(showLockButton,
+					h.Button(
+						h.Class("app-header-action app-header-lock"),
+						h.Type("button"),
+						h.ID("app-lock-trigger"),
+						g.Attr("aria-label", "Lock vault"),
+						lucide.Lock(
+							h.Class("app-header-lucide"),
+							g.Attr("aria-hidden", "true"),
+						),
+					),
+				),
 				h.A(
 					h.Class("app-header-action"),
 					h.Href("/dashboard#recent-activity"),

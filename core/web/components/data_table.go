@@ -27,11 +27,19 @@ func DataTable(props DataTableProps) g.Node {
 		tableClass += " " + props.TableClass
 	}
 
+	var topToolbar g.Node
+	if props.TopActions != nil || props.Pagination != nil {
+		topToolbar = renderTableToolbar(props.TopActions, props.Pagination)
+	}
+
+	var bottomToolbar g.Node
+	if props.Pagination != nil {
+		bottomToolbar = renderTableToolbar(nil, props.Pagination)
+	}
+
 	return g.Group([]g.Node{
 		InlineStyle(DataTableCSS),
-		g.If(props.TopActions != nil || props.Pagination != nil,
-			renderTableToolbar(props.TopActions, props.Pagination),
-		),
+		topToolbar,
 		h.Div(
 			h.Class(wrapClass),
 			h.Table(
@@ -40,9 +48,7 @@ func DataTable(props DataTableProps) g.Node {
 				g.If(props.Body != nil, props.Body),
 			),
 		),
-		g.If(props.Pagination != nil,
-			renderTableToolbar(nil, props.Pagination),
-		),
+		bottomToolbar,
 	})
 }
 

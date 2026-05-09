@@ -29,6 +29,10 @@ func WebFiles(uploadService *uploads.Service) gin.HandlerFunc {
 
 		page := pagination.ParsePageParam(c.DefaultQuery("page", "1"))
 		pageSize := pagination.ParsePageSizeParam(c.DefaultQuery("pageSize", "25"))
+		viewMode := strings.TrimSpace(c.DefaultQuery("view", "list"))
+		if viewMode != "grid" {
+			viewMode = "list"
+		}
 		query := c.Request.URL.Query()
 		query.Del("path")
 		query.Del("sort")
@@ -49,6 +53,7 @@ func WebFiles(uploadService *uploads.Service) gin.HandlerFunc {
 			Ctx:           pages.ContextWithUser(user),
 			Files:         contents.Files,
 			Query:         query,
+			ViewMode:      viewMode,
 			Page:          page,
 			PageSize:      pageSize,
 			TotalFiles:    contents.TotalFiles,

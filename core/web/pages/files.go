@@ -21,6 +21,7 @@ type FilesPageProps struct {
 	Files         []models.File
 	ArchivedCount int64
 	Query         url.Values
+	ViewMode      string
 	Page          int
 	PageSize      int
 	TotalFiles    int
@@ -30,13 +31,14 @@ func FilesPage(props FilesPageProps) web.Page {
 	archivedCount := props.ArchivedCount
 
 	return web.Page{
-		Title:      "Arkive · Files",
-		Robots:     RobotsNoIndex,
-		CSS:        []string{"/web/pages/files.css"},
-		JS:         []string{"/static/files.js"},
-		AuthLayout: true,
-		User:       props.Ctx.User,
-		ActiveNav:  "files",
+		Title:              "Arkive · Files",
+		Robots:             RobotsNoIndex,
+		CSS:                []string{"/web/pages/files.css"},
+		JS:                 []string{"/static/files.js"},
+		AuthLayout:         true,
+		RequireVaultUnlock: true,
+		User:               props.Ctx.User,
+		ActiveNav:          "files",
 
 		Body: g.Group([]g.Node{
 			components.InlineStyle(components.InputCSS),
@@ -54,6 +56,7 @@ func FilesPage(props FilesPageProps) web.Page {
 						),
 						h.Div(
 							h.Class("page-actions"),
+							renderFilesViewToggle(props.Query, props.ViewMode),
 							h.A(
 								h.Class("files-upload-link"),
 								h.Href("/dashboard"),
@@ -339,23 +342,61 @@ func renderCompletedList(props FilesPageProps) g.Node {
 		)
 	}
 
-	rows := make([]g.Node, 0, len(props.Files))
-	for _, file := range props.Files {
+	pagination := &components.PaginationProps{
+		TotalRecords: props.TotalFiles,
+		CurrentPage:  props.Page,
+		PageSize:     props.PageSize,
+		BaseURL:      "/files",
+		Query:        props.Query,
+		PageSizes:    []int{25, 50, 100},
+	}
+
+	return h.Div(
+		h.Class("files-browser"),
+		renderFilesBrowserToolbar(pagination, true),
+		g.If(props.ViewMode == "grid", renderGridList(props.Files)),
+		g.If(props.ViewMode != "grid", renderTableList(props.Files)),
+		renderFilesPagination(pagination),
+	)
+}
+
+func renderFilesBrowserToolbar(pagination *components.PaginationProps, showActions bool) g.Node {
+	return h.Div(
+		h.Class("files-browser-toolbar"),
+		g.If(showActions,
+			h.Div(
+				h.Class("files-browser-actions"),
+				g.Attr("id", "files-selection-toolbar"),
+				g.Attr("hidden", "hidden"),
+				renderTableActions(),
+			),
+		),
+		h.Div(
+			h.Class("files-browser-pagination"),
+			components.Pagination(*pagination),
+		),
+	)
+}
+
+func renderFilesPagination(pagination *components.PaginationProps) g.Node {
+	return h.Div(
+		h.Class("files-browser-toolbar files-browser-toolbar-bottom"),
+		h.Div(
+			h.Class("files-browser-pagination"),
+			components.Pagination(*pagination),
+		),
+	)
+}
+
+func renderTableList(files []models.File) g.Node {
+	rows := make([]g.Node, 0, len(files))
+	for _, file := range files {
 		rows = append(rows, renderFileRow(file))
 	}
 
 	return components.DataTable(components.DataTableProps{
 		WrapClass:  "files-table-wrap",
 		TableClass: "files-table",
-		TopActions: renderTableActions(),
-		Pagination: &components.PaginationProps{
-			TotalRecords: props.TotalFiles,
-			CurrentPage:  props.Page,
-			PageSize:     props.PageSize,
-			BaseURL:      "/files",
-			Query:        props.Query,
-			PageSizes:    []int{25, 50, 100},
-		},
 		Header: h.THead(
 			h.Tr(
 				h.Th(
@@ -377,6 +418,21 @@ func renderCompletedList(props FilesPageProps) g.Node {
 	})
 }
 
+func renderGridList(files []models.File) g.Node {
+	cards := make([]g.Node, 0, len(files))
+	for _, file := range files {
+		cards = append(cards, renderFileCard(file))
+	}
+
+	return h.Div(
+		h.Class("files-grid-wrap"),
+		h.Div(
+			h.Class("files-grid"),
+			g.Group(cards),
+		),
+	)
+}
+
 func renderTableActions() g.Node {
 	return h.Div(
 		h.Class("files-table-actions"),
@@ -395,6 +451,64 @@ func renderTableActions() g.Node {
 	)
 }
 
+func renderFilesViewToggle(query url.Values, viewMode string) g.Node {
+	listClass := "files-view-toggle-button"
+	gridClass := "files-view-toggle-button"
+	if viewMode == "grid" {
+		gridClass += " is-active"
+	} else {
+		listClass += " is-active"
+	}
+	return h.Div(
+		h.Class("files-view-toggle"),
+		g.Attr("role", "group"),
+		g.Attr("aria-label", "Choose file layout"),
+		h.A(
+			h.Class(listClass),
+			h.Href(buildFilesViewURL(query, "list")),
+			g.Attr("data-files-view-link", "list"),
+			lucide.List(
+				h.Class("files-lucide files-lucide-action"),
+				g.Attr("aria-hidden", "true"),
+			),
+			h.Span(g.Text("List")),
+		),
+		h.A(
+			h.Class(gridClass),
+			h.Href(buildFilesViewURL(query, "grid")),
+			g.Attr("data-files-view-link", "grid"),
+			lucide.Grid2x2(
+				h.Class("files-lucide files-lucide-action"),
+				g.Attr("aria-hidden", "true"),
+			),
+			h.Span(g.Text("Grid")),
+		),
+	)
+}
+
+func buildFilesViewURL(query url.Values, viewMode string) string {
+	next := cloneQuery(query)
+	next.Set("view", viewMode)
+	next.Del("page")
+	if encoded := next.Encode(); encoded != "" {
+		return "/files?" + encoded
+	}
+	return "/files"
+}
+
+func cloneQuery(values url.Values) url.Values {
+	if values == nil {
+		return url.Values{}
+	}
+	cloned := url.Values{}
+	for key, items := range values {
+		copied := make([]string, len(items))
+		copy(copied, items)
+		cloned[key] = copied
+	}
+	return cloned
+}
+
 func renderFileRow(file models.File) g.Node {
 	timestamp := formatTime(file.UpdatedAt)
 	relative := format.RelativeTime(file.UpdatedAt)
@@ -404,6 +518,7 @@ func renderFileRow(file models.File) g.Node {
 		h.Class("files-row"),
 		g.Attr("aria-busy", "true"),
 		g.Attr("data-file-row", file.ID),
+		g.Attr("data-file-item", file.ID),
 		g.Attr("data-file-name", ""),
 		g.Attr("id", "file-"+file.ID),
 		h.Td(
@@ -440,7 +555,11 @@ func renderFileRow(file models.File) g.Node {
 		),
 		h.Td(
 			h.Class("files-cell files-cell-size"),
-			h.Span(h.Class("files-code"), g.Text("Encrypted")),
+			h.Span(
+				h.Class("files-code"),
+				g.Attr("data-file-field", "size"),
+				g.Text("Encrypted"),
+			),
 		),
 		h.Td(
 			h.Class("files-cell files-cell-modified"),
@@ -501,6 +620,38 @@ func renderFileRow(file models.File) g.Node {
 					h.Class("files-lucide files-lucide-action"),
 					g.Attr("aria-hidden", "true"),
 				),
+			),
+		),
+	)
+}
+
+func renderFileCard(file models.File) g.Node {
+	viewURL := fmt.Sprintf("/files/%s/view", file.ID)
+
+	return h.Article(
+		h.Class("files-card"),
+		g.Attr("aria-busy", "true"),
+		g.Attr("data-file-card", file.ID),
+		g.Attr("data-file-item", file.ID),
+		g.Attr("data-file-name", ""),
+		g.Attr("data-file-grid-select", file.ID),
+		g.Attr("data-file-open", viewURL),
+		g.Attr("tabindex", "0"),
+		h.Div(
+			h.Class("files-card-preview"),
+			g.Attr("data-file-preview", "true"),
+			h.Span(
+				h.Class("files-type-icon files-card-icon"),
+				g.Attr("data-file-field", "icon"),
+				fileTypeGlyph(file),
+			),
+		),
+		h.Div(
+			h.Class("files-card-main"),
+			h.Span(
+				h.Class("files-name files-skeleton files-skeleton-name"),
+				g.Attr("data-file-field", "name"),
+				g.Attr("aria-hidden", "true"),
 			),
 		),
 	)

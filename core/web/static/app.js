@@ -100,11 +100,65 @@ function initPasswordToggles() {
   });
 }
 
+function buildLockURL() {
+  const next = window.location.pathname + window.location.search + window.location.hash;
+  return "/lock?next=" + encodeURIComponent(next || "/dashboard");
+}
+
+function initVaultAccessGuard() {
+  const requiresUnlock = document.body && document.body.getAttribute("data-require-vault-unlock") === "true";
+  const lockButton = document.getElementById("app-lock-trigger");
+
+  function redirectToLock() {
+    if (window.location.pathname === "/lock") {
+      return;
+    }
+    window.location.replace(buildLockURL());
+  }
+
+  if (lockButton && !lockButton.hasAttribute("data-lock-bound")) {
+    lockButton.setAttribute("data-lock-bound", "true");
+    lockButton.addEventListener("click", function() {
+      if (!window.ArkiveVault || typeof window.ArkiveVault.lock !== "function") {
+        redirectToLock();
+        return;
+      }
+      window.ArkiveVault.lock()
+        .catch(function() {})
+        .finally(function() {
+          redirectToLock();
+        });
+    });
+  }
+
+  if (!requiresUnlock || !window.ArkiveVault) {
+    return;
+  }
+
+  if (typeof window.ArkiveVault.waitUntilReady === "function") {
+    window.ArkiveVault.waitUntilReady().then(function() {
+      if (typeof window.ArkiveVault.isUnlocked === "function" && !window.ArkiveVault.isUnlocked()) {
+        redirectToLock();
+      }
+    }).catch(function() {
+      redirectToLock();
+    });
+  }
+
+  window.addEventListener("arkive:vault-state", function(event) {
+    const detail = event && event.detail ? event.detail : {};
+    if (!detail.unlocked) {
+      redirectToLock();
+    }
+  });
+}
+
 initTheme();
 initPasswordToggles();
 initCrypto();
 initVault();
 initToast();
+initVaultAccessGuard();
 initDialogs();
 initDropdowns();
 initCopyButtons();

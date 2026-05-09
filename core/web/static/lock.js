@@ -1,0 +1,124 @@
+(function() {
+  const form = document.querySelector("[data-lock-form='true']");
+  if (!form) {
+    return;
+  }
+
+  function lockRedirectTarget() {
+    const raw = String(form.getAttribute("data-lock-next") || "").trim();
+    if (!raw) {
+      return "/dashboard";
+    }
+    if (raw.charAt(0) !== "/" || raw.indexOf("//") === 0) {
+      return "/dashboard";
+    }
+    return raw;
+  }
+
+  function setGeneralError(message) {
+    let error = form.querySelector(".form-error");
+    if (!message) {
+      if (error && error.hasAttribute("data-runtime-error")) {
+        error.parentNode.removeChild(error);
+      }
+      return;
+    }
+    if (!error) {
+      error = document.createElement("p");
+      error.className = "form-error";
+      error.setAttribute("data-runtime-error", "true");
+      form.insertBefore(error, form.firstChild);
+    }
+    error.textContent = message;
+  }
+
+  function firstError(errors) {
+    if (!errors) {
+      return "";
+    }
+    if (typeof errors.general === "string" && errors.general) {
+      return errors.general;
+    }
+    if (typeof errors._general === "string" && errors._general) {
+      return errors._general;
+    }
+    const keys = Object.keys(errors);
+    for (let i = 0; i < keys.length; i++) {
+      const value = errors[keys[i]];
+      if (typeof value === "string" && value) {
+        return value;
+      }
+    }
+    return "";
+  }
+
+  async function apiUnlock(password) {
+    const response = await fetch("/api/auth/unlock", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: password })
+    });
+    const data = await response.json().catch(function() {
+      return {};
+    });
+    if (!response.ok) {
+      throw new Error(firstError(data.errors) || data.error || "Unlock failed. Try again.");
+    }
+    return data;
+  }
+
+  let submitting = false;
+
+  if (window.ArkiveVault && typeof window.ArkiveVault.waitUntilReady === "function") {
+    window.ArkiveVault.waitUntilReady().then(function() {
+      if (typeof window.ArkiveVault.isUnlocked === "function" && window.ArkiveVault.isUnlocked()) {
+        window.location.replace(lockRedirectTarget());
+      }
+    }).catch(function() {});
+  }
+
+  form.addEventListener("submit", function(event) {
+    event.preventDefault();
+    if (submitting) {
+      return;
+    }
+
+    const passwordInput = form.querySelector("input[name='password']");
+    const submitButton = form.querySelector("button[type='submit']");
+    const password = passwordInput ? String(passwordInput.value || "") : "";
+
+    if (!window.ArkiveVault || typeof window.ArkiveVault.unlockVault !== "function") {
+      setGeneralError("Vault runtime is unavailable. Reload the page and try again.");
+      return;
+    }
+
+    submitting = true;
+    setGeneralError("");
+    if (submitButton) {
+      submitButton.disabled = true;
+    }
+
+    apiUnlock(password)
+      .then(function(data) {
+        return window.ArkiveVault.unlockVault(password, data.salt, data.encryptedMasterKey)
+          .then(async function() {
+            if (typeof window.ArkiveVault.persistSessionUnlock === "function") {
+              await window.ArkiveVault.persistSessionUnlock();
+            }
+            if (passwordInput) {
+              passwordInput.value = "";
+            }
+            window.location.replace(lockRedirectTarget());
+          });
+      })
+      .catch(function(error) {
+        setGeneralError(error && error.message ? error.message : "Unlock failed. Try again.");
+      })
+      .finally(function() {
+        submitting = false;
+        if (submitButton) {
+          submitButton.disabled = false;
+        }
+      });
+  });
+})();

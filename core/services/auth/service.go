@@ -40,6 +40,11 @@ type LoginUnlockResult struct {
 	EncryptedMasterKey []byte
 }
 
+type VaultUnlockResult struct {
+	VaultSalt          []byte
+	EncryptedMasterKey []byte
+}
+
 func NewService(
 	db database.PgPool,
 	authRepo *authrepo.Repository,
@@ -115,6 +120,44 @@ func (s *Service) LoginAndLoadVault(ctx context.Context, email, password, lastIP
 	return LoginUnlockResult{
 		SessionID:          sessionID,
 		ExpiresAt:          expiresAt,
+		VaultSalt:          user.VaultSalt,
+		EncryptedMasterKey: user.EncryptedMasterKey,
+	}, nil, nil
+}
+
+func (s *Service) UnlockVaultWithSession(ctx context.Context, userID, password string) (VaultUnlockResult, validation.Errors, error) {
+	userID = strings.TrimSpace(userID)
+	if userID == "" || password == "" {
+		validationErrors := validation.New()
+		if password == "" {
+			validationErrors.Add("password", ErrPasswordRequired.Error())
+		}
+		if userID == "" {
+			return VaultUnlockResult{}, nil, ErrUnauthorized
+		}
+		return VaultUnlockResult{}, validationErrors, nil
+	}
+
+	user, err := s.authRepo.GetUserByID(ctx, s.db, userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return VaultUnlockResult{}, nil, ErrUnauthorized
+		}
+		return VaultUnlockResult{}, nil, err
+	}
+	_, authErr := s.authenticateUser(ctx, s.db, user.Email, password)
+	if authErr != nil {
+		if errors.Is(authErr, ErrInvalidCredentials) {
+			validationErrors := validation.New()
+			validationErrors.Add(validation.GeneralKey, ErrLoginInvalid.Error())
+			return VaultUnlockResult{}, validationErrors, nil
+		}
+		return VaultUnlockResult{}, nil, authErr
+	}
+	if len(user.VaultSalt) == 0 || len(user.EncryptedMasterKey) == 0 {
+		return VaultUnlockResult{}, nil, ErrVaultNotConfigured
+	}
+	return VaultUnlockResult{
 		VaultSalt:          user.VaultSalt,
 		EncryptedMasterKey: user.EncryptedMasterKey,
 	}, nil, nil
