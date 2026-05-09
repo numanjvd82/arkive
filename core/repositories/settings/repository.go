@@ -99,13 +99,13 @@ func (r *Repository) GetEmailSettings(ctx context.Context, db database.PgExecuto
 
 func (r *Repository) SaveEmailSettings(ctx context.Context, db database.PgExecutor, settings models.EmailSettings) error {
 	values := map[string]string{
-		"email.provider":       settings.Provider,
-		"email.from":           settings.From,
+		"email.provider":        settings.Provider,
+		"email.from":            settings.From,
 		"email.public_base_url": settings.PublicBaseURL,
-		"email.smtp_host":      settings.SMTPHost,
-		"email.smtp_port":      strconv.Itoa(settings.SMTPPort),
-		"email.smtp_user":      settings.SMTPUser,
-		"email.smtp_pass":      settings.SMTPPass,
+		"email.smtp_host":       settings.SMTPHost,
+		"email.smtp_port":       strconv.Itoa(settings.SMTPPort),
+		"email.smtp_user":       settings.SMTPUser,
+		"email.smtp_pass":       settings.SMTPPass,
 	}
 	for key, value := range values {
 		if _, err := db.Exec(ctx, `
@@ -142,24 +142,18 @@ func (r *Repository) GetUploadSettings(ctx context.Context, db database.PgExecut
 		return models.UploadSettings{}, ErrStorageSettingsNotFound
 	}
 
-	maxUploadConcurrency, _ := strconv.Atoi(values["upload.max_concurrency"])
-	if maxUploadConcurrency <= 0 {
-		maxUploadConcurrency = 4
-	}
 	maxQueueItems, _ := strconv.Atoi(values["upload.max_queue_items"])
 	if maxQueueItems <= 0 {
 		maxQueueItems = 300
 	}
 	return models.UploadSettings{
-		MaxUploadConcurrency: maxUploadConcurrency,
-		MaxQueueItems:        maxQueueItems,
+		MaxQueueItems: maxQueueItems,
 	}, nil
 }
 
 func (r *Repository) SaveUploadSettings(ctx context.Context, db database.PgExecutor, settings models.UploadSettings) error {
 	values := map[string]string{
-		"upload.max_concurrency": strconv.Itoa(settings.MaxUploadConcurrency),
-		"upload.max_queue_items":  strconv.Itoa(settings.MaxQueueItems),
+		"upload.max_queue_items": strconv.Itoa(settings.MaxQueueItems),
 	}
 	for key, value := range values {
 		if _, err := db.Exec(ctx, `

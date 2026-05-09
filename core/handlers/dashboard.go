@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	settingssvc "arkive/core/services/settings"
 	"arkive/core/services/uploads"
 	"arkive/core/web"
 	"arkive/core/web/pages"
@@ -12,7 +13,7 @@ import (
 	"arkive/pkg/errs"
 )
 
-func WebDashboard(uploadService *uploads.Service) gin.HandlerFunc {
+func WebDashboard(uploadService *uploads.Service, settingsService *settingssvc.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user, ok := appcontext.UserFromContext(c)
 		if !ok || user.ID == "" {
@@ -31,11 +32,16 @@ func WebDashboard(uploadService *uploads.Service) gin.HandlerFunc {
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
+		uploadSettings, err := settingsService.UploadSettings(c.Request.Context())
+		if err != nil {
+			uploadSettings = pages.DefaultUploadSettings()
+		}
 
 		web.Render(c, pages.DashboardPage(pages.DashboardPageProps{
-			Ctx:         pages.ContextWithUser(user),
-			RecentFiles: list.Files,
-			TotalFiles:  list.TotalFiles,
+			Ctx:            pages.ContextWithUser(user),
+			RecentFiles:    list.Files,
+			TotalFiles:     list.TotalFiles,
+			UploadSettings: uploadSettings,
 		}))
 	}
 }

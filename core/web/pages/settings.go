@@ -45,9 +45,6 @@ func SettingsPage(props SettingsPageProps) web.Page {
 	if emailSettings.Provider == "" {
 		emailSettings.Provider = "noop"
 	}
-	if uploadSettings.MaxUploadConcurrency == 0 {
-		uploadSettings.MaxUploadConcurrency = 4
-	}
 	if uploadSettings.MaxQueueItems == 0 {
 		uploadSettings.MaxQueueItems = 300
 	}
@@ -101,11 +98,11 @@ func SettingsPage(props SettingsPageProps) web.Page {
 					h.Class("settings-grid"),
 					h.Aside(
 						h.Class("settings-tabs"),
-					settingsTabLink("settings-account", "Account"),
-					settingsTabLink("settings-provider", "Storage Provider"),
-					settingsTabLink("settings-email", "Email"),
-					settingsTabLink("settings-upload", "Uploads"),
-					settingsTabLink("settings-security", "Security"),
+						settingsTabLink("settings-account", "Account"),
+						settingsTabLink("settings-provider", "Storage Provider"),
+						settingsTabLink("settings-email", "Email"),
+						settingsTabLink("settings-upload", "Uploads"),
+						settingsTabLink("settings-security", "Security"),
 					),
 					h.Div(
 						h.Class("settings-content"),
@@ -269,7 +266,7 @@ func SettingsPage(props SettingsPageProps) web.Page {
 								h.Div(
 									h.Class("settings-panel-title"),
 									h.H2(g.Text("Uploads")),
-									h.P(g.Text("Configure queue and concurrency limits from settings instead of environment variables.")),
+									h.P(g.Text("Configure upload queue limits from settings instead of environment variables.")),
 								),
 							),
 							h.Div(
@@ -281,7 +278,6 @@ func SettingsPage(props SettingsPageProps) web.Page {
 									Body: []g.Node{
 										h.Div(
 											h.Class("settings-meta"),
-											h.Div(h.Class("settings-meta-row"), h.Span(g.Text("Concurrency")), h.Span(g.Text(strconv.Itoa(uploadSettings.MaxUploadConcurrency)))),
 											h.Div(h.Class("settings-meta-row"), h.Span(g.Text("Queue items")), h.Span(g.Text(strconv.Itoa(uploadSettings.MaxQueueItems)))),
 										),
 									},

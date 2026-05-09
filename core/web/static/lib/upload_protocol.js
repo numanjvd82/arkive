@@ -1,5 +1,6 @@
 export const UPLOAD_MESSAGE = Object.freeze({
 	CONNECT: "connect",
+	CONFIGURE: "configure",
 	STATE: "state",
 	REQUEST_STATE: "request-state",
 	ADD_FILES: "add-files",

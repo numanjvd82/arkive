@@ -15,13 +15,25 @@ import (
 )
 
 type DashboardPageProps struct {
-	Ctx         PageContext
-	RecentFiles []models.File
-	TotalFiles  int
+	Ctx            PageContext
+	RecentFiles    []models.File
+	TotalFiles     int
+	UploadSettings models.UploadSettings
+}
+
+func DefaultUploadSettings() models.UploadSettings {
+	return models.UploadSettings{
+		MaxQueueItems: 300,
+	}
 }
 
 func DashboardPage(props DashboardPageProps) web.Page {
 	user := props.Ctx.User
+	uploadSettings := props.UploadSettings
+	defaultUploadSettings := DefaultUploadSettings()
+	if uploadSettings.MaxQueueItems <= 0 {
+		uploadSettings.MaxQueueItems = defaultUploadSettings.MaxQueueItems
+	}
 	usedBytes := int64(0)
 	quotaBytes := int64(0)
 	isUnlimitedQuota := true
@@ -91,6 +103,7 @@ func DashboardPage(props DashboardPageProps) web.Page {
 						InputLabel:    "Secure Payload Drop",
 						InputHelper:   "Drag and drop files here to begin encrypted transfer. All data is zero-knowledge encrypted client-side before transmission.",
 						StatusText:    "Select files manually to start a secure upload.",
+						MaxQueueItems: uploadSettings.MaxQueueItems,
 					}),
 				),
 				h.Section(

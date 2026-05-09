@@ -77,7 +77,7 @@ func loginBody(props LoginPageProps) g.Node {
 								),
 							),
 							components.InputField(components.InputProps{
-								Label:       "Node identifier",
+								Label:       "Email",
 								Name:        "email",
 								Type:        components.InputTypeEmail,
 								Placeholder: "user@local.node",
@@ -88,7 +88,7 @@ func loginBody(props LoginPageProps) g.Node {
 								InputClass:  "form-input-auth mono",
 							}),
 							components.InputField(components.InputProps{
-								Label:       "Decryption key",
+								Label:       "Password",
 								Name:        "password",
 								Type:        components.InputTypePassword,
 								Placeholder: "Enter your password",

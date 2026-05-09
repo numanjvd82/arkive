@@ -41,8 +41,7 @@ type emailSettingsForm struct {
 }
 
 type uploadSettingsForm struct {
-	MaxUploadConcurrency string `form:"max_upload_concurrency"`
-	MaxQueueItems        string `form:"max_queue_items"`
+	MaxQueueItems string `form:"max_queue_items"`
 }
 
 func WebSettings(uploadService *uploads.Service, settingsService *settingssvc.Service) gin.HandlerFunc {
@@ -185,8 +184,7 @@ func emailSettingsFromForm(form emailSettingsForm) settingssvc.EmailInput {
 
 func uploadSettingsFromForm(form uploadSettingsForm) settingssvc.UploadInput {
 	return settingssvc.UploadInput{
-		MaxUploadConcurrency: form.MaxUploadConcurrency,
-		MaxQueueItems:        form.MaxQueueItems,
+		MaxQueueItems: form.MaxQueueItems,
 	}
 }
 
@@ -201,17 +199,17 @@ func renderSettingsStorage(c *gin.Context, user models.User, settings models.Sto
 
 func renderSettingsEmail(c *gin.Context, user models.User, settings models.EmailSettings, validationErrors validation.Errors) {
 	web.Render(c, pages.SettingsPage(pages.SettingsPageProps{
-		Ctx:          pages.ContextWithUser(user),
+		Ctx:           pages.ContextWithUser(user),
 		EmailSettings: settings,
-		Errors:       validationErrors,
+		Errors:        validationErrors,
 	}))
 }
 
 func renderSettingsUpload(c *gin.Context, user models.User, settings models.UploadSettings, validationErrors validation.Errors) {
 	web.Render(c, pages.SettingsPage(pages.SettingsPageProps{
-		Ctx:           pages.ContextWithUser(user),
+		Ctx:            pages.ContextWithUser(user),
 		UploadSettings: settings,
-		Errors:        validationErrors,
+		Errors:         validationErrors,
 	}))
 }
 

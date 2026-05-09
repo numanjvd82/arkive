@@ -170,12 +170,17 @@ func (r *Repository) UpdateEncryptedFileStatusIf(ctx context.Context, db databas
 func (r *Repository) CountInFlightForUser(ctx context.Context, db database.PgExecutor, userID string) (int64, error) {
 	var total int64
 	query := `SELECT
-		COUNT(*)
+		COUNT(DISTINCT files.id)
 	FROM
 		files
+	INNER JOIN
+		upload_sessions ON upload_sessions.file_id = files.id
 	WHERE
-		user_id = $1
-		AND upload_status IN ('pending', 'uploading')`
+		files.user_id = $1
+		AND files.upload_status IN ('pending', 'uploading')
+		AND upload_sessions.owner_id = $1
+		AND upload_sessions.status = 'active'
+		AND upload_sessions.expires_at > now()`
 	if err := db.QueryRow(ctx, query, userID).Scan(&total); err != nil {
 		return 0, err
 	}

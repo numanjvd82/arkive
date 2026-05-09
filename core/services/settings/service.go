@@ -48,8 +48,7 @@ type EmailInput struct {
 }
 
 type UploadInput struct {
-	MaxUploadConcurrency string
-	MaxQueueItems        string
+	MaxQueueItems string
 }
 
 func NewService(db database.PgPool, settingsRepo *settingsrepo.Repository, userRepo *usersrepo.Repository) *Service {
@@ -280,18 +279,6 @@ func ValidateEmailSettings(settings models.EmailSettings, validationErrors valid
 
 func BuildUploadSettings(input UploadInput) (models.UploadSettings, validation.Errors) {
 	validationErrors := validation.New()
-	maxUploadConcurrency := 0
-	if strings.TrimSpace(input.MaxUploadConcurrency) != "" {
-		n, err := strconv.Atoi(strings.TrimSpace(input.MaxUploadConcurrency))
-		if err != nil || n <= 0 {
-			validationErrors.Add("max_upload_concurrency", "must be a positive number")
-		} else {
-			maxUploadConcurrency = n
-		}
-	}
-	if maxUploadConcurrency == 0 {
-		maxUploadConcurrency = 4
-	}
 	maxQueueItems := 0
 	if strings.TrimSpace(input.MaxQueueItems) != "" {
 		n, err := strconv.Atoi(strings.TrimSpace(input.MaxQueueItems))
@@ -304,13 +291,10 @@ func BuildUploadSettings(input UploadInput) (models.UploadSettings, validation.E
 	if maxQueueItems == 0 {
 		maxQueueItems = 300
 	}
-	return models.UploadSettings{MaxUploadConcurrency: maxUploadConcurrency, MaxQueueItems: maxQueueItems}, validationErrors
+	return models.UploadSettings{MaxQueueItems: maxQueueItems}, validationErrors
 }
 
 func ValidateUploadSettings(settings models.UploadSettings, validationErrors validation.Errors) {
-	if settings.MaxUploadConcurrency <= 0 {
-		validationErrors.Add("max_upload_concurrency", "must be a positive number")
-	}
 	if settings.MaxQueueItems <= 0 {
 		validationErrors.Add("max_queue_items", "must be a positive number")
 	}

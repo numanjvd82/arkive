@@ -78,11 +78,11 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 		RequestsPerMinute: 2,
 		Burst:             2,
 		KeyPrefix:         "share:public:post",
-		}), handlers.PublicShareUnlock(shareService, uploadService))
+	}), handlers.PublicShareUnlock(shareService, uploadService))
 	r.GET("/login", handlers.WebLoginGet(authService, setupService))
 	protected := r.Group("/")
 	protected.Use(middleware.RequireSessionRedirect(authService))
-	protected.GET("/dashboard", handlers.WebDashboard(uploadService))
+	protected.GET("/dashboard", handlers.WebDashboard(uploadService, settingsService))
 	protected.GET("/files", handlers.WebFiles(uploadService))
 	protected.GET("/files/:id/view", handlers.WebFileView(uploadService))
 	protected.GET("/shares", handlers.WebShares(shareService, uploadService))

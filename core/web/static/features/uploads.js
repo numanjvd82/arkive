@@ -7,6 +7,11 @@ function formatBytes(bytes) {
 	return (bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0) + " " + units[i];
 }
 
+function parseLimit(value, fallback) {
+	const parsed = Number.parseInt(String(value || ""), 10);
+	return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
 export function initUploads() {
 	if (document.body.hasAttribute("data-uploads-ready")) return;
 	document.body.setAttribute("data-uploads-ready", "true");
@@ -29,16 +34,22 @@ export function initUploads() {
 	const uploadChipName = document.getElementById("upload-chip-name");
 	const uploadChipSize = document.getElementById("upload-chip-size");
 	const uploadChipClear = document.getElementById("upload-chip-clear");
+	const uploadIconBank = document.querySelector(".upload-icon-bank");
 
 	if (!input || !queueList || !status) return;
 
-	const client = new UploadClient({});
+	const uploadLimits = {
+		maxQueueItems: parseLimit(dropzone && dropzone.getAttribute("data-upload-max-queue-items"), 300),
+	};
+	const client = new UploadClient({ limits: uploadLimits });
 	let selectedFiles = [];
 	let selectedFileHandles = [];
 	let state = { jobs: [], incompleteJobs: [], activeJobId: null };
 	let startMode = "new";
+	const completedBatches = new Set();
 
 	client.connect();
+	client.setLimits(uploadLimits);
 	client.onState(function (nextState) {
 		state = nextState || state;
 		render();
@@ -46,6 +57,15 @@ export function initUploads() {
 	client.onEvent(function (event) {
 		if (event && event.type === "error") {
 			setStatus(event.error || "Upload failed.");
+			return;
+		}
+		if (event && event.type === "batch-complete") {
+			if (event.batchId && !completedBatches.has(event.batchId)) {
+				completedBatches.add(event.batchId);
+				if (window.Toast) {
+					window.Toast.success((event.total || 0) + " file(s) uploaded.", { title: "Upload complete" });
+				}
+			}
 		}
 	});
 	client.requestState().then(function (snapshot) {
@@ -219,16 +239,20 @@ export function initUploads() {
 		uploadChipName.textContent = files.length === 1 ? files[0].name : files.length + " files";
 		uploadChipSize.textContent = formatBytes(files.reduce(function (sum, file) { return sum + file.size; }, 0));
 		uploadChip.classList.remove("is-hidden");
-		uploadControls && uploadControls.classList.remove("is-hidden");
 	}
 	function hideSelectedFiles() {
 		uploadChip && uploadChip.classList.add("is-hidden");
-		uploadControls && uploadControls.classList.add("is-hidden");
 	}
 
 	function render() {
 		queueList.innerHTML = "";
 		const jobs = (state.jobs || []).slice().sort(function (a, b) { return String(a.createdAt || "").localeCompare(String(b.createdAt || "")); });
+		const hasCancelableJobs = jobs.some(function (job) {
+			return job.status === "queued" || job.status === "running" || job.status === "paused";
+		});
+		if (uploadControls) {
+			uploadControls.classList.toggle("is-hidden", !hasCancelableJobs);
+		}
 		if (!jobs.length) {
 			queueEmpty && queueEmpty.classList.remove("is-hidden");
 			queueMeta && (queueMeta.textContent = "0 items active");
@@ -245,8 +269,6 @@ export function initUploads() {
 		const active = jobs.find(function (job) { return job.status === "running"; });
 		if (active) {
 			setStatus("Uploading " + active.fileName + "...");
-			if (metaTitle) metaTitle.textContent = active.fileName;
-			if (metaDetail) metaDetail.textContent = formatBytes(active.completedBytes || 0) + " / " + formatBytes(active.fileSize);
 		}
 	}
 
@@ -269,18 +291,18 @@ export function initUploads() {
 		const actions = document.createElement("div");
 		actions.className = "queue-item-actions";
 		if (job.status === "paused") {
-			actions.appendChild(actionButton(job.jobId, "resume", "Resume", "queue-item-action"));
-			actions.appendChild(actionButton(job.jobId, "cancel", "Cancel", "queue-item-action is-cancel"));
+			actions.appendChild(actionButton(job.jobId, "resume", "Resume", "queue-item-action", "play"));
+			actions.appendChild(actionButton(job.jobId, "cancel", "Cancel", "queue-item-action is-cancel", "trash"));
 		} else if (job.status === "queued" || job.status === "running") {
-			actions.appendChild(actionButton(job.jobId, "pause", "Pause", "queue-item-action"));
-			actions.appendChild(actionButton(job.jobId, "cancel", "Cancel", "queue-item-action is-cancel"));
+			actions.appendChild(actionButton(job.jobId, "pause", "Pause", "queue-item-action", "pause"));
+			actions.appendChild(actionButton(job.jobId, "cancel", "Cancel", "queue-item-action is-cancel", "trash"));
 		} else if (job.status === "failed") {
-			actions.appendChild(actionButton(job.jobId, "resume", "Retry", "queue-item-action"));
-			actions.appendChild(actionButton(job.jobId, "remove", "Remove", "queue-item-action is-cancel"));
+			actions.appendChild(actionButton(job.jobId, "resume", "Retry", "queue-item-action", "refresh-cw"));
+			actions.appendChild(actionButton(job.jobId, "remove", "Remove", "queue-item-action is-cancel", "trash"));
 		} else if (job.status === "completed") {
-			actions.appendChild(actionButton(job.jobId, "remove", "Remove", "queue-item-action is-cancel"));
+			actions.appendChild(actionButton(job.jobId, "remove", "Remove", "queue-item-action is-cancel", "trash"));
 		} else if (job.status === "canceled") {
-			actions.appendChild(actionButton(job.jobId, "remove", "Remove", "queue-item-action is-cancel"));
+			actions.appendChild(actionButton(job.jobId, "remove", "Remove", "queue-item-action is-cancel", "trash"));
 		}
 		top.appendChild(fileWrap);
 		top.appendChild(actions);
@@ -288,6 +310,7 @@ export function initUploads() {
 		track.className = "queue-item-track";
 		const fill = document.createElement("span");
 		fill.className = "queue-item-fill";
+		fill.style.transition = "width 180ms linear";
 		fill.style.width = job.fileSize > 0 ? Math.round(((job.completedBytes || 0) / job.fileSize) * 100) + "%" : "0%";
 		track.appendChild(fill);
 		const meta = document.createElement("div");
@@ -297,7 +320,7 @@ export function initUploads() {
 		progress.textContent = formatBytes(job.completedBytes || 0) + " / " + formatBytes(job.fileSize);
 		const detail = document.createElement("span");
 		detail.className = "queue-item-speed mono";
-		detail.textContent = job.status;
+		detail.textContent = job.transferRate > 0 ? formatBytes(job.transferRate) + "/s" : job.status;
 		meta.appendChild(progress);
 		meta.appendChild(detail);
 		li.appendChild(top);
@@ -306,13 +329,18 @@ export function initUploads() {
 		return li;
 	}
 
-	function actionButton(jobId, action, label, className) {
+	function actionButton(jobId, action, label, className, iconName) {
 		const button = document.createElement("button");
 		button.type = "button";
 		button.className = className;
 		button.setAttribute("data-job-id", jobId);
 		button.setAttribute("data-job-action", action);
-		button.textContent = label;
+		button.setAttribute("aria-label", label);
+		button.title = label;
+		const icon = uploadIconBank && uploadIconBank.querySelector('[data-upload-icon="' + (iconName || action) + '"] svg');
+		if (icon) {
+			button.appendChild(icon.cloneNode(true));
+		}
 		return button;
 	}
 }

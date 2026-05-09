@@ -1,6 +1,8 @@
 package components
 
 import (
+	"strconv"
+
 	lucide "github.com/eduardolat/gomponents-lucide"
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
@@ -13,6 +15,7 @@ type UploadControlsProps struct {
 	InputHelper   string
 	StatusText    string
 	InputRequired bool
+	MaxQueueItems int
 }
 
 const UploadUICSS = "/web/components/upload_ui.css"
@@ -42,10 +45,19 @@ func UploadControls(props UploadControlsProps) g.Node {
 	return g.Group([]g.Node{
 		InlineStyle(UploadUICSS),
 		h.Div(
+			h.Class("upload-icon-bank"),
+			g.Attr("aria-hidden", "true"),
+			h.Span(g.Attr("data-upload-icon", "pause"), lucide.Pause(h.Class("upload-lucide"), g.Attr("aria-hidden", "true"))),
+			h.Span(g.Attr("data-upload-icon", "play"), lucide.Play(h.Class("upload-lucide"), g.Attr("aria-hidden", "true"))),
+			h.Span(g.Attr("data-upload-icon", "trash"), lucide.Trash2(h.Class("upload-lucide"), g.Attr("aria-hidden", "true"))),
+			h.Span(g.Attr("data-upload-icon", "refresh-cw"), lucide.RotateCw(h.Class("upload-lucide"), g.Attr("aria-hidden", "true"))),
+		),
+		h.Div(
 			h.Class("upload-dropzone"),
 			g.Attr("id", "upload-dropzone"),
 			g.Attr("role", "button"),
 			g.Attr("tabindex", "0"),
+			g.Attr("data-upload-max-queue-items", strconv.Itoa(props.MaxQueueItems)),
 			h.Div(
 				h.Class("dropzone-icon"),
 				lucide.CloudUpload(
@@ -109,21 +121,6 @@ func UploadControls(props UploadControlsProps) g.Node {
 			),
 		),
 
-		h.Div(
-			h.Class("upload-meta"),
-			h.Span(h.Class("upload-meta-title"), g.Attr("id", "upload-meta-title")),
-			h.Span(
-				h.Class("upload-meta-detail"),
-				g.Attr("id", "upload-meta-detail"),
-				g.Text(""),
-			),
-			Tooltip(TooltipProps{
-				ID:       "upload-meta-tooltip",
-				Class:    "upload-meta-tooltip",
-				IconName: "info",
-				IconSize: "18",
-			}),
-		),
 		h.P(
 			h.Class("upload-status is-hidden"),
 			g.Attr("id", "upload-status"),

@@ -2,6 +2,7 @@ import { UPLOAD_MESSAGE } from "../lib/upload_protocol.js";
 
 export class UploadClient {
 	constructor(options) {
+		options = options || {};
 		this.workerURL = options.workerURL || "/static/workers/upload_shared_worker.js";
 		this.worker = null;
 		this.port = null;
@@ -9,6 +10,7 @@ export class UploadClient {
 		this.requestID = 0;
 		this.stateHandlers = [];
 		this.eventHandlers = [];
+		this.limits = options.limits || null;
 	}
 
 	connect() {
@@ -31,7 +33,7 @@ export class UploadClient {
 				console.error("[arkive-uploads] worker error", event && event.message ? event.message : event);
 			}
 		};
-		this.port.postMessage({ type: UPLOAD_MESSAGE.CONNECT });
+		this.port.postMessage({ type: UPLOAD_MESSAGE.CONNECT, payload: { limits: this.limits } });
 		return this.port;
 	}
 
@@ -46,6 +48,12 @@ export class UploadClient {
 	setVaultSession(session) {
 		this.connect();
 		this.port.postMessage({ type: UPLOAD_MESSAGE.VAULT_SESSION, session: session || null });
+	}
+
+	setLimits(limits) {
+		this.limits = limits || null;
+		this.connect();
+		this.port.postMessage({ type: UPLOAD_MESSAGE.CONFIGURE, payload: { limits: this.limits } });
 	}
 
 	requestState() { return this.request(UPLOAD_MESSAGE.REQUEST_STATE, {}); }

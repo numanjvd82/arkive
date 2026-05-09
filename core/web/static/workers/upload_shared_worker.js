@@ -12,7 +12,13 @@ let unlockedMasterKey = null;
 const activeUploads = new Map();
 const activeControllers = new Map();
 const activeCancelCalls = new Map();
+const completedBatches = new Set();
 const STOPPED_UPLOAD = new Error("Upload stopped");
+let hydrated = false;
+let hydratePromise = null;
+const uploadLimits = {
+	maxQueueItems: 300,
+};
 
 function logUpload() {
 	if (typeof console !== "undefined" && console.debug) {
@@ -120,6 +126,26 @@ function broadcast(message) {
 	ports.forEach(function (port) {
 		port.postMessage(message);
 	});
+}
+
+function updateUploadLimits(nextLimits) {
+	if (!nextLimits || typeof nextLimits !== "object") {
+		return;
+	}
+	const maxQueueItems = Number(nextLimits.maxQueueItems || 0);
+	if (Number.isFinite(maxQueueItems) && maxQueueItems > 0) {
+		uploadLimits.maxQueueItems = Math.max(1, Math.floor(maxQueueItems));
+	}
+}
+
+function queueEligibleJobCount() {
+	let total = 0;
+	for (const job of jobs.values()) {
+		if (job.public.status === "queued" || job.public.status === "running" || job.public.status === "paused") {
+			total++;
+		}
+	}
+	return total;
 }
 
 function summarizeJobs() {
@@ -277,7 +303,14 @@ async function restoreVault() {
 }
 
 async function addFiles(files) {
+	await ensureHydrated();
 	logUpload("addFiles", { count: files.length });
+	const nextQueueSize = queueEligibleJobCount() + files.length;
+	if (uploadLimits.maxQueueItems > 0 && nextQueueSize > uploadLimits.maxQueueItems) {
+		throw new Error("Upload queue limit reached (" + uploadLimits.maxQueueItems + " max items)");
+	}
+	const jobIds = [];
+	const batchId = uuid();
 	for (let i = 0; i < files.length; i++) {
 		const file = files[i];
 		const jobId = uuid();
@@ -285,6 +318,7 @@ async function addFiles(files) {
 		const job = {
 			public: {
 				jobId: jobId,
+				batchId: batchId,
 				fileId: "",
 				vaultId: "",
 				sessionId: "",
@@ -293,6 +327,9 @@ async function addFiles(files) {
 				chunkSize: chunkSize,
 				totalParts: Math.max(1, Math.ceil(file.size / chunkSize)),
 				completedParts: 0,
+				completedBytes: 0,
+				transferRate: 0,
+				startedAt: "",
 				status: "queued",
 				createdAt: nowISO(),
 				updatedAt: nowISO(),
@@ -303,12 +340,15 @@ async function addFiles(files) {
 		};
 		jobs.set(jobId, job);
 		await putJob(job.public);
+		jobIds.push(jobId);
 	}
 	broadcastState();
 	processQueue();
+	return { batchId: batchId, jobIds: jobIds };
 }
 
 async function resumeFiles(files) {
+	await ensureHydrated();
 	logUpload("resumeFiles", { count: files.length });
 	const requested = new Map();
 	for (let i = 0; i < files.length; i++) {
@@ -317,6 +357,9 @@ async function resumeFiles(files) {
 	const matched = [];
 	for (const job of jobs.values()) {
 		if (job.public.status === "completed" || job.public.status === "canceled") {
+			continue;
+		}
+		if (!job.file) {
 			continue;
 		}
 		const key = fileIdentity(job.file || { name: job.public.fileName, size: job.public.fileSize, lastModified: job.public.lastModified || 0 });
@@ -329,6 +372,7 @@ async function resumeFiles(files) {
 		job.public.updatedAt = nowISO();
 		const parts = await getParts(job.public.jobId);
 		job.public.completedParts = parts.length;
+		job.public.completedBytes = parts.reduce(function (sum, part) { return sum + (part.size || 0); }, 0);
 		await putJob(job.public);
 		logUpload("resume match", { jobId: job.public.jobId, fileName: job.public.fileName, completedParts: job.public.completedParts });
 		matched.push(job.public.fileName);
@@ -338,10 +382,26 @@ async function resumeFiles(files) {
 	return { matched: matched };
 }
 
+async function notifyBatchProgress(batchId, completed) {
+	if (!batchId) return;
+	const state = { total: 0, done: 0 };
+	for (const job of jobs.values()) {
+		if (job.public.batchId !== batchId) continue;
+		state.total += 1;
+		if (job.public.status === "completed") state.done += 1;
+	}
+	if (completed) state.done += 1;
+	if (state.total > 0 && state.done >= state.total && !completedBatches.has(batchId)) {
+		completedBatches.add(batchId);
+		broadcast({ type: "batch-complete", batchId: batchId, total: state.total });
+	}
+}
+
 async function startJob(job) {
 	logUpload("startJob", { jobId: job.public.jobId, fileName: job.public.fileName, completedParts: job.public.completedParts, totalParts: job.public.totalParts });
 	job.state = "running";
 	job.public.status = "running";
+	job.public.startedAt = job.public.startedAt || nowISO();
 	job.public.updatedAt = nowISO();
 	await putJob(job.public);
 	broadcastState();
@@ -362,6 +422,7 @@ async function startJob(job) {
 			logUpload("create session", { jobId: job.public.jobId, size: job.file.size, partSize: job.public.chunkSize, totalParts: job.public.totalParts });
 			started = await fetch("/api/uploads/start", {
 				method: "POST",
+				credentials: "include",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
 					originalSize: job.file.size,
@@ -370,8 +431,10 @@ async function startJob(job) {
 					encryptionVersion: 1,
 				}),
 			}).then(async function (res) {
-				const data = await res.json();
-				if (!res.ok) throw new Error((data && data.error) || "Upload start failed");
+				const text = await res.text();
+				let data = null;
+				try { data = text ? JSON.parse(text) : null; } catch (_) {}
+				if (!res.ok) throw new Error((data && data.error) || text || ("Upload start failed (" + res.status + ")"));
 				return data;
 			});
 			logUpload("session created", { jobId: job.public.jobId, sessionId: started.uploadSessionId, fileId: started.fileId });
@@ -408,6 +471,7 @@ async function startJob(job) {
 		const existingParts = await getParts(job.public.jobId);
 		const doneParts = new Set(existingParts.map(function (part) { return part.partNumber; }));
 		job.public.completedParts = doneParts.size;
+		job.public.completedBytes = existingParts.reduce(function (sum, part) { return sum + (part.size || 0); }, 0);
 		await putJob(job.public).catch(function () {});
 		logUpload("part resume state", { jobId: job.public.jobId, doneParts: doneParts.size });
 		await new Promise(function (resolve, reject) {
@@ -484,8 +548,11 @@ async function startJob(job) {
 		});
 		logUpload("job completed", { jobId: job.public.jobId });
 		job.public.status = "completed";
+		job.public.completedBytes = job.file.size;
+		job.public.transferRate = 0;
 		job.public.updatedAt = nowISO();
 		await putJob(job.public);
+		await notifyBatchProgress(job.public.batchId, true);
 		await deleteJob(job.public.jobId);
 		jobs.delete(job.public.jobId);
 		broadcast({ type: UPLOAD_MESSAGE.JOB_REMOVED, jobId: job.public.jobId });
@@ -509,8 +576,10 @@ async function uploadPart(job, started, prepare, partNumber) {
 		aad: "arkive:file-chunk:v1:" + started.vaultId + ":" + started.fileId + ":" + partNumber + ":" + job.public.chunkSize + ":" + job.public.totalParts,
 	}, [chunk.buffer]);
 	const presigned = await fetch("/api/uploads/" + encodeURIComponent(started.uploadSessionId) + "/parts/" + encodeURIComponent(String(partNumber)) + "/presign", { method: "POST" }).then(async function (res) {
-		const data = await res.json();
-		if (!res.ok) throw new Error((data && data.error) || "Part presign failed");
+		const text = await res.text();
+		let data = null;
+		try { data = text ? JSON.parse(text) : null; } catch (_) {}
+		if (!res.ok) throw new Error((data && data.error) || text || ("Part presign failed (" + res.status + ")"));
 		return data;
 	});
 	const controller = new AbortController();
@@ -529,6 +598,10 @@ async function uploadPart(job, started, prepare, partNumber) {
 		});
 		await putPart({ jobId: job.public.jobId, partNumber: partNumber, offset: start, size: end - start, etag: etag, encryptedSize: encrypted.encryptedSize, encryptedHash: encrypted.encryptedHash, status: "done" });
 		job.public.completedParts += 1;
+		job.public.completedBytes += end - start;
+		const startedAt = job.public.startedAt ? new Date(job.public.startedAt).getTime() : Date.now();
+		const elapsed = Math.max(1, Date.now() - startedAt);
+		job.public.transferRate = Math.round((job.public.completedBytes / elapsed) * 1000);
 		job.public.updatedAt = nowISO();
 		await putJob(job.public);
 		broadcastState();
@@ -546,6 +619,14 @@ function selectNextJob() {
 }
 
 function processQueue() {
+	if (!hydrated) {
+		ensureHydrated().then(function () {
+			processQueue();
+		}).catch(function (error) {
+			logUploadError("hydrate before queue failed", { error: String(error && error.message ? error.message : error || "Hydration failed") });
+		});
+		return;
+	}
 	const next = selectNextJob();
 	if (!next) return;
 	activeJobId = next.public.jobId;
@@ -570,21 +651,52 @@ async function hydrate() {
 	for (let i = 0; i < stored.length; i++) {
 		const job = stored[i];
 		if (!job || !job.jobId) continue;
-		if (job.status === "running") job.status = "paused";
+		if (job.status === "running" || job.status === "queued" || job.status === "paused") {
+			job.status = "paused";
+		}
+		if (job.sessionId && (!job.file || typeof File === "undefined" || !(job.file instanceof File))) {
+			logUpload("cancel stale hydrated job", { jobId: job.jobId, sessionId: job.sessionId, status: job.status });
+			await fetch("/api/uploads/" + encodeURIComponent(job.sessionId) + "/cancel", { method: "POST", credentials: "include" }).catch(function () {});
+			await deleteJob(job.jobId).catch(function () {});
+			continue;
+		}
+		if (!jobs.has(job.jobId) && !job.file) {
+			if (job.sessionId) {
+				await fetch("/api/uploads/" + encodeURIComponent(job.sessionId) + "/cancel", { method: "POST", credentials: "include" }).catch(function () {});
+			}
+			await deleteJob(job.jobId).catch(function () {});
+			continue;
+		}
 		jobs.set(job.jobId, { public: job, file: null, partConcurrency: getPartConcurrency(job.fileSize) });
 	}
 	broadcastState();
 }
 
+async function ensureHydrated() {
+	if (hydrated) {
+		return;
+	}
+	if (!hydratePromise) {
+		hydratePromise = hydrate().then(function () {
+			hydrated = true;
+		}).catch(function (error) {
+			hydratePromise = null;
+			throw error;
+		});
+	}
+	await hydratePromise;
+}
+
 async function cancelJob(jobId) {
+	await ensureHydrated();
 	const job = jobs.get(jobId);
 	if (!job) return;
 	clearJobControllers(jobId);
 	logUpload("cancel job", { jobId: jobId });
 	job.public.status = "canceled";
 	job.public.updatedAt = nowISO();
-	if (!activeCancelCalls.has(jobId)) {
-		const cancelCall = fetch("/api/uploads/" + encodeURIComponent(job.public.sessionId) + "/cancel", { method: "POST" }).catch(function () {});
+	if (job.public.sessionId && !activeCancelCalls.has(jobId)) {
+		const cancelCall = fetch("/api/uploads/" + encodeURIComponent(job.public.sessionId) + "/cancel", { method: "POST", credentials: "include" }).catch(function () {});
 		activeCancelCalls.set(jobId, cancelCall);
 		await cancelCall;
 		activeCancelCalls.delete(jobId);
@@ -596,6 +708,7 @@ async function cancelJob(jobId) {
 }
 
 async function removeJob(jobId) {
+	await ensureHydrated();
 	const job = jobs.get(jobId);
 	if (!job) {
 		return;
@@ -611,6 +724,7 @@ async function removeJob(jobId) {
 }
 
 async function pauseJob(jobId) {
+	await ensureHydrated();
 	const job = jobs.get(jobId);
 	if (!job) return;
 	clearJobControllers(jobId);
@@ -622,6 +736,7 @@ async function pauseJob(jobId) {
 }
 
 async function resumeJob(jobId) {
+	await ensureHydrated();
 	const job = jobs.get(jobId);
 	if (!job) return;
 	job.public.status = "queued";
@@ -633,6 +748,7 @@ async function resumeJob(jobId) {
 }
 
 async function cancelAll() {
+	await ensureHydrated();
 	await Promise.all(Array.from(jobs.keys()).map(function (jobId) { return cancelJob(jobId); }));
 }
 
@@ -641,8 +757,16 @@ async function handleMessage(port, message) {
 		logUpload("handleMessage", { type: message.type, id: message.id });
 		switch (message.type) {
 			case UPLOAD_MESSAGE.CONNECT:
-				await hydrate();
+				updateUploadLimits(message.payload && message.payload.limits);
+				await ensureHydrated();
 				port.postMessage({ type: UPLOAD_MESSAGE.STATE, state: summarizeJobs() });
+				break;
+			case UPLOAD_MESSAGE.CONFIGURE:
+				updateUploadLimits(message.payload && message.payload.limits);
+				processQueue();
+				if (typeof message.id === "number") {
+					port.postMessage({ id: message.id, ok: true, result: { ok: true } });
+				}
 				break;
 			case UPLOAD_MESSAGE.REQUEST_STATE:
 				port.postMessage({ id: message.id, ok: true, result: summarizeJobs() });

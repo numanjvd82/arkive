@@ -1,6 +1,7 @@
 .recovery-page {
-  height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
   display: flex;
   background:
     linear-gradient(180deg, rgba(9, 14, 18, 0.98), rgba(15, 20, 24, 0.98)),
@@ -12,10 +13,10 @@
   position: relative;
   min-height: 100vh;
   width: 100%;
-  overflow: hidden;
+  overflow: visible;
   padding: 20px 16px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .recovery-grain {
@@ -285,6 +286,16 @@
 }
 
 @media (min-width: 860px) {
+  .recovery-page {
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .recovery-main {
+    overflow: hidden;
+    align-items: center;
+  }
+
   .recovery-key-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }

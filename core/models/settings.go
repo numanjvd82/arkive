@@ -24,6 +24,5 @@ type EmailSettings struct {
 }
 
 type UploadSettings struct {
-	MaxUploadConcurrency int
-	MaxQueueItems        int
+	MaxQueueItems int
 }

@@ -1,3 +1,7 @@
+.upload-icon-bank {
+  display: none;
+}
+
 .upload-panel {
   width: 100%;
 }
@@ -13,7 +17,9 @@
   border: 1px dashed var(--border);
   background: var(--surface);
   cursor: pointer;
-  transition: border-color 0.2s ease, background-color 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
 }
 
 .upload-dropzone:hover,
@@ -338,6 +344,7 @@
 }
 
 .queue-item-fill {
+  display: block;
   height: 100%;
   width: 0%;
   border-radius: 2px;

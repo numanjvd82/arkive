@@ -122,7 +122,6 @@ func uploadSettingsForm(settings models.UploadSettings, errors validation.Errors
 		h.Class("settings-form"),
 		g.Attr("method", "POST"),
 		g.Attr("action", "/settings/uploads"),
-		components.InputField(components.InputProps{Label: "Max upload concurrency", Name: "max_upload_concurrency", Type: components.InputTypeNumber, Value: strconv.Itoa(settings.MaxUploadConcurrency), HelperText: validation.FieldError(errors, "max_upload_concurrency"), HasError: validation.FieldError(errors, "max_upload_concurrency") != ""}),
 		components.InputField(components.InputProps{Label: "Max queue items", Name: "max_queue_items", Type: components.InputTypeNumber, Value: strconv.Itoa(settings.MaxQueueItems), HelperText: validation.FieldError(errors, "max_queue_items"), HasError: validation.FieldError(errors, "max_queue_items") != ""}),
 		components.Button(components.ButtonProps{Text: "Save upload settings", Type: "submit", Variant: "primary", Class: "auth-submit"}),
 	)
