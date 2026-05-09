@@ -12,14 +12,12 @@ import (
 	settingsrepo "arkive/core/repositories/settings"
 	storagerepo "arkive/core/repositories/storage"
 	uploadrepo "arkive/core/repositories/uploads"
-	usagerepo "arkive/core/repositories/usage"
 	usersrepo "arkive/core/repositories/users"
 	"arkive/core/router"
 	settingssvc "arkive/core/services/settings"
 	"arkive/core/services/storageprovider"
 	"arkive/core/services/uploads"
 	"arkive/migrations"
-	"arkive/pkg/jobs"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -58,23 +56,15 @@ func main() {
 		storagerepo.New(),
 		filerepo.New(),
 		uploadrepo.New(),
-		usagerepo.New(),
 		usersrepo.New(),
 		storageProvider,
-		uploads.Config{
-			UploadExpires:        15 * time.Minute,
-			DownloadExpire:       3 * time.Hour,
-			ShareDownloadExpire:  30 * time.Minute,
-			MaxFileSizeBytes:     cfg.MaxFileSizeBytes,
-			MaxUploadConcurrency: cfg.MaxUploadConcurrency,
-			MaxQueueItems:        cfg.MaxQueueItems,
-		})
-
-	cleanupCron, err := jobs.StartUploadCleanup(uploadService)
-	if err != nil {
-		log.Fatalf("cleanup cron failed: %v", err)
-	}
-	defer cleanupCron.Stop()
+			uploads.Config{
+				UploadExpires:        15 * time.Minute,
+				DownloadExpire:       3 * time.Hour,
+				ShareDownloadExpire:  30 * time.Minute,
+				MaxUploadConcurrency: cfg.MaxUploadConcurrency,
+				MaxQueueItems:        cfg.MaxQueueItems,
+			})
 
 	if strings.EqualFold(cfg.Env, "dev") {
 		gin.SetMode(gin.DebugMode)

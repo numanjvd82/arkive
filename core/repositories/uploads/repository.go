@@ -2,7 +2,6 @@ package uploadrepo
 
 import (
 	"context"
-	"time"
 
 	"arkive/core/database"
 	"arkive/core/models"
@@ -82,46 +81,6 @@ func (r *Repository) UpdateUploadSessionStatus(ctx context.Context, db database.
 		id = $1`
 	_, err := db.Exec(ctx, query, uploadSessionID, status)
 	return err
-}
-
-func (r *Repository) ListExpiredUploadSessions(ctx context.Context, db database.PgExecutor, now time.Time) ([]models.UploadSession, error) {
-	rows, err := db.Query(ctx, `SELECT
-		id, file_id, owner_id, provider, storage_key, provider_upload_id, status, expires_at, created_at, updated_at
-	FROM
-		upload_sessions
-	WHERE
-		status = 'active'
-		AND expires_at <= $1
-	ORDER BY
-		expires_at ASC`, now)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var uploads []models.UploadSession
-	for rows.Next() {
-		var upload models.UploadSession
-		if err := rows.Scan(
-			&upload.ID,
-			&upload.FileID,
-			&upload.OwnerID,
-			&upload.Provider,
-			&upload.StorageKey,
-			&upload.ProviderUploadID,
-			&upload.Status,
-			&upload.ExpiresAt,
-			&upload.CreatedAt,
-			&upload.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		uploads = append(uploads, upload)
-	}
-	if rows.Err() != nil {
-		return nil, rows.Err()
-	}
-	return uploads, nil
 }
 
 func (r *Repository) UpsertUploadPart(ctx context.Context, db database.PgExecutor, part models.UploadPart) (models.UploadPart, error) {

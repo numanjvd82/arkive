@@ -84,51 +84,6 @@ func (s *Service) GetFileForShare(ctx context.Context, fileID string) (models.Fi
 	return file, nil
 }
 
-func (s *Service) PresignShare(ctx context.Context, fileID string) (string, error) {
-	file, err := s.GetFileForShare(ctx, fileID)
-	if err != nil {
-		return "", err
-	}
-
-	disposition := "attachment"
-	if isViewableContentType(file.UploadStatus) {
-		disposition = "inline"
-	}
-
-	objectKey, err := storage.BuildObjectKey(file.UserID, file.ID)
-	if err != nil {
-		return "", err
-	}
-	return s.storage.PresignDownload(ctx, objectKey, file.ID, disposition, s.downloadExpire)
-}
-
-func (s *Service) PresignShareView(ctx context.Context, fileID string) (string, error) {
-	file, err := s.GetFileForShare(ctx, fileID)
-	if err != nil {
-		return "", err
-	}
-	return s.PresignShareViewForFile(ctx, file)
-}
-
-func (s *Service) PresignShareDownload(ctx context.Context, fileID string) (string, error) {
-	file, err := s.GetFileForShare(ctx, fileID)
-	if err != nil {
-		return "", err
-	}
-	return s.PresignShareDownloadForFile(ctx, file)
-}
-
-func (s *Service) PresignShareViewForFile(ctx context.Context, file models.File) (string, error) {
-	if file.UploadStatus != FileUploadComplete {
-		return "", ErrInvalidInput
-	}
-	objectKey, err := storage.BuildObjectKey(file.UserID, file.ID)
-	if err != nil {
-		return "", err
-	}
-	return s.storage.PresignDownload(ctx, objectKey, file.ID, "inline", s.downloadExpire)
-}
-
 func (s *Service) PresignShareDownloadForFile(ctx context.Context, file models.File) (string, error) {
 	expiry := s.shareDownloadExpire
 	if expiry <= 0 {
@@ -139,16 +94,4 @@ func (s *Service) PresignShareDownloadForFile(ctx context.Context, file models.F
 		return "", err
 	}
 	return s.storage.PresignDownload(ctx, objectKey, file.ID, "attachment", expiry)
-}
-
-func isViewableContentType(contentType string) bool {
-	contentType = strings.TrimSpace(strings.ToLower(contentType))
-	switch contentType {
-	case "image/jpeg", "image/png", "image/gif", "image/webp":
-		return true
-	case "video/mp4", "video/webm", "video/ogg":
-		return true
-	default:
-		return false
-	}
 }

@@ -131,10 +131,6 @@ func (s *Service) GetShareByToken(ctx context.Context, token string) (models.Sha
 	return s.shareRepo.GetShareByToken(ctx, s.db, token)
 }
 
-func (s *Service) GetShareForFile(ctx context.Context, fileID string) (models.Share, error) {
-	return s.shareRepo.GetShareForFile(ctx, s.db, fileID)
-}
-
 func (s *Service) GetShareForFileForUser(ctx context.Context, fileID, ownerUserID string) (models.Share, error) {
 	fileID = strings.TrimSpace(fileID)
 	ownerUserID = strings.TrimSpace(ownerUserID)

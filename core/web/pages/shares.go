@@ -249,28 +249,6 @@ func shareStatus(item models.ShareWithFile, now time.Time) (string, bool) {
 	return shares.ShareStatusActive, false
 }
 
-func fileTypeLabelFromShare(item models.ShareWithFile) string {
-	name := strings.TrimSpace(item.FileName)
-	ext := ""
-	if name != "" {
-		parts := strings.Split(name, ".")
-		if len(parts) > 1 {
-			ext = parts[len(parts)-1]
-		}
-	}
-	if ext == "" {
-		content := strings.TrimSpace(item.FileContentType)
-		if strings.Contains(content, "/") {
-			ext = strings.Split(content, "/")[1]
-		}
-	}
-	ext = strings.ToUpper(ext)
-	if ext == "" || len(ext) > 5 {
-		return "FILE"
-	}
-	return ext
-}
-
 func shareFileIcon(item models.ShareWithFile) g.Node {
 	contentType := strings.TrimSpace(strings.ToLower(item.FileContentType))
 	switch {

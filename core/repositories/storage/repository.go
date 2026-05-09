@@ -65,14 +65,3 @@ func (r *Repository) DecreaseUsedStorage(ctx context.Context, db database.PgExec
 	_, err := db.Exec(ctx, query, userID, sizeBytes)
 	return err
 }
-
-func (r *Repository) DecreaseReservedStorage(ctx context.Context, db database.PgExecutor, userID string, sizeBytes int64) error {
-	query := `UPDATE
-		users
-	SET
-		reserved_bytes = GREATEST(reserved_bytes - $2, 0)
-	WHERE
-		id = $1`
-	_, err := db.Exec(ctx, query, userID, sizeBytes)
-	return err
-}

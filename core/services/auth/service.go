@@ -61,18 +61,6 @@ func (s *Service) SetMailer(m mailer.Mailer, publicBaseURL string) {
 	s.publicBaseURL = strings.TrimRight(strings.TrimSpace(publicBaseURL), "/")
 }
 
-func (s *Service) EmailVerificationEnabled() bool {
-	return s.mailer != nil && strings.TrimSpace(s.publicBaseURL) != ""
-}
-
-func (s *Service) WebLogin(ctx context.Context, email, password, lastIP string) (string, time.Time, validation.Errors, error) {
-	result, validationErrors, err := s.LoginAndLoadVault(ctx, email, password, lastIP)
-	if err != nil || (validationErrors != nil && validationErrors.HasAny()) {
-		return "", time.Time{}, validationErrors, err
-	}
-	return result.SessionID, result.ExpiresAt, nil, nil
-}
-
 func (s *Service) LoginAndLoadVault(ctx context.Context, email, password, lastIP string) (LoginUnlockResult, validation.Errors, error) {
 	email = strings.TrimSpace(email)
 	password = strings.TrimSpace(password)
@@ -115,7 +103,7 @@ func (s *Service) LoginAndLoadVault(ctx context.Context, email, password, lastIP
 	}
 
 	loginAt := time.Now()
-	if err := s.userRepo.UpdateLoginActivity(ctx, tx, user.ID, loginAt, lastIP); err != nil {
+	if err := s.userRepo.UpdateLoginActivity(ctx, tx, user.ID, loginAt); err != nil {
 		_ = tx.Rollback(ctx)
 		return LoginUnlockResult{}, nil, err
 	}
