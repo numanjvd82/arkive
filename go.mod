@@ -11,9 +11,7 @@ require (
 	github.com/gin-gonic/gin v1.11.0
 	github.com/jackc/pgx/v5 v5.7.6
 	github.com/joho/godotenv v1.5.1
-	github.com/robfig/cron/v3 v3.0.0
 	golang.org/x/crypto v0.45.0
-	golang.org/x/time v0.14.0
 	maragu.dev/gomponents v1.2.0
 )
 
@@ -62,5 +60,6 @@ require (
 	golang.org/x/sync v0.18.0 // indirect
 	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/text v0.31.0 // indirect
+	golang.org/x/time v0.14.0 // indirect
 	google.golang.org/protobuf v1.36.9 // indirect
 )

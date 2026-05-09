@@ -100,61 +100,11 @@ function initPasswordToggles() {
   });
 }
 
-function initRateLimitFetch() {
-  if (!window.fetch || window.__arkiveRateLimitFetchReady) {
-    return;
-  }
-
-  const originalFetch = window.fetch;
-  let lastToastAt = 0;
-  const rateLimitState = window.RateLimit || {};
-  rateLimitState.until = rateLimitState.until || 0;
-  rateLimitState.isActive = function() {
-    return Date.now() < rateLimitState.until;
-  };
-  rateLimitState.setLimited = function(seconds) {
-    const waitSeconds = typeof seconds === "number" && seconds > 0 ? seconds : 60;
-    const now = Date.now();
-    rateLimitState.until = Math.max(rateLimitState.until, now + waitSeconds * 1000);
-  };
-  window.RateLimit = rateLimitState;
-
-  window.fetch = async function() {
-    const res = await originalFetch.apply(this, arguments);
-    if (!res || res.status !== 429) {
-      return res;
-    }
-    const retryHeader = res.headers ? res.headers.get("Retry-After") : null;
-    const limitedHeader = res.headers ? res.headers.get("X-Rate-Limited") : null;
-    if (!retryHeader && !limitedHeader) {
-      return res;
-    }
-    let retrySeconds = retryHeader ? parseInt(retryHeader, 10) : NaN;
-    if (!isFinite(retrySeconds) || retrySeconds <= 0) {
-      retrySeconds = 60;
-    }
-    rateLimitState.setLimited(retrySeconds);
-    const now = Date.now();
-    if (window.Toast && now - lastToastAt > 30000) {
-      window.Toast.warning("Too many requests. Try again in a minute.", { title: "Slow down" });
-      lastToastAt = now;
-    }
-    const err = new Error("Rate limited");
-    err.status = 429;
-    err.rateLimited = true;
-    err.retryAfter = retrySeconds;
-    throw err;
-  };
-
-  window.__arkiveRateLimitFetchReady = true;
-}
-
 initTheme();
 initPasswordToggles();
 initCrypto();
 initVault();
 initToast();
-initRateLimitFetch();
 initDialogs();
 initDropdowns();
 initCopyButtons();
