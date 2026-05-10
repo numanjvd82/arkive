@@ -319,7 +319,7 @@ Removed:
 * Keep SQL projections tight and only select columns the caller actually needs
 * Don't add unnecessary code or helper functions; only extract helpers when duplication is substantial or the abstraction is clearly necessary
 * In JavaScript, prefer `async`/`await` where practical instead of promise chains
-
+* In markup for pages etc, create components.go and put helper markup functions there so the main file is not cluttered
 ---
 
 # ⚠️ Edge Cases
