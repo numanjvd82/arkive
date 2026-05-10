@@ -1,4 +1,4 @@
-import { UploadClient } from "./upload_client.js";
+import { UploadRunner } from "./upload_runner.js";
 
 function formatBytes(bytes) {
 	if (!bytes) return "0 B";
@@ -7,9 +7,10 @@ function formatBytes(bytes) {
 	return (bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0) + " " + units[i];
 }
 
-function parseLimit(value, fallback) {
+function parseQueueLimit(value, fallback) {
 	const parsed = Number.parseInt(String(value || ""), 10);
-	return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+	if (!Number.isFinite(parsed)) return fallback;
+	return parsed <= 0 ? 0 : parsed;
 }
 
 export function initUploads() {
@@ -39,22 +40,19 @@ export function initUploads() {
 	if (!input || !queueList || !status) return;
 
 	const uploadLimits = {
-		maxQueueItems: parseLimit(dropzone && dropzone.getAttribute("data-upload-max-queue-items"), 300),
+		maxQueueItems: parseQueueLimit(dropzone && dropzone.getAttribute("data-upload-max-queue-items"), 300),
 	};
-	const client = new UploadClient({ limits: uploadLimits });
+	const runner = new UploadRunner({ limits: uploadLimits });
 	let selectedFiles = [];
-	let selectedFileHandles = [];
-	let state = { jobs: [], incompleteJobs: [], activeJobId: null };
-	let startMode = "new";
+	let state = { jobs: [], activeJobId: null };
 	const completedBatches = new Set();
+	let renderScheduled = false;
 
-	client.connect();
-	client.setLimits(uploadLimits);
-	client.onState(function (nextState) {
+	runner.onState(function (nextState) {
 		state = nextState || state;
-		render();
+		scheduleRender();
 	});
-	client.onEvent(function (event) {
+	runner.onEvent(function (event) {
 		if (event && event.type === "error") {
 			setStatus(event.error || "Upload failed.");
 			return;
@@ -68,29 +66,22 @@ export function initUploads() {
 			}
 		}
 	});
-	client.requestState().then(function (snapshot) {
-		state = snapshot || state;
-		render();
-		if (state.incompleteJobs && state.incompleteJobs.length) {
-			showResumeDialog(state.incompleteJobs.length);
-		}
-	}).catch(function () {});
+	state = runner.getState();
+	scheduleRender();
 
 	if (window.ArkiveVault && typeof window.ArkiveVault.onSessionUnlock === "function") {
 		window.ArkiveVault.onSessionUnlock(function (session) {
-			client.setVaultSession(session);
+			runner.setVaultSession(session);
 		});
 	}
 	if (window.ArkiveVault && typeof window.ArkiveVault.getSessionUnlock === "function") {
-		client.setVaultSession(window.ArkiveVault.getSessionUnlock());
+		runner.setVaultSession(window.ArkiveVault.getSessionUnlock());
 	}
 
 	browseFilesButton && browseFilesButton.addEventListener("click", function () { input.click(); });
 	input.addEventListener("change", function () {
 		if (!input.files || !input.files.length) return;
-		selectedFileHandles = [];
 		selectedFiles = Array.from(input.files);
-		startMode = "new";
 		showSelectedFiles(selectedFiles);
 		showStartDialog(selectedFiles.length);
 		input.value = "";
@@ -102,7 +93,6 @@ export function initUploads() {
 		e.preventDefault();
 		dropzone.classList.remove("is-dragover");
 		if (e.dataTransfer.files && e.dataTransfer.files.length) {
-			startMode = "new";
 			selectedFiles = Array.from(e.dataTransfer.files);
 			showSelectedFiles(selectedFiles);
 			showStartDialog(selectedFiles.length);
@@ -115,42 +105,25 @@ export function initUploads() {
 	});
 
 	confirmStart && confirmStart.addEventListener("click", function () {
-		if (typeof console !== "undefined" && console.log) {
-			console.log("[arkive-uploads] confirm start", { startMode: startMode, selectedFiles: selectedFiles.length, selectedHandles: selectedFileHandles.length });
-		}
 		hideDialog();
-		if (startMode === "resume") {
-			resumeIncompleteJobs().catch(function (error) {
-				setStatus(error && error.message ? error.message : "Resume failed.");
-				if (typeof console !== "undefined" && console.error) console.error(error);
-			});
-			return;
-		}
 		if (selectedFiles.length) {
-			client.addFiles(selectedFiles.slice()).catch(function (error) {
+			runner.addFiles(selectedFiles.slice()).catch(function (error) {
 				setStatus(error && error.message ? error.message : "Upload failed.");
 				if (typeof console !== "undefined" && console.error) console.error(error);
 			});
 			selectedFiles = [];
-			selectedFileHandles = [];
 			hideSelectedFiles();
 		}
 	});
 
 	confirmCancel && confirmCancel.addEventListener("click", function () {
 		hideDialog();
-		if (startMode === "resume") {
-			client.cancelAll().catch(function (error) {
-				if (typeof console !== "undefined" && console.error) console.error(error);
-			});
-		}
 		selectedFiles = [];
-		selectedFileHandles = [];
 		hideSelectedFiles();
 	});
 
 	abortButton && abortButton.addEventListener("click", function () {
-		client.cancelAll().catch(function (error) {
+		runner.cancelAll().catch(function (error) {
 			if (typeof console !== "undefined" && console.error) console.error(error);
 		});
 	});
@@ -163,17 +136,51 @@ export function initUploads() {
 		const jobId = button.getAttribute("data-job-id");
 		const action = button.getAttribute("data-job-action");
 		if (!jobId || !action) return;
-		if (action === "cancel") client.cancelJob(jobId).catch(function (error) { if (typeof console !== "undefined" && console.error) console.error(error); });
-		if (action === "pause") client.pauseJob(jobId).catch(function (error) { if (typeof console !== "undefined" && console.error) console.error(error); });
-		if (action === "resume") client.resumeJob(jobId).catch(function (error) { if (typeof console !== "undefined" && console.error) console.error(error); });
-		if (action === "remove") client.removeJob(jobId).catch(function (error) { if (typeof console !== "undefined" && console.error) console.error(error); });
+		if (action === "cancel") runner.cancelJob(jobId).catch(function (error) { if (typeof console !== "undefined" && console.error) console.error(error); });
+		if (action === "remove") runner.removeJob(jobId);
+	});
+
+	window.addEventListener("beforeunload", function (event) {
+		if (!runner.hasActiveUploads()) return;
+		event.preventDefault();
+		event.returnValue = "";
+	});
+
+	window.addEventListener("pagehide", function () {
+		if (!runner.hasActiveUploads()) return;
+		runner.cancelActiveUploadsBestEffort();
+	});
+
+	document.addEventListener("click", function (event) {
+		const target = event.target;
+		if (!target || !target.closest || !runner.hasActiveUploads()) return;
+		const link = target.closest("a[href]");
+		if (!link) return;
+		if (link.hasAttribute("download")) return;
+		if (link.target && link.target !== "_self") return;
+		if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+		const href = link.getAttribute("href") || "";
+		if (!href || href.charAt(0) === "#") return;
+		let url = null;
+		try {
+			url = new URL(link.href, window.location.href);
+		} catch (_) {
+			return;
+		}
+		if (url.origin !== window.location.origin) return;
+		if (url.pathname === window.location.pathname && url.search === window.location.search && url.hash === window.location.hash) return;
+		const ok = window.confirm("Upload in progress. Leaving this page will cancel it.");
+		if (!ok) {
+			event.preventDefault();
+			return;
+		}
+		runner.cancelActiveUploadsBestEffort();
 	});
 
 	function setStatus(text) { status.textContent = text; }
 	function hideDialog() { confirmBackdrop && confirmBackdrop.classList.add("is-hidden"); }
 	function showDialog() { confirmBackdrop && confirmBackdrop.classList.remove("is-hidden"); }
 	function showStartDialog(count) {
-		startMode = "new";
 		const title = document.getElementById("upload-confirm-title");
 		const body = document.getElementById("upload-confirm-meta");
 		if (title) title.textContent = "Start upload?";
@@ -181,58 +188,6 @@ export function initUploads() {
 		if (confirmStart) confirmStart.textContent = "Start upload";
 		if (confirmCancel) confirmCancel.textContent = "Cancel";
 		showDialog();
-	}
-	function showResumeDialog(count) {
-		startMode = "resume";
-		const title = document.getElementById("upload-confirm-title");
-		const body = document.getElementById("upload-confirm-meta");
-		if (title) title.textContent = "Resume uploads?";
-		if (body) body.textContent = count + " incomplete upload job(s) found. Reselect file to resume or cancel them.";
-		if (confirmStart) confirmStart.textContent = "Open files";
-		if (confirmCancel) confirmCancel.textContent = "Cancel all";
-		showDialog();
-	}
-
-	async function resumeIncompleteJobs() {
-		if (selectedFileHandles.length) {
-			const files = [];
-			for (let i = 0; i < selectedFileHandles.length; i++) {
-				if (selectedFileHandles[i] && typeof selectedFileHandles[i].getFile === "function") {
-					files.push(await selectedFileHandles[i].getFile());
-				}
-			}
-			if (files.length) {
-				selectedFiles = files;
-				client.resumeWithFiles(files).catch(function (error) {
-					setStatus(error && error.message ? error.message : "Resume failed.");
-					if (typeof console !== "undefined" && console.error) console.error(error);
-				});
-				selectedFiles = [];
-				selectedFileHandles = [];
-				hideSelectedFiles();
-			}
-			return;
-		}
-		if (window.showOpenFilePicker) {
-			try {
-				const handles = await window.showOpenFilePicker({ multiple: true });
-				selectedFileHandles = handles || [];
-				const files = [];
-				for (let i = 0; i < selectedFileHandles.length; i++) {
-					if (selectedFileHandles[i] && typeof selectedFileHandles[i].getFile === "function") {
-						files.push(await selectedFileHandles[i].getFile());
-					}
-				}
-				if (files.length) {
-					client.resumeWithFiles(files).catch(function (error) {
-						setStatus(error && error.message ? error.message : "Resume failed.");
-						if (typeof console !== "undefined" && console.error) console.error(error);
-					});
-				}
-			} catch (_) {
-				return;
-			}
-		}
 	}
 	function showSelectedFiles(files) {
 		if (!uploadChip || !uploadChipName || !uploadChipSize) return;
@@ -244,11 +199,25 @@ export function initUploads() {
 		uploadChip && uploadChip.classList.add("is-hidden");
 	}
 
+	function scheduleRender() {
+		if (renderScheduled) return;
+		renderScheduled = true;
+		requestAnimationFrame(function () {
+			renderScheduled = false;
+			render();
+		});
+	}
+
 	function render() {
-		queueList.innerHTML = "";
 		const jobs = (state.jobs || []).slice().sort(function (a, b) { return String(a.createdAt || "").localeCompare(String(b.createdAt || "")); });
+		const existing = new Map();
+		Array.from(queueList.children).forEach(function (node) {
+			if (node && node.id) {
+				existing.set(node.id, node);
+			}
+		});
 		const hasCancelableJobs = jobs.some(function (job) {
-			return job.status === "queued" || job.status === "running" || job.status === "paused";
+			return job.status === "queued" || job.status === "running";
 		});
 		if (uploadControls) {
 			uploadControls.classList.toggle("is-hidden", !hasCancelableJobs);
@@ -261,72 +230,80 @@ export function initUploads() {
 		}
 		queueEmpty && queueEmpty.classList.add("is-hidden");
 		let activeCount = 0;
+		const fragment = document.createDocumentFragment();
 		jobs.forEach(function (job) {
 			if (job.status === "running") activeCount++;
-			queueList.appendChild(renderJob(job));
+			const id = "upload-task-" + job.jobId;
+			const node = renderJob(job, existing.get(id) || null);
+			existing.delete(id);
+			fragment.appendChild(node);
 		});
+		existing.forEach(function (node) {
+			if (node && node.parentNode === queueList) {
+				node.parentNode.removeChild(node);
+			}
+		});
+		queueList.replaceChildren(fragment);
 		if (queueMeta) queueMeta.textContent = activeCount > 0 ? activeCount + " item" + (activeCount > 1 ? "s" : "") + " active" : jobs.length + " queued";
 		const active = jobs.find(function (job) { return job.status === "running"; });
 		if (active) {
-			setStatus("Uploading " + active.fileName + "...");
+			setStatus("Uploading " + active.fileName + ". Leaving this page will cancel it.");
+		} else if (jobs.some(function (job) { return job.status === "queued"; })) {
+			setStatus("Uploads queued. Leaving this page will cancel them.");
 		}
 	}
 
-	function renderJob(job) {
-		const li = document.createElement("li");
+	function renderJob(job, existing) {
+		const li = existing || document.createElement("li");
+		if (!existing) {
+			li.id = "upload-task-" + job.jobId;
+			li.innerHTML = '<div class="queue-item-top"><div class="queue-item-file"><span class="queue-item-name"></span><span class="queue-item-badge"></span></div><div class="queue-item-actions"></div></div><div class="queue-item-track"><span class="queue-item-fill"></span></div><div class="queue-item-meta"><span class="queue-item-progress mono"></span><span class="queue-item-speed mono"></span></div>';
+		}
 		li.className = "queue-item" + (job.status === "completed" ? " is-complete" : job.status === "failed" || job.status === "canceled" ? " is-error" : "");
-		li.id = "upload-task-" + job.jobId;
-		const top = document.createElement("div");
-		top.className = "queue-item-top";
-		const fileWrap = document.createElement("div");
-		fileWrap.className = "queue-item-file";
-		const nameEl = document.createElement("span");
-		nameEl.className = "queue-item-name";
-		nameEl.textContent = job.fileName;
-		const badge = document.createElement("span");
-		badge.className = "queue-item-badge is-" + job.status;
-		badge.textContent = job.status;
-		fileWrap.appendChild(nameEl);
-		fileWrap.appendChild(badge);
-		const actions = document.createElement("div");
-		actions.className = "queue-item-actions";
-		if (job.status === "paused") {
-			actions.appendChild(actionButton(job.jobId, "resume", "Resume", "queue-item-action", "play"));
-			actions.appendChild(actionButton(job.jobId, "cancel", "Cancel", "queue-item-action is-cancel", "trash"));
-		} else if (job.status === "queued" || job.status === "running") {
-			actions.appendChild(actionButton(job.jobId, "pause", "Pause", "queue-item-action", "pause"));
+		const nameEl = li.querySelector(".queue-item-name");
+		const badge = li.querySelector(".queue-item-badge");
+		const actions = li.querySelector(".queue-item-actions");
+		const fill = li.querySelector(".queue-item-fill");
+		const progress = li.querySelector(".queue-item-progress");
+		const detail = li.querySelector(".queue-item-speed");
+		if (nameEl) nameEl.textContent = job.fileName;
+		if (badge) {
+			badge.className = "queue-item-badge is-" + job.status;
+			badge.textContent = job.status;
+		}
+		if (actions) {
+			const signature = actionSignature(job);
+			if (actions.getAttribute("data-signature") !== signature) {
+				actions.textContent = "";
+				actions.setAttribute("data-signature", signature);
+				buildActions(actions, job);
+			}
+		}
+		if (fill) {
+			fill.style.transition = "width 180ms linear";
+			fill.style.width = job.fileSize > 0 ? Math.round(((job.completedBytes || 0) / job.fileSize) * 100) + "%" : "0%";
+		}
+		if (progress) {
+			progress.textContent = formatBytes(job.completedBytes || 0) + " / " + formatBytes(job.fileSize);
+		}
+		if (detail) {
+			detail.textContent = job.transferRate > 0 ? formatBytes(job.transferRate) + "/s" : job.status;
+		}
+		return li;
+	}
+
+	function actionSignature(job) {
+		return String(job.status || "");
+	}
+
+	function buildActions(actions, job) {
+		if (job.status === "queued" || job.status === "running") {
 			actions.appendChild(actionButton(job.jobId, "cancel", "Cancel", "queue-item-action is-cancel", "trash"));
 		} else if (job.status === "failed") {
-			actions.appendChild(actionButton(job.jobId, "resume", "Retry", "queue-item-action", "refresh-cw"));
 			actions.appendChild(actionButton(job.jobId, "remove", "Remove", "queue-item-action is-cancel", "trash"));
-		} else if (job.status === "completed") {
-			actions.appendChild(actionButton(job.jobId, "remove", "Remove", "queue-item-action is-cancel", "trash"));
-		} else if (job.status === "canceled") {
+		} else if (job.status === "completed" || job.status === "canceled") {
 			actions.appendChild(actionButton(job.jobId, "remove", "Remove", "queue-item-action is-cancel", "trash"));
 		}
-		top.appendChild(fileWrap);
-		top.appendChild(actions);
-		const track = document.createElement("div");
-		track.className = "queue-item-track";
-		const fill = document.createElement("span");
-		fill.className = "queue-item-fill";
-		fill.style.transition = "width 180ms linear";
-		fill.style.width = job.fileSize > 0 ? Math.round(((job.completedBytes || 0) / job.fileSize) * 100) + "%" : "0%";
-		track.appendChild(fill);
-		const meta = document.createElement("div");
-		meta.className = "queue-item-meta";
-		const progress = document.createElement("span");
-		progress.className = "queue-item-progress mono";
-		progress.textContent = formatBytes(job.completedBytes || 0) + " / " + formatBytes(job.fileSize);
-		const detail = document.createElement("span");
-		detail.className = "queue-item-speed mono";
-		detail.textContent = job.transferRate > 0 ? formatBytes(job.transferRate) + "/s" : job.status;
-		meta.appendChild(progress);
-		meta.appendChild(detail);
-		li.appendChild(top);
-		li.appendChild(track);
-		li.appendChild(meta);
-		return li;
 	}
 
 	function actionButton(jobId, action, label, className, iconName) {
