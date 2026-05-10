@@ -424,13 +424,16 @@ func renderGridList(files []models.File) g.Node {
 		cards = append(cards, renderFileCard(file))
 	}
 
-	return h.Div(
-		h.Class("files-grid-wrap"),
+	return g.Group([]g.Node{
 		h.Div(
-			h.Class("files-grid"),
-			g.Group(cards),
+			h.Class("files-grid-wrap"),
+			h.Div(
+				h.Class("files-grid"),
+				g.Group(cards),
+			),
 		),
-	)
+		renderGridContextMenu(),
+	})
 }
 
 func renderTableActions() g.Node {
@@ -653,6 +656,52 @@ func renderFileCard(file models.File) g.Node {
 				g.Attr("data-file-field", "name"),
 				g.Attr("aria-hidden", "true"),
 			),
+		),
+	)
+}
+
+func renderGridContextMenu() g.Node {
+	return h.Div(
+		h.Class("files-context-menu"),
+		g.Attr("id", "files-grid-context-menu"),
+		g.Attr("hidden", "hidden"),
+		h.Button(
+			h.Class("files-context-menu-item"),
+			h.Type("button"),
+			g.Attr("data-grid-menu-action", "open"),
+			g.Text("Open"),
+		),
+		h.Button(
+			h.Class("files-context-menu-item"),
+			h.Type("button"),
+			g.Attr("data-grid-menu-action", "rename"),
+			g.Text("Rename"),
+		),
+		h.Button(
+			h.Class("files-context-menu-item"),
+			h.Type("button"),
+			g.Attr("data-grid-menu-action", "move"),
+			g.Text("Move"),
+		),
+		h.Div(h.Class("files-context-menu-divider")),
+		h.Button(
+			h.Class("files-context-menu-item"),
+			h.Type("button"),
+			g.Attr("data-grid-menu-action", "properties"),
+			g.Text("Properties"),
+		),
+		h.Div(h.Class("files-context-menu-divider")),
+		h.Button(
+			h.Class("files-context-menu-item"),
+			h.Type("button"),
+			g.Attr("data-grid-space-action", "new-folder"),
+			g.Text("New Folder"),
+		),
+		h.Button(
+			h.Class("files-context-menu-item"),
+			h.Type("button"),
+			g.Attr("data-grid-space-action", "upload-here"),
+			g.Text("Upload Here"),
 		),
 	)
 }

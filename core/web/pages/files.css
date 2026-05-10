@@ -270,6 +270,45 @@
   padding: 8px;
 }
 
+.files-context-menu {
+  position: fixed;
+  min-width: 180px;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  z-index: 90;
+}
+
+.files-context-menu[hidden] {
+  display: none;
+}
+
+.files-context-menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.files-context-menu-item:hover {
+  background: var(--bg-soft);
+  border-color: var(--border);
+}
+
+.files-context-menu-divider {
+  height: 1px;
+  margin: 6px 0;
+  background: var(--border);
+}
+
 .files-card-preview {
   position: relative;
   width: 60px;

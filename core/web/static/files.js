@@ -206,11 +206,16 @@
   const selectionCount = document.getElementById("files-selection-count");
   const selectionToolbar = document.getElementById("files-selection-toolbar");
   const gridCards = Array.from(document.querySelectorAll("[data-file-grid-select]"));
+  const gridWrap = document.querySelector(".files-grid-wrap");
+  const contextMenu = document.getElementById("files-grid-context-menu");
+  const fileContextItems = Array.from(document.querySelectorAll("[data-grid-menu-action]"));
+  const spaceContextItems = Array.from(document.querySelectorAll("[data-grid-space-action]"));
   const backdrop = document.getElementById("file-delete-backdrop");
   const meta = document.getElementById("file-delete-meta");
   const cancelButton = document.getElementById("file-delete-cancel");
   const confirmButton = document.getElementById("file-delete-confirm");
   let pendingDeleteIds = [];
+  let activeContextFileId = "";
 
   if (!deleteButtons.length && !bulkDeleteButton && !gridCards.length) {
     return;
@@ -263,6 +268,37 @@
       }
       card.classList.remove("is-selected");
     });
+  }
+
+  function closeContextMenu() {
+    activeContextFileId = "";
+    if (contextMenu) {
+      contextMenu.setAttribute("hidden", "hidden");
+    }
+  }
+
+  function updateContextMenuMode(mode) {
+    fileContextItems.forEach(function(item) {
+      item.hidden = mode !== "file";
+    });
+    spaceContextItems.forEach(function(item) {
+      item.hidden = mode !== "space";
+    });
+  }
+
+  function openContextMenu(mode, fileId, x, y) {
+    if (!contextMenu) {
+      return;
+    }
+    activeContextFileId = mode === "file" ? fileId : "";
+    updateContextMenuMode(mode);
+    contextMenu.removeAttribute("hidden");
+    const menuWidth = contextMenu.offsetWidth || 180;
+    const menuHeight = contextMenu.offsetHeight || 180;
+    const left = Math.min(x, window.innerWidth - menuWidth - 12);
+    const top = Math.min(y, window.innerHeight - menuHeight - 12);
+    contextMenu.style.left = Math.max(12, left) + "px";
+    contextMenu.style.top = Math.max(12, top) + "px";
   }
 
   function updateSelectionState() {
@@ -378,6 +414,20 @@
       }
     });
 
+    card.addEventListener("contextmenu", function(event) {
+      event.preventDefault();
+      const fileId = card.getAttribute("data-file-grid-select") || "";
+      if (!fileId) {
+        return;
+      }
+      if (!card.classList.contains("is-selected")) {
+        clearGridSelection(fileId);
+        card.classList.add("is-selected");
+        updateSelectionState();
+      }
+      openContextMenu("file", fileId, event.clientX, event.clientY);
+    });
+
     card.addEventListener("keydown", function(event) {
       if (event.key === "Enter") {
         event.preventDefault();
@@ -403,6 +453,61 @@
       }
       updateSelectionState();
     });
+  });
+
+  fileContextItems.forEach(function(button) {
+    button.addEventListener("click", function() {
+      const action = button.getAttribute("data-grid-menu-action") || "";
+      let fileName = "";
+      if (activeContextFileId) {
+        const item = document.querySelector("[data-file-item='" + activeContextFileId + "']");
+        if (item) {
+          fileName = String(item.getAttribute("data-file-name") || "");
+        }
+      }
+      closeContextMenu();
+      if (window.Toast) {
+        window.Toast.success((fileName || "File") + ": " + action + " coming soon.", { title: "Context menu" });
+      }
+    });
+  });
+
+  spaceContextItems.forEach(function(button) {
+    button.addEventListener("click", function() {
+      const action = button.getAttribute("data-grid-space-action") || "";
+      closeContextMenu();
+      if (window.Toast) {
+        window.Toast.success(action + " coming soon.", { title: "Context menu" });
+      }
+    });
+  });
+
+  if (gridWrap) {
+    gridWrap.addEventListener("contextmenu", function(event) {
+      if (event.target.closest("[data-file-grid-select]")) {
+        return;
+      }
+      event.preventDefault();
+      clearGridSelection("");
+      updateSelectionState();
+      openContextMenu("space", "", event.clientX, event.clientY);
+    });
+  }
+
+  document.addEventListener("click", function(event) {
+    if (!contextMenu || contextMenu.hasAttribute("hidden")) {
+      return;
+    }
+    if (event.target.closest("#files-grid-context-menu")) {
+      return;
+    }
+    closeContextMenu();
+  });
+
+  document.addEventListener("keydown", function(event) {
+    if (event.key === "Escape") {
+      closeContextMenu();
+    }
   });
 
   if (selectAll) {
