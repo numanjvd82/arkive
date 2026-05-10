@@ -153,18 +153,31 @@ func renderDashboardRows(files []models.File) []g.Node {
 	for _, file := range files {
 		rows = append(rows, h.Tr(
 			h.Class("activity-row"),
+			g.Attr("aria-busy", "true"),
+			g.Attr("data-file-item", file.ID),
+			g.Attr("data-file-name", ""),
 			h.Td(
 				h.Div(
 					h.Class("activity-file"),
 					fileIcon(),
-					h.Span(h.Class("activity-file-name"), g.Text("Encrypted file")),
+					h.Span(
+						h.Class("activity-file-name activity-skeleton activity-skeleton-name"),
+						g.Attr("data-file-field", "name"),
+						g.Attr("aria-hidden", "true"),
+					),
 					lucide.Lock(
 						h.Class("dashboard-lucide dashboard-lucide-lock"),
 						g.Attr("aria-hidden", "true"),
 					),
 				),
 			),
-			h.Td(h.Class("mono"), g.Text("Encrypted")),
+			h.Td(
+				h.Class("mono activity-size"),
+				h.Span(
+					g.Attr("data-file-field", "size"),
+					g.Text("Encrypted"),
+				),
+			),
 			h.Td(h.Class("activity-muted"), g.Text(format.RelativeTime(file.UpdatedAt))),
 		))
 	}

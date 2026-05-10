@@ -1,177 +1,4 @@
 (function() {
-  const items = document.querySelectorAll("[data-file-item]");
-  if (!items.length || !window.ArkiveFileReader || !window.ArkiveVault) {
-    return;
-  }
-
-  function isPreviewable(mime) {
-    const value = String(mime || "").toLowerCase();
-    return (
-      value.startsWith("image/") ||
-      value.startsWith("video/") ||
-      value.startsWith("text/") ||
-      value.includes("json")
-    );
-  }
-
-  function formatBytes(bytes) {
-    const value = Number(bytes || 0);
-    if (!value) {
-      return "0 B";
-    }
-    const units = ["B", "KB", "MB", "GB", "TB"];
-    const index = Math.min(
-      units.length - 1,
-      Math.floor(Math.log(value) / Math.log(1024)),
-    );
-    const amount = value / Math.pow(1024, index);
-    return amount.toFixed(index > 0 ? 1 : 0) + " " + units[index];
-  }
-
-  function updateItem(item, metadata, plaintextSize) {
-    const nameEl = item.querySelector("[data-file-field='name']");
-    const typeEl = item.querySelector("[data-file-field='type']");
-    const sizeEl = item.querySelector("[data-file-field='size']");
-    const viewEl = item.querySelector("[data-file-action='view']");
-    const shareEl = item.querySelector("[data-file-action='share']");
-    const deleteEl = item.querySelector("[data-file-action='delete']");
-    const realName = metadata && metadata.name ? metadata.name : "";
-    const realType = metadata && metadata.mime ? metadata.mime : "";
-    const realSize = metadata && metadata.size ? metadata.size : plaintextSize;
-
-    if (nameEl) {
-      nameEl.textContent = realName;
-      nameEl.removeAttribute("aria-hidden");
-    }
-    if (typeEl) {
-      typeEl.textContent = realType;
-      typeEl.removeAttribute("aria-hidden");
-      if (realType) {
-        typeEl.setAttribute("title", realType);
-      } else {
-        typeEl.removeAttribute("title");
-      }
-    }
-    if (sizeEl) {
-      sizeEl.textContent = formatBytes(realSize);
-    }
-    if (shareEl) {
-      shareEl.setAttribute("data-file-name", realName);
-    }
-    if (deleteEl) {
-      deleteEl.setAttribute("data-file-name", realName);
-    }
-    item.setAttribute("data-file-name", realName);
-    if (viewEl) {
-      if (isPreviewable(realType)) {
-        viewEl.classList.remove("is-disabled");
-        viewEl.removeAttribute("aria-disabled");
-        viewEl.removeAttribute("title");
-      } else {
-        viewEl.classList.add("is-disabled");
-        viewEl.setAttribute("aria-disabled", "true");
-        viewEl.setAttribute("title", "Preview unavailable");
-      }
-    }
-
-    item.classList.add("is-hydrated");
-    item.removeAttribute("aria-busy");
-  }
-
-  function clearPreview(previewEl) {
-    if (!previewEl) {
-      return;
-    }
-    const stale = previewEl.querySelector("[data-file-preview-media='true']");
-    if (stale) {
-      if (stale.tagName === "VIDEO") {
-        stale.pause();
-        stale.removeAttribute("src");
-        stale.load();
-      }
-      stale.parentNode.removeChild(stale);
-    }
-    const icon = previewEl.querySelector("[data-file-field='icon']");
-    if (icon) {
-      icon.hidden = false;
-    }
-  }
-
-  async function updateGridPreview(card, metadata, reader) {
-    const previewEl = card.querySelector("[data-file-preview='true']");
-    if (!previewEl) {
-      return;
-    }
-    const mime = String((metadata && metadata.mime) || "").toLowerCase();
-    if (!mime.startsWith("image/") && !mime.startsWith("video/")) {
-      clearPreview(previewEl);
-      return;
-    }
-    try {
-      const blob = await reader.createBlob();
-      clearPreview(previewEl);
-      const icon = previewEl.querySelector("[data-file-field='icon']");
-      if (icon) {
-        icon.hidden = true;
-      }
-      if (mime.startsWith("image/")) {
-        const image = document.createElement("img");
-        image.setAttribute("data-file-preview-media", "true");
-        image.className = "files-card-preview-media";
-        image.alt = metadata && metadata.name ? metadata.name : "File preview";
-        image.src = URL.createObjectURL(blob);
-        image.addEventListener("load", function() {
-          window.setTimeout(function() {
-            URL.revokeObjectURL(image.src);
-          }, 1000);
-        }, { once: true });
-        previewEl.appendChild(image);
-        return;
-      }
-      const video = document.createElement("video");
-      video.setAttribute("data-file-preview-media", "true");
-      video.className = "files-card-preview-media";
-      video.muted = true;
-      video.playsInline = true;
-      video.preload = "metadata";
-      video.src = URL.createObjectURL(blob);
-      video.addEventListener("loadeddata", function() {
-        video.currentTime = 0;
-      }, { once: true });
-      previewEl.appendChild(video);
-    } catch (_) {
-      clearPreview(previewEl);
-    }
-  }
-
-  async function hydrateItem(item) {
-    const fileId = item.getAttribute("data-file-item");
-    if (!fileId) {
-      return;
-    }
-    const reader = new window.ArkiveFileReader({ fileId: fileId });
-    try {
-      await reader.load();
-      const metadata = reader.getMetadata();
-      updateItem(item, metadata, reader.record ? reader.record.plaintextSize : 0);
-      if (item.hasAttribute("data-file-card")) {
-        await updateGridPreview(item, metadata, reader);
-      }
-    } catch (_) {
-    } finally {
-      await reader.dispose();
-    }
-  }
-
-  async function hydrateItems() {
-    if (typeof window.ArkiveVault.waitUntilReady === "function") {
-      await window.ArkiveVault.waitUntilReady();
-    }
-    for (let i = 0; i < items.length; i++) {
-      await hydrateItem(items[i]);
-    }
-  }
-
   document.addEventListener("click", async function(event) {
     const target = event.target.closest("[data-file-action='download']");
     if (!target) {
@@ -179,7 +6,7 @@
     }
     event.preventDefault();
     const fileId = target.getAttribute("data-file-id");
-    if (!fileId) {
+    if (!fileId || !window.ArkiveFileReader) {
       return;
     }
     target.disabled = true;
@@ -195,8 +22,6 @@
       await reader.dispose();
     }
   });
-
-  hydrateItems();
 })();
 
 (function() {
