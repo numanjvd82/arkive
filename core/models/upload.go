@@ -23,8 +23,6 @@ type SingleStartResponse struct {
 type UploadSession struct {
 	ID               string
 	FileID           string
-	OwnerID          string
-	Provider         string
 	StorageKey       string
 	ProviderUploadID string
 	Status           string
@@ -38,9 +36,6 @@ type UploadPart struct {
 	UploadSessionID string
 	PartNumber      int
 	ETag            string
-	EncryptedSize   int64
 	EncryptedHash   []byte
-	UploadStatus    string
-	UploadedAt      *time.Time
 	CreatedAt       time.Time
 }

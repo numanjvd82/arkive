@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+const encryptedChunkEnvelopeOverheadBytes int64 = 41
+
 func validateUserID(userID string) (string, error) {
 	userID = strings.TrimSpace(userID)
 	if userID == "" {
@@ -23,4 +25,11 @@ func validateUploadID(uploadID string) (string, error) {
 
 func expiresAtPtr(t time.Time) *time.Time {
 	return &t
+}
+
+func encryptedChunkSize(plaintextSize int64) int64 {
+	if plaintextSize <= 0 {
+		return 0
+	}
+	return plaintextSize + encryptedChunkEnvelopeOverheadBytes
 }

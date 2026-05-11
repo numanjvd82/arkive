@@ -16,15 +16,13 @@ func New() *Repository {
 func (r *Repository) CreateUploadSession(ctx context.Context, db database.PgExecutor, upload models.UploadSession) (models.UploadSession, error) {
 	var created models.UploadSession
 	query := `INSERT INTO upload_sessions
-		(file_id, owner_id, provider, storage_key, provider_upload_id, status, expires_at)
+		(file_id, storage_key, provider_upload_id, status, expires_at)
 	VALUES
-		($1, $2, $3, $4, $5, $6, $7)
+		($1, $2, $3, $4, $5)
 	RETURNING
-		id, file_id, owner_id, provider, storage_key, provider_upload_id, status, expires_at, created_at, updated_at`
+		id, file_id, storage_key, provider_upload_id, status, expires_at, created_at, updated_at`
 	if err := db.QueryRow(ctx, query,
 		upload.FileID,
-		upload.OwnerID,
-		upload.Provider,
 		upload.StorageKey,
 		upload.ProviderUploadID,
 		upload.Status,
@@ -32,8 +30,6 @@ func (r *Repository) CreateUploadSession(ctx context.Context, db database.PgExec
 	).Scan(
 		&created.ID,
 		&created.FileID,
-		&created.OwnerID,
-		&created.Provider,
 		&created.StorageKey,
 		&created.ProviderUploadID,
 		&created.Status,
@@ -49,16 +45,17 @@ func (r *Repository) CreateUploadSession(ctx context.Context, db database.PgExec
 func (r *Repository) GetUploadSessionForUser(ctx context.Context, db database.PgExecutor, uploadSessionID, ownerID string) (models.UploadSession, error) {
 	var upload models.UploadSession
 	query := `SELECT
-		id, file_id, owner_id, provider, storage_key, provider_upload_id, status, expires_at, created_at, updated_at
+		upload_sessions.id, upload_sessions.file_id, upload_sessions.storage_key, upload_sessions.provider_upload_id,
+		upload_sessions.status, upload_sessions.expires_at, upload_sessions.created_at, upload_sessions.updated_at
 	FROM
 		upload_sessions
+	INNER JOIN
+		files ON files.id = upload_sessions.file_id
 	WHERE
-		id = $1 AND owner_id = $2`
+		upload_sessions.id = $1 AND files.user_id = $2`
 	if err := db.QueryRow(ctx, query, uploadSessionID, ownerID).Scan(
 		&upload.ID,
 		&upload.FileID,
-		&upload.OwnerID,
-		&upload.Provider,
 		&upload.StorageKey,
 		&upload.ProviderUploadID,
 		&upload.Status,
@@ -86,35 +83,26 @@ func (r *Repository) UpdateUploadSessionStatus(ctx context.Context, db database.
 func (r *Repository) UpsertUploadPart(ctx context.Context, db database.PgExecutor, part models.UploadPart) (models.UploadPart, error) {
 	var stored models.UploadPart
 	query := `INSERT INTO upload_parts
-		(upload_session_id, part_number, etag, encrypted_size, encrypted_hash, upload_status, uploaded_at)
+		(upload_session_id, part_number, etag, encrypted_hash)
 	VALUES
-		($1, $2, $3, $4, $5, $6, $7)
+		($1, $2, $3, $4)
 	ON CONFLICT (upload_session_id, part_number)
 	DO UPDATE SET
 		etag = EXCLUDED.etag,
-		encrypted_size = EXCLUDED.encrypted_size,
-		encrypted_hash = EXCLUDED.encrypted_hash,
-		upload_status = EXCLUDED.upload_status,
-		uploaded_at = EXCLUDED.uploaded_at
+		encrypted_hash = EXCLUDED.encrypted_hash
 	RETURNING
-		id, upload_session_id, part_number, COALESCE(etag, ''), encrypted_size, encrypted_hash, upload_status, uploaded_at, created_at`
+		id, upload_session_id, part_number, COALESCE(etag, ''), encrypted_hash, created_at`
 	if err := db.QueryRow(ctx, query,
 		part.UploadSessionID,
 		part.PartNumber,
 		part.ETag,
-		part.EncryptedSize,
 		part.EncryptedHash,
-		part.UploadStatus,
-		part.UploadedAt,
 	).Scan(
 		&stored.ID,
 		&stored.UploadSessionID,
 		&stored.PartNumber,
 		&stored.ETag,
-		&stored.EncryptedSize,
 		&stored.EncryptedHash,
-		&stored.UploadStatus,
-		&stored.UploadedAt,
 		&stored.CreatedAt,
 	); err != nil {
 		return models.UploadPart{}, err
@@ -124,7 +112,7 @@ func (r *Repository) UpsertUploadPart(ctx context.Context, db database.PgExecuto
 
 func (r *Repository) ListUploadParts(ctx context.Context, db database.PgExecutor, uploadSessionID string) ([]models.UploadPart, error) {
 	rows, err := db.Query(ctx, `SELECT
-		id, upload_session_id, part_number, COALESCE(etag, ''), encrypted_size, encrypted_hash, upload_status, uploaded_at, created_at
+		id, upload_session_id, part_number, COALESCE(etag, ''), encrypted_hash, created_at
 	FROM
 		upload_parts
 	WHERE
@@ -144,10 +132,7 @@ func (r *Repository) ListUploadParts(ctx context.Context, db database.PgExecutor
 			&part.UploadSessionID,
 			&part.PartNumber,
 			&part.ETag,
-			&part.EncryptedSize,
 			&part.EncryptedHash,
-			&part.UploadStatus,
-			&part.UploadedAt,
 			&part.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -166,9 +151,9 @@ func (r *Repository) ReplaceFileChunks(ctx context.Context, db database.PgExecut
 	}
 	for _, chunk := range chunks {
 		query := `INSERT INTO file_chunks
-			(file_id, chunk_index, storage_key, plaintext_size, encrypted_size, encrypted_hash, upload_status, uploaded_at)
+			(file_id, chunk_index, storage_key, plaintext_size, encrypted_size, encrypted_hash)
 		VALUES
-			($1, $2, $3, $4, $5, $6, $7, $8)`
+			($1, $2, $3, $4, $5, $6)`
 		if _, err := db.Exec(ctx, query,
 			chunk.FileID,
 			chunk.ChunkIndex,
@@ -176,8 +161,6 @@ func (r *Repository) ReplaceFileChunks(ctx context.Context, db database.PgExecut
 			chunk.PlaintextSize,
 			chunk.EncryptedSize,
 			chunk.EncryptedHash,
-			chunk.UploadStatus,
-			chunk.UploadedAt,
 		); err != nil {
 			return err
 		}
@@ -187,7 +170,7 @@ func (r *Repository) ReplaceFileChunks(ctx context.Context, db database.PgExecut
 
 func (r *Repository) ListFileChunksByFile(ctx context.Context, db database.PgExecutor, fileID string) ([]models.FileChunk, error) {
 	rows, err := db.Query(ctx, `SELECT
-		id, file_id, chunk_index, storage_key, plaintext_size, encrypted_size, encrypted_hash, upload_status, uploaded_at, created_at
+		id, file_id, chunk_index, storage_key, plaintext_size, encrypted_size, encrypted_hash, created_at
 	FROM
 		file_chunks
 	WHERE
@@ -210,8 +193,6 @@ func (r *Repository) ListFileChunksByFile(ctx context.Context, db database.PgExe
 			&chunk.PlaintextSize,
 			&chunk.EncryptedSize,
 			&chunk.EncryptedHash,
-			&chunk.UploadStatus,
-			&chunk.UploadedAt,
 			&chunk.CreatedAt,
 		); err != nil {
 			return nil, err

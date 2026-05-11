@@ -10,9 +10,7 @@ CREATE TABLE files (
   plaintext_size BIGINT NOT NULL,
   encrypted_size BIGINT,
   encrypted_hash BYTEA,
-  status TEXT NOT NULL DEFAULT 'pending',
   upload_status TEXT NOT NULL DEFAULT 'pending',
-  storage_backend TEXT NOT NULL DEFAULT 'local',
   completed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -32,16 +30,10 @@ CREATE TABLE file_chunks (
   plaintext_size BIGINT NOT NULL,
   encrypted_size BIGINT NOT NULL,
   encrypted_hash BYTEA NOT NULL,
-  upload_status TEXT NOT NULL DEFAULT 'pending',
-  uploaded_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX file_chunks_file_id_idx ON file_chunks (file_id);
-
-ALTER TABLE file_chunks
-  ADD CONSTRAINT file_chunks_upload_status_chk
-  CHECK (upload_status IN ('pending', 'uploading', 'complete', 'failed', 'aborted'));
 
 ALTER TABLE file_chunks
   ADD CONSTRAINT file_chunks_file_id_chunk_index_key
@@ -50,8 +42,6 @@ ALTER TABLE file_chunks
 CREATE TABLE upload_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   file_id UUID NOT NULL REFERENCES files(id) ON DELETE CASCADE,
-  owner_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  provider TEXT NOT NULL,
   storage_key TEXT NOT NULL,
   provider_upload_id TEXT,
   status TEXT NOT NULL DEFAULT 'active',
@@ -61,7 +51,6 @@ CREATE TABLE upload_sessions (
 );
 
 CREATE INDEX upload_sessions_file_id_idx ON upload_sessions (file_id);
-CREATE INDEX upload_sessions_owner_id_idx ON upload_sessions (owner_id);
 CREATE INDEX upload_sessions_status_idx ON upload_sessions (status);
 
 ALTER TABLE upload_sessions
@@ -73,18 +62,11 @@ CREATE TABLE upload_parts (
   upload_session_id UUID NOT NULL REFERENCES upload_sessions(id) ON DELETE CASCADE,
   part_number INTEGER NOT NULL,
   etag TEXT,
-  encrypted_size BIGINT NOT NULL,
   encrypted_hash BYTEA NOT NULL,
-  upload_status TEXT NOT NULL DEFAULT 'pending',
-  uploaded_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX upload_parts_upload_session_id_idx ON upload_parts (upload_session_id);
-
-ALTER TABLE upload_parts
-  ADD CONSTRAINT upload_parts_status_chk
-  CHECK (upload_status IN ('pending', 'uploading', 'complete', 'failed', 'aborted'));
 
 ALTER TABLE upload_parts
   ADD CONSTRAINT upload_parts_upload_session_id_part_number_key

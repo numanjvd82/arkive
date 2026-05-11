@@ -15,7 +15,6 @@ type File struct {
 	EncryptedSize     *int64
 	EncryptedHash     []byte
 	UploadStatus      string
-	StorageBackend    string
 	CompletedAt       *time.Time
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
@@ -30,7 +29,5 @@ type FileChunk struct {
 	PlaintextSize int64
 	EncryptedSize int64
 	EncryptedHash []byte
-	UploadStatus  string
-	UploadedAt    *time.Time
 	CreatedAt     time.Time
 }
