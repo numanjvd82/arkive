@@ -68,7 +68,7 @@ func PublicShareView(shareService *shares.Service, uploadService *uploads.Servic
 			return
 		}
 
-			renderShareLanding(c, uploadService, token, file)
+		renderShareLanding(c, uploadService, token, share, file)
 	}
 }
 
@@ -115,7 +115,7 @@ func PublicShareUnlock(shareService *shares.Service, uploadService *uploads.Serv
 		}
 
 		if share.PasswordHash == nil {
-							renderShareLanding(c, uploadService, token, file)
+			renderShareLanding(c, uploadService, token, share, file)
 			return
 		}
 
@@ -130,11 +130,11 @@ func PublicShareUnlock(shareService *shares.Service, uploadService *uploads.Serv
 			return
 		}
 
-			renderShareLanding(c, uploadService, token, file)
+		renderShareLanding(c, uploadService, token, share, file)
 	}
 }
 
-func renderShareLanding(c *gin.Context, uploadService *uploads.Service, token string, file models.File) {
+func renderShareLanding(c *gin.Context, uploadService *uploads.Service, token string, share models.Share, file models.File) {
 	viewURL := ""
 	isImage := false
 	isVideo := false
@@ -155,6 +155,7 @@ func renderShareLanding(c *gin.Context, uploadService *uploads.Service, token st
 		IsVideo:     isVideo,
 		Viewable:    viewable && viewURL != "",
 		ShareURL:    shareURL,
+		SharedAt:    share.CreatedAt,
 	}))
 }
 

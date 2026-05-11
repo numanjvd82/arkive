@@ -172,11 +172,16 @@ func renderShareList(items []models.ShareWithFile, total, expiringSoonCount, rev
 		rows = append(rows, h.Tr(
 			h.Class("shares-row"),
 			g.Attr("data-share-row", item.ID),
+			g.Attr("data-file-item", item.FileID),
 			g.Attr("id", "share-"+item.ID),
 			h.Td(
 				h.Class("shares-file"),
 				shareFileIcon(item),
-				h.Span(h.Class("shares-name"), g.Text(item.FileName)),
+				h.Span(
+					h.Class("shares-name"),
+					g.Attr("data-file-field", "name"),
+					g.Text("Decrypting..."),
+				),
 			),
 			h.Td(
 				h.Class("shares-status"),
@@ -214,7 +219,7 @@ func renderShareList(items []models.ShareWithFile, total, expiringSoonCount, rev
 						h.Type("button"),
 						g.Attr("data-share-action", "delete"),
 						g.Attr("data-share-id", item.ID),
-						g.Attr("data-share-file", item.FileName),
+						g.Attr("data-share-file", "Decrypting..."),
 						g.Text("Delete"),
 					),
 				),
@@ -254,13 +259,13 @@ func shareFileIcon(item models.ShareWithFile) g.Node {
 	contentType := strings.TrimSpace(strings.ToLower(item.FileContentType))
 	switch {
 	case strings.HasPrefix(contentType, "image/"):
-		return lucide.Image(h.Class("shares-lucide shares-lucide-file"), g.Attr("aria-hidden", "true"))
+		return lucide.Image(h.Class("shares-lucide shares-lucide-file"), g.Attr("data-share-field", "icon"), g.Attr("aria-hidden", "true"))
 	case strings.Contains(contentType, "zip") || strings.Contains(contentType, "tar"):
-		return lucide.FileArchive(h.Class("shares-lucide shares-lucide-file"), g.Attr("aria-hidden", "true"))
+		return lucide.FileArchive(h.Class("shares-lucide shares-lucide-file"), g.Attr("data-share-field", "icon"), g.Attr("aria-hidden", "true"))
 	case item.PasswordHash != nil:
-		return lucide.Lock(h.Class("shares-lucide shares-lucide-file"), g.Attr("aria-hidden", "true"))
+		return lucide.Lock(h.Class("shares-lucide shares-lucide-file"), g.Attr("data-share-field", "icon"), g.Attr("aria-hidden", "true"))
 	default:
-		return lucide.FileText(h.Class("shares-lucide shares-lucide-file"), g.Attr("aria-hidden", "true"))
+		return lucide.FileText(h.Class("shares-lucide shares-lucide-file"), g.Attr("data-share-field", "icon"), g.Attr("aria-hidden", "true"))
 	}
 }
 

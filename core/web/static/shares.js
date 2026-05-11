@@ -95,7 +95,7 @@
             window.Toast.error("Copy failed. Try again.");
           }
         });
-    });
+      });
   });
 
   if (cancelButton) {
@@ -133,7 +133,7 @@
         })
         .finally(function() {
           confirmButton.disabled = false;
-        });
+      });
     });
   }
 })();

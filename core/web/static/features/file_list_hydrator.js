@@ -18,6 +18,7 @@ function updateItem(item, metadata, plaintextSize) {
   const sizeEl = item.querySelector("[data-file-field='size']");
   const shareEl = item.querySelector("[data-file-action='share']");
   const deleteEl = item.querySelector("[data-file-action='delete']");
+  const shareDeleteEl = item.querySelector("[data-share-action='delete']");
   const realName = metadata && metadata.name ? metadata.name : "";
   const realType = metadata && metadata.mime ? metadata.mime : "";
   const realSize = metadata && metadata.size ? metadata.size : plaintextSize;
@@ -43,6 +44,9 @@ function updateItem(item, metadata, plaintextSize) {
   }
   if (deleteEl) {
     deleteEl.setAttribute("data-file-name", realName);
+  }
+  if (shareDeleteEl) {
+    shareDeleteEl.setAttribute("data-share-file", realName);
   }
   item.setAttribute("data-file-name", realName);
 
