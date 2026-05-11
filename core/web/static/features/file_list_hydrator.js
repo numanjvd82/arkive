@@ -1,13 +1,3 @@
-function isPreviewable(mime) {
-  const value = String(mime || "").toLowerCase();
-  return (
-    value.startsWith("image/") ||
-    value.startsWith("video/") ||
-    value.startsWith("text/") ||
-    value.includes("json")
-  );
-}
-
 function formatBytes(bytes) {
   const value = Number(bytes || 0);
   if (!value) {
@@ -26,7 +16,6 @@ function updateItem(item, metadata, plaintextSize) {
   const nameEl = item.querySelector("[data-file-field='name']");
   const typeEl = item.querySelector("[data-file-field='type']");
   const sizeEl = item.querySelector("[data-file-field='size']");
-  const viewEl = item.querySelector("[data-file-action='view']");
   const shareEl = item.querySelector("[data-file-action='share']");
   const deleteEl = item.querySelector("[data-file-action='delete']");
   const realName = metadata && metadata.name ? metadata.name : "";
@@ -56,17 +45,6 @@ function updateItem(item, metadata, plaintextSize) {
     deleteEl.setAttribute("data-file-name", realName);
   }
   item.setAttribute("data-file-name", realName);
-  if (viewEl) {
-    if (isPreviewable(realType)) {
-      viewEl.classList.remove("is-disabled");
-      viewEl.removeAttribute("aria-disabled");
-      viewEl.removeAttribute("title");
-    } else {
-      viewEl.classList.add("is-disabled");
-      viewEl.setAttribute("aria-disabled", "true");
-      viewEl.setAttribute("title", "Preview unavailable");
-    }
-  }
 
   item.classList.add("is-hydrated");
   item.removeAttribute("aria-busy");
@@ -76,6 +54,7 @@ function clearPreview(previewEl) {
   if (!previewEl) {
     return;
   }
+  previewEl.classList.remove("has-media");
   const stale = previewEl.querySelector("[data-file-preview-media='true']");
   if (stale) {
     if (stale.tagName === "VIDEO") {
@@ -108,6 +87,7 @@ async function updateGridPreview(card, metadata, reader) {
     if (icon) {
       icon.hidden = true;
     }
+    previewEl.classList.add("has-media");
     if (mime.startsWith("image/")) {
       const image = document.createElement("img");
       image.setAttribute("data-file-preview-media", "true");

@@ -136,7 +136,6 @@ func (s *Service) StartMultipartUploadSession(ctx context.Context, userID string
 
 	session, err := s.uploadRepo.CreateUploadSession(ctx, tx, models.UploadSession{
 		FileID:           file.ID,
-		StorageKey:       objectKey,
 		ProviderUploadID: providerUploadID,
 		Status:           UploadStatusActive,
 		ExpiresAt:        time.Now().Add(s.uploadExpires),
@@ -189,7 +188,11 @@ func (s *Service) PresignMultipartUploadPart(ctx context.Context, userID, upload
 	if err := s.uploadRepo.UpdateUploadSessionStatus(ctx, s.db, uploadSessionID, UploadStatusActive); err != nil {
 		return "", err
 	}
-	return s.storage.PresignUploadPart(ctx, uploadSession.StorageKey, uploadSession.ProviderUploadID, int32(partNumber), s.uploadExpires)
+	objectKey, err := storage.BuildObjectKey(userID, uploadSession.FileID)
+	if err != nil {
+		return "", err
+	}
+	return s.storage.PresignUploadPart(ctx, objectKey, uploadSession.ProviderUploadID, int32(partNumber), s.uploadExpires)
 }
 
 func (s *Service) RecordMultipartUploadPart(ctx context.Context, userID, uploadSessionID string, input UploadPartRecordInput) error {
@@ -291,7 +294,6 @@ func (s *Service) CompleteMultipartUploadSession(ctx context.Context, userID, up
 	}
 
 	completedParts := make([]storage.CompletedPart, 0, len(parts))
-	fileChunks := make([]models.FileChunk, 0, len(parts))
 	for idx, part := range parts {
 		if part.PartNumber != idx+1 {
 			return ErrPartsRequired
@@ -300,25 +302,13 @@ func (s *Service) CompleteMultipartUploadSession(ctx context.Context, userID, up
 			PartNumber: int32(part.PartNumber),
 			ETag:       part.ETag,
 		})
-		plaintextSize := file.ChunkSize
-		if idx == len(parts)-1 {
-			remainder := file.PlaintextSize - int64(idx)*file.ChunkSize
-			if remainder > 0 {
-				plaintextSize = remainder
-			}
-		}
-		expectedEncryptedSize := encryptedChunkSize(plaintextSize)
-		fileChunks = append(fileChunks, models.FileChunk{
-			FileID:        file.ID,
-			ChunkIndex:    idx,
-			StorageKey:    uploadSession.StorageKey,
-			PlaintextSize: plaintextSize,
-			EncryptedSize: expectedEncryptedSize,
-			EncryptedHash: part.EncryptedHash,
-		})
 	}
 
-	if err := s.storage.CompleteMultipartUpload(ctx, uploadSession.StorageKey, uploadSession.ProviderUploadID, completedParts); err != nil {
+	objectKey, err := storage.BuildObjectKey(userID, uploadSession.FileID)
+	if err != nil {
+		return err
+	}
+	if err := s.storage.CompleteMultipartUpload(ctx, objectKey, uploadSession.ProviderUploadID, completedParts); err != nil {
 		_ = s.uploadRepo.UpdateUploadSessionStatus(ctx, s.db, uploadSessionID, UploadStatusFailed)
 		_, _ = s.fileRepo.UpdateEncryptedFileStatusIf(ctx, s.db, file.ID, FileUploadFailed, []string{FileUploadUploading, FileUploadPending})
 		return err
@@ -333,10 +323,6 @@ func (s *Service) CompleteMultipartUploadSession(ctx context.Context, userID, up
 		return err
 	}
 	if err := s.fileRepo.UpdateEncryptedFileEnvelope(ctx, tx, file.ID, encryptedMetadata, encryptedFileKey, encryptedManifest, encryptedHash); err != nil {
-		_ = tx.Rollback(ctx)
-		return err
-	}
-	if err := s.uploadRepo.ReplaceFileChunks(ctx, tx, file.ID, fileChunks); err != nil {
 		_ = tx.Rollback(ctx)
 		return err
 	}
@@ -383,7 +369,10 @@ func (s *Service) AbortMultipartUploadSession(ctx context.Context, userID, uploa
 		return err
 	}
 
-	_ = s.storage.AbortMultipartUpload(ctx, uploadSession.StorageKey, uploadSession.ProviderUploadID)
+	objectKey, keyErr := storage.BuildObjectKey(userID, uploadSession.FileID)
+	if keyErr == nil {
+		_ = s.storage.AbortMultipartUpload(ctx, objectKey, uploadSession.ProviderUploadID)
+	}
 
 	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {

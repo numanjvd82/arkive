@@ -6,6 +6,7 @@ import (
 	"errors"
 	"strings"
 
+	"arkive/pkg/storage"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -47,14 +48,11 @@ func (s *Service) GetEncryptedFileRecord(ctx context.Context, userID, fileID str
 		return EncryptedFileRecord{}, ErrNotFound
 	}
 
-	chunks, err := s.uploadRepo.ListFileChunksByFile(ctx, s.db, file.ID)
+	objectKey, err := storage.BuildObjectKey(file.UserID, file.ID)
 	if err != nil {
 		return EncryptedFileRecord{}, err
 	}
-	if len(chunks) == 0 {
-		return EncryptedFileRecord{}, ErrNotFound
-	}
-	sourceURL, err := s.storage.PresignDownload(ctx, chunks[0].StorageKey, "ciphertext.bin", "inline", s.downloadExpire)
+	sourceURL, err := s.storage.PresignDownload(ctx, objectKey, "ciphertext.bin", "inline", s.downloadExpire)
 	if err != nil {
 		return EncryptedFileRecord{}, err
 	}

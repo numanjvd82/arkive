@@ -25,6 +25,7 @@
 })();
 
 (function() {
+  const tableRows = Array.from(document.querySelectorAll("[data-file-row]"));
   const deleteButtons = document.querySelectorAll("[data-file-action='delete']");
   const selectAll = document.getElementById("files-select-all");
   const bulkDeleteButton = document.getElementById("files-delete-selected");
@@ -42,9 +43,21 @@
   let pendingDeleteIds = [];
   let activeContextFileId = "";
 
-  if (!deleteButtons.length && !bulkDeleteButton && !gridCards.length) {
+  if (!deleteButtons.length && !bulkDeleteButton && !gridCards.length && !tableRows.length) {
     return;
   }
+
+  tableRows.forEach(function(row) {
+    row.addEventListener("click", function(event) {
+      if (event.target.closest("a, button, input, label")) {
+        return;
+      }
+      const href = row.getAttribute("data-file-open") || "";
+      if (href) {
+        window.location.href = href;
+      }
+    });
+  });
 
   function fileCheckboxes() {
     return Array.from(document.querySelectorAll("[data-file-select]"));

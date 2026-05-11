@@ -21,27 +21,9 @@ ALTER TABLE files
   ADD CONSTRAINT files_upload_status_chk
   CHECK (upload_status IN ('pending', 'uploading', 'complete', 'failed', 'aborted'));
 
-CREATE TABLE file_chunks (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  file_id UUID NOT NULL REFERENCES files(id) ON DELETE CASCADE,
-  chunk_index INTEGER NOT NULL,
-  storage_key TEXT NOT NULL,
-  plaintext_size BIGINT NOT NULL,
-  encrypted_size BIGINT NOT NULL,
-  encrypted_hash BYTEA NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX file_chunks_file_id_idx ON file_chunks (file_id);
-
-ALTER TABLE file_chunks
-  ADD CONSTRAINT file_chunks_file_id_chunk_index_key
-  UNIQUE (file_id, chunk_index);
-
 CREATE TABLE upload_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   file_id UUID NOT NULL REFERENCES files(id) ON DELETE CASCADE,
-  storage_key TEXT NOT NULL,
   provider_upload_id TEXT,
   status TEXT NOT NULL DEFAULT 'active',
   expires_at TIMESTAMPTZ NOT NULL,

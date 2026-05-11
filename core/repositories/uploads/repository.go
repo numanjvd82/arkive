@@ -16,21 +16,19 @@ func New() *Repository {
 func (r *Repository) CreateUploadSession(ctx context.Context, db database.PgExecutor, upload models.UploadSession) (models.UploadSession, error) {
 	var created models.UploadSession
 	query := `INSERT INTO upload_sessions
-		(file_id, storage_key, provider_upload_id, status, expires_at)
+		(file_id, provider_upload_id, status, expires_at)
 	VALUES
-		($1, $2, $3, $4, $5)
+		($1, $2, $3, $4)
 	RETURNING
-		id, file_id, storage_key, provider_upload_id, status, expires_at, created_at, updated_at`
+		id, file_id, provider_upload_id, status, expires_at, created_at, updated_at`
 	if err := db.QueryRow(ctx, query,
 		upload.FileID,
-		upload.StorageKey,
 		upload.ProviderUploadID,
 		upload.Status,
 		upload.ExpiresAt,
 	).Scan(
 		&created.ID,
 		&created.FileID,
-		&created.StorageKey,
 		&created.ProviderUploadID,
 		&created.Status,
 		&created.ExpiresAt,
@@ -45,7 +43,7 @@ func (r *Repository) CreateUploadSession(ctx context.Context, db database.PgExec
 func (r *Repository) GetUploadSessionForUser(ctx context.Context, db database.PgExecutor, uploadSessionID, ownerID string) (models.UploadSession, error) {
 	var upload models.UploadSession
 	query := `SELECT
-		upload_sessions.id, upload_sessions.file_id, upload_sessions.storage_key, upload_sessions.provider_upload_id,
+		upload_sessions.id, upload_sessions.file_id, upload_sessions.provider_upload_id,
 		upload_sessions.status, upload_sessions.expires_at, upload_sessions.created_at, upload_sessions.updated_at
 	FROM
 		upload_sessions
@@ -56,7 +54,6 @@ func (r *Repository) GetUploadSessionForUser(ctx context.Context, db database.Pg
 	if err := db.QueryRow(ctx, query, uploadSessionID, ownerID).Scan(
 		&upload.ID,
 		&upload.FileID,
-		&upload.StorageKey,
 		&upload.ProviderUploadID,
 		&upload.Status,
 		&upload.ExpiresAt,
@@ -143,64 +140,4 @@ func (r *Repository) ListUploadParts(ctx context.Context, db database.PgExecutor
 		return nil, rows.Err()
 	}
 	return parts, nil
-}
-
-func (r *Repository) ReplaceFileChunks(ctx context.Context, db database.PgExecutor, fileID string, chunks []models.FileChunk) error {
-	if _, err := db.Exec(ctx, `DELETE FROM file_chunks WHERE file_id = $1`, fileID); err != nil {
-		return err
-	}
-	for _, chunk := range chunks {
-		query := `INSERT INTO file_chunks
-			(file_id, chunk_index, storage_key, plaintext_size, encrypted_size, encrypted_hash)
-		VALUES
-			($1, $2, $3, $4, $5, $6)`
-		if _, err := db.Exec(ctx, query,
-			chunk.FileID,
-			chunk.ChunkIndex,
-			chunk.StorageKey,
-			chunk.PlaintextSize,
-			chunk.EncryptedSize,
-			chunk.EncryptedHash,
-		); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (r *Repository) ListFileChunksByFile(ctx context.Context, db database.PgExecutor, fileID string) ([]models.FileChunk, error) {
-	rows, err := db.Query(ctx, `SELECT
-		id, file_id, chunk_index, storage_key, plaintext_size, encrypted_size, encrypted_hash, created_at
-	FROM
-		file_chunks
-	WHERE
-		file_id = $1
-	ORDER BY
-		chunk_index ASC`, fileID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var chunks []models.FileChunk
-	for rows.Next() {
-		var chunk models.FileChunk
-		if err := rows.Scan(
-			&chunk.ID,
-			&chunk.FileID,
-			&chunk.ChunkIndex,
-			&chunk.StorageKey,
-			&chunk.PlaintextSize,
-			&chunk.EncryptedSize,
-			&chunk.EncryptedHash,
-			&chunk.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		chunks = append(chunks, chunk)
-	}
-	if rows.Err() != nil {
-		return nil, rows.Err()
-	}
-	return chunks, nil
 }

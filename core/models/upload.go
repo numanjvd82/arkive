@@ -23,7 +23,6 @@ type SingleStartResponse struct {
 type UploadSession struct {
 	ID               string
 	FileID           string
-	StorageKey       string
 	ProviderUploadID string
 	Status           string
 	ExpiresAt        time.Time

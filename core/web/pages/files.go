@@ -521,6 +521,7 @@ func renderFileRow(file models.File) g.Node {
 		h.Class("files-row"),
 		g.Attr("aria-busy", "true"),
 		g.Attr("data-file-row", file.ID),
+		g.Attr("data-file-open", viewURL),
 		g.Attr("data-file-item", file.ID),
 		g.Attr("data-file-name", ""),
 		g.Attr("id", "file-"+file.ID),
@@ -581,16 +582,6 @@ func renderFileRow(file models.File) g.Node {
 					g.Attr("data-file-name", ""),
 				}),
 				lucide.Share2(
-					h.Class("files-lucide files-lucide-action"),
-					g.Attr("aria-hidden", "true"),
-				),
-			),
-			renderActionLink(
-				"View",
-				viewURL,
-				"a",
-				g.Attr("data-file-action", "view"),
-				lucide.Eye(
 					h.Class("files-lucide files-lucide-action"),
 					g.Attr("aria-hidden", "true"),
 				),

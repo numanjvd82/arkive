@@ -19,14 +19,3 @@ type File struct {
 	UpdatedAt         time.Time
 	ExpiresAt         *time.Time
 }
-
-type FileChunk struct {
-	ID            string
-	FileID        string
-	ChunkIndex    int
-	StorageKey    string
-	PlaintextSize int64
-	EncryptedSize int64
-	EncryptedHash []byte
-	CreatedAt     time.Time
-}
