@@ -19,7 +19,6 @@ type uploadStartRequest struct {
 
 type uploadPartRecordRequest struct {
 	PartNumber    int    `json:"partNumber"`
-	EncryptedSize int64  `json:"encryptedSize"`
 	EncryptedHash string `json:"encryptedHash"`
 	ETag          string `json:"etag"`
 }
@@ -136,7 +135,6 @@ func APIUploadPartRecord(svc *uploads.Service) gin.HandlerFunc {
 
 		if err := svc.RecordMultipartUploadPart(c.Request.Context(), userID.(string), uploadSessionID, uploads.UploadPartRecordInput{
 			PartNumber:    req.PartNumber,
-			EncryptedSize: req.EncryptedSize,
 			EncryptedHash: req.EncryptedHash,
 			ETag:          req.ETag,
 		}); err != nil {
@@ -340,7 +338,6 @@ func APIFileRecord(svc *uploads.Service) gin.HandlerFunc {
 			"chunkSize":         record.ChunkSize,
 			"totalChunks":       record.TotalChunks,
 			"plaintextSize":     record.PlaintextSize,
-			"encryptedSize":     record.EncryptedSize,
 			"encryptedHash":     record.EncryptedHash,
 			"encryptedMetadata": record.EncryptedMetadata,
 			"encryptedFileKey":  record.EncryptedFileKey,

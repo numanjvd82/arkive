@@ -12,7 +12,6 @@ type File struct {
 	ChunkSize         int64
 	ChunkCount        int
 	PlaintextSize     int64
-	EncryptedSize     *int64
 	EncryptedHash     []byte
 	UploadStatus      string
 	CompletedAt       *time.Time

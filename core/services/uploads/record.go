@@ -16,7 +16,6 @@ type EncryptedFileRecord struct {
 	ChunkSize         int64
 	TotalChunks       int
 	PlaintextSize     int64
-	EncryptedSize     int64
 	EncryptedHash     string
 	EncryptedMetadata string
 	EncryptedFileKey  string
@@ -60,11 +59,6 @@ func (s *Service) GetEncryptedFileRecord(ctx context.Context, userID, fileID str
 		return EncryptedFileRecord{}, err
 	}
 
-	var encryptedSize int64
-	if file.EncryptedSize != nil {
-		encryptedSize = *file.EncryptedSize
-	}
-
 	return EncryptedFileRecord{
 		FileID:            file.ID,
 		VaultID:           file.UserID,
@@ -72,7 +66,6 @@ func (s *Service) GetEncryptedFileRecord(ctx context.Context, userID, fileID str
 		ChunkSize:         file.ChunkSize,
 		TotalChunks:       file.ChunkCount,
 		PlaintextSize:     file.PlaintextSize,
-		EncryptedSize:     encryptedSize,
 		EncryptedHash:     base64.StdEncoding.EncodeToString(file.EncryptedHash),
 		EncryptedMetadata: base64.StdEncoding.EncodeToString(file.EncryptedMetadata),
 		EncryptedFileKey:  base64.StdEncoding.EncodeToString(file.EncryptedFileKey),

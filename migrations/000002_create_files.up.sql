@@ -8,7 +8,6 @@ CREATE TABLE files (
   chunk_size BIGINT NOT NULL,
   chunk_count INTEGER NOT NULL,
   plaintext_size BIGINT NOT NULL,
-  encrypted_size BIGINT,
   encrypted_hash BYTEA,
   upload_status TEXT NOT NULL DEFAULT 'pending',
   completed_at TIMESTAMPTZ,

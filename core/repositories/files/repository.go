@@ -16,12 +16,12 @@ func New() *Repository {
 func (r *Repository) CreateEncryptedFile(ctx context.Context, db database.PgExecutor, file models.File) (models.File, error) {
 	var created models.File
 	query := `INSERT INTO files
-		(user_id, encrypted_metadata, encrypted_file_key, encrypted_manifest, encryption_version, chunk_size, chunk_count, plaintext_size, encrypted_size, encrypted_hash, upload_status, expires_at)
+		(user_id, encrypted_metadata, encrypted_file_key, encrypted_manifest, encryption_version, chunk_size, chunk_count, plaintext_size, encrypted_hash, upload_status, expires_at)
 	VALUES
-		($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+		($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 	RETURNING
 		id, user_id, encrypted_metadata, encrypted_file_key, encrypted_manifest, encryption_version, chunk_size, chunk_count,
-		plaintext_size, encrypted_size, encrypted_hash, upload_status, completed_at, created_at, updated_at, expires_at`
+		plaintext_size, encrypted_hash, upload_status, completed_at, created_at, updated_at, expires_at`
 	if err := db.QueryRow(ctx, query,
 		file.UserID,
 		file.EncryptedMetadata,
@@ -31,7 +31,6 @@ func (r *Repository) CreateEncryptedFile(ctx context.Context, db database.PgExec
 		file.ChunkSize,
 		file.ChunkCount,
 		file.PlaintextSize,
-		file.EncryptedSize,
 		file.EncryptedHash,
 		file.UploadStatus,
 		file.ExpiresAt,
@@ -45,7 +44,6 @@ func (r *Repository) CreateEncryptedFile(ctx context.Context, db database.PgExec
 		&created.ChunkSize,
 		&created.ChunkCount,
 		&created.PlaintextSize,
-		&created.EncryptedSize,
 		&created.EncryptedHash,
 		&created.UploadStatus,
 		&created.CompletedAt,
@@ -62,7 +60,7 @@ func (r *Repository) GetEncryptedFileForUser(ctx context.Context, db database.Pg
 	var file models.File
 	query := `SELECT
 		id, user_id, encrypted_metadata, encrypted_file_key, encrypted_manifest, encryption_version, chunk_size, chunk_count,
-		plaintext_size, encrypted_size, encrypted_hash, upload_status, completed_at, created_at, updated_at, expires_at
+		plaintext_size, encrypted_hash, upload_status, completed_at, created_at, updated_at, expires_at
 	FROM
 		files
 	WHERE
@@ -77,7 +75,6 @@ func (r *Repository) GetEncryptedFileForUser(ctx context.Context, db database.Pg
 		&file.ChunkSize,
 		&file.ChunkCount,
 		&file.PlaintextSize,
-		&file.EncryptedSize,
 		&file.EncryptedHash,
 		&file.UploadStatus,
 		&file.CompletedAt,
@@ -109,7 +106,7 @@ func (r *Repository) GetEncryptedFileRecordForUser(ctx context.Context, db datab
 	var file models.File
 	query := `SELECT
 		id, user_id, encrypted_metadata, encrypted_file_key, encrypted_manifest, encryption_version,
-		chunk_size, chunk_count, plaintext_size, encrypted_size, encrypted_hash, upload_status
+		chunk_size, chunk_count, plaintext_size, encrypted_hash, upload_status
 	FROM
 		files
 	WHERE
@@ -124,7 +121,6 @@ func (r *Repository) GetEncryptedFileRecordForUser(ctx context.Context, db datab
 		&file.ChunkSize,
 		&file.ChunkCount,
 		&file.PlaintextSize,
-		&file.EncryptedSize,
 		&file.EncryptedHash,
 		&file.UploadStatus,
 	); err != nil {
@@ -133,19 +129,18 @@ func (r *Repository) GetEncryptedFileRecordForUser(ctx context.Context, db datab
 	return file, nil
 }
 
-func (r *Repository) MarkEncryptedFileComplete(ctx context.Context, db database.PgExecutor, fileID string, encryptedSize int64, encryptedHash []byte) error {
+func (r *Repository) MarkEncryptedFileComplete(ctx context.Context, db database.PgExecutor, fileID string, encryptedHash []byte) error {
 	query := `UPDATE
 		files
 	SET
-		encrypted_size = $2,
-		encrypted_hash = $3,
+		encrypted_hash = $2,
 		upload_status = 'complete',
 		completed_at = now(),
 		expires_at = NULL,
 		updated_at = now()
 	WHERE
 		id = $1`
-	_, err := db.Exec(ctx, query, fileID, encryptedSize, encryptedHash)
+	_, err := db.Exec(ctx, query, fileID, encryptedHash)
 	return err
 }
 
@@ -203,7 +198,7 @@ func (r *Repository) GetFileByID(ctx context.Context, db database.PgExecutor, fi
 	var file models.File
 	query := `SELECT
 		id, user_id, encrypted_metadata, encrypted_file_key, encrypted_manifest, encryption_version, chunk_size, chunk_count,
-		plaintext_size, encrypted_size, encrypted_hash, upload_status, completed_at, created_at, updated_at, expires_at
+		plaintext_size, encrypted_hash, upload_status, completed_at, created_at, updated_at, expires_at
 	FROM
 		files
 	WHERE
@@ -218,7 +213,6 @@ func (r *Repository) GetFileByID(ctx context.Context, db database.PgExecutor, fi
 		&file.ChunkSize,
 		&file.ChunkCount,
 		&file.PlaintextSize,
-		&file.EncryptedSize,
 		&file.EncryptedHash,
 		&file.UploadStatus,
 		&file.CompletedAt,
@@ -235,7 +229,7 @@ func (r *Repository) GetFileForUser(ctx context.Context, db database.PgExecutor,
 	var file models.File
 	query := `SELECT
 		id, user_id, encrypted_metadata, encrypted_file_key, encrypted_manifest, encryption_version, chunk_size, chunk_count,
-		plaintext_size, encrypted_size, encrypted_hash, upload_status, completed_at, created_at, updated_at, expires_at
+		plaintext_size, encrypted_hash, upload_status, completed_at, created_at, updated_at, expires_at
 	FROM
 		files
 	WHERE
@@ -250,7 +244,6 @@ func (r *Repository) GetFileForUser(ctx context.Context, db database.PgExecutor,
 		&file.ChunkSize,
 		&file.ChunkCount,
 		&file.PlaintextSize,
-		&file.EncryptedSize,
 		&file.EncryptedHash,
 		&file.UploadStatus,
 		&file.CompletedAt,
@@ -273,7 +266,7 @@ func (r *Repository) ListCompletedForUser(ctx context.Context, db database.PgExe
 	offset := (page - 1) * pageSize
 	query := `SELECT
 		id, user_id, encrypted_metadata, encrypted_file_key, encrypted_manifest, encryption_version, chunk_size, chunk_count,
-		plaintext_size, encrypted_size, encrypted_hash, upload_status, completed_at, created_at, updated_at, expires_at
+		plaintext_size, encrypted_hash, upload_status, completed_at, created_at, updated_at, expires_at
 	FROM
 		files
 	WHERE
@@ -301,7 +294,6 @@ func (r *Repository) ListCompletedForUser(ctx context.Context, db database.PgExe
 			&file.ChunkSize,
 			&file.ChunkCount,
 			&file.PlaintextSize,
-			&file.EncryptedSize,
 			&file.EncryptedHash,
 			&file.UploadStatus,
 			&file.CompletedAt,

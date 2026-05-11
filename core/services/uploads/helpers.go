@@ -33,3 +33,10 @@ func encryptedChunkSize(plaintextSize int64) int64 {
 	}
 	return plaintextSize + encryptedChunkEnvelopeOverheadBytes
 }
+
+func encryptedFileSize(plaintextSize int64, chunkCount int) int64 {
+	if plaintextSize <= 0 || chunkCount <= 0 {
+		return 0
+	}
+	return plaintextSize + int64(chunkCount)*encryptedChunkEnvelopeOverheadBytes
+}

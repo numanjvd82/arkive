@@ -47,7 +47,6 @@ type MultipartUploadCompleteInput struct {
 
 type UploadPartRecordInput struct {
 	PartNumber    int
-	EncryptedSize int64
 	EncryptedHash string
 	ETag          string
 }
@@ -293,7 +292,6 @@ func (s *Service) CompleteMultipartUploadSession(ctx context.Context, userID, up
 
 	completedParts := make([]storage.CompletedPart, 0, len(parts))
 	fileChunks := make([]models.FileChunk, 0, len(parts))
-	var encryptedSize int64
 	for idx, part := range parts {
 		if part.PartNumber != idx+1 {
 			return ErrPartsRequired
@@ -318,7 +316,6 @@ func (s *Service) CompleteMultipartUploadSession(ctx context.Context, userID, up
 			EncryptedSize: expectedEncryptedSize,
 			EncryptedHash: part.EncryptedHash,
 		})
-		encryptedSize += expectedEncryptedSize
 	}
 
 	if err := s.storage.CompleteMultipartUpload(ctx, uploadSession.StorageKey, uploadSession.ProviderUploadID, completedParts); err != nil {
@@ -343,7 +340,7 @@ func (s *Service) CompleteMultipartUploadSession(ctx context.Context, userID, up
 		_ = tx.Rollback(ctx)
 		return err
 	}
-	if err := s.fileRepo.MarkEncryptedFileComplete(ctx, tx, file.ID, encryptedSize, encryptedHash); err != nil {
+	if err := s.fileRepo.MarkEncryptedFileComplete(ctx, tx, file.ID, encryptedHash); err != nil {
 		_ = tx.Rollback(ctx)
 		return err
 	}

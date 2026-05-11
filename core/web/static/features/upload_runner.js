@@ -303,7 +303,6 @@ export class UploadRunner {
 		await this.runWithController(async (signal) => {
 			return recordUploadPart(started.uploadSessionId, {
 				partNumber: partNumber,
-				encryptedSize: encrypted.encryptedSize,
 				encryptedHash: encrypted.encryptedHash,
 				etag: etag,
 			}, signal);

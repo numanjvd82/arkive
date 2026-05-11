@@ -16,7 +16,7 @@ func (r *Repository) SearchCompletedForUser(ctx context.Context, db database.PgE
 	pattern := "%" + query + "%"
 	rows, err := db.Query(ctx, `SELECT
 		id, user_id, encrypted_metadata, encrypted_file_key, encryption_version, chunk_size, chunk_count,
-		plaintext_size, encrypted_size, encrypted_hash, upload_status, completed_at, created_at, updated_at, expires_at
+		plaintext_size, encrypted_hash, upload_status, completed_at, created_at, updated_at, expires_at
 	FROM
 		files
 	WHERE
@@ -47,7 +47,6 @@ func (r *Repository) SearchCompletedForUser(ctx context.Context, db database.PgE
 			&file.ChunkSize,
 			&file.ChunkCount,
 			&file.PlaintextSize,
-			&file.EncryptedSize,
 			&file.EncryptedHash,
 			&file.UploadStatus,
 			&file.CompletedAt,
