@@ -90,6 +90,18 @@ func (c *Client) DeleteObject(ctx context.Context, key string) error {
 	return nil
 }
 
+func (c *Client) ObjectSize(ctx context.Context, key string) (int64, error) {
+	path, err := c.objectPath(ctx, key)
+	if err != nil {
+		return 0, err
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return 0, err
+	}
+	return info.Size(), nil
+}
+
 func (c *Client) CreateMultipartUpload(ctx context.Context, key, contentType string) (string, error) {
 	if strings.TrimSpace(key) == "" {
 		return "", errors.New("key is required")

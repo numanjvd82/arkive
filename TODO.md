@@ -2,6 +2,9 @@
 
 ## Not Implemented Yet
 - Periodic cleanup for stale multipart uploads (database records + R2 uploads/objects).
+- Make upload size/quota enforcement authoritative with server-counted bytes instead of browser-reported sizes.
+  - Local storage: count bytes while writing with `io.Copy` + `http.MaxBytesReader`.
+  - S3/R2 multipart: reserve quota up front, `HeadObject` after completion, commit `actual_encrypted_size`, delete object on overflow.
 - Upload lifecycle metrics/logging (start/part/complete/abort/fail counters and durations).
 - Generate video thumbnails during processing.
 - Generate image thumbnails during processing.

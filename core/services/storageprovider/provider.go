@@ -75,6 +75,21 @@ func (p *Provider) DeleteObject(ctx context.Context, key string) error {
 	return client.DeleteObject(ctx, key)
 }
 
+func (p *Provider) ObjectSize(ctx context.Context, key string) (int64, error) {
+	settings, err := p.load(ctx)
+	if err != nil {
+		return 0, err
+	}
+	if settings.Provider == "local" {
+		return p.local.ObjectSize(ctx, key)
+	}
+	client, err := p.s3(ctx, settings)
+	if err != nil {
+		return 0, err
+	}
+	return client.ObjectSize(ctx, key)
+}
+
 func (p *Provider) CreateMultipartUpload(ctx context.Context, key, contentType string) (string, error) {
 	settings, err := p.load(ctx)
 	if err != nil {

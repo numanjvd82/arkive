@@ -122,6 +122,20 @@ func (c *Client) DeleteObject(ctx context.Context, key string) error {
 	return err
 }
 
+func (c *Client) ObjectSize(ctx context.Context, key string) (int64, error) {
+	if key == "" {
+		return 0, errors.New("key is required")
+	}
+	out, err := c.s3.HeadObject(ctx, &s3.HeadObjectInput{
+		Bucket: aws.String(c.bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return 0, err
+	}
+	return aws.ToInt64(out.ContentLength), nil
+}
+
 func (c *Client) CreateMultipartUpload(ctx context.Context, key, contentType string) (string, error) {
 	if key == "" {
 		return "", errors.New("key is required")

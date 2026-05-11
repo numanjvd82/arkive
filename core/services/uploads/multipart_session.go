@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"log"
 	"strings"
 	"time"
 
@@ -91,6 +92,7 @@ func (s *Service) StartMultipartUploadSession(ctx context.Context, userID string
 		validationErrors.Add("totalParts", "total parts does not match original size")
 		return models.UploadStartResponse{}, validationErrors, nil
 	}
+	declaredEncryptedSize := encryptedFileSize(input.OriginalSize, input.TotalParts)
 
 	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
@@ -98,16 +100,17 @@ func (s *Service) StartMultipartUploadSession(ctx context.Context, userID string
 	}
 
 	file, err := s.fileRepo.CreateEncryptedFile(ctx, tx, models.File{
-		UserID:            userID,
-		EncryptedMetadata: []byte{},
-		EncryptedFileKey:  []byte{},
-		EncryptedManifest: []byte{},
-		EncryptionVersion: input.EncryptionVersion,
-		ChunkSize:         input.PartSize,
-		ChunkCount:        input.TotalParts,
-		PlaintextSize:     input.OriginalSize,
-		UploadStatus:      FileUploadUploading,
-		ExpiresAt:         expiresAtPtr(time.Now().Add(s.uploadExpires)),
+		UserID:              userID,
+		EncryptedMetadata:   []byte{},
+		EncryptedFileKey:    []byte{},
+		EncryptedManifest:   []byte{},
+		EncryptionVersion:   input.EncryptionVersion,
+		ChunkSize:           input.PartSize,
+		ChunkCount:          input.TotalParts,
+		PlaintextSize:       input.OriginalSize,
+		ActualEncryptedSize: 0,
+		UploadStatus:        FileUploadUploading,
+		ExpiresAt:           expiresAtPtr(time.Now().Add(s.uploadExpires)),
 	})
 	if err != nil {
 		_ = tx.Rollback(ctx)
@@ -124,7 +127,7 @@ func (s *Service) StartMultipartUploadSession(ctx context.Context, userID string
 		return models.UploadStartResponse{}, nil, err
 	}
 
-	reserved, err := s.storageRepo.ReserveStorage(ctx, tx, userID, input.OriginalSize)
+	reserved, err := s.storageRepo.ReserveStorage(ctx, tx, userID, declaredEncryptedSize)
 	if err != nil {
 		_ = tx.Rollback(ctx)
 		return models.UploadStartResponse{}, nil, err
@@ -313,10 +316,58 @@ func (s *Service) CompleteMultipartUploadSession(ctx context.Context, userID, up
 		_, _ = s.fileRepo.UpdateEncryptedFileStatusIf(ctx, s.db, file.ID, FileUploadFailed, []string{FileUploadUploading, FileUploadPending})
 		return err
 	}
+	actualEncryptedSize, err := objectSizeWithRetry(ctx, func(measureCtx context.Context) (int64, error) {
+		return s.storage.ObjectSize(measureCtx, objectKey)
+	})
+	if err != nil {
+		if deleteErr := s.storage.DeleteObject(ctx, objectKey); deleteErr != nil {
+			log.Printf("uploads: failed to delete object after size lookup failure file=%s key=%s: %v", file.ID, objectKey, deleteErr)
+		}
+		_ = s.uploadRepo.UpdateUploadSessionStatus(ctx, s.db, uploadSessionID, UploadStatusFailed)
+		_, _ = s.fileRepo.UpdateEncryptedFileStatusIf(ctx, s.db, file.ID, FileUploadFailed, []string{FileUploadUploading, FileUploadPending})
+		tx, txErr := s.db.BeginTx(ctx, pgx.TxOptions{})
+		if txErr == nil {
+			_, _ = s.storageRepo.ReleaseReservedStorage(ctx, tx, userID, encryptedFileSize(file.PlaintextSize, file.ChunkCount))
+			_ = tx.Commit(ctx)
+		}
+		return err
+	}
+	reservedSize := encryptedFileSize(file.PlaintextSize, file.ChunkCount)
 
 	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return err
+	}
+	finalized, err := s.storageRepo.FinalizeReservedStorage(ctx, tx, userID, reservedSize, actualEncryptedSize)
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		return err
+	}
+	if !finalized {
+		_ = tx.Rollback(ctx)
+		if deleteErr := s.storage.DeleteObject(ctx, objectKey); deleteErr != nil {
+			log.Printf("uploads: failed to delete object after quota finalize failure file=%s key=%s: %v", file.ID, objectKey, deleteErr)
+		}
+		failTx, failErr := s.db.BeginTx(ctx, pgx.TxOptions{})
+		if failErr != nil {
+			return ErrQuotaExceeded
+		}
+		if err := s.uploadRepo.UpdateUploadSessionStatus(ctx, failTx, uploadSessionID, UploadStatusFailed); err != nil {
+			_ = failTx.Rollback(ctx)
+			return err
+		}
+		if _, err := s.fileRepo.UpdateEncryptedFileStatusIf(ctx, failTx, file.ID, FileUploadFailed, []string{FileUploadUploading, FileUploadPending}); err != nil {
+			_ = failTx.Rollback(ctx)
+			return err
+		}
+		if _, err := s.storageRepo.ReleaseReservedStorage(ctx, failTx, userID, reservedSize); err != nil {
+			_ = failTx.Rollback(ctx)
+			return err
+		}
+		if err := failTx.Commit(ctx); err != nil {
+			return err
+		}
+		return ErrQuotaExceeded
 	}
 	if err := s.uploadRepo.UpdateUploadSessionStatus(ctx, tx, uploadSessionID, UploadStatusCompleted); err != nil {
 		_ = tx.Rollback(ctx)
@@ -326,18 +377,9 @@ func (s *Service) CompleteMultipartUploadSession(ctx context.Context, userID, up
 		_ = tx.Rollback(ctx)
 		return err
 	}
-	if err := s.fileRepo.MarkEncryptedFileComplete(ctx, tx, file.ID, encryptedHash); err != nil {
+	if err := s.fileRepo.MarkEncryptedFileComplete(ctx, tx, file.ID, actualEncryptedSize, encryptedHash); err != nil {
 		_ = tx.Rollback(ctx)
 		return err
-	}
-	committed, err := s.storageRepo.CommitStorage(ctx, tx, userID, file.PlaintextSize)
-	if err != nil {
-		_ = tx.Rollback(ctx)
-		return err
-	}
-	if !committed {
-		_ = tx.Rollback(ctx)
-		return ErrUploadFailed
 	}
 	return tx.Commit(ctx)
 }
@@ -388,7 +430,7 @@ func (s *Service) AbortMultipartUploadSession(ctx context.Context, userID, uploa
 		return err
 	}
 	if updated {
-		released, err := s.storageRepo.ReleaseReservedStorage(ctx, tx, userID, file.PlaintextSize)
+		released, err := s.storageRepo.ReleaseReservedStorage(ctx, tx, userID, encryptedFileSize(file.PlaintextSize, file.ChunkCount))
 		if err != nil {
 			_ = tx.Rollback(ctx)
 			return err

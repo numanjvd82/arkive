@@ -41,6 +41,23 @@ func (r *Repository) CommitStorage(ctx context.Context, db database.PgExecutor, 
 	return tag.RowsAffected() > 0, nil
 }
 
+func (r *Repository) FinalizeReservedStorage(ctx context.Context, db database.PgExecutor, userID string, reservedBytes, actualBytes int64) (bool, error) {
+	query := `UPDATE
+		users
+	SET
+		used_bytes = used_bytes + $3,
+		reserved_bytes = reserved_bytes - $2
+	WHERE
+		id = $1
+		AND reserved_bytes >= $2
+		AND used_bytes + reserved_bytes - $2 + $3 <= quota_bytes`
+	tag, err := db.Exec(ctx, query, userID, reservedBytes, actualBytes)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() > 0, nil
+}
+
 func (r *Repository) ReleaseReservedStorage(ctx context.Context, db database.PgExecutor, userID string, sizeBytes int64) (bool, error) {
 	query := `UPDATE
 		users

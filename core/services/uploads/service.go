@@ -147,7 +147,7 @@ func (s *Service) DeleteFile(ctx context.Context, userID, fileID string) error {
 
 	switch file.UploadStatus {
 	case FileStatusComplete:
-		if err := s.storageRepo.DecreaseUsedStorage(ctx, tx, userID, file.PlaintextSize); err != nil {
+		if err := s.storageRepo.DecreaseUsedStorage(ctx, tx, userID, file.ActualEncryptedSize); err != nil {
 			_ = tx.Rollback(ctx)
 			return err
 		}
@@ -221,7 +221,7 @@ func (s *Service) DeleteFiles(ctx context.Context, userID string, fileIDs []stri
 
 		switch file.UploadStatus {
 		case FileStatusComplete:
-			if err := s.storageRepo.DecreaseUsedStorage(ctx, tx, userID, file.PlaintextSize); err != nil {
+			if err := s.storageRepo.DecreaseUsedStorage(ctx, tx, userID, file.ActualEncryptedSize); err != nil {
 				_ = tx.Rollback(ctx)
 				return 0, err
 			}

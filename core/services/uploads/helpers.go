@@ -1,6 +1,7 @@
 package uploads
 
 import (
+	"context"
 	"strings"
 	"time"
 )
@@ -39,4 +40,24 @@ func encryptedFileSize(plaintextSize int64, chunkCount int) int64 {
 		return 0
 	}
 	return plaintextSize + int64(chunkCount)*encryptedChunkEnvelopeOverheadBytes
+}
+
+func objectSizeWithRetry(ctx context.Context, measure func(context.Context) (int64, error)) (int64, error) {
+	backoffs := []time.Duration{0, 200 * time.Millisecond, 500 * time.Millisecond}
+	var lastErr error
+	for _, backoff := range backoffs {
+		if backoff > 0 {
+			select {
+			case <-ctx.Done():
+				return 0, ctx.Err()
+			case <-time.After(backoff):
+			}
+		}
+		size, err := measure(ctx)
+		if err == nil {
+			return size, nil
+		}
+		lastErr = err
+	}
+	return 0, lastErr
 }
