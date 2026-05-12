@@ -22,3 +22,48 @@ type ShareWithFile struct {
 	FileSizeBytes   int64
 	FileUpdatedAt   time.Time
 }
+
+type ShareLink struct {
+	ID                   string
+	OwnerUserID          string
+	Token                string
+	Slug                 *string
+	Status               string
+	TitleEncrypted       []byte
+	DescriptionEncrypted []byte
+	EncryptedShareKey    []byte
+	CryptoVersion        int16
+	PasswordHash         *string
+	PasswordMode         string
+	ExpiresAt            *time.Time
+	RevokedAt            *time.Time
+	AllowPreview         bool
+	AllowDownload        bool
+	CommentsEnabled      bool
+	ReactionsEnabled     bool
+	BurnAfterRead        bool
+	ShowEXIF             bool
+	ShowLocation         bool
+	StripEXIFDownload    bool
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
+}
+
+type ShareItem struct {
+	ID           string
+	ShareLinkID  string
+	ItemType     string
+	FileID       string
+	DisplayOrder int
+	CreatedAt    time.Time
+}
+
+type ShareSnapshotFile struct {
+	ID                       string
+	ShareItemID              string
+	FileID                   string
+	EncryptedRelativePath    []byte
+	EncryptedFileKeyForShare []byte
+	DisplayOrder             int
+	CreatedAt                time.Time
+}
