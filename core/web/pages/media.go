@@ -55,15 +55,6 @@ func MediaViewPage(props MediaViewPageProps) web.Page {
 									),
 								),
 							),
-							h.Div(
-								h.Class("media-alert"),
-								g.Attr("data-media-status", "true"),
-								lucide.Info(
-									h.Class("media-alert-lucide"),
-									g.Attr("aria-hidden", "true"),
-								),
-								h.Span(g.Text("Decrypting file metadata and preparing preview.")),
-							),
 						),
 						h.Aside(
 							h.Class("media-sidebar"),
@@ -166,6 +157,7 @@ func MediaViewPage(props MediaViewPageProps) web.Page {
 					),
 				),
 			),
+			components.Lightbox(),
 		}),
 	}
 }

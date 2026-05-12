@@ -1,7 +1,6 @@
 (function() {
   const actionsPanel = document.querySelector("[data-media-file-id]");
   const stage = document.querySelector("[data-media-stage='true']");
-  const status = document.querySelector("[data-media-status='true'] span");
   const title = document.querySelector("[data-media-title='true']");
   const typeChip = document.querySelector("[data-media-chip-type='true']");
   const hashValue = document.querySelector("[data-media-hash='true']");
@@ -21,15 +20,18 @@
   const reader = new window.ArkiveFileReader({ fileId: fileId });
   const SMALL_VIDEO_MAX_BYTES = 128 * 1024 * 1024;
   const TEXT_PREVIEW_MAX_BYTES = 2 * 1024 * 1024;
+  let currentPreviewURL = "";
 
-  function setStatus(message) {
-    if (status) {
-      status.textContent = message || "";
-      status.parentElement.classList.toggle("is-hidden", !message);
+  function revokePreviewURL() {
+    if (!currentPreviewURL) {
+      return;
     }
+    URL.revokeObjectURL(currentPreviewURL);
+    currentPreviewURL = "";
   }
 
   function setStage(node) {
+    revokePreviewURL();
     stage.innerHTML = "";
     if (node) {
       stage.appendChild(node);
@@ -95,12 +97,13 @@
   }
 
   function imagePreview(blob, alt, titleText) {
+    const objectURL = URL.createObjectURL(blob);
     const img = document.createElement("img");
     img.className = "media-image";
     img.alt = alt || "Image preview";
-    img.src = URL.createObjectURL(blob);
+    img.src = objectURL;
     img.setAttribute("data-lightbox-trigger", "true");
-    img.setAttribute("data-lightbox-src", img.src);
+    img.setAttribute("data-lightbox-src", objectURL);
     img.setAttribute("data-lightbox-title", titleText || alt || "Image preview");
     img.addEventListener("load", function() {
       setDimensions(img.naturalWidth || 0, img.naturalHeight || 0);
@@ -112,26 +115,29 @@
     button.className = "media-fullscreen-button";
     button.type = "button";
     button.setAttribute("aria-label", "Open full screen");
-    button.setAttribute("data-lightbox-src", img.src);
+    button.setAttribute("data-lightbox-src", objectURL);
     button.setAttribute("data-lightbox-title", titleText || alt || "Image preview");
     button.innerHTML =
       '<svg class="media-fullscreen-lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M16 3h3a2 2 0 0 1 2 2v3"/><path d="M8 21H5a2 2 0 0 1-2-2v-3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>';
     wrap.appendChild(button);
     setStage(wrap);
+    currentPreviewURL = objectURL;
     stage.firstElementChild.classList.add("is-image");
   }
 
   function videoPreview(blob) {
+    const objectURL = URL.createObjectURL(blob);
     const video = document.createElement("video");
     video.className = "media-video plyr";
     video.controls = true;
     video.playsInline = true;
     video.setAttribute("data-video-element", "true");
-    video.src = URL.createObjectURL(blob);
+    video.src = objectURL;
     video.addEventListener("loadedmetadata", function() {
       setDimensions(video.videoWidth || 0, video.videoHeight || 0);
     });
     setStage(video);
+    currentPreviewURL = objectURL;
     if (window.ArkiveInitPlyr) {
       window.ArkiveInitPlyr(video);
     }
@@ -189,33 +195,26 @@
 
     if (mime.startsWith("image/")) {
       imagePreview(await reader.createBlob(), metadata.name, metadata.name);
-      setStatus("");
       return;
     }
     if (mime === "application/pdf") {
       previewUnavailable("PDF preview is not enabled yet. Download is available now.");
-      setStatus("PDF preview unavailable.");
       return;
     }
     if (isTextMime(mime)) {
-      setStatus("Decrypting text preview.");
       textPreview(await reader.textPreview(TEXT_PREVIEW_MAX_BYTES));
-      setStatus("");
       return;
     }
     if (mime.startsWith("video/")) {
       if (Number(metadata.size || record.plaintextSize || 0) > SMALL_VIDEO_MAX_BYTES) {
         previewUnavailable("Encrypted large-video range playback is next step. Download is available now.");
-        setStatus("Large encrypted video. Download recommended.");
         return;
       }
       videoPreview(await reader.createBlob());
-      setStatus("");
       return;
     }
 
     previewUnavailable("This file type does not have an in-browser preview yet.");
-    setStatus("Preview unavailable.");
   }
 
   function fetchExistingShare(fileID) {
@@ -322,13 +321,13 @@
 
   renderPreview().catch(function(error) {
     previewUnavailable("Download is available while preview pipeline finishes loading.");
-    setStatus((error && error.message) || "Preview failed.");
     if (window.Toast) {
       window.Toast.error((error && error.message) || "Preview failed.");
     }
   });
 
   window.addEventListener("pagehide", function() {
+    revokePreviewURL();
     reader.dispose();
   });
 })();
