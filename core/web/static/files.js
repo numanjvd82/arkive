@@ -560,6 +560,38 @@
     });
   }
 
+  function loadFileRecord(fileId) {
+    return fetch("/api/files/" + encodeURIComponent(fileId) + "/record", {
+      method: "GET",
+      headers: { "Content-Type": "application/json" }
+    }).then(function(res) {
+      return res.json().then(function(data) {
+        if (!res.ok) {
+          throw new Error((data && data.error) || "Failed to load file");
+        }
+        return data;
+      });
+    });
+  }
+
+  function createSharePayload(fileId) {
+    if (!window.ArkiveVault || !window.ArkiveVault.prepareShare) {
+      return Promise.reject(new Error("Share encryption is unavailable."));
+    }
+    return window.ArkiveVault.waitUntilReady()
+      .then(function() {
+        return loadFileRecord(fileId);
+      })
+      .then(function(record) {
+        return window.ArkiveVault.prepareShare(record, "").then(function(prepared) {
+          return {
+            encryptedShareKey: String((prepared && prepared.encryptedShareKey) || ""),
+            encryptedFileKeyForShare: String((prepared && prepared.encryptedFileKeyForShare) || ""),
+          };
+        });
+      });
+  }
+
   function openShareDialog(fileId, fileName) {
     activeFileId = fileId;
     if (fileNameEl) {
@@ -685,10 +717,17 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           })
-        : fetch("/api/files/" + encodeURIComponent(activeFileId) + "/share", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({}),
+        : createSharePayload(activeFileId).then(function(cryptoPayload) {
+            return fetch("/api/files/" + encodeURIComponent(activeFileId) + "/share", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                password: payload.password,
+                expiresAt: payload.expiresAt,
+                encryptedShareKey: cryptoPayload.encryptedShareKey,
+                encryptedFileKeyForShare: cryptoPayload.encryptedFileKeyForShare,
+              }),
+            });
           });
 
       request
@@ -701,26 +740,7 @@
           });
         })
         .then(function(data) {
-          if (!activeShareId) {
-            activeShareId = String((data && data.id) || "");
-            if (activeShareId) {
-              return fetch("/api/shares/" + encodeURIComponent(activeShareId), {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-              }).then(function(res) {
-                return res.json().then(function(nextData) {
-                  if (!res.ok) {
-                    throw new Error((nextData && nextData.error) || "Failed to save share");
-                  }
-                  return nextData;
-                });
-              });
-            }
-          }
-          return data;
-        })
-        .then(function(data) {
+          activeShareId = String((data && data.id) || activeShareId || "");
           applyShareState(withAbsoluteURL(data));
           if (passwordInput) {
             passwordInput.value = "";

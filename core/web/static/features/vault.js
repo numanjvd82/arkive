@@ -324,6 +324,18 @@ export function initVault() {
       touchSessionUnlock();
       return callWorker("generateFileKey", {});
     },
+    prepareShare: function(record, token) {
+      touchSessionUnlock();
+      return callWorker("prepareShare", {
+        vaultId: String((record && record.vaultId) || ""),
+        fileId: String((record && record.fileId) || ""),
+        token: String(token || ""),
+        encryptedFileKey: String((record && record.encryptedFileKey) || ""),
+        fileKeyAad: "arkive:file-key:v1:" + String((record && record.vaultId) || "") + ":" + String((record && record.fileId) || ""),
+        shareKeyAad: "arkive:share-key:v1:" + String(token || ""),
+        shareFileKeyAad: "arkive:share-file-key:v1:" + String((record && record.fileId) || "") + ":" + String(token || ""),
+      });
+    },
     prepareUpload: function(uploadToken, vaultId, fileId, metadata, totalParts) {
       touchSessionUnlock();
       return callWorker("prepareUpload", {

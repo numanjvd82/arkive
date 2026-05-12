@@ -173,6 +173,53 @@ async function handleMessage(message) {
         crypto.zeroize(fileKey);
       }
     }
+    case "prepareShare": {
+      if (!unlockedMasterKey) {
+        throw new Error("Vault is locked");
+      }
+      const encryptedFileKey = decodeBase64(message.params.encryptedFileKey);
+      try {
+        const fileKey = crypto.unwrap_file_key(
+          encryptedFileKey,
+          unlockedMasterKey,
+          aadBytes(message.params.fileKeyAad),
+        );
+        try {
+          const shareKey = crypto.generate_share_key();
+          try {
+            const encryptedShareKey = crypto.wrap_file_key(
+              shareKey,
+              unlockedMasterKey,
+              aadBytes(message.params.shareKeyAad),
+            );
+            try {
+              const encryptedFileKeyForShare = crypto.wrap_file_key(
+                fileKey,
+                shareKey,
+                aadBytes(message.params.shareFileKeyAad),
+              );
+              try {
+                return {
+                  encryptedShareKey: encodeBase64(encryptedShareKey),
+                  encryptedFileKeyForShare: encodeBase64(encryptedFileKeyForShare),
+                  cryptoVersion: 1,
+                };
+              } finally {
+                crypto.zeroize(encryptedFileKeyForShare);
+              }
+            } finally {
+              crypto.zeroize(encryptedShareKey);
+            }
+          } finally {
+            crypto.zeroize(shareKey);
+          }
+        } finally {
+          crypto.zeroize(fileKey);
+        }
+      } finally {
+        crypto.zeroize(encryptedFileKey);
+      }
+    }
     case "prepareUpload": {
       const uploadToken = String(message.params.uploadToken || "");
       if (!uploadToken) {

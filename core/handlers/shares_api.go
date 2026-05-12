@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/base64"
 	"net/http"
 	"strings"
 	"time"
@@ -14,9 +15,11 @@ import (
 )
 
 type shareCreateRequest struct {
-	Token     string `json:"token"`
-	ExpiresAt string `json:"expiresAt"`
-	Password  string `json:"password"`
+	Token                    string `json:"token"`
+	ExpiresAt                string `json:"expiresAt"`
+	Password                 string `json:"password"`
+	EncryptedShareKey        string `json:"encryptedShareKey"`
+	EncryptedFileKeyForShare string `json:"encryptedFileKeyForShare"`
 }
 
 type shareUpdateRequest struct {
@@ -56,13 +59,27 @@ func APICreateShare(svc *shares.Service) gin.HandlerFunc {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 			return
 		}
+		if strings.TrimSpace(req.EncryptedShareKey) != "" {
+			if _, err := base64.StdEncoding.DecodeString(strings.TrimSpace(req.EncryptedShareKey)); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+				return
+			}
+		}
+		if strings.TrimSpace(req.EncryptedFileKeyForShare) != "" {
+			if _, err := base64.StdEncoding.DecodeString(strings.TrimSpace(req.EncryptedFileKeyForShare)); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+				return
+			}
+		}
 
 		share, validationErrors, err := svc.CreateShare(c.Request.Context(), shares.CreateInput{
-			FileID:      fileID,
-			OwnerUserID: userID.(string),
-			Token:       req.Token,
-			Password:    req.Password,
-			ExpiresAt:   expiresAt,
+			FileID:                   fileID,
+			OwnerUserID:              userID.(string),
+			Token:                    req.Token,
+			Password:                 req.Password,
+			ExpiresAt:                expiresAt,
+			EncryptedShareKey:        req.EncryptedShareKey,
+			EncryptedFileKeyForShare: req.EncryptedFileKeyForShare,
 		})
 		if err != nil {
 			switch err {

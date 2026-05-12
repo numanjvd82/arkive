@@ -2,6 +2,7 @@ package shares
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"strings"
 	"time"
@@ -29,11 +30,13 @@ type Service struct {
 }
 
 type CreateInput struct {
-	FileID      string
-	OwnerUserID string
-	Token       string
-	Password    string
-	ExpiresAt   *time.Time
+	FileID                   string
+	OwnerUserID              string
+	Token                    string
+	Password                 string
+	ExpiresAt                *time.Time
+	EncryptedShareKey        string
+	EncryptedFileKeyForShare string
 }
 
 func NewService(db database.PgPool, fileRepo *filerepo.Repository, shareRepo *sharerepo.Repository) *Service {
@@ -49,6 +52,8 @@ func (s *Service) CreateShare(ctx context.Context, input CreateInput) (models.Sh
 	input.OwnerUserID = strings.TrimSpace(input.OwnerUserID)
 	input.Token = strings.TrimSpace(input.Token)
 	input.Password = strings.TrimSpace(input.Password)
+	input.EncryptedShareKey = strings.TrimSpace(input.EncryptedShareKey)
+	input.EncryptedFileKeyForShare = strings.TrimSpace(input.EncryptedFileKeyForShare)
 
 	validationErrors := validation.New()
 	if input.OwnerUserID == "" {
@@ -67,6 +72,24 @@ func (s *Service) CreateShare(ctx context.Context, input CreateInput) (models.Sh
 		if message := sharePasswordValidationMessage(input.Password); message != "" {
 			validationErrors.Add("password", message)
 		}
+	}
+	if input.EncryptedShareKey == "" {
+		validationErrors.Add("encryptedShareKey", "encrypted share key is required")
+	}
+	if input.EncryptedFileKeyForShare == "" {
+		validationErrors.Add("encryptedFileKeyForShare", "encrypted file key for share is required")
+	}
+	if validationErrors.HasAny() {
+		return models.Share{}, validationErrors, nil
+	}
+
+	encryptedShareKey, err := base64.StdEncoding.DecodeString(input.EncryptedShareKey)
+	if err != nil || len(encryptedShareKey) == 0 {
+		validationErrors.Add("encryptedShareKey", "encrypted share key must be base64")
+	}
+	encryptedFileKeyForShare, err := base64.StdEncoding.DecodeString(input.EncryptedFileKeyForShare)
+	if err != nil || len(encryptedFileKeyForShare) == 0 {
+		validationErrors.Add("encryptedFileKeyForShare", "encrypted file key for share must be base64")
 	}
 	if validationErrors.HasAny() {
 		return models.Share{}, validationErrors, nil
@@ -112,15 +135,46 @@ func (s *Service) CreateShare(ctx context.Context, input CreateInput) (models.Sh
 		passwordHash = &hashStr
 	}
 
-	share := models.Share{
-		FileID:       input.FileID,
-		OwnerUserID:  input.OwnerUserID,
-		Token:        token,
-		PasswordHash: passwordHash,
-		ExpiresAt:    input.ExpiresAt,
-		Status:       ShareStatusActive,
+	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return models.Share{}, nil, err
 	}
-	created, err := s.shareRepo.CreateShare(ctx, s.db, share)
+	shareLink, err := s.shareRepo.CreateShareLink(ctx, tx, sharerepo.CreateShareLinkInput{
+		OwnerUserID:       input.OwnerUserID,
+		Token:             token,
+		EncryptedShareKey: encryptedShareKey,
+		CryptoVersion:     1,
+		PasswordHash:      passwordHash,
+		ExpiresAt:         input.ExpiresAt,
+		Status:            ShareStatusActive,
+	})
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		return models.Share{}, nil, err
+	}
+	shareItem, err := s.shareRepo.CreateShareItem(ctx, tx, sharerepo.CreateShareItemInput{
+		ShareLinkID:  shareLink.ID,
+		ItemType:     "file",
+		FileID:       input.FileID,
+		DisplayOrder: 0,
+	})
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		return models.Share{}, nil, err
+	}
+	if _, err := s.shareRepo.CreateShareSnapshotFile(ctx, tx, sharerepo.CreateShareSnapshotFileInput{
+		ShareItemID:              shareItem.ID,
+		FileID:                   input.FileID,
+		EncryptedFileKeyForShare: encryptedFileKeyForShare,
+		DisplayOrder:             0,
+	}); err != nil {
+		_ = tx.Rollback(ctx)
+		return models.Share{}, nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return models.Share{}, nil, err
+	}
+	created, err := s.shareRepo.GetShareForUser(ctx, s.db, shareLink.ID, input.OwnerUserID)
 	if err != nil {
 		return models.Share{}, nil, err
 	}

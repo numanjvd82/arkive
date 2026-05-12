@@ -15,32 +15,36 @@ func (r *Repository) SearchSharesForUser(ctx context.Context, db database.PgExec
 	}
 	pattern := "%" + query + "%"
 	rows, err := db.Query(ctx, `SELECT
-		s.id,
-		s.file_id,
-		s.owner_user_id,
-		s.token,
-		s.password_hash,
-		s.expires_at,
-		s.status,
-		s.revoked_at,
-		s.created_at,
-		s.updated_at,
+		sl.id,
+		ssf.file_id,
+		sl.owner_user_id,
+		sl.token,
+		sl.password_hash,
+		sl.expires_at,
+		sl.status,
+		sl.revoked_at,
+		sl.created_at,
+		sl.updated_at,
 		concat('file-', left(f.id::text, 8)),
 		'application/octet-stream',
 		f.plaintext_size,
 		f.updated_at
 	FROM
-		shares s
+		share_links sl
 	JOIN
-		files f ON f.id = s.file_id
+		share_items si ON si.share_link_id = sl.id
+	JOIN
+		share_snapshot_files ssf ON ssf.share_item_id = si.id
+	JOIN
+		files f ON f.id = ssf.file_id
 	WHERE
-		s.owner_user_id = $1
+		sl.owner_user_id = $1
 		AND (
 			f.id::text ILIKE $2
-			OR s.token ILIKE $2
+			OR sl.token ILIKE $2
 		)
 	ORDER BY
-		s.updated_at DESC
+		sl.updated_at DESC
 	LIMIT $3`, ownerUserID, pattern, limit)
 	if err != nil {
 		return nil, err
