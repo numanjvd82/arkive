@@ -6,12 +6,14 @@ import { ArkiveFileReader } from "./features/file_reader.js";
 import { initFileListHydrator } from "./features/file_list_hydrator.js";
 import { initLightbox } from "./features/lightbox.js";
 import { initSearchPalette } from "./features/search_palette.js";
+import { ArkiveShareReader } from "./features/share_reader.js";
 import { initSidebar } from "./features/sidebar.js";
 import { initToast } from "./features/toast.js";
 import { initUploads } from "./features/uploads.js";
 import { initVault } from "./features/vault.js";
 
 window.ArkiveFileReader = ArkiveFileReader;
+window.ArkiveShareReader = ArkiveShareReader;
 
 function initTheme() {
   const modes = ["dark", "system", "light"];

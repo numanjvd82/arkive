@@ -202,6 +202,7 @@ async function handleMessage(message) {
                 return {
                   encryptedShareKey: encodeBase64(encryptedShareKey),
                   encryptedFileKeyForShare: encodeBase64(encryptedFileKeyForShare),
+                  shareSecret: encodeBase64(shareKey),
                   cryptoVersion: 1,
                 };
               } finally {
@@ -218,6 +219,26 @@ async function handleMessage(message) {
         }
       } finally {
         crypto.zeroize(encryptedFileKey);
+      }
+    }
+    case "openShareKey": {
+      if (!unlockedMasterKey) {
+        throw new Error("Vault is locked");
+      }
+      const encryptedShareKey = decodeBase64(message.params.encryptedShareKey);
+      try {
+        const shareKey = crypto.unwrap_file_key(
+          encryptedShareKey,
+          unlockedMasterKey,
+          aadBytes(message.params.shareKeyAad),
+        );
+        try {
+          return { shareSecret: encodeBase64(shareKey) };
+        } finally {
+          crypto.zeroize(shareKey);
+        }
+      } finally {
+        crypto.zeroize(encryptedShareKey);
       }
     }
     case "prepareUpload": {

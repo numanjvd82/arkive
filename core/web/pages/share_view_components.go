@@ -18,6 +18,7 @@ func buildPublicShareJS() []string {
 	return []string{
 		"/static/vendor/plyr/plyr.polyfilled.js",
 		"/static/plyr.js",
+		"/static/public_share.js",
 	}
 }
 
@@ -35,6 +36,7 @@ func renderPublicShareHeader() g.Node {
 func renderPublicShareCard(props PublicShareViewProps) g.Node {
 	return h.Section(
 		h.Class("public-share-card"),
+		g.Attr("data-public-share-token", props.Token),
 		renderPublicSharePreview(props),
 		h.Div(
 			h.Class("public-share-meta"),
@@ -45,6 +47,7 @@ func renderPublicShareCard(props PublicShareViewProps) g.Node {
 					publicShareTypeIcon(props),
 					h.H1(
 						h.Class("public-share-name"),
+						g.Attr("data-public-share-name", "true"),
 						g.Text(publicShareName(props)),
 					),
 				),
@@ -56,6 +59,8 @@ func renderPublicShareCard(props PublicShareViewProps) g.Node {
 							g.Attr("aria-hidden", "true"),
 						),
 						publicShareSizeText(props),
+						"public-share-fact-label",
+						"data-public-share-size",
 					),
 					renderPublicShareSeparator(),
 					renderPublicShareFact(
@@ -80,6 +85,7 @@ func renderPublicShareCard(props PublicShareViewProps) g.Node {
 				h.Class("public-share-actions"),
 				h.A(
 					h.Class("public-share-download"),
+					g.Attr("id", "public-share-download"),
 					h.Href(props.DownloadURL),
 					lucide.Download(
 						h.Class("public-share-download-icon"),
@@ -95,6 +101,7 @@ func renderPublicShareCard(props PublicShareViewProps) g.Node {
 func renderPublicSharePreview(props PublicShareViewProps) g.Node {
 	return h.Div(
 		h.Class("public-share-preview"),
+		g.Attr("id", "public-share-preview"),
 		renderPublicSharePreviewMedia(props),
 		h.Div(
 			h.Class("public-share-badge"),
@@ -188,13 +195,21 @@ func renderPublicShareFooter() g.Node {
 
 func renderPublicShareFact(icon g.Node, text string, classNames ...string) g.Node {
 	labelClass := "public-share-fact-label"
+	attrName := ""
 	if len(classNames) > 0 && strings.TrimSpace(classNames[0]) != "" {
 		labelClass = strings.TrimSpace(classNames[0])
+	}
+	if len(classNames) > 1 && strings.TrimSpace(classNames[1]) != "" {
+		attrName = strings.TrimSpace(classNames[1])
 	}
 	return h.Div(
 		h.Class("public-share-fact"),
 		icon,
-		h.Span(h.Class(labelClass), g.Text(text)),
+		h.Span(
+			h.Class(labelClass),
+			g.If(attrName != "", g.Attr(attrName, "true")),
+			g.Text(text),
+		),
 	)
 }
 

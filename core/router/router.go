@@ -91,6 +91,7 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 		api.POST("/auth/unlock", middleware.RequireSessionJSON(authService), handlers.APIUnlockVault(authService))
 		api.GET("/me", middleware.RequireSessionJSON(authService), handlers.APIMe(authService))
 		api.GET("/health", handlers.Health(db))
+		api.GET("/public/shares/:token", handlers.APIPublicShareRecord(shareService, uploadService))
 		api.GET("/search", middleware.RequireSessionJSON(authService), handlers.APISearch(uploadService, shareService))
 	}
 

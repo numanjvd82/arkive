@@ -12,6 +12,7 @@ import (
 )
 
 type PublicShareViewProps struct {
+	Token         string
 	File          models.File
 	ViewURL       string
 	DownloadURL   string

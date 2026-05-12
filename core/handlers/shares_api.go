@@ -107,14 +107,15 @@ func APICreateShare(svc *shares.Service) gin.HandlerFunc {
 
 		status, expired := shareStatus(share)
 		c.JSON(http.StatusCreated, gin.H{
-			"id":          share.ID,
-			"fileId":      share.FileID,
-			"token":       share.Token,
-			"expiresAt":   share.ExpiresAt,
-			"hasPassword": share.PasswordHash != nil,
-			"status":      status,
-			"isExpired":   expired,
-			"createdAt":   share.CreatedAt,
+			"id":                share.ID,
+			"fileId":            share.FileID,
+			"token":             share.Token,
+			"encryptedShareKey": base64.StdEncoding.EncodeToString(share.EncryptedShareKey),
+			"expiresAt":         share.ExpiresAt,
+			"hasPassword":       share.PasswordHash != nil,
+			"status":            status,
+			"isExpired":         expired,
+			"createdAt":         share.CreatedAt,
 		})
 	}
 }
@@ -176,14 +177,15 @@ func APIUpdateShare(svc *shares.Service) gin.HandlerFunc {
 
 		status, expired := shareStatus(share)
 		c.JSON(http.StatusOK, gin.H{
-			"id":          share.ID,
-			"fileId":      share.FileID,
-			"token":       share.Token,
-			"expiresAt":   share.ExpiresAt,
-			"hasPassword": share.PasswordHash != nil,
-			"status":      status,
-			"isExpired":   expired,
-			"createdAt":   share.CreatedAt,
+			"id":                share.ID,
+			"fileId":            share.FileID,
+			"token":             share.Token,
+			"encryptedShareKey": base64.StdEncoding.EncodeToString(share.EncryptedShareKey),
+			"expiresAt":         share.ExpiresAt,
+			"hasPassword":       share.PasswordHash != nil,
+			"status":            status,
+			"isExpired":         expired,
+			"createdAt":         share.CreatedAt,
 		})
 	}
 }
@@ -217,14 +219,15 @@ func APIGetShareForFile(svc *shares.Service) gin.HandlerFunc {
 
 		status, expired := shareStatus(share)
 		c.JSON(http.StatusOK, gin.H{
-			"id":          share.ID,
-			"fileId":      share.FileID,
-			"token":       share.Token,
-			"expiresAt":   share.ExpiresAt,
-			"hasPassword": share.PasswordHash != nil,
-			"status":      status,
-			"isExpired":   expired,
-			"createdAt":   share.CreatedAt,
+			"id":                share.ID,
+			"fileId":            share.FileID,
+			"token":             share.Token,
+			"encryptedShareKey": base64.StdEncoding.EncodeToString(share.EncryptedShareKey),
+			"expiresAt":         share.ExpiresAt,
+			"hasPassword":       share.PasswordHash != nil,
+			"status":            status,
+			"isExpired":         expired,
+			"createdAt":         share.CreatedAt,
 		})
 	}
 }

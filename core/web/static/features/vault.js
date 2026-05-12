@@ -336,6 +336,13 @@ export function initVault() {
         shareFileKeyAad: "arkive:share-file-key:v1:" + String((record && record.fileId) || "") + ":" + String(token || ""),
       });
     },
+    openShareKey: function(encryptedShareKey, token) {
+      touchSessionUnlock();
+      return callWorker("openShareKey", {
+        encryptedShareKey: String(encryptedShareKey || ""),
+        shareKeyAad: "arkive:share-key:v1:" + String(token || ""),
+      });
+    },
     prepareUpload: function(uploadToken, vaultId, fileId, metadata, totalParts) {
       touchSessionUnlock();
       return callWorker("prepareUpload", {

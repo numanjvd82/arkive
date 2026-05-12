@@ -444,6 +444,7 @@
 
   let activeFileId = null;
   let activeShareId = "";
+  let activeShareSecret = "";
 
   if (!shareButtons.length || !backdrop || !saveButton || !statusEl) {
     return;
@@ -547,6 +548,7 @@
       passwordInput.value = "";
     }
     activeShareId = "";
+    activeShareSecret = "";
     setShareError("");
     setSaveState("", "");
   }
@@ -555,8 +557,11 @@
     if (!data || !data.token) {
       return data;
     }
+    const hasPassword = !!data.hasPassword;
+    const shareSecret = String((data && data.shareSecret) || activeShareSecret || "");
+    const hash = !hasPassword && shareSecret ? "#s=" + encodeURIComponent(shareSecret) : "";
     return Object.assign({}, data, {
-      url: window.location.origin + "/s/" + data.token
+      url: window.location.origin + "/s/" + data.token + hash
     });
   }
 
@@ -574,7 +579,17 @@
     });
   }
 
-  function createSharePayload(fileId) {
+  function createRandomShareToken() {
+    const bytes = new Uint8Array(24);
+    window.crypto.getRandomValues(bytes);
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  }
+
+  function createSharePayload(fileId, token) {
     if (!window.ArkiveVault || !window.ArkiveVault.prepareShare) {
       return Promise.reject(new Error("Share encryption is unavailable."));
     }
@@ -583,10 +598,11 @@
         return loadFileRecord(fileId);
       })
       .then(function(record) {
-        return window.ArkiveVault.prepareShare(record, "").then(function(prepared) {
+        return window.ArkiveVault.prepareShare(record, token).then(function(prepared) {
           return {
             encryptedShareKey: String((prepared && prepared.encryptedShareKey) || ""),
             encryptedFileKeyForShare: String((prepared && prepared.encryptedFileKeyForShare) || ""),
+            shareSecret: String((prepared && prepared.shareSecret) || ""),
           };
         });
       });
@@ -615,6 +631,20 @@
           }
           return data;
         });
+      })
+      .then(function(data) {
+        if (data && !data.hasPassword && data.encryptedShareKey && window.ArkiveVault && window.ArkiveVault.openShareKey) {
+          return window.ArkiveVault.waitUntilReady()
+            .then(function() {
+              return window.ArkiveVault.openShareKey(data.encryptedShareKey, data.token || "");
+            })
+            .then(function(result) {
+              activeShareSecret = String((result && result.shareSecret) || "");
+              return data;
+            });
+        }
+        activeShareSecret = "";
+        return data;
       })
       .then(function(data) {
         applyShareState(withAbsoluteURL(data));
@@ -717,18 +747,23 @@
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           })
-        : createSharePayload(activeFileId).then(function(cryptoPayload) {
+        : (function() {
+            const token = createRandomShareToken();
+            return createSharePayload(activeFileId, token).then(function(cryptoPayload) {
+            activeShareSecret = String((cryptoPayload && cryptoPayload.shareSecret) || "");
             return fetch("/api/files/" + encodeURIComponent(activeFileId) + "/share", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
+                token: token,
                 password: payload.password,
                 expiresAt: payload.expiresAt,
                 encryptedShareKey: cryptoPayload.encryptedShareKey,
                 encryptedFileKeyForShare: cryptoPayload.encryptedFileKeyForShare,
               }),
             });
-          });
+            });
+          })();
 
       request
         .then(function(res) {

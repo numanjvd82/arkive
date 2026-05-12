@@ -83,8 +83,26 @@
   copyButtons.forEach(function(button) {
     button.addEventListener("click", function() {
       const value = button.getAttribute("data-share-copy") || "";
-      const fullValue = value.indexOf("http") === 0 ? value : window.location.origin + value;
-      writeToClipboard(fullValue)
+      const token = button.getAttribute("data-share-token") || "";
+      const hasPassword = button.getAttribute("data-share-has-password") === "true";
+      const encryptedKey = button.getAttribute("data-share-encrypted-key") || "";
+      const baseURL = value.indexOf("http") === 0 ? value : window.location.origin + value;
+      const linkPromise = (!hasPassword && encryptedKey && window.ArkiveVault && window.ArkiveVault.openShareKey)
+        ? window.ArkiveVault.waitUntilReady()
+            .then(function() {
+              return window.ArkiveVault.openShareKey(encryptedKey, token);
+            })
+            .then(function(result) {
+              const shareSecret = String((result && result.shareSecret) || "");
+              if (!shareSecret) {
+                return baseURL;
+              }
+              return baseURL + "#s=" + encodeURIComponent(shareSecret);
+            })
+        : Promise.resolve(baseURL);
+      linkPromise.then(function(fullValue) {
+        return writeToClipboard(fullValue);
+      })
         .then(function() {
           if (window.Toast) {
             window.Toast.success("Link copied.", { title: "Copied" });

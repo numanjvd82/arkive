@@ -95,3 +95,15 @@ func (s *Service) PresignShareDownloadForFile(ctx context.Context, file models.F
 	}
 	return s.storage.PresignDownload(ctx, objectKey, file.ID, "attachment", expiry)
 }
+
+func (s *Service) PresignShareSourceForFile(ctx context.Context, file models.File) (string, error) {
+	expiry := s.shareDownloadExpire
+	if expiry <= 0 {
+		expiry = s.downloadExpire
+	}
+	objectKey, err := storage.BuildObjectKey(file.UserID, file.ID)
+	if err != nil {
+		return "", err
+	}
+	return s.storage.PresignDownload(ctx, objectKey, "ciphertext.bin", "inline", expiry)
+}

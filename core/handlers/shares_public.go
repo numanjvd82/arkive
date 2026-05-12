@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/base64"
 	"errors"
 	"net/http"
 	"strings"
@@ -134,6 +135,90 @@ func PublicShareUnlock(shareService *shares.Service, uploadService *uploads.Serv
 	}
 }
 
+func APIPublicShareRecord(shareService *shares.Service, uploadService *uploads.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token := strings.TrimSpace(c.Param("token"))
+		if token == "" {
+			c.JSON(http.StatusNotFound, gin.H{"error": "share not found"})
+			return
+		}
+
+		share, err := shareService.GetShareByToken(c.Request.Context(), token)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				c.JSON(http.StatusNotFound, gin.H{"error": "share not found"})
+				return
+			}
+			_ = c.Error(errs.WithStack(err))
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "share lookup failed"})
+			return
+		}
+		if share.Status != shares.ShareStatusActive {
+			c.JSON(http.StatusNotFound, gin.H{"error": "share not found"})
+			return
+		}
+		if share.PasswordHash != nil {
+			c.JSON(http.StatusForbidden, gin.H{"error": "share access denied"})
+			return
+		}
+		if share.ExpiresAt != nil && !share.ExpiresAt.After(time.Now()) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "share not found"})
+			return
+		}
+
+		file, err := uploadService.GetFileForShare(c.Request.Context(), share.FileID)
+		if err != nil {
+			switch err {
+			case uploads.ErrNotFound, uploads.ErrUploadCancelled:
+				c.JSON(http.StatusNotFound, gin.H{"error": "share not found"})
+			case uploads.ErrInvalidInput:
+				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			default:
+				_ = c.Error(errs.WithStack(err))
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "share lookup failed"})
+			}
+			return
+		}
+
+		sourceURL, err := uploadService.PresignShareSourceForFile(c.Request.Context(), file)
+		if err != nil {
+			_ = c.Error(errs.WithStack(err))
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "share source failed"})
+			return
+		}
+
+		record, err := shareService.GetPublicShareRecord(c.Request.Context(), token)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				c.JSON(http.StatusNotFound, gin.H{"error": "share not found"})
+				return
+			}
+			_ = c.Error(errs.WithStack(err))
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "share record failed"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"shareId":                  record.ShareID,
+			"token":                    record.Token,
+			"fileId":                   record.FileID,
+			"vaultId":                  record.VaultID,
+			"encryptionVersion":        record.EncryptionVersion,
+			"chunkSize":                record.ChunkSize,
+			"totalChunks":              record.TotalChunks,
+			"plaintextSize":            record.PlaintextSize,
+			"encryptedHash":            base64.StdEncoding.EncodeToString(record.EncryptedHash),
+			"encryptedMetadata":        base64.StdEncoding.EncodeToString(record.EncryptedMetadata),
+			"encryptedManifest":        base64.StdEncoding.EncodeToString(record.EncryptedManifest),
+			"encryptedFileKeyForShare": base64.StdEncoding.EncodeToString(record.EncryptedFileKeyForShare),
+			"sourceUrl":                sourceURL,
+			"shareFileKeyAad":          "arkive:share-file-key:v1:" + record.FileID + ":" + record.Token,
+			"metadataAad":              "arkive:file-metadata:v1:" + record.VaultID + ":" + record.FileID,
+			"manifestAad":              "arkive:file-manifest:v1:" + record.VaultID + ":" + record.FileID,
+		})
+	}
+}
+
 func renderShareLanding(c *gin.Context, uploadService *uploads.Service, token string, share models.Share, file models.File) {
 	viewURL := ""
 	isImage := false
@@ -148,6 +233,7 @@ func renderShareLanding(c *gin.Context, uploadService *uploads.Service, token st
 
 	shareURL := buildShareURL(c, token)
 	web.Render(c, pages.PublicShareViewPage(pages.PublicShareViewProps{
+		Token:       token,
 		File:        file,
 		ViewURL:     viewURL,
 		DownloadURL: downloadURL,
