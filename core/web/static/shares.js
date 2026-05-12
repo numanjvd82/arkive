@@ -82,15 +82,30 @@
 
   copyButtons.forEach(function(button) {
     button.addEventListener("click", function() {
+      const shareId = button.getAttribute("data-share-id") || "";
       const value = button.getAttribute("data-share-copy") || "";
       const token = button.getAttribute("data-share-token") || "";
-      const hasPassword = button.getAttribute("data-share-has-password") === "true";
-      const encryptedKey = button.getAttribute("data-share-encrypted-key") || "";
       const baseURL = value.indexOf("http") === 0 ? value : window.location.origin + value;
-      const linkPromise = (!hasPassword && encryptedKey && window.ArkiveVault && window.ArkiveVault.openShareKey)
-        ? window.ArkiveVault.waitUntilReady()
-            .then(function() {
-              return window.ArkiveVault.openShareKey(encryptedKey, token);
+      const linkPromise = (shareId && window.ArkiveVault && window.ArkiveVault.openShareKey)
+        ? fetch("/api/shares/" + encodeURIComponent(shareId) + "/crypto-record", {
+            method: "GET",
+            headers: { "Content-Type": "application/json" }
+          })
+            .then(function(res) {
+              return res.json().then(function(data) {
+                if (!res.ok) {
+                  throw new Error((data && data.error) || "Failed to load share");
+                }
+                return data;
+              });
+            })
+            .then(function(record) {
+              return window.ArkiveVault.waitUntilReady().then(function() {
+                return record;
+              });
+            })
+            .then(function(record) {
+              return window.ArkiveVault.openShareKey(record.encryptedShareKey || "", record.token || token);
             })
             .then(function(result) {
               const shareSecret = String((result && result.shareSecret) || "");

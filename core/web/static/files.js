@@ -557,9 +557,8 @@
     if (!data || !data.token) {
       return data;
     }
-    const hasPassword = !!data.hasPassword;
     const shareSecret = String((data && data.shareSecret) || activeShareSecret || "");
-    const hash = !hasPassword && shareSecret ? "#s=" + encodeURIComponent(shareSecret) : "";
+    const hash = shareSecret ? "#s=" + encodeURIComponent(shareSecret) : "";
     return Object.assign({}, data, {
       url: window.location.origin + "/s/" + data.token + hash
     });
@@ -633,7 +632,7 @@
         });
       })
       .then(function(data) {
-        if (data && !data.hasPassword && data.encryptedShareKey && window.ArkiveVault && window.ArkiveVault.openShareKey) {
+        if (data && data.encryptedShareKey && window.ArkiveVault && window.ArkiveVault.openShareKey) {
           return window.ArkiveVault.waitUntilReady()
             .then(function() {
               return window.ArkiveVault.openShareKey(data.encryptedShareKey, data.token || "");

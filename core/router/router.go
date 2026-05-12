@@ -69,8 +69,8 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 	r.POST("/setup", handlers.WebSetupPost(setupService))
 	r.GET("/setup/recovery-key", handlers.WebSetupRecoveryGet(setupService))
 	r.POST("/setup/recovery-key", handlers.WebSetupRecoveryPost(setupService))
-	r.GET("/s/:token", handlers.PublicShareView(shareService, uploadService))
-	r.POST("/s/:token", handlers.PublicShareUnlock(shareService, uploadService))
+	r.GET("/s/:token", handlers.PublicShareView(shareService, uploadService, cfg.CookieSecret))
+	r.POST("/s/:token", handlers.PublicShareUnlock(shareService, uploadService, cfg.CookieSecret))
 	r.GET("/login", handlers.WebLoginGet(authService, setupService))
 	protected := r.Group("/")
 	protected.Use(middleware.RequireSessionRedirect(authService))
@@ -91,7 +91,7 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 		api.POST("/auth/unlock", middleware.RequireSessionJSON(authService), handlers.APIUnlockVault(authService))
 		api.GET("/me", middleware.RequireSessionJSON(authService), handlers.APIMe(authService))
 		api.GET("/health", handlers.Health(db))
-		api.GET("/public/shares/:token", handlers.APIPublicShareRecord(shareService, uploadService))
+		api.GET("/public/shares/:token", handlers.APIPublicShareRecord(shareService, uploadService, cfg.CookieSecret))
 		api.GET("/search", middleware.RequireSessionJSON(authService), handlers.APISearch(uploadService, shareService))
 	}
 
@@ -122,6 +122,7 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 	apiShares.Use(middleware.RequireSessionJSON(authService))
 	{
 		apiShares.PATCH("/:id", handlers.APIUpdateShare(shareService))
+		apiShares.GET("/:id/crypto-record", handlers.APIGetShareCryptoRecord(shareService))
 		apiShares.DELETE("/:id", handlers.APIDeleteShare(shareService))
 	}
 

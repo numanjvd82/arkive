@@ -145,7 +145,7 @@ func (r *Repository) CreateShareSnapshotFile(ctx context.Context, db database.Pg
 func (r *Repository) GetShareByToken(ctx context.Context, db database.PgExecutor, token string) (models.Share, error) {
 	var share models.Share
 	query := `SELECT
-		sl.id, ssf.file_id, sl.owner_user_id, sl.token, sl.encrypted_share_key, sl.password_hash, sl.expires_at,
+		sl.id, ssf.file_id, sl.owner_user_id, sl.token, sl.encrypted_share_key, sl.allow_preview, sl.allow_download, sl.burn_after_read, sl.password_hash, sl.expires_at,
 		sl.status, sl.revoked_at, sl.created_at, sl.updated_at
 	FROM
 		share_links sl
@@ -154,13 +154,19 @@ func (r *Repository) GetShareByToken(ctx context.Context, db database.PgExecutor
 	JOIN
 		share_snapshot_files ssf ON ssf.share_item_id = si.id
 	WHERE
-		sl.token = $1`
+		sl.token = $1
+	ORDER BY
+		ssf.display_order ASC
+	LIMIT 1`
 	if err := db.QueryRow(ctx, query, token).Scan(
 		&share.ID,
 		&share.FileID,
 		&share.OwnerUserID,
 		&share.Token,
 		&share.EncryptedShareKey,
+		&share.AllowPreview,
+		&share.AllowDownload,
+		&share.BurnAfterRead,
 		&share.PasswordHash,
 		&share.ExpiresAt,
 		&share.Status,
@@ -176,7 +182,7 @@ func (r *Repository) GetShareByToken(ctx context.Context, db database.PgExecutor
 func (r *Repository) GetShareForFile(ctx context.Context, db database.PgExecutor, fileID string) (models.Share, error) {
 	var share models.Share
 	query := `SELECT
-		sl.id, ssf.file_id, sl.owner_user_id, sl.token, sl.encrypted_share_key, sl.password_hash, sl.expires_at,
+		sl.id, ssf.file_id, sl.owner_user_id, sl.token, sl.encrypted_share_key, sl.allow_preview, sl.allow_download, sl.burn_after_read, sl.password_hash, sl.expires_at,
 		sl.status, sl.revoked_at, sl.created_at, sl.updated_at
 	FROM
 		share_links sl
@@ -185,13 +191,19 @@ func (r *Repository) GetShareForFile(ctx context.Context, db database.PgExecutor
 	JOIN
 		share_snapshot_files ssf ON ssf.share_item_id = si.id
 	WHERE
-		ssf.file_id = $1`
+		ssf.file_id = $1
+	ORDER BY
+		ssf.display_order ASC
+	LIMIT 1`
 	if err := db.QueryRow(ctx, query, fileID).Scan(
 		&share.ID,
 		&share.FileID,
 		&share.OwnerUserID,
 		&share.Token,
 		&share.EncryptedShareKey,
+		&share.AllowPreview,
+		&share.AllowDownload,
+		&share.BurnAfterRead,
 		&share.PasswordHash,
 		&share.ExpiresAt,
 		&share.Status,
@@ -207,7 +219,7 @@ func (r *Repository) GetShareForFile(ctx context.Context, db database.PgExecutor
 func (r *Repository) GetShareForFileForUser(ctx context.Context, db database.PgExecutor, fileID, ownerUserID string) (models.Share, error) {
 	var share models.Share
 	query := `SELECT
-		sl.id, ssf.file_id, sl.owner_user_id, sl.token, sl.encrypted_share_key, sl.password_hash, sl.expires_at,
+		sl.id, ssf.file_id, sl.owner_user_id, sl.token, sl.encrypted_share_key, sl.allow_preview, sl.allow_download, sl.burn_after_read, sl.password_hash, sl.expires_at,
 		sl.status, sl.revoked_at, sl.created_at, sl.updated_at
 	FROM
 		share_links sl
@@ -216,13 +228,19 @@ func (r *Repository) GetShareForFileForUser(ctx context.Context, db database.PgE
 	JOIN
 		share_snapshot_files ssf ON ssf.share_item_id = si.id
 	WHERE
-		ssf.file_id = $1 AND sl.owner_user_id = $2`
+		ssf.file_id = $1 AND sl.owner_user_id = $2
+	ORDER BY
+		ssf.display_order ASC
+	LIMIT 1`
 	if err := db.QueryRow(ctx, query, fileID, ownerUserID).Scan(
 		&share.ID,
 		&share.FileID,
 		&share.OwnerUserID,
 		&share.Token,
 		&share.EncryptedShareKey,
+		&share.AllowPreview,
+		&share.AllowDownload,
+		&share.BurnAfterRead,
 		&share.PasswordHash,
 		&share.ExpiresAt,
 		&share.Status,
@@ -238,7 +256,7 @@ func (r *Repository) GetShareForFileForUser(ctx context.Context, db database.PgE
 func (r *Repository) GetShareForUser(ctx context.Context, db database.PgExecutor, shareID, ownerUserID string) (models.Share, error) {
 	var share models.Share
 	query := `SELECT
-		sl.id, ssf.file_id, sl.owner_user_id, sl.token, sl.encrypted_share_key, sl.password_hash, sl.expires_at,
+		sl.id, ssf.file_id, sl.owner_user_id, sl.token, sl.encrypted_share_key, sl.allow_preview, sl.allow_download, sl.burn_after_read, sl.password_hash, sl.expires_at,
 		sl.status, sl.revoked_at, sl.created_at, sl.updated_at
 	FROM
 		share_links sl
@@ -247,13 +265,19 @@ func (r *Repository) GetShareForUser(ctx context.Context, db database.PgExecutor
 	JOIN
 		share_snapshot_files ssf ON ssf.share_item_id = si.id
 	WHERE
-		sl.id = $1 AND sl.owner_user_id = $2`
+		sl.id = $1 AND sl.owner_user_id = $2
+	ORDER BY
+		ssf.display_order ASC
+	LIMIT 1`
 	if err := db.QueryRow(ctx, query, shareID, ownerUserID).Scan(
 		&share.ID,
 		&share.FileID,
 		&share.OwnerUserID,
 		&share.Token,
 		&share.EncryptedShareKey,
+		&share.AllowPreview,
+		&share.AllowDownload,
+		&share.BurnAfterRead,
 		&share.PasswordHash,
 		&share.ExpiresAt,
 		&share.Status,
@@ -277,13 +301,16 @@ func (r *Repository) UpdateShareForUser(ctx context.Context, db database.PgExecu
 	WHERE
 		id = $1 AND owner_user_id = $2 AND status = 'active'
 	RETURNING
-		id, owner_user_id, token, encrypted_share_key, password_hash, expires_at, status, revoked_at, created_at, updated_at`
+		id, owner_user_id, token, encrypted_share_key, allow_preview, allow_download, burn_after_read, password_hash, expires_at, status, revoked_at, created_at, updated_at`
 	var shareIDValue string
 	if err := db.QueryRow(ctx, query, shareID, ownerUserID, passwordHash, expiresAt).Scan(
 		&shareIDValue,
 		&share.OwnerUserID,
 		&share.Token,
 		&share.EncryptedShareKey,
+		&share.AllowPreview,
+		&share.AllowDownload,
+		&share.BurnAfterRead,
 		&share.PasswordHash,
 		&share.ExpiresAt,
 		&share.Status,
@@ -321,6 +348,9 @@ func (r *Repository) ListSharesForUser(ctx context.Context, db database.PgExecut
 		sl.owner_user_id,
 		sl.token,
 		sl.encrypted_share_key,
+		sl.allow_preview,
+		sl.allow_download,
+		sl.burn_after_read,
 		sl.password_hash,
 		sl.expires_at,
 		sl.status,
@@ -357,6 +387,9 @@ func (r *Repository) ListSharesForUser(ctx context.Context, db database.PgExecut
 			&share.OwnerUserID,
 			&share.Token,
 			&share.EncryptedShareKey,
+			&share.AllowPreview,
+			&share.AllowDownload,
+			&share.BurnAfterRead,
 			&share.PasswordHash,
 			&share.ExpiresAt,
 			&share.Status,
@@ -402,7 +435,10 @@ func (r *Repository) GetPublicShareRecord(ctx context.Context, db database.PgExe
 	JOIN
 		files f ON f.id = ssf.file_id
 	WHERE
-		sl.token = $1`
+		sl.token = $1
+	ORDER BY
+		ssf.display_order ASC
+	LIMIT 1`
 	if err := db.QueryRow(ctx, query, token).Scan(
 		&record.ShareID,
 		&record.Token,

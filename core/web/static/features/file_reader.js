@@ -166,6 +166,8 @@ export class ArkiveFileReader {
   async download() {
     await this.load();
     const filename = (this.metadata && this.metadata.name) || "download.bin";
+    const size = Number((this.metadata && this.metadata.size) || this.record.plaintextSize || 0);
+    const blobDownloadMaxBytes = 64 * 1024 * 1024;
     if (window.showSaveFilePicker) {
       const handle = await window.showSaveFilePicker({
         suggestedName: filename,
@@ -180,6 +182,9 @@ export class ArkiveFileReader {
         await writable.close();
       }
       return;
+    }
+    if (size > blobDownloadMaxBytes) {
+      throw new Error("Browser download is disabled for large files without direct-save support.");
     }
     const blob = await this.createBlob();
     const url = URL.createObjectURL(blob);

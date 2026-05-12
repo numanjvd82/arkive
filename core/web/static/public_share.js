@@ -5,6 +5,7 @@
   const nameEl = document.querySelector("[data-public-share-name='true']");
   const sizeEl = document.querySelector("[data-public-share-size='true']");
   const SMALL_VIDEO_MAX_BYTES = 128 * 1024 * 1024;
+  const IMAGE_PREVIEW_MAX_BYTES = 50 * 1024 * 1024;
   const TEXT_PREVIEW_MAX_BYTES = 2 * 1024 * 1024;
   let currentPreviewURL = "";
 
@@ -78,8 +79,8 @@
     button.setAttribute("data-lightbox-title", titleText || "Shared image");
     button.innerHTML = '<svg class="media-fullscreen-lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M16 3h3a2 2 0 0 1 2 2v3"/><path d="M8 21H5a2 2 0 0 1-2-2v-3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>';
     wrap.appendChild(button);
-    currentPreviewURL = objectURL;
     setPreview(wrap);
+    currentPreviewURL = objectURL;
   }
 
   function videoPreview(blob) {
@@ -90,8 +91,8 @@
     video.playsInline = true;
     video.setAttribute("data-video-element", "true");
     video.src = objectURL;
-    currentPreviewURL = objectURL;
     setPreview(video);
+    currentPreviewURL = objectURL;
     if (window.ArkiveInitPlyr) {
       window.ArkiveInitPlyr(video);
     }
@@ -124,7 +125,14 @@
   if (download) {
     download.addEventListener("click", function(event) {
       event.preventDefault();
-      reader.download().catch(function() {});
+      if (reader.record && reader.record.allowDownload === false) {
+        return;
+      }
+      reader.download().catch(function(error) {
+        if (window.Toast) {
+          window.Toast.error((error && error.message) || "Download failed.");
+        }
+      });
     });
   }
 
@@ -133,7 +141,18 @@
       const metadata = reader.getMetadata();
       updateMetadata(metadata, Number(metadata.size || reader.record.plaintextSize || 0));
       const mime = String((metadata && metadata.mime) || "").toLowerCase();
+      if (reader.record && reader.record.allowDownload === false && download) {
+        download.setAttribute("aria-disabled", "true");
+      }
+      if (reader.record && reader.record.allowPreview === false) {
+        unavailable("Preview is disabled for this share.");
+        return;
+      }
       if (mime.indexOf("image/") === 0) {
+        if (Number(metadata.size || reader.record.plaintextSize || 0) > IMAGE_PREVIEW_MAX_BYTES) {
+          unavailable("Large image preview is disabled. Download is available.");
+          return;
+        }
         return reader.createBlob().then(function(blob) {
           imagePreview(blob, metadata.name || "Shared image");
         });

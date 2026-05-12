@@ -201,6 +201,25 @@ func (s *Service) GetShareForFileForUser(ctx context.Context, fileID, ownerUserI
 	return s.shareRepo.GetShareForFileForUser(ctx, s.db, fileID, ownerUserID)
 }
 
+func (s *Service) GetShareForUser(ctx context.Context, shareID, ownerUserID string) (models.Share, error) {
+	shareID = strings.TrimSpace(shareID)
+	ownerUserID = strings.TrimSpace(ownerUserID)
+	if ownerUserID == "" {
+		return models.Share{}, ErrUnauthorized
+	}
+	if shareID == "" {
+		return models.Share{}, ErrInvalidInput
+	}
+	share, err := s.shareRepo.GetShareForUser(ctx, s.db, shareID, ownerUserID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.Share{}, ErrNotFound
+		}
+		return models.Share{}, err
+	}
+	return share, nil
+}
+
 func (s *Service) UpdateShareForUser(ctx context.Context, shareID, ownerUserID string, expiresAt *time.Time, password string, requirePassword bool) (models.Share, validation.Errors, error) {
 	shareID = strings.TrimSpace(shareID)
 	ownerUserID = strings.TrimSpace(ownerUserID)

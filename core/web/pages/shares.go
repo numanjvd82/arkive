@@ -1,7 +1,6 @@
 package pages
 
 import (
-	"encoding/base64"
 	"fmt"
 	"strings"
 	"time"
@@ -209,9 +208,9 @@ func renderShareList(items []models.ShareWithFile, total, expiringSoonCount, rev
 						h.Class("shares-copy-button"),
 						h.Type("button"),
 						g.Attr("data-share-copy", sharePath),
+						g.Attr("data-share-id", item.ID),
 						g.Attr("data-share-token", item.Token),
 						g.Attr("data-share-has-password", boolString(item.PasswordHash != nil)),
-						g.Attr("data-share-encrypted-key", base64String(item.EncryptedShareKey)),
 						g.Attr("aria-label", "Copy share link"),
 						lucide.Copy(
 							h.Class("shares-lucide shares-lucide-copy"),
@@ -294,11 +293,4 @@ func boolString(value bool) string {
 		return "true"
 	}
 	return "false"
-}
-
-func base64String(value []byte) string {
-	if len(value) == 0 {
-		return ""
-	}
-	return base64.StdEncoding.EncodeToString(value)
 }

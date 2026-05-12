@@ -8,6 +8,9 @@ type Share struct {
 	OwnerUserID       string
 	Token             string
 	EncryptedShareKey []byte
+	AllowPreview      bool
+	AllowDownload     bool
+	BurnAfterRead     bool
 	PasswordHash      *string
 	ExpiresAt         *time.Time
 	Status            string

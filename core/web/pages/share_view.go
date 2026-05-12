@@ -43,7 +43,7 @@ func PublicShareViewPage(props PublicShareViewProps) web.Page {
 					renderPublicShareCard(props),
 					renderPublicShareChecksum(props),
 				),
-				g.If(props.IsImage, components.Lightbox()),
+				components.Lightbox(),
 			),
 			renderPublicShareFooter(),
 		}),

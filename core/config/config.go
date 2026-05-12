@@ -7,10 +7,11 @@ import (
 )
 
 type Config struct {
-	DatabaseURL string
-	Port        string
-	SessionTTL  time.Duration
-	Env         string
+	DatabaseURL  string
+	Port         string
+	SessionTTL   time.Duration
+	CookieSecret string
+	Env          string
 }
 
 func Load() (Config, error) {
@@ -22,6 +23,10 @@ func Load() (Config, error) {
 	sessionTTL, err := parseDurationEnv("SESSION_TTL")
 	if err != nil {
 		return Config{}, err
+	}
+	cookieSecret := os.Getenv("COOKIE_SECRET")
+	if cookieSecret == "" {
+		return Config{}, errors.New("COOKIE_SECRET is required")
 	}
 
 	addr := ":8080"
@@ -35,10 +40,11 @@ func Load() (Config, error) {
 	}
 
 	return Config{
-		DatabaseURL: dsn,
-		Port:        addr,
-		SessionTTL:  sessionTTL,
-		Env:         env,
+		DatabaseURL:  dsn,
+		Port:         addr,
+		SessionTTL:   sessionTTL,
+		CookieSecret: cookieSecret,
+		Env:          env,
 	}, nil
 }
 func parseDurationEnv(key string) (time.Duration, error) {

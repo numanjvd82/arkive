@@ -201,6 +201,8 @@ export class UploadRunner {
 				manifest: {
 					schema: "arkive.file.manifest",
 					version: 1,
+					hash_alg: "blake3",
+					hash_encoding: "base64",
 					file_id: started.fileId,
 					name: job.file.name,
 					mime: job.file.type || "application/octet-stream",

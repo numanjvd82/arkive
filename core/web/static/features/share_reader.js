@@ -182,7 +182,11 @@ export class ArkiveShareReader {
       if (expectedHash) {
         const actualHash = crypto.hash_bytes_blake3(encryptedBytes);
         try {
-          if (encodeBase64(actualHash) !== expectedHash) {
+          const hashEncoding = String((this.manifest && this.manifest.hash_encoding) || "base64").toLowerCase();
+          const actual = hashEncoding === "hex"
+            ? Array.from(actualHash).map(function(byte) { return byte.toString(16).padStart(2, "0"); }).join("")
+            : encodeBase64(actualHash);
+          if (actual !== expectedHash) {
             throw new Error("Encrypted chunk hash mismatch");
           }
         } finally {
@@ -252,6 +256,8 @@ export class ArkiveShareReader {
   async download() {
     await this.load();
     const filename = (this.metadata && this.metadata.name) || "download.bin";
+    const size = Number((this.metadata && this.metadata.size) || this.record.plaintextSize || 0);
+    const blobDownloadMaxBytes = 64 * 1024 * 1024;
     if (window.showSaveFilePicker) {
       const handle = await window.showSaveFilePicker({
         suggestedName: filename,
@@ -266,6 +272,9 @@ export class ArkiveShareReader {
         await writable.close();
       }
       return;
+    }
+    if (size > blobDownloadMaxBytes) {
+      throw new Error("Browser download is disabled for large files without direct-save support.");
     }
     const blob = await this.createBlob();
     const url = URL.createObjectURL(blob);

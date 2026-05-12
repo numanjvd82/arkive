@@ -1,9 +1,12 @@
 package handlers
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
 	"encoding/base64"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,10 +19,16 @@ import (
 	"arkive/core/services/uploads"
 	"arkive/core/web"
 	"arkive/core/web/pages"
+	"arkive/pkg/cookies"
 	"arkive/pkg/errs"
 )
 
-func PublicShareView(shareService *shares.Service, uploadService *uploads.Service) gin.HandlerFunc {
+const (
+	shareAccessCookieName = "arkive_share_access"
+	shareAccessTTL        = 15 * time.Minute
+)
+
+func PublicShareView(shareService *shares.Service, uploadService *uploads.Service, cookieSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := strings.TrimSpace(c.Param("token"))
 		if token == "" {
@@ -61,7 +70,7 @@ func PublicShareView(shareService *shares.Service, uploadService *uploads.Servic
 			return
 		}
 
-		if share.PasswordHash != nil {
+		if share.PasswordHash != nil && !hasShareAccess(c, share, cookieSecret) {
 			web.Render(c, pages.PublicSharePassword(pages.PublicSharePasswordProps{
 				Token: token,
 				File:  file,
@@ -73,7 +82,7 @@ func PublicShareView(shareService *shares.Service, uploadService *uploads.Servic
 	}
 }
 
-func PublicShareUnlock(shareService *shares.Service, uploadService *uploads.Service) gin.HandlerFunc {
+func PublicShareUnlock(shareService *shares.Service, uploadService *uploads.Service, cookieSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := strings.TrimSpace(c.Param("token"))
 		if token == "" {
@@ -115,13 +124,17 @@ func PublicShareUnlock(shareService *shares.Service, uploadService *uploads.Serv
 			return
 		}
 
-		if share.PasswordHash == nil {
+		if share.PasswordHash == nil || hasShareAccess(c, share, cookieSecret) {
 			renderShareLanding(c, uploadService, token, share, file)
 			return
 		}
 
 		password := strings.TrimSpace(c.PostForm("password"))
 		if password == "" || bcrypt.CompareHashAndPassword([]byte(*share.PasswordHash), []byte(password)) != nil {
+			if isJSONShareRequest(c) {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "Password is incorrect."})
+				return
+			}
 			c.Status(http.StatusUnauthorized)
 			web.Render(c, pages.PublicSharePassword(pages.PublicSharePasswordProps{
 				Token:   token,
@@ -131,11 +144,16 @@ func PublicShareUnlock(shareService *shares.Service, uploadService *uploads.Serv
 			return
 		}
 
+		setShareAccess(c, share, cookieSecret)
+		if isJSONShareRequest(c) {
+			c.Status(http.StatusNoContent)
+			return
+		}
 		renderShareLanding(c, uploadService, token, share, file)
 	}
 }
 
-func APIPublicShareRecord(shareService *shares.Service, uploadService *uploads.Service) gin.HandlerFunc {
+func APIPublicShareRecord(shareService *shares.Service, uploadService *uploads.Service, cookieSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := strings.TrimSpace(c.Param("token"))
 		if token == "" {
@@ -157,7 +175,11 @@ func APIPublicShareRecord(shareService *shares.Service, uploadService *uploads.S
 			c.JSON(http.StatusNotFound, gin.H{"error": "share not found"})
 			return
 		}
-		if share.PasswordHash != nil {
+		if share.PasswordHash != nil && !hasShareAccess(c, share, cookieSecret) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "share access denied"})
+			return
+		}
+		if !share.AllowPreview && !share.AllowDownload {
 			c.JSON(http.StatusForbidden, gin.H{"error": "share access denied"})
 			return
 		}
@@ -212,6 +234,8 @@ func APIPublicShareRecord(shareService *shares.Service, uploadService *uploads.S
 			"encryptedManifest":        base64.StdEncoding.EncodeToString(record.EncryptedManifest),
 			"encryptedFileKeyForShare": base64.StdEncoding.EncodeToString(record.EncryptedFileKeyForShare),
 			"sourceUrl":                sourceURL,
+			"allowPreview":             share.AllowPreview,
+			"allowDownload":            share.AllowDownload,
 			"shareFileKeyAad":          "arkive:share-file-key:v1:" + record.FileID + ":" + record.Token,
 			"metadataAad":              "arkive:file-metadata:v1:" + record.VaultID + ":" + record.FileID,
 			"manifestAad":              "arkive:file-manifest:v1:" + record.VaultID + ":" + record.FileID,
@@ -230,6 +254,9 @@ func renderShareLanding(c *gin.Context, uploadService *uploads.Service, token st
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
+	if !share.AllowDownload {
+		downloadURL = "#"
+	}
 
 	shareURL := buildShareURL(c, token)
 	web.Render(c, pages.PublicShareViewPage(pages.PublicShareViewProps{
@@ -243,6 +270,66 @@ func renderShareLanding(c *gin.Context, uploadService *uploads.Service, token st
 		ShareURL:    shareURL,
 		SharedAt:    share.CreatedAt,
 	}))
+}
+
+func hasShareAccess(c *gin.Context, share models.Share, cookieSecret string) bool {
+	if share.PasswordHash == nil {
+		return true
+	}
+	cookie, err := c.Request.Cookie(shareAccessCookieName)
+	if err != nil || cookie == nil {
+		return false
+	}
+	parts := strings.Split(cookie.Value, ".")
+	if len(parts) != 2 {
+		return false
+	}
+	payloadBytes, err := base64.RawURLEncoding.DecodeString(parts[0])
+	if err != nil {
+		return false
+	}
+	payload := string(payloadBytes)
+	payloadParts := strings.Split(payload, ":")
+	if len(payloadParts) != 2 {
+		return false
+	}
+	if payloadParts[0] != share.Token {
+		return false
+	}
+	expiresUnix, err := strconv.ParseInt(payloadParts[1], 10, 64)
+	if err != nil || expiresUnix <= time.Now().Unix() {
+		return false
+	}
+	expected := signShareAccessPayload(payload, cookieSecret)
+	return hmac.Equal([]byte(parts[1]), []byte(expected))
+}
+
+func setShareAccess(c *gin.Context, share models.Share, cookieSecret string) {
+	if share.PasswordHash == nil {
+		return
+	}
+	expiresAt := time.Now().Add(shareAccessTTL)
+	payload := share.Token + ":" + strconv.FormatInt(expiresAt.Unix(), 10)
+	value := base64.RawURLEncoding.EncodeToString([]byte(payload)) + "." + signShareAccessPayload(payload, cookieSecret)
+	cookies.SetCustom(c, shareAccessCookieName, value, expiresAt, isSecureRequest(c))
+}
+
+func signShareAccessPayload(payload, secret string) string {
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write([]byte(payload))
+	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+}
+
+func isJSONShareRequest(c *gin.Context) bool {
+	return strings.EqualFold(strings.TrimSpace(c.GetHeader("X-Requested-With")), "XMLHttpRequest")
+}
+
+func isSecureRequest(c *gin.Context) bool {
+	if c.Request.TLS != nil {
+		return true
+	}
+	forwarded := strings.ToLower(strings.TrimSpace(strings.Split(c.GetHeader("X-Forwarded-Proto"), ",")[0]))
+	return forwarded == "https"
 }
 
 func buildShareURL(c *gin.Context, token string) string {

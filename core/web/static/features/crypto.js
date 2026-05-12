@@ -7,7 +7,7 @@ export function getArkiveCrypto() {
 
   cryptoReadyPromise = import("../vendor/arkive-crypto/arkive_crypto.js")
     .then(function(mod) {
-      return mod.default("/static/vendor/arkive-crypto/arkive_crypto_bg.wasm")
+      return mod.default({ module_or_path: "/static/vendor/arkive-crypto/arkive_crypto_bg.wasm" })
         .then(function() {
           return mod;
         });
