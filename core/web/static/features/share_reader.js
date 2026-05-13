@@ -9,27 +9,6 @@ function createContextId() {
   return "share-reader-" + Date.now() + "-" + Math.random().toString(36).slice(2);
 }
 
-function decodeBase64(value) {
-  const normalized = String(value || "").trim();
-  if (!normalized) {
-    return new Uint8Array();
-  }
-  const binary = atob(normalized);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes;
-}
-
-function bytesToBase64(bytes) {
-  let binary = "";
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
-
 function bytesToText(bytes) {
   return new TextDecoder().decode(bytes);
 }
@@ -42,7 +21,6 @@ export class ArkiveShareReader {
     this.record = null;
     this.metadata = null;
     this.manifest = null;
-    this.fileKey = null;
     this.chunkMap = [];
     this.loadPromise = null;
   }
@@ -62,11 +40,10 @@ export class ArkiveShareReader {
     if (!this.shareSecret) {
       throw new Error("Missing share secret");
     }
-    if (!window.ArkiveCrypto || typeof window.ArkiveCrypto.ready !== "function") {
-      throw new Error("Crypto is unavailable");
+    if (!window.ArkiveVault || typeof window.ArkiveVault.openPublicShareContext !== "function") {
+      throw new Error("Share crypto is unavailable");
     }
 
-    const crypto = await window.ArkiveCrypto.ready();
     const response = await fetch("/api/public/shares/" + encodeURIComponent(this.token), {
       method: "GET",
       headers: { "Content-Type": "application/json" },
@@ -77,43 +54,13 @@ export class ArkiveShareReader {
     }
 
     this.record = data;
-    const shareKey = decodeBase64(this.shareSecret);
-    const encryptedFileKeyForShare = decodeBase64(data.encryptedFileKeyForShare);
-    const encryptedMetadata = decodeBase64(data.encryptedMetadata);
-    const encryptedManifest = decodeBase64(data.encryptedManifest);
-
-    try {
-      const fileKey = crypto.unwrap_file_key(
-        encryptedFileKeyForShare,
-        shareKey,
-        new TextEncoder().encode(String(data.shareFileKeyAad || "")),
-      );
-      this.fileKey = fileKey.slice();
-
-      const metadataBytes = crypto.decrypt_chunk(
-        encryptedMetadata,
-        fileKey,
-        new TextEncoder().encode(String(data.metadataAad || "")),
-      );
-      const manifestBytes = crypto.decrypt_chunk(
-        encryptedManifest,
-        fileKey,
-        new TextEncoder().encode(String(data.manifestAad || "")),
-      );
-
-      try {
-        this.metadata = JSON.parse(bytesToText(metadataBytes) || "{}");
-        this.manifest = JSON.parse(bytesToText(manifestBytes) || "{}");
-      } finally {
-        crypto.zeroize(metadataBytes);
-        crypto.zeroize(manifestBytes);
-      }
-    } finally {
-      crypto.zeroize(shareKey);
-      crypto.zeroize(encryptedFileKeyForShare);
-      crypto.zeroize(encryptedMetadata);
-      crypto.zeroize(encryptedManifest);
-    }
+    const opened = await window.ArkiveVault.openPublicShareContext(
+      this.contextId,
+      data,
+      this.shareSecret,
+    );
+    this.metadata = JSON.parse(opened.metadata || "{}");
+    this.manifest = JSON.parse(opened.manifest || "{}");
 
     this.chunkMap = buildChunkMap(
       this.manifest,
@@ -124,13 +71,10 @@ export class ArkiveShareReader {
   }
 
   async dispose() {
-    if (!this.fileKey || !window.ArkiveCrypto || typeof window.ArkiveCrypto.ready !== "function") {
+    if (!window.ArkiveVault || typeof window.ArkiveVault.closePublicShareContext !== "function") {
       return;
     }
-    const fileKey = this.fileKey;
-    this.fileKey = null;
-    const crypto = await window.ArkiveCrypto.ready();
-    crypto.zeroize(fileKey);
+    await window.ArkiveVault.closePublicShareContext(this.contextId).catch(function() {});
   }
 
   getMetadata() {
@@ -161,37 +105,14 @@ export class ArkiveShareReader {
   }
 
   async decryptChunk(mappedChunk, encryptedBytes) {
-    const crypto = await window.ArkiveCrypto.ready();
-    try {
-      const expectedHash = String(mappedChunk.hash || "");
-      if (expectedHash) {
-        const actualHash = crypto.hash_bytes_blake3(encryptedBytes);
-        try {
-          const hashEncoding = String((this.manifest && this.manifest.hash_encoding) || "base64").toLowerCase();
-          const actual = hashEncoding === "hex"
-            ? Array.from(actualHash).map(function(byte) { return byte.toString(16).padStart(2, "0"); }).join("")
-            : bytesToBase64(actualHash);
-          if (actual !== expectedHash) {
-            throw new Error("Encrypted chunk hash mismatch");
-          }
-        } finally {
-          crypto.zeroize(actualHash);
-        }
-      }
-
-      const chunkBytes = crypto.decrypt_chunk(
-        encryptedBytes,
-        this.fileKey,
-        new TextEncoder().encode(mappedChunk.aad || this.chunkAAD(mappedChunk.index)),
-      );
-      try {
-        return chunkBytes.slice();
-      } finally {
-        crypto.zeroize(chunkBytes);
-      }
-    } finally {
-      crypto.zeroize(encryptedBytes);
-    }
+    const result = await window.ArkiveVault.decryptPublicShareChunk(
+      this.contextId,
+      encryptedBytes,
+      mappedChunk.aad || this.chunkAAD(mappedChunk.index),
+      mappedChunk.hash || "",
+      String((this.manifest && this.manifest.hash_encoding) || "base64"),
+    );
+    return result.chunkBytes;
   }
 
   async readChunk(index) {
@@ -268,6 +189,7 @@ export class ArkiveShareReader {
       warningContainer: settings.warningContainer || null,
       onProgress: settings.onProgress,
       signal: settings.signal,
+      readAhead: true,
     });
   }
 

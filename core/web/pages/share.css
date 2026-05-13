@@ -387,23 +387,8 @@
   font-size: 0.9rem;
 }
 
-.public-share-download-progress {
-  display: grid;
-  gap: 8px;
-}
-
-.public-share-download-progress progress {
-  width: 100%;
-}
-
-.public-share-download-progress span {
-  color: #87929a;
-  font-size: 12px;
-  line-height: 1.4;
-}
-
-.public-share-download-progress[hidden] {
-  display: none;
+.public-share-download-queue {
+  margin-top: 0;
 }
 
 .public-share-checksum {

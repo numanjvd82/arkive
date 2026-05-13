@@ -93,14 +93,7 @@ func renderPublicShareCard(props PublicShareViewProps) g.Node {
 					),
 					h.Span(g.Text("Download File")),
 				),
-				h.Div(g.Attr("id", "download-warning")),
-				h.Div(
-					h.Class("public-share-download-progress"),
-					g.Attr("id", "download-progress"),
-					g.Attr("hidden", "hidden"),
-					h.Progress(g.Attr("value", "0"), g.Attr("max", "100")),
-					h.Span(g.Attr("data-download-progress-text", "true"), g.Text("")),
-				),
+				renderDownloadStatus("public-share-download-queue"),
 			),
 		),
 	)

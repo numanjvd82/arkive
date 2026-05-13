@@ -442,23 +442,8 @@
   font-size: 0.9rem;
 }
 
-.media-download-progress {
-  display: grid;
-  gap: 8px;
-}
-
-.media-download-progress progress {
-  width: 100%;
-}
-
-.media-download-progress span {
-  color: var(--muted);
-  font-size: var(--text-body-sm-size);
-  line-height: var(--text-body-sm-lh);
-}
-
-.media-download-progress[hidden] {
-  display: none;
+.media-download-queue {
+  margin-top: 0;
 }
 
 .media-actions-panel .button {

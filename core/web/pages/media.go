@@ -36,6 +36,7 @@ func MediaViewPage(props MediaViewPageProps) web.Page {
 		ActiveNav:          "files",
 		Body: g.Group([]g.Node{
 			components.InlineStyle(components.InputCSS),
+			components.InlineStyle(components.UploadUICSS),
 			h.Main(
 				h.Class("media-view"),
 				h.Div(
@@ -152,14 +153,7 @@ func MediaViewPage(props MediaViewPageProps) web.Page {
 										ID:      "media-delete-button",
 									}),
 								),
-								h.Div(g.Attr("id", "download-warning")),
-								h.Div(
-									h.Class("media-download-progress"),
-									g.Attr("id", "download-progress"),
-									g.Attr("hidden", "hidden"),
-									h.Progress(g.Attr("value", "0"), g.Attr("max", "100")),
-									h.Span(g.Attr("data-download-progress-text", "true"), g.Text("")),
-								),
+								renderDownloadStatus("media-download-queue"),
 							),
 						),
 					),

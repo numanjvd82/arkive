@@ -4,6 +4,7 @@ let readyPromise = null;
 let unlockedMasterKey = null;
 let activeUploads = new Map();
 let activeReaders = new Map();
+let activeShareReaders = new Map();
 
 function ensureCrypto() {
   if (readyPromise) {
@@ -76,6 +77,10 @@ function lockVault(crypto) {
     crypto.zeroize(fileKey);
   });
   activeReaders.clear();
+  activeShareReaders.forEach(function(fileKey) {
+    crypto.zeroize(fileKey);
+  });
+  activeShareReaders.clear();
 }
 
 function activeMasterKey(supplied) {
@@ -436,6 +441,64 @@ async function handleMessage(message) {
       }
       return { cleared: true };
     }
+    case "openPublicShareContext": {
+      const contextID = String(message.params.contextId || "");
+      if (!contextID) {
+        throw new Error("Missing share context");
+      }
+      const shareSecret = decodeBase64(message.params.shareSecret);
+      const encryptedFileKeyForShare = decodeBase64(message.params.encryptedFileKeyForShare);
+      const encryptedMetadata = decodeBase64(message.params.encryptedMetadata);
+      const encryptedManifest = decodeBase64(message.params.encryptedManifest);
+      try {
+        const fileKey = crypto.unwrap_file_key(
+          encryptedFileKeyForShare,
+          shareSecret,
+          aadBytes(message.params.shareFileKeyAad),
+        );
+        try {
+          const metadataBytes = crypto.decrypt_chunk(
+            encryptedMetadata,
+            fileKey,
+            aadBytes(message.params.metadataAad),
+          );
+          try {
+            const manifestBytes = crypto.decrypt_chunk(
+              encryptedManifest,
+              fileKey,
+              aadBytes(message.params.manifestAad),
+            );
+            try {
+              activeShareReaders.set(contextID, fileKey.slice());
+              return {
+                metadata: new TextDecoder().decode(metadataBytes),
+                manifest: new TextDecoder().decode(manifestBytes),
+              };
+            } finally {
+              crypto.zeroize(manifestBytes);
+            }
+          } finally {
+            crypto.zeroize(metadataBytes);
+          }
+        } finally {
+          crypto.zeroize(fileKey);
+        }
+      } finally {
+        crypto.zeroize(shareSecret);
+        crypto.zeroize(encryptedFileKeyForShare);
+        crypto.zeroize(encryptedMetadata);
+        crypto.zeroize(encryptedManifest);
+      }
+    }
+    case "closePublicShareContext": {
+      const contextID = String(message.params.contextId || "");
+      const fileKey = activeShareReaders.get(contextID);
+      if (fileKey) {
+        crypto.zeroize(fileKey);
+        activeShareReaders.delete(contextID);
+      }
+      return { cleared: true };
+    }
     case "decryptFileChunk": {
       const contextID = String(message.params.contextId || "");
       const fileKey = activeReaders.get(contextID);
@@ -449,6 +512,43 @@ async function handleMessage(message) {
           const actualHash = crypto.hash_bytes_blake3(encryptedChunk);
           try {
             if (encodeBase64(actualHash) !== expectedHash) {
+              throw new Error("Encrypted chunk hash mismatch");
+            }
+          } finally {
+            crypto.zeroize(actualHash);
+          }
+        }
+        const chunkBytes = crypto.decrypt_chunk(
+          encryptedChunk,
+          fileKey,
+          aadBytes(message.params.aad),
+        );
+        try {
+          return { chunkBytes: chunkBytes.slice() };
+        } finally {
+          crypto.zeroize(chunkBytes);
+        }
+      } finally {
+        crypto.zeroize(encryptedChunk);
+      }
+    }
+    case "decryptPublicShareChunk": {
+      const contextID = String(message.params.contextId || "");
+      const fileKey = activeShareReaders.get(contextID);
+      if (!fileKey) {
+        throw new Error("Share context is missing");
+      }
+      const encryptedChunk = toUint8Array(message.params.encryptedChunk);
+      try {
+        const expectedHash = String(message.params.expectedHash || "");
+        if (expectedHash) {
+          const actualHash = crypto.hash_bytes_blake3(encryptedChunk);
+          try {
+            const hashEncoding = String(message.params.hashEncoding || "base64").toLowerCase();
+            const actual = hashEncoding === "hex"
+              ? Array.from(actualHash).map(function(byte) { return byte.toString(16).padStart(2, "0"); }).join("")
+              : encodeBase64(actualHash);
+            if (actual !== expectedHash) {
               throw new Error("Encrypted chunk hash mismatch");
             }
           } finally {

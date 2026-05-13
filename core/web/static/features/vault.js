@@ -400,6 +400,38 @@ export function initVault() {
         contextId: String(contextId || ""),
       });
     },
+    openPublicShareContext: function(contextId, record, shareSecret) {
+      return callWorker("openPublicShareContext", {
+        contextId: String(contextId || ""),
+        shareSecret: String(shareSecret || ""),
+        encryptedFileKeyForShare: String((record && record.encryptedFileKeyForShare) || ""),
+        encryptedMetadata: String((record && record.encryptedMetadata) || ""),
+        encryptedManifest: String((record && record.encryptedManifest) || ""),
+        shareFileKeyAad: String((record && record.shareFileKeyAad) || ""),
+        metadataAad: String((record && record.metadataAad) || ""),
+        manifestAad: String((record && record.manifestAad) || ""),
+      });
+    },
+    closePublicShareContext: function(contextId) {
+      return callWorker("closePublicShareContext", {
+        contextId: String(contextId || ""),
+      });
+    },
+    decryptPublicShareChunk: function(contextId, encryptedChunk, aad, expectedHash, hashEncoding) {
+      const payload =
+        encryptedChunk instanceof Uint8Array
+          ? encryptedChunk.slice()
+          : encryptedChunk instanceof ArrayBuffer
+            ? encryptedChunk.slice(0)
+            : encryptedChunk;
+      return callWorker("decryptPublicShareChunk", {
+        contextId: String(contextId || ""),
+        encryptedChunk: payload,
+        aad: aad || "",
+        expectedHash: expectedHash || "",
+        hashEncoding: hashEncoding || "base64",
+      }, transferList([payload]));
+    },
     decryptFileChunk: function(contextId, encryptedChunk, aad, expectedHash) {
       touchSessionUnlock();
       const payload =

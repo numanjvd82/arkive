@@ -35,6 +35,7 @@ func PublicShareViewPage(props PublicShareViewProps) web.Page {
 		JS:      buildPublicShareJS(),
 		HideNav: true,
 		Body: g.Group([]g.Node{
+			components.InlineStyle(components.UploadUICSS),
 			h.Main(
 				h.Class("public-share-page"),
 				h.Div(
