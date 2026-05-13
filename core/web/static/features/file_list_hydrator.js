@@ -79,47 +79,10 @@ async function updateGridPreview(card, metadata, reader) {
   if (!previewEl) {
     return;
   }
-  const mime = String((metadata && metadata.mime) || "").toLowerCase();
-  if (!mime.startsWith("image/") && !mime.startsWith("video/")) {
-    clearPreview(previewEl);
-    return;
-  }
-  try {
-    const blob = await reader.createBlob();
-    clearPreview(previewEl);
-    const icon = previewEl.querySelector("[data-file-field='icon']");
-    if (icon) {
-      icon.hidden = true;
-    }
-    previewEl.classList.add("has-media");
-    if (mime.startsWith("image/")) {
-      const image = document.createElement("img");
-      image.setAttribute("data-file-preview-media", "true");
-      image.className = "files-card-preview-media";
-      image.alt = metadata && metadata.name ? metadata.name : "File preview";
-      image.src = URL.createObjectURL(blob);
-      image.addEventListener("load", function() {
-        window.setTimeout(function() {
-          URL.revokeObjectURL(image.src);
-        }, 1000);
-      }, { once: true });
-      previewEl.appendChild(image);
-      return;
-    }
-    const video = document.createElement("video");
-    video.setAttribute("data-file-preview-media", "true");
-    video.className = "files-card-preview-media";
-    video.muted = true;
-    video.playsInline = true;
-    video.preload = "metadata";
-    video.src = URL.createObjectURL(blob);
-    video.addEventListener("loadeddata", function() {
-      video.currentTime = 0;
-    }, { once: true });
-    previewEl.appendChild(video);
-  } catch (_) {
-    clearPreview(previewEl);
-  }
+  void metadata;
+  void reader;
+  // Grid cards stay metadata-only until Arkive has bounded thumbnail assets.
+  clearPreview(previewEl);
 }
 
 async function hydrateItem(item) {
