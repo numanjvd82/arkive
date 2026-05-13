@@ -422,6 +422,45 @@
   border-top: 1px solid var(--border);
 }
 
+.arkive-download-warning {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  background: var(--surface);
+}
+
+.arkive-download-warning h3 {
+  margin: 0 0 8px;
+}
+
+.arkive-download-warning p {
+  margin: 6px 0;
+}
+
+.arkive-download-warning .muted {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.media-download-progress {
+  display: grid;
+  gap: 8px;
+}
+
+.media-download-progress progress {
+  width: 100%;
+}
+
+.media-download-progress span {
+  color: var(--muted);
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
+}
+
+.media-download-progress[hidden] {
+  display: none;
+}
+
 .media-actions-panel .button {
   display: inline-flex;
   align-items: center;

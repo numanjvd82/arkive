@@ -9,6 +9,10 @@
   const sizeField = document.querySelector("[data-media-field='media-size']");
   const dimensionsField = document.querySelector("[data-media-field='media-dimensions']");
   const downloadButton = document.getElementById("media-download-button");
+  const downloadWarning = document.getElementById("download-warning");
+  const progressWrap = document.getElementById("download-progress");
+  const progressBar = progressWrap ? progressWrap.querySelector("progress") : null;
+  const progressText = progressWrap ? progressWrap.querySelector("[data-download-progress-text='true']") : null;
   const shareButton = document.getElementById("media-share-button");
   const deleteButton = document.getElementById("media-delete-button");
 
@@ -18,9 +22,14 @@
 
   const fileId = actionsPanel.getAttribute("data-media-file-id");
   const reader = new window.ArkiveFileReader({ fileId: fileId });
+  const readerReady = reader.load();
   const SMALL_VIDEO_MAX_BYTES = 128 * 1024 * 1024;
   const TEXT_PREVIEW_MAX_BYTES = 2 * 1024 * 1024;
   let currentPreviewURL = "";
+
+  if (downloadButton) {
+    downloadButton.disabled = true;
+  }
 
   function revokePreviewURL() {
     if (!currentPreviewURL) {
@@ -184,8 +193,35 @@
     );
   }
 
+  function updateDownloadProgress(written, total) {
+    if (!progressWrap) {
+      return;
+    }
+    progressWrap.hidden = false;
+    const pct = total > 0 ? Math.round((written / total) * 100) : 0;
+    if (progressBar) {
+      progressBar.value = pct;
+    }
+    if (progressText) {
+      progressText.textContent = pct + "% - " + formatBytes(written) + " of " + formatBytes(total);
+    }
+  }
+
+  function resetDownloadProgress() {
+    if (!progressWrap) {
+      return;
+    }
+    progressWrap.hidden = true;
+    if (progressBar) {
+      progressBar.value = 0;
+    }
+    if (progressText) {
+      progressText.textContent = "";
+    }
+  }
+
   async function renderPreview() {
-    await reader.load();
+    await readerReady;
     const metadata = reader.getMetadata();
     const manifest = reader.getManifest();
     const record = reader.record;
@@ -248,10 +284,25 @@
     downloadButton.addEventListener("click", async function(event) {
       event.preventDefault();
       downloadButton.disabled = true;
+      if (downloadWarning) {
+        downloadWarning.innerHTML = "";
+      }
+      resetDownloadProgress();
       try {
-        await reader.download();
+        await reader.download({
+          warningContainer: downloadWarning,
+          onProgress: function(progress) {
+            updateDownloadProgress(progress.written, progress.total);
+          },
+        });
       } catch (error) {
-        if (window.Toast) {
+        if (downloadWarning && window.ArkiveDownloadWarning && typeof window.ArkiveDownloadWarning.showDownloadError === "function") {
+          window.ArkiveDownloadWarning.showDownloadError(
+            downloadWarning,
+            (error && error.message) || "Download failed.",
+          );
+        }
+      if (window.Toast) {
           window.Toast.error((error && error.message) || "Download failed.");
         }
       } finally {
@@ -325,6 +376,21 @@
       window.Toast.error((error && error.message) || "Preview failed.");
     }
   });
+
+  readerReady
+    .then(function() {
+      if (downloadButton) {
+        downloadButton.disabled = false;
+      }
+      if (window.ArkiveDownloadWarning && typeof window.ArkiveDownloadWarning.maybeShowDownloadCapabilityWarning === "function") {
+        window.ArkiveDownloadWarning.maybeShowDownloadCapabilityWarning(document, reader.record);
+      }
+    })
+    .catch(function() {
+      if (downloadButton) {
+        downloadButton.disabled = false;
+      }
+    });
 
   window.addEventListener("pagehide", function() {
     revokePreviewURL();

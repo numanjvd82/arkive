@@ -3,6 +3,7 @@ import { initCrypto } from "./features/crypto.js";
 import { initDialogs } from "./features/dialog.js";
 import { initDropdowns } from "./features/dropdown.js";
 import { ArkiveFileReader } from "./features/file_reader.js";
+import * as ArkiveDownloadWarning from "./features/reader/download_warning.js";
 import { initFileListHydrator } from "./features/file_list_hydrator.js";
 import { initLightbox } from "./features/lightbox.js";
 import { initSearchPalette } from "./features/search_palette.js";
@@ -15,6 +16,7 @@ import { initVault } from "./features/vault.js";
 
 window.ArkiveFileReader = ArkiveFileReader;
 window.ArkiveShareReader = ArkiveShareReader;
+window.ArkiveDownloadWarning = ArkiveDownloadWarning;
 
 function initTheme() {
   const modes = ["dark", "system", "light"];
