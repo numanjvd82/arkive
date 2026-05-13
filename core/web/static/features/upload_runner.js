@@ -18,6 +18,7 @@ export class UploadRunner {
 		options = options || {};
 		this.limits = options.limits || { maxQueueItems: 300 };
 		this.jobs = new Map();
+		this.jobCleanupTimers = new Map();
 		this.activeJobId = null;
 		this.currentController = null;
 		this.stateHandlers = [];
@@ -51,6 +52,41 @@ export class UploadRunner {
 
 	emitEvent(event) {
 		this.eventHandlers.forEach(function (handler) { handler(event); });
+	}
+
+	releaseJobFile(job) {
+		if (job) {
+			job.file = null;
+		}
+	}
+
+	clearJobCleanup(jobId) {
+		const timer = this.jobCleanupTimers.get(jobId);
+		if (!timer) {
+			return;
+		}
+		clearTimeout(timer);
+		this.jobCleanupTimers.delete(jobId);
+	}
+
+	scheduleTerminalCleanup(job) {
+		if (!job || !job.public || !job.public.jobId) {
+			return;
+		}
+		const jobId = job.public.jobId;
+		this.clearJobCleanup(jobId);
+		const runner = this;
+		const timer = setTimeout(function() {
+			runner.jobCleanupTimers.delete(jobId);
+			const current = runner.jobs.get(jobId);
+			if (!current || !isTerminal(current.public.status)) {
+				return;
+			}
+			runner.releaseJobFile(current);
+			runner.jobs.delete(jobId);
+			runner.emitState();
+		}, 5000);
+		this.jobCleanupTimers.set(jobId, timer);
 	}
 
 	hasActiveUploads() {
@@ -242,7 +278,9 @@ export class UploadRunner {
 			job.public.completedBytes = job.file.size;
 			job.public.transferRate = 0;
 			job.public.updatedAt = nowISO();
+			this.releaseJobFile(job);
 			this.emitState();
+			this.scheduleTerminalCleanup(job);
 			completed = true;
 			this.notifyBatchComplete(job.public.batchId);
 		} finally {
@@ -331,10 +369,12 @@ export class UploadRunner {
 	}
 
 	async failJob(job, error) {
+		this.releaseJobFile(job);
 		job.public.status = STATUS.FAILED;
 		job.public.transferRate = 0;
 		job.public.updatedAt = nowISO();
 		this.emitState();
+		this.scheduleTerminalCleanup(job);
 		this.emitEvent({ type: "error", jobId: job.public.jobId, error: String(error && error.message ? error.message : error || "Upload failed") });
 	}
 
@@ -343,6 +383,7 @@ export class UploadRunner {
 		if (!job) return;
 		if (isTerminal(job.public.status)) return;
 		job.public.status = STATUS.CANCELED;
+		this.releaseJobFile(job);
 		job.public.transferRate = 0;
 		job.public.updatedAt = nowISO();
 		if (this.activeJobId === jobId && this.currentController) {
@@ -352,10 +393,14 @@ export class UploadRunner {
 			await cancelUpload(job.public.sessionId).catch(function () {});
 		}
 		this.emitState();
+		this.scheduleTerminalCleanup(job);
 	}
 
 	removeJob(jobId) {
 		if (!this.jobs.has(jobId)) return;
+		const job = this.jobs.get(jobId);
+		this.clearJobCleanup(jobId);
+		this.releaseJobFile(job);
 		this.jobs.delete(jobId);
 		if (this.activeJobId === jobId) {
 			this.activeJobId = null;
@@ -384,11 +429,13 @@ export class UploadRunner {
 				continue;
 			}
 			job.public.status = STATUS.CANCELED;
+			this.releaseJobFile(job);
 			job.public.transferRate = 0;
 			job.public.updatedAt = nowISO();
 			if (job.public.sessionId) {
 				cancelUploadBestEffort(job.public.sessionId);
 			}
+			this.scheduleTerminalCleanup(job);
 		}
 		this.emitState();
 	}
