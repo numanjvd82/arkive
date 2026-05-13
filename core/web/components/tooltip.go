@@ -1,6 +1,7 @@
 package components
 
 import (
+	lucide "github.com/eduardolat/gomponents-lucide"
 	g "maragu.dev/gomponents"
 	h "maragu.dev/gomponents/html"
 )
@@ -29,6 +30,11 @@ func Tooltip(props TooltipProps) g.Node {
 			Size:       props.IconSize,
 			Decorative: true,
 		})
+	} else if props.Text == "" {
+		content = lucide.Info(
+			h.Class("tooltip-icon-glyph"),
+			g.Attr("aria-hidden", "true"),
+		)
 	}
 
 	return g.If(
@@ -38,7 +44,11 @@ func Tooltip(props TooltipProps) g.Node {
 			h.Span(
 				h.Class(className),
 				g.If(props.ID != "", g.Attr("id", props.ID)),
-				g.If(props.Tooltip != "", g.Attr("data-tooltip", props.Tooltip)),
+				g.Attr("tabindex", "0"),
+				g.Attr("role", "button"),
+				g.Attr("aria-haspopup", "true"),
+				g.Attr("aria-label", props.Tooltip),
+				g.Attr("data-tooltip", props.Tooltip),
 				content,
 			),
 		}),

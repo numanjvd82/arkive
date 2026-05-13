@@ -437,6 +437,7 @@
   const passwordField = document.querySelector(".share-password-field");
   const passwordInput = document.getElementById("share-password");
   const passwordHelper = document.getElementById("share-password-helper");
+  const passwordStrength = document.getElementById("share-password-strength");
   const deleteButton = document.getElementById("share-delete-button");
   const burnToggle = document.getElementById("share-burn-toggle");
   const closeButton = document.getElementById("share-close-button");
@@ -475,6 +476,11 @@
     if (passwordHelper) {
       passwordHelper.classList.toggle("is-visible", !!visible);
     }
+    if (!visible && passwordStrength) {
+      passwordStrength.textContent = "";
+      passwordStrength.classList.remove("is-error");
+      passwordStrength.classList.remove("is-success");
+    }
   }
 
   function setExpiryVisible(visible) {
@@ -506,7 +512,13 @@
       linkInput.value = link;
     }
     if (statusEl) {
-      statusEl.textContent = link ? "Shared" : "Not shared";
+      statusEl.textContent = link ? "Live" : "Ready to create";
+    }
+    if (copyButton) {
+      copyButton.disabled = !link;
+    }
+    if (deleteButton) {
+      deleteButton.disabled = !activeShareId;
     }
     if (passwordToggle) {
       passwordToggle.checked = hasPassword;
@@ -520,6 +532,8 @@
     }
     setPasswordVisible(hasPassword);
     setExpiryVisible(!!expiresAt);
+    updatePasswordHelper(hasPassword);
+    updatePasswordStrength("");
 
     if (expiresAt && expiryCustomInput) {
       const parts = expiresAt.split("T");
@@ -551,6 +565,7 @@
     activeShareSecret = "";
     setShareError("");
     setSaveState("", "");
+    updatePasswordStrength("");
   }
 
   function withAbsoluteURL(data) {
@@ -576,6 +591,80 @@
         return data;
       });
     });
+  }
+
+  function parseJSON(res) {
+    return res.text().then(function(text) {
+      if (!text) {
+        return null;
+      }
+      try {
+        return JSON.parse(text);
+      } catch (_) {
+        return null;
+      }
+    });
+  }
+
+  function normalizeAPIError(data, fallback) {
+    if (data && data.errors) {
+      if (data.errors.password) {
+        return String(data.errors.password);
+      }
+      if (data.errors.expiresAt) {
+        return String(data.errors.expiresAt);
+      }
+      const keys = Object.keys(data.errors);
+      if (keys.length) {
+        return String(data.errors[keys[0]] || fallback || "Request failed.");
+      }
+    }
+    if (data && data.error) {
+      return String(data.error);
+    }
+    return fallback || "Request failed.";
+  }
+
+  function passwordValidationMessage(password) {
+    const value = String(password || "");
+    if (!value) {
+      return "Password is required.";
+    }
+    if (value.length < 8) {
+      return "Use at least 8 characters.";
+    }
+    if (!/[a-z]/.test(value)) {
+      return "Add a lowercase letter.";
+    }
+    if (!/[A-Z]/.test(value)) {
+      return "Add an uppercase letter.";
+    }
+    if (!/[^A-Za-z0-9]/.test(value)) {
+      return "Add a symbol.";
+    }
+    return "";
+  }
+
+  function updatePasswordHelper(hasExistingPassword) {
+    if (!passwordHelper) {
+      return;
+    }
+    passwordHelper.textContent = hasExistingPassword
+      ? "Leave this blank to keep the current password, or enter a new one to rotate it."
+      : "Use at least 8 characters with lowercase, uppercase, and a symbol.";
+  }
+
+  function updatePasswordStrength(message) {
+    if (!passwordStrength) {
+      return;
+    }
+    const text = String(message || "");
+    passwordStrength.textContent = text;
+    passwordStrength.classList.toggle("is-error", !!text);
+    passwordStrength.classList.toggle("is-success", !text && !!(passwordToggle && passwordToggle.checked && passwordInput && passwordInput.value));
+    if (!text && passwordToggle && passwordToggle.checked && passwordInput && passwordInput.value) {
+      passwordStrength.textContent = "Strong enough for Arkive share protection.";
+    }
   }
 
   function createRandomShareToken() {
@@ -624,14 +713,20 @@
       headers: { "Content-Type": "application/json" }
     })
       .then(function(res) {
-        return res.json().then(function(data) {
+        return parseJSON(res).then(function(data) {
+          if (res.status === 404) {
+            return null;
+          }
           if (!res.ok) {
-            throw new Error((data && data.error) || "Failed to load share");
+            throw new Error(normalizeAPIError(data, "Failed to load share settings."));
           }
           return data;
         });
       })
       .then(function(data) {
+        if (!data) {
+          return;
+        }
         if (data && data.encryptedShareKey && window.ArkiveVault && window.ArkiveVault.openShareKey) {
           return window.ArkiveVault.waitUntilReady()
             .then(function() {
@@ -646,10 +741,14 @@
         return data;
       })
       .then(function(data) {
+        if (!data) {
+          applyShareState(null);
+          return;
+        }
         applyShareState(withAbsoluteURL(data));
       })
-      .catch(function() {
-        setShareError("Failed to load share settings.");
+      .catch(function(error) {
+        setShareError((error && error.message) || "Failed to load share settings.");
       });
   }
 
@@ -674,6 +773,9 @@
 
   if (copyButton) {
     copyButton.addEventListener("click", async function() {
+      if (copyButton.disabled) {
+        return;
+      }
       const value = linkInput ? String(linkInput.value || "") : "";
       if (!value) {
         return;
@@ -694,6 +796,22 @@
   if (passwordToggle) {
     passwordToggle.addEventListener("change", function() {
       setPasswordVisible(passwordToggle.checked);
+      updatePasswordHelper(!!activeShareId && passwordToggle.checked);
+      updatePasswordStrength(passwordToggle.checked ? passwordValidationMessage(passwordInput && passwordInput.value) : "");
+    });
+  }
+
+  if (passwordInput) {
+    passwordInput.addEventListener("input", function() {
+      if (!passwordToggle || !passwordToggle.checked) {
+        return;
+      }
+      const value = String(passwordInput.value || "");
+      if (!value && activeShareId) {
+        updatePasswordStrength("");
+        return;
+      }
+      updatePasswordStrength(passwordValidationMessage(value));
     });
   }
 
@@ -740,6 +858,16 @@
         requirePassword: !!(passwordToggle && passwordToggle.checked),
       };
 
+      if (payload.requirePassword && (!activeShareId || payload.password)) {
+        const passwordMessage = passwordValidationMessage(payload.password);
+        if (passwordMessage) {
+          setSaveState("Save failed", "error");
+          setShareError(passwordMessage);
+          updatePasswordStrength(passwordMessage);
+          return;
+        }
+      }
+
       const request = activeShareId
         ? fetch("/api/shares/" + encodeURIComponent(activeShareId), {
             method: "PATCH",
@@ -766,9 +894,9 @@
 
       request
         .then(function(res) {
-          return res.json().then(function(data) {
+          return parseJSON(res).then(function(data) {
             if (!res.ok) {
-              throw new Error((data && data.error) || "Failed to save share");
+              throw new Error(normalizeAPIError(data, "Failed to save share settings."));
             }
             return data;
           });
@@ -804,6 +932,7 @@
             throw new Error("Failed to delete share");
           }
           applyShareState(null);
+          activeShareSecret = "";
           setSaveState("Deleted", "");
         })
         .catch(function(error) {

@@ -664,7 +664,7 @@
 }
 
 .share-modal {
-  width: min(568px, 100%);
+  width: min(640px, 100%);
 }
 
 .share-modal-header {
@@ -676,12 +676,6 @@
   align-items: center;
   gap: 10px;
   min-width: 0;
-}
-
-.share-modal-title span:last-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .share-modal-lucide {
@@ -697,7 +691,7 @@
 
 .share-dialog {
   display: grid;
-  gap: 18px;
+  gap: 20px;
 }
 
 .share-dialog-close {
@@ -718,6 +712,65 @@
   background: var(--surface-highest);
 }
 
+.share-hero {
+  padding: 0 0 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.share-hero-copy {
+  display: grid;
+  gap: 10px;
+}
+
+.share-eyebrow {
+  margin: 0;
+  color: var(--accent-cool);
+  font-size: var(--text-label-size);
+  line-height: var(--text-label-lh);
+  letter-spacing: var(--text-label-ls);
+  font-weight: var(--text-label-wt);
+  text-transform: uppercase;
+}
+
+.share-file-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.share-file-pill span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.share-file-pill-icon {
+  color: var(--accent-cool);
+}
+
+.share-hero-text {
+  margin: 0;
+  color: var(--text);
+  max-width: 56ch;
+}
+
+.share-hero-text-muted {
+  color: var(--muted);
+}
+
+.share-hero-text code,
+.share-inline-note code {
+  font-family: var(--font-mono);
+  color: var(--accent-cool);
+}
+
 .share-section {
   display: grid;
   gap: 12px;
@@ -734,6 +787,7 @@
   font-family: var(--font-mono);
   font-size: var(--text-code-size);
   line-height: var(--text-code-lh);
+  min-width: 0;
 }
 
 .share-copy-button {
@@ -753,6 +807,11 @@
   background: var(--surface-highest);
 }
 
+.share-copy-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .share-section-heading {
   padding-bottom: 8px;
   border-bottom: 1px solid var(--border);
@@ -762,6 +821,25 @@
   font-weight: var(--text-label-wt);
   text-transform: uppercase;
   color: var(--muted);
+}
+
+.share-section-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.share-inline-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
+}
+
+.share-inline-note-strong {
+  color: var(--text);
+  font-weight: 600;
 }
 
 .share-setting {
@@ -780,6 +858,12 @@
 .share-setting-main {
   min-width: 0;
   display: grid;
+  gap: 8px;
+}
+
+.share-setting-title-row {
+  display: flex;
+  align-items: center;
   gap: 10px;
 }
 
@@ -797,17 +881,30 @@
   color: var(--muted);
 }
 
+.share-setting-copy {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
+}
+
+.share-setting-tooltip,
+.share-heading-tooltip {
+  flex: 0 0 auto;
+}
+
 .share-password-field {
   display: none;
   grid-column: 1 / -1;
 }
 
 .share-password-field.is-visible {
-  display: block;
+  display: grid;
+  gap: 8px;
 }
 
 .share-password-helper {
-  margin: 8px 0 0;
+  margin: 0;
   color: var(--muted);
   font-size: var(--text-body-sm-size);
   line-height: var(--text-body-sm-lh);
@@ -818,6 +915,22 @@
   display: block;
 }
 
+.share-password-strength {
+  margin: 0;
+  min-height: 20px;
+  color: var(--muted);
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
+}
+
+.share-password-strength.is-error {
+  color: var(--danger);
+}
+
+.share-password-strength.is-success {
+  color: var(--success);
+}
+
 .share-expiry-fields {
   grid-column: 1 / -1;
   display: grid;
@@ -825,7 +938,7 @@
 }
 
 .share-expiry-select {
-  display: none;
+  display: block;
 }
 
 .share-expiry-custom {
@@ -843,6 +956,51 @@
 
 .share-setting-inline {
   align-items: center;
+}
+
+.share-setting-disabled {
+  opacity: 0.7;
+}
+
+.share-setting-disabled .switch {
+  cursor: not-allowed;
+}
+
+.share-setting-disabled .switch input {
+  cursor: not-allowed;
+}
+
+.share-advanced {
+  margin-top: 2px;
+}
+
+.share-advanced-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-width: 0;
+}
+
+.share-advanced-copy {
+  display: grid;
+  gap: 2px;
+}
+
+.share-advanced-title {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.share-advanced-subtitle {
+  color: var(--muted);
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
+}
+
+.share-advanced-body {
+  display: grid;
+  gap: 12px;
 }
 
 .switch {
@@ -943,6 +1101,7 @@
 
 .share-error {
   display: none;
+  margin: 0;
 }
 
 .share-error.is-visible {
@@ -998,6 +1157,10 @@
 
   .share-setting {
     grid-template-columns: 1fr;
+  }
+
+  .share-setting-title-row {
+    align-items: flex-start;
   }
 
   .share-expiry-custom {

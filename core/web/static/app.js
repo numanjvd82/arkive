@@ -9,6 +9,7 @@ import { initSearchPalette } from "./features/search_palette.js";
 import { ArkiveShareReader } from "./features/share_reader.js";
 import { initSidebar } from "./features/sidebar.js";
 import { initToast } from "./features/toast.js";
+import { initTooltips } from "./features/tooltip.js";
 import { initUploads } from "./features/uploads.js";
 import { initVault } from "./features/vault.js";
 
@@ -164,6 +165,7 @@ initToast();
 initVaultAccessGuard();
 initDialogs();
 initDropdowns();
+initTooltips();
 initCopyButtons();
 initSidebar();
 initSearchPalette();
