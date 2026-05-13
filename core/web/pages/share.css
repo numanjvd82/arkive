@@ -319,6 +319,8 @@
 }
 
 .public-share-actions {
+  display: grid;
+  gap: 12px;
   width: min(100%, 254px);
 }
 
@@ -356,6 +358,52 @@
   height: 20px;
   display: block;
   stroke-width: 2.2;
+}
+
+.public-share-download[aria-disabled="true"] {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.arkive-download-warning {
+  border: 1px solid #1c232a;
+  border-radius: 16px;
+  padding: 16px;
+  background: #0f1418;
+}
+
+.arkive-download-warning h3 {
+  margin: 0 0 8px;
+  color: #dee3e8;
+}
+
+.arkive-download-warning p {
+  margin: 6px 0;
+  color: #87929a;
+}
+
+.arkive-download-warning .muted {
+  color: #6f7983;
+  font-size: 0.9rem;
+}
+
+.public-share-download-progress {
+  display: grid;
+  gap: 8px;
+}
+
+.public-share-download-progress progress {
+  width: 100%;
+}
+
+.public-share-download-progress span {
+  color: #87929a;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.public-share-download-progress[hidden] {
+  display: none;
 }
 
 .public-share-checksum {

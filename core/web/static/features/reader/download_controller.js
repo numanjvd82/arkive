@@ -21,6 +21,7 @@ export async function downloadFile(options) {
       filename: options.filename,
       signal: signal,
       onProgress: options.onProgress,
+      readAhead: options.readAhead,
     });
     return { mode: "stream" };
   }

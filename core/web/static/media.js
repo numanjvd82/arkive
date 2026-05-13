@@ -296,13 +296,16 @@
           },
         });
       } catch (error) {
+        if (window.ArkiveDownloadWarning && typeof window.ArkiveDownloadWarning.isDownloadAbortError === "function" && window.ArkiveDownloadWarning.isDownloadAbortError(error)) {
+          return;
+        }
         if (downloadWarning && window.ArkiveDownloadWarning && typeof window.ArkiveDownloadWarning.showDownloadError === "function") {
           window.ArkiveDownloadWarning.showDownloadError(
             downloadWarning,
             (error && error.message) || "Download failed.",
           );
         }
-      if (window.Toast) {
+        if (window.Toast) {
           window.Toast.error((error && error.message) || "Download failed.");
         }
       } finally {

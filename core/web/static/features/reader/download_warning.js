@@ -34,6 +34,19 @@ export function showDownloadError(container, message) {
     "</div>";
 }
 
+export function isDownloadAbortError(error) {
+  if (!error) {
+    return false;
+  }
+
+  if (error.name === "AbortError") {
+    return true;
+  }
+
+  const message = String(error.message || "").toLowerCase();
+  return message.includes("user aborted a request");
+}
+
 export function maybeShowDownloadCapabilityWarning(root, record) {
   const container = (root || document).querySelector("#download-warning");
   const caps = getDownloadCapabilities();

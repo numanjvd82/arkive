@@ -2,6 +2,10 @@
   const root = document.querySelector("[data-public-share-token]");
   const preview = document.getElementById("public-share-preview");
   const download = document.getElementById("public-share-download");
+  const downloadWarning = document.getElementById("download-warning");
+  const progressWrap = document.getElementById("download-progress");
+  const progressBar = progressWrap ? progressWrap.querySelector("progress") : null;
+  const progressText = progressWrap ? progressWrap.querySelector("[data-download-progress-text='true']") : null;
   const nameEl = document.querySelector("[data-public-share-name='true']");
   const sizeEl = document.querySelector("[data-public-share-size='true']");
   const SMALL_VIDEO_MAX_BYTES = 128 * 1024 * 1024;
@@ -121,28 +125,107 @@
     token: token,
     shareSecret: shareSecret,
   });
+  const readerReady = reader.load();
+
+  if (download) {
+    download.setAttribute("aria-disabled", "true");
+  }
+
+  function formatBytes(bytes) {
+    const value = Number(bytes || 0);
+    if (value <= 0) {
+      return "0 B";
+    }
+    const units = ["B", "KB", "MB", "GB", "TB"];
+    const index = Math.min(
+      Math.floor(Math.log(value) / Math.log(1024)),
+      units.length - 1,
+    );
+    const sized = value / Math.pow(1024, index);
+    return sized.toFixed(index === 0 ? 0 : 1) + " " + units[index];
+  }
+
+  function updateDownloadProgress(written, total) {
+    if (!progressWrap) {
+      return;
+    }
+    progressWrap.hidden = false;
+    const pct = total > 0 ? Math.round((written / total) * 100) : 0;
+    if (progressBar) {
+      progressBar.value = pct;
+    }
+    if (progressText) {
+      progressText.textContent = pct + "% - " + formatBytes(written) + " of " + formatBytes(total);
+    }
+  }
+
+  function resetDownloadProgress() {
+    if (!progressWrap) {
+      return;
+    }
+    progressWrap.hidden = true;
+    if (progressBar) {
+      progressBar.value = 0;
+    }
+    if (progressText) {
+      progressText.textContent = "";
+    }
+  }
 
   if (download) {
     download.addEventListener("click", function(event) {
       event.preventDefault();
+      if (download.getAttribute("aria-disabled") === "true") {
+        return;
+      }
       if (reader.record && reader.record.allowDownload === false) {
         return;
       }
-      reader.download().catch(function(error) {
+      if (downloadWarning) {
+        downloadWarning.innerHTML = "";
+      }
+      resetDownloadProgress();
+      download.setAttribute("aria-disabled", "true");
+      reader.download({
+        warningContainer: downloadWarning,
+        onProgress: function(progress) {
+          updateDownloadProgress(progress.written, progress.total);
+        },
+      }).catch(function(error) {
+        if (window.ArkiveDownloadWarning && typeof window.ArkiveDownloadWarning.isDownloadAbortError === "function" && window.ArkiveDownloadWarning.isDownloadAbortError(error)) {
+          return;
+        }
+        if (downloadWarning && window.ArkiveDownloadWarning && typeof window.ArkiveDownloadWarning.showDownloadError === "function") {
+          window.ArkiveDownloadWarning.showDownloadError(
+            downloadWarning,
+            (error && error.message) || "Download failed.",
+          );
+        }
         if (window.Toast) {
           window.Toast.error((error && error.message) || "Download failed.");
+        }
+      }).finally(function() {
+        if (!reader.record || reader.record.allowDownload !== false) {
+          download.setAttribute("aria-disabled", "false");
         }
       });
     });
   }
 
-  reader.load()
+  readerReady
     .then(function() {
       const metadata = reader.getMetadata();
       updateMetadata(metadata, Number(metadata.size || reader.record.plaintextSize || 0));
       const mime = String((metadata && metadata.mime) || "").toLowerCase();
       if (reader.record && reader.record.allowDownload === false && download) {
         download.setAttribute("aria-disabled", "true");
+      } else if (download) {
+        download.setAttribute("aria-disabled", "false");
+      }
+      if (window.ArkiveDownloadWarning && typeof window.ArkiveDownloadWarning.maybeShowDownloadCapabilityWarning === "function") {
+        window.ArkiveDownloadWarning.maybeShowDownloadCapabilityWarning(document, {
+          plaintextSize: Number(metadata.size || reader.record.plaintextSize || 0),
+        });
       }
       if (reader.record && reader.record.allowPreview === false) {
         unavailable("Preview is disabled for this share.");
@@ -174,6 +257,9 @@
       unavailable("Download the file to view it locally.");
     })
     .catch(function(error) {
+      if (download) {
+        download.setAttribute("aria-disabled", "true");
+      }
       unavailable((error && error.message) || "Failed to load encrypted share.");
     });
 

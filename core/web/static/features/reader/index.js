@@ -176,6 +176,7 @@ export class ArkiveFileReader {
       warningContainer: settings.warningContainer || null,
       onProgress: settings.onProgress,
       signal: settings.signal,
+      readAhead: true,
     });
   }
 

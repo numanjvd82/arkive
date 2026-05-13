@@ -1,3 +1,7 @@
+import { fetchEncryptedChunk } from "./reader/chunk_fetcher.js";
+import { buildChunkMap } from "./reader/chunk_map.js";
+import { downloadFile } from "./reader/download_controller.js";
+
 function createContextId() {
   if (window.crypto && window.crypto.randomUUID) {
     return window.crypto.randomUUID();
@@ -18,7 +22,7 @@ function decodeBase64(value) {
   return bytes;
 }
 
-function encodeBase64(bytes) {
+function bytesToBase64(bytes) {
   let binary = "";
   for (let i = 0; i < bytes.length; i++) {
     binary += String.fromCharCode(bytes[i]);
@@ -39,7 +43,7 @@ export class ArkiveShareReader {
     this.metadata = null;
     this.manifest = null;
     this.fileKey = null;
-    this.cipherOffsets = [];
+    this.chunkMap = [];
     this.loadPromise = null;
   }
 
@@ -111,13 +115,11 @@ export class ArkiveShareReader {
       crypto.zeroize(encryptedManifest);
     }
 
-    this.cipherOffsets = [];
-    let offset = 0;
-    const chunks = this.manifest.chunks || [];
-    for (let i = 0; i < chunks.length; i++) {
-      this.cipherOffsets[i] = offset;
-      offset += Number(chunks[i].cipher_size || 0);
-    }
+    this.chunkMap = buildChunkMap(
+      this.manifest,
+      this.record.chunkSize,
+      Number((this.metadata && this.metadata.size) || this.record.plaintextSize || 0),
+    );
     return this;
   }
 
@@ -139,6 +141,10 @@ export class ArkiveShareReader {
     return this.manifest || {};
   }
 
+  getChunkMap() {
+    return this.chunkMap.slice();
+  }
+
   chunkAAD(index) {
     return (
       "arkive:file-chunk:v1:" +
@@ -154,38 +160,17 @@ export class ArkiveShareReader {
     );
   }
 
-  async fetchEncryptedRange(start, endExclusive) {
-    const response = await fetch(this.record.sourceUrl, {
-      method: "GET",
-      headers: {
-        Range: "bytes=" + String(start) + "-" + String(endExclusive - 1),
-      },
-    });
-    if (!response.ok && response.status !== 206) {
-      throw new Error("Failed to fetch encrypted chunk");
-    }
-    return new Uint8Array(await response.arrayBuffer());
-  }
-
-  async readChunk(index) {
-    await this.load();
-    const chunk = (this.manifest.chunks || [])[index];
-    if (!chunk) {
-      throw new Error("Chunk out of range");
-    }
+  async decryptChunk(mappedChunk, encryptedBytes) {
     const crypto = await window.ArkiveCrypto.ready();
-    const cipherStart = this.cipherOffsets[index];
-    const cipherEnd = cipherStart + Number(chunk.cipher_size || 0);
-    const encryptedBytes = await this.fetchEncryptedRange(cipherStart, cipherEnd);
     try {
-      const expectedHash = String(chunk.hash || "");
+      const expectedHash = String(mappedChunk.hash || "");
       if (expectedHash) {
         const actualHash = crypto.hash_bytes_blake3(encryptedBytes);
         try {
           const hashEncoding = String((this.manifest && this.manifest.hash_encoding) || "base64").toLowerCase();
           const actual = hashEncoding === "hex"
             ? Array.from(actualHash).map(function(byte) { return byte.toString(16).padStart(2, "0"); }).join("")
-            : encodeBase64(actualHash);
+            : bytesToBase64(actualHash);
           if (actual !== expectedHash) {
             throw new Error("Encrypted chunk hash mismatch");
           }
@@ -193,10 +178,11 @@ export class ArkiveShareReader {
           crypto.zeroize(actualHash);
         }
       }
+
       const chunkBytes = crypto.decrypt_chunk(
         encryptedBytes,
         this.fileKey,
-        new TextEncoder().encode(this.chunkAAD(index)),
+        new TextEncoder().encode(mappedChunk.aad || this.chunkAAD(mappedChunk.index)),
       );
       try {
         return chunkBytes.slice();
@@ -206,6 +192,16 @@ export class ArkiveShareReader {
     } finally {
       crypto.zeroize(encryptedBytes);
     }
+  }
+
+  async readChunk(index) {
+    await this.load();
+    const chunk = this.chunkMap[index];
+    if (!chunk) {
+      throw new Error("Chunk out of range");
+    }
+    const encryptedBytes = await fetchEncryptedChunk(this.record.sourceUrl, chunk, null);
+    return this.decryptChunk(chunk, encryptedBytes);
   }
 
   async readRange(start, end) {
@@ -243,9 +239,8 @@ export class ArkiveShareReader {
 
   async createBlob() {
     await this.load();
-    const chunks = this.manifest.chunks || [];
     const parts = [];
-    for (let i = 0; i < chunks.length; i++) {
+    for (let i = 0; i < this.chunkMap.length; i++) {
       parts.push(await this.readChunk(i));
     }
     return new Blob(parts, {
@@ -253,38 +248,27 @@ export class ArkiveShareReader {
     });
   }
 
-  async download() {
-    await this.load();
-    const filename = (this.metadata && this.metadata.name) || "download.bin";
-    const size = Number((this.metadata && this.metadata.size) || this.record.plaintextSize || 0);
-    const blobDownloadMaxBytes = 64 * 1024 * 1024;
-    if (window.showSaveFilePicker) {
-      const handle = await window.showSaveFilePicker({
-        suggestedName: filename,
-      });
-      const writable = await handle.createWritable();
-      try {
-        const chunks = this.manifest.chunks || [];
-        for (let i = 0; i < chunks.length; i++) {
-          await writable.write(await this.readChunk(i));
-        }
-      } finally {
-        await writable.close();
-      }
-      return;
+  async download(options) {
+    const settings = options || {};
+    if (!this.record || !this.metadata || !this.manifest || !this.chunkMap.length) {
+      await this.load();
     }
-    if (size > blobDownloadMaxBytes) {
-      throw new Error("Browser download is disabled for large files without direct-save support.");
-    }
-    const blob = await this.createBlob();
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = filename;
-    anchor.click();
-    window.setTimeout(function() {
-      URL.revokeObjectURL(url);
-    }, 1000);
+    const metadata = this.metadata || {};
+    const record = Object.assign({}, this.record || {}, {
+      filename: metadata.name || "download.bin",
+      mimeType: metadata.mime || "application/octet-stream",
+      plaintextSize: Number(metadata.size || (this.record && this.record.plaintextSize) || 0),
+    });
+
+    return downloadFile({
+      record: record,
+      chunkMap: this.chunkMap,
+      decryptChunk: this.decryptChunk.bind(this),
+      filename: record.filename,
+      warningContainer: settings.warningContainer || null,
+      onProgress: settings.onProgress,
+      signal: settings.signal,
+    });
   }
 
   async textPreview(maxBytes) {
