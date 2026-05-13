@@ -54,6 +54,8 @@ func APIUploadStart(svc *uploads.Service) gin.HandlerFunc {
 			switch err {
 			case uploads.ErrUnauthorized:
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			case uploads.ErrQuotaExceeded:
+				c.JSON(http.StatusForbidden, gin.H{"error": "quota exceeded"})
 			default:
 				_ = c.Error(errs.WithStack(err))
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "upload start failed"})

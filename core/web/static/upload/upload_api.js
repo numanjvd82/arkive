@@ -5,6 +5,12 @@ async function readJSON(response, fallback) {
 		data = text ? JSON.parse(text) : null;
 	} catch (_) {}
 	if (!response.ok) {
+		if (data && data.errors) {
+			const keys = Object.keys(data.errors);
+			if (keys.length > 0) {
+				throw new Error(String(data.errors[keys[0]] || fallback));
+			}
+		}
 		throw new Error((data && data.error) || text || fallback);
 	}
 	return data;
