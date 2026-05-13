@@ -59,6 +59,36 @@ func MediaViewPage(props MediaViewPageProps) web.Page {
 						),
 						h.Aside(
 							h.Class("media-sidebar"),
+							renderDownloadStatus("media-download-queue"),
+							h.Div(
+								h.Class("media-actions-panel"),
+								g.Attr("data-media-file-id", file.ID),
+								g.Attr("data-media-file-name", "Encrypted file"),
+								components.Button(components.ButtonProps{
+									Text:    "Download File",
+									Variant: "primary",
+									Icon:    "download",
+									Class:   "media-action-primary",
+									ID:      "media-download-button",
+								}),
+								h.Div(
+									h.Class("media-actions-row"),
+									components.Button(components.ButtonProps{
+										Text:    "Share",
+										Variant: "secondary",
+										Icon:    "share",
+										Class:   "media-action-split",
+										ID:      "media-share-button",
+									}),
+									components.Button(components.ButtonProps{
+										Text:    "Delete",
+										Variant: "danger-outline",
+										Icon:    "trash",
+										Class:   "media-action-split",
+										ID:      "media-delete-button",
+									}),
+								),
+							),
 							h.Div(
 								h.Class("media-sidebar-card"),
 								h.Div(
@@ -124,36 +154,6 @@ func MediaViewPage(props MediaViewPageProps) web.Page {
 									h.Li(g.Text("Everything is decrypted on the client side.")),
 									h.Li(g.Text("Only display-safe file metadata is rendered in Core.")),
 								),
-							),
-							h.Div(
-								h.Class("media-actions-panel"),
-								g.Attr("data-media-file-id", file.ID),
-								g.Attr("data-media-file-name", "Encrypted file"),
-								components.Button(components.ButtonProps{
-									Text:    "Download File",
-									Variant: "primary",
-									Icon:    "download",
-									Class:   "media-action-primary",
-									ID:      "media-download-button",
-								}),
-								h.Div(
-									h.Class("media-actions-row"),
-									components.Button(components.ButtonProps{
-										Text:    "Share",
-										Variant: "secondary",
-										Icon:    "share",
-										Class:   "media-action-split",
-										ID:      "media-share-button",
-									}),
-									components.Button(components.ButtonProps{
-										Text:    "Delete",
-										Variant: "danger-outline",
-										Icon:    "trash",
-										Class:   "media-action-split",
-										ID:      "media-delete-button",
-									}),
-								),
-								renderDownloadStatus("media-download-queue"),
 							),
 						),
 					),

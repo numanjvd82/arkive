@@ -444,6 +444,67 @@
 
 .media-download-queue {
   margin-top: 0;
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+  border-radius: 0;
+}
+
+.media-download-queue .queue-header,
+.media-download-queue .queue-item-top,
+.media-download-queue .queue-item-meta {
+  align-items: flex-start;
+}
+
+.media-download-queue .queue-header,
+.media-download-queue .queue-item-meta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+}
+
+.media-download-queue .queue-item-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+.media-download-queue .queue-item-file {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  width: 100%;
+  row-gap: 8px;
+}
+
+.media-download-queue .queue-item-icon {
+  grid-row: 1 / span 2;
+}
+
+.media-download-queue .queue-item-badge {
+  justify-self: start;
+}
+
+.media-download-queue .queue-item-name {
+  white-space: normal;
+  text-overflow: clip;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.media-download-queue .queue-item-actions {
+  justify-content: flex-start;
+}
+
+.media-download-queue .queue-item-meta {
+  gap: 2px;
+}
+
+.media-download-queue .queue-item-progress,
+.media-download-queue .queue-item-speed {
+  display: block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .media-actions-panel .button {

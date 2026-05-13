@@ -391,6 +391,63 @@
   margin-top: 0;
 }
 
+.public-share-download-queue .queue-header,
+.public-share-download-queue .queue-item-top,
+.public-share-download-queue .queue-item-meta {
+  align-items: flex-start;
+}
+
+.public-share-download-queue .queue-header,
+.public-share-download-queue .queue-item-meta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+}
+
+.public-share-download-queue .queue-item-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+.public-share-download-queue .queue-item-file {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  width: 100%;
+  row-gap: 8px;
+}
+
+.public-share-download-queue .queue-item-icon {
+  grid-row: 1 / span 2;
+}
+
+.public-share-download-queue .queue-item-badge {
+  justify-self: start;
+}
+
+.public-share-download-queue .queue-item-name {
+  white-space: normal;
+  text-overflow: clip;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.public-share-download-queue .queue-item-actions {
+  justify-content: flex-start;
+}
+
+.public-share-download-queue .queue-item-meta {
+  gap: 2px;
+}
+
+.public-share-download-queue .queue-item-progress,
+.public-share-download-queue .queue-item-speed {
+  display: block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
 .public-share-checksum {
   display: grid;
   gap: 8px;
