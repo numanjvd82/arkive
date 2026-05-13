@@ -8,7 +8,7 @@ import (
 	"arkive/core/web/components"
 )
 
-//go:embed static/*.css static/*.js static/*.txt static/*.xml static/icons/* static/assets/images/* static/vendor/arkive-crypto/* static/vendor/plyr/* static/features/*.js static/features/reader/*.js static/upload/*.js static/workers/*.js pages/*.css
+//go:embed static/*.css static/*.js static/*.txt static/*.xml static/icons/* static/assets/images/* static/vendor/arkive-crypto/* static/vendor/plyr/* static/features/*.js static/features/reader/*.js static/features/streaming/*.js static/upload/*.js static/workers/*.js pages/*.css
 var embeddedFiles embed.FS
 
 func init() {

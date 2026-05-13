@@ -32,6 +32,7 @@
   const SMALL_VIDEO_MAX_BYTES = 128 * 1024 * 1024;
   const TEXT_PREVIEW_MAX_BYTES = 2 * 1024 * 1024;
   let currentPreviewURL = "";
+  let currentStream = null;
   let activeDownloadController = null;
   let hideDownloadQueueTimer = 0;
   let downloadCancelledByUser = false;
@@ -48,7 +49,17 @@
     currentPreviewURL = "";
   }
 
+  function disposeStream() {
+    if (!currentStream || typeof currentStream.dispose !== "function") {
+      currentStream = null;
+      return;
+    }
+    currentStream.dispose();
+    currentStream = null;
+  }
+
   function setStage(node) {
+    disposeStream();
     revokePreviewURL();
     stage.innerHTML = "";
     if (node) {
@@ -158,6 +169,32 @@
     currentPreviewURL = objectURL;
     if (window.ArkiveInitPlyr) {
       window.ArkiveInitPlyr(video);
+    }
+  }
+
+  async function streamingVideoPreview() {
+    if (!window.ArkiveStreaming || typeof window.ArkiveStreaming.mountStreamingMedia !== "function") {
+      throw new Error("Encrypted streaming preview is unavailable.");
+    }
+    const metadata = reader.getMetadata();
+    const record = reader.record;
+    const stream = await window.ArkiveStreaming.mountStreamingMedia({
+      reader: reader,
+      record: record,
+      metadata: metadata,
+      kind: "video",
+      className: "media-video plyr",
+      onLoadedMetadata: function(video) {
+        setDimensions(video.videoWidth || 0, video.videoHeight || 0);
+      },
+      onError: function() {
+        previewUnavailable("Preview unsupported in this browser. Download original file.");
+      },
+    });
+    setStage(stream.element);
+    currentStream = stream;
+    if (window.ArkiveInitPlyr) {
+      window.ArkiveInitPlyr(stream.element);
     }
   }
 
@@ -293,12 +330,17 @@
       return;
     }
     if (mime.startsWith("video/")) {
-      if (Number(metadata.size || record.plaintextSize || 0) > SMALL_VIDEO_MAX_BYTES) {
-        previewUnavailable("Encrypted large-video range playback is next step. Download is available now.");
+      try {
+        await streamingVideoPreview();
+        return;
+      } catch (_) {
+        if (Number(metadata.size || record.plaintextSize || 0) > SMALL_VIDEO_MAX_BYTES) {
+          previewUnavailable("Preview unsupported in this browser. Download original file.");
+          return;
+        }
+        videoPreview(await reader.createBlob());
         return;
       }
-      videoPreview(await reader.createBlob());
-      return;
     }
 
     previewUnavailable("This file type does not have an in-browser preview yet.");
@@ -484,6 +526,7 @@
     });
 
   window.addEventListener("pagehide", function() {
+    disposeStream();
     revokePreviewURL();
     reader.dispose();
   });

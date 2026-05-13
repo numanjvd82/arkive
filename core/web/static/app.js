@@ -9,6 +9,7 @@ import { initLightbox } from "./features/lightbox.js";
 import { initSearchPalette } from "./features/search_palette.js";
 import { ArkiveShareReader } from "./features/share_reader.js";
 import { initSidebar } from "./features/sidebar.js";
+import * as ArkiveStreaming from "./features/streaming/stream_player.js";
 import { initToast } from "./features/toast.js";
 import { initTooltips } from "./features/tooltip.js";
 import { initUploads } from "./features/uploads.js";
@@ -17,6 +18,7 @@ import { initVault } from "./features/vault.js";
 window.ArkiveFileReader = ArkiveFileReader;
 window.ArkiveShareReader = ArkiveShareReader;
 window.ArkiveDownloadWarning = ArkiveDownloadWarning;
+window.ArkiveStreaming = ArkiveStreaming;
 
 function initTheme() {
   const modes = ["dark", "system", "light"];
@@ -174,3 +176,9 @@ initSearchPalette();
 initLightbox();
 initFileListHydrator();
 initUploads();
+
+if ("serviceWorker" in navigator && window.isSecureContext) {
+  navigator.serviceWorker.register("/sw.js").catch(function(error) {
+    console.warn("Service worker registration failed", error);
+  });
+}

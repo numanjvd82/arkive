@@ -59,6 +59,7 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 
 	r.StaticFS("/static", web.StaticFS("static"))
 	r.StaticFS("/web/pages", web.StaticFS("pages"))
+	r.GET("/sw.js", handlers.ServiceWorkerJS())
 	r.GET("/favicon.ico", handlers.FaviconICO())
 	r.GET("/robots.txt", handlers.RobotsTxt())
 	r.GET("/sitemap.xml", handlers.SitemapXML())

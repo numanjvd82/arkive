@@ -23,6 +23,9 @@ export class ArkiveShareReader {
     this.manifest = null;
     this.chunkMap = [];
     this.loadPromise = null;
+    this.chunkCache = new Map();
+    this.chunkCacheBytes = 0;
+    this.maxChunkCacheBytes = 32 * 1024 * 1024;
   }
 
   async load() {
@@ -71,6 +74,7 @@ export class ArkiveShareReader {
   }
 
   async dispose() {
+    this.clearChunkCache();
     if (!window.ArkiveVault || typeof window.ArkiveVault.closePublicShareContext !== "function") {
       return;
     }
@@ -115,14 +119,55 @@ export class ArkiveShareReader {
     return result.chunkBytes;
   }
 
+  clearChunkCache() {
+    this.chunkCache.clear();
+    this.chunkCacheBytes = 0;
+  }
+
+  cachedChunk(index) {
+    const entry = this.chunkCache.get(index);
+    if (!entry) {
+      return null;
+    }
+    this.chunkCache.delete(index);
+    this.chunkCache.set(index, entry);
+    return entry.bytes;
+  }
+
+  storeChunk(index, bytes) {
+    if (!(bytes instanceof Uint8Array)) {
+      return;
+    }
+    const existing = this.chunkCache.get(index);
+    if (existing) {
+      this.chunkCacheBytes -= existing.size;
+      this.chunkCache.delete(index);
+    }
+    this.chunkCache.set(index, { bytes: bytes, size: bytes.length });
+    this.chunkCacheBytes += bytes.length;
+
+    while (this.chunkCacheBytes > this.maxChunkCacheBytes && this.chunkCache.size > 1) {
+      const oldestKey = this.chunkCache.keys().next().value;
+      const oldest = this.chunkCache.get(oldestKey);
+      this.chunkCache.delete(oldestKey);
+      this.chunkCacheBytes -= oldest ? oldest.size : 0;
+    }
+  }
+
   async readChunk(index) {
     await this.load();
+    const cached = this.cachedChunk(index);
+    if (cached) {
+      return cached;
+    }
     const chunk = this.chunkMap[index];
     if (!chunk) {
       throw new Error("Chunk out of range");
     }
     const encryptedBytes = await fetchEncryptedChunk(this.record.sourceUrl, chunk, null);
-    return this.decryptChunk(chunk, encryptedBytes);
+    const chunkBytes = await this.decryptChunk(chunk, encryptedBytes);
+    this.storeChunk(index, chunkBytes);
+    return chunkBytes;
   }
 
   async readRange(start, end) {
