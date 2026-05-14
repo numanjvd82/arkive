@@ -17,9 +17,11 @@ export function getDownloadCapabilities() {
     /^((?!chrome|android|crios|fxios|edg|opr).)*safari/i.test(ua);
 
   const isFirefox = /firefox|fxios/i.test(ua);
+  const isAndroid = /android/i.test(ua);
 
   return {
     supportsStreamedSave,
+    isAndroid,
     isIOS,
     isSafari,
     isFirefox,

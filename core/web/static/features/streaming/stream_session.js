@@ -136,6 +136,7 @@ export async function openStreamSession(options) {
   const sessionId = createStreamSessionId();
   const session = {
     sessionId: sessionId,
+    purpose: String(settings.purpose || "preview"),
     fileId: String(record.fileId || settings.fileId || "file"),
     filename: String(settings.filename || metadata.name || record.filename || "download"),
     plaintextSize: Number(metadata.size || record.plaintextSize || 0),
@@ -173,7 +174,9 @@ export function closeStreamSession(sessionId) {
 
 export async function startServiceWorkerDownload(options) {
   const settings = options || {};
-  const session = await openStreamSession(settings);
+  const session = await openStreamSession(Object.assign({}, settings, {
+    purpose: "download",
+  }));
   const anchor = document.createElement("a");
   anchor.href = createDownloadUrl(session.fileId, session.sessionId);
   anchor.download = session.filename || "download";

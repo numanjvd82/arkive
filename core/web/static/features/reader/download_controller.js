@@ -3,7 +3,7 @@ import { canUseBlobFallback } from "./download_limits.js";
 import { clearDownloadWarning, showLargeDownloadWarning } from "./download_warning.js";
 import { downloadBlobFallback } from "./download_blob.js";
 import { downloadStreamedToDisk } from "./download_stream.js";
-import { supportsServiceWorkerStreaming } from "../streaming/stream_capabilities.js";
+import { supportsServiceWorkerDownload } from "../streaming/stream_capabilities.js";
 import { startServiceWorkerDownload } from "../streaming/stream_session.js";
 
 export async function downloadFile(options) {
@@ -40,7 +40,7 @@ export async function downloadFile(options) {
     return { mode: "blob" };
   }
 
-  if (supportsServiceWorkerStreaming()) {
+  if (supportsServiceWorkerDownload()) {
     await startServiceWorkerDownload({
       reader: options.reader,
       record: record,

@@ -1,5 +1,5 @@
 (function() {
-  function getIOSPlaybackContext() {
+  function getPlaybackContext() {
     const nav = typeof navigator !== "undefined" ? navigator : null;
     const ua = nav && nav.userAgent ? nav.userAgent : "";
     const platform = nav && nav.platform ? nav.platform : "";
@@ -12,7 +12,11 @@
     const isSafari =
       /^((?!chrome|android|crios|fxios|edg|opr).)*safari/i.test(ua);
 
+    const isAndroid = /android/i.test(ua);
+    const isMobile = isIOS || isAndroid;
+
     return {
+      isMobile: isMobile,
       isIOSSafari: isIOS && isSafari,
     };
   }
@@ -25,6 +29,10 @@
     const open = function() {
       if (typeof videoEl.webkitEnterFullscreen === "function") {
         videoEl.webkitEnterFullscreen();
+        return true;
+      }
+      if (typeof videoEl.requestFullscreen === "function") {
+        videoEl.requestFullscreen().catch(function() {});
         return true;
       }
       if (typeof videoEl.webkitSetPresentationMode === "function") {
@@ -60,7 +68,7 @@
       return videoEl.__arkivePlyr;
     }
 
-    const iosPlayback = getIOSPlaybackContext();
+    const playback = getPlaybackContext();
     const controls = [
       "play",
       "progress",
@@ -71,7 +79,7 @@
       "settings",
       "pip",
     ];
-    if (!iosPlayback.isIOSSafari) {
+    if (!playback.isMobile) {
       controls.push("fullscreen");
     }
 
@@ -106,7 +114,7 @@
     const mediaView = document.querySelector(".media-view, .share-view");
     const controlsEl = player.elements && player.elements.controls ? player.elements.controls : null;
     let cinemaToggle = null;
-    if (controlsEl && iosPlayback.isIOSSafari) {
+    if (controlsEl && playback.isMobile) {
       const fullscreenToggle = document.createElement("button");
       fullscreenToggle.type = "button";
       fullscreenToggle.className = "plyr__control";

@@ -4,7 +4,8 @@ const pendingReads = new Map();
 const INITIAL_PROBE_BYTES = 4 * 1024 * 1024;
 const MAX_STREAM_RESPONSE_BYTES = 4 * 1024 * 1024;
 const STREAM_READ_TIMEOUT_MS = 60000;
-const SESSION_MAX_LIFETIME_MS = 45 * 60 * 1000;
+const PREVIEW_SESSION_MAX_LIFETIME_MS = 6 * 60 * 60 * 1000;
+const DOWNLOAD_SESSION_MAX_LIFETIME_MS = 45 * 60 * 1000;
 
 self.addEventListener("install", function(event) {
   event.waitUntil(self.skipWaiting());
@@ -23,6 +24,7 @@ self.addEventListener("message", function(event) {
     const session = message.session;
     sessions.set(String(session.sessionId || ""), {
       sessionId: String(session.sessionId || ""),
+      purpose: String(session.purpose || "preview"),
       fileId: String(session.fileId || ""),
       filename: String(session.filename || "download"),
       plaintextSize: Number(session.plaintextSize || 0),
@@ -30,7 +32,8 @@ self.addEventListener("message", function(event) {
       clientId: event.source && event.source.id ? String(event.source.id) : "",
       downloadOffset: 0,
       openedAt: now,
-      expiresAt: now + SESSION_MAX_LIFETIME_MS,
+      maxLifetimeMs: sessionLifetimeMs(session),
+      expiresAt: now + sessionLifetimeMs(session),
       version: ARKIVE_SW_VERSION,
     });
     return;
@@ -286,7 +289,7 @@ function touchSession(session) {
   if (!session) {
     return;
   }
-  session.expiresAt = Date.now() + SESSION_MAX_LIFETIME_MS;
+  session.expiresAt = Date.now() + Number(session.maxLifetimeMs || PREVIEW_SESSION_MAX_LIFETIME_MS);
 }
 
 function isSessionExpired(session) {
@@ -299,6 +302,13 @@ function cleanupExpiredSessions() {
       finalizeSession(session, "expired");
     }
   });
+}
+
+function sessionLifetimeMs(session) {
+  if (session && String(session.purpose || "") === "download") {
+    return DOWNLOAD_SESSION_MAX_LIFETIME_MS;
+  }
+  return PREVIEW_SESSION_MAX_LIFETIME_MS;
 }
 
 async function notifyClient(clientId, message) {

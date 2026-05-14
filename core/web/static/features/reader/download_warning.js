@@ -1,6 +1,6 @@
 import { getDownloadCapabilities } from "./capabilities.js";
 import { canUseBlobFallback, formatBytes } from "./download_limits.js";
-import { supportsServiceWorkerStreaming } from "../streaming/stream_capabilities.js";
+import { supportsServiceWorkerDownload } from "../streaming/stream_capabilities.js";
 
 export function showLargeDownloadWarning(container, record) {
   if (!container) {
@@ -12,7 +12,7 @@ export function showLargeDownloadWarning(container, record) {
       "<h3>Large download needs a supported browser</h3>" +
       "<p>This file is " + formatBytes(record && record.plaintextSize) + ". Your browser cannot save decrypted chunks directly to disk.</p>" +
       "<p>For large encrypted downloads, use Chrome or Edge on desktop.</p>" +
-      '<p class="muted">Safari, iOS Safari, and Firefox may only support smaller downloads because they require Arkive to decrypt the file into browser memory first.</p>' +
+      '<p class="muted">Safari, iOS browsers, and Firefox may only support smaller downloads because they require Arkive to decrypt the file into browser memory first.</p>' +
     "</div>";
 }
 
@@ -65,7 +65,7 @@ export function maybeShowDownloadCapabilityWarning(root, record) {
   const container = (root || document).querySelector("#download-warning");
   const caps = getDownloadCapabilities();
 
-  if (!caps.supportsStreamedSave && !canUseBlobFallback(record, caps) && !supportsServiceWorkerStreaming()) {
+  if (!caps.supportsStreamedSave && !canUseBlobFallback(record, caps) && !supportsServiceWorkerDownload()) {
     showLargeDownloadWarning(container, record);
     return;
   }
