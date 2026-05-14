@@ -369,6 +369,9 @@ export class UploadRunner {
 	}
 
 	async failJob(job, error) {
+		if (!job || job.public.status === STATUS.CANCELED) {
+			return;
+		}
 		this.releaseJobFile(job);
 		job.public.status = STATUS.FAILED;
 		job.public.transferRate = 0;
@@ -392,8 +395,9 @@ export class UploadRunner {
 		if (job.public.sessionId) {
 			await cancelUpload(job.public.sessionId).catch(function () {});
 		}
+		this.clearJobCleanup(jobId);
+		this.jobs.delete(jobId);
 		this.emitState();
-		this.scheduleTerminalCleanup(job);
 	}
 
 	removeJob(jobId) {
@@ -424,7 +428,7 @@ export class UploadRunner {
 		if (this.currentController) {
 			this.currentController.abort();
 		}
-		for (const job of this.jobs.values()) {
+		for (const [jobId, job] of this.jobs.entries()) {
 			if (job.public.status !== STATUS.QUEUED && job.public.status !== STATUS.RUNNING) {
 				continue;
 			}
@@ -435,7 +439,8 @@ export class UploadRunner {
 			if (job.public.sessionId) {
 				cancelUploadBestEffort(job.public.sessionId);
 			}
-			this.scheduleTerminalCleanup(job);
+			this.clearJobCleanup(jobId);
+			this.jobs.delete(jobId);
 		}
 		this.emitState();
 	}

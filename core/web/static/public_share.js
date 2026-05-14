@@ -173,6 +173,15 @@
     download.setAttribute("aria-disabled", "true");
   }
 
+  function setDownloadVisibility(visible) {
+    if (!download) {
+      return;
+    }
+    download.hidden = !visible;
+    download.style.display = visible ? "" : "none";
+    download.setAttribute("aria-hidden", visible ? "false" : "true");
+  }
+
   function clearHideDownloadQueueTimer() {
     if (!hideDownloadQueueTimer) {
       return;
@@ -354,13 +363,13 @@
         window.ArkiveDownloadWarning.canDownloadInCurrentBrowser(downloadRecord);
       if (reader.record && reader.record.allowDownload === false && download) {
         download.setAttribute("aria-disabled", "true");
-        download.hidden = false;
+        setDownloadVisibility(true);
       } else if (download && !downloadSupported) {
         download.setAttribute("aria-disabled", "true");
-        download.hidden = true;
+        setDownloadVisibility(false);
       } else if (download) {
         download.setAttribute("aria-disabled", "false");
-        download.hidden = false;
+        setDownloadVisibility(true);
       }
       if (window.ArkiveDownloadWarning && typeof window.ArkiveDownloadWarning.maybeShowDownloadCapabilityWarning === "function") {
         window.ArkiveDownloadWarning.maybeShowDownloadCapabilityWarning(document, downloadRecord);

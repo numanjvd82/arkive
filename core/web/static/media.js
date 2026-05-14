@@ -41,6 +41,15 @@
     downloadButton.disabled = true;
   }
 
+  function setDownloadButtonVisibility(visible) {
+    if (!downloadButton) {
+      return;
+    }
+    downloadButton.hidden = !visible;
+    downloadButton.style.display = visible ? "" : "none";
+    downloadButton.setAttribute("aria-hidden", visible ? "false" : "true");
+  }
+
   function revokePreviewURL() {
     if (!currentPreviewURL) {
       return;
@@ -521,8 +530,8 @@
         window.ArkiveDownloadWarning.canDownloadInCurrentBrowser(reader.record);
       if (downloadButton) {
         downloadButton.disabled = !downloadSupported;
-        downloadButton.hidden = !downloadSupported;
       }
+      setDownloadButtonVisibility(downloadSupported);
       if (window.ArkiveDownloadWarning && typeof window.ArkiveDownloadWarning.maybeShowDownloadCapabilityWarning === "function") {
         window.ArkiveDownloadWarning.maybeShowDownloadCapabilityWarning(document, reader.record);
       }

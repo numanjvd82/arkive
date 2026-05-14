@@ -30,6 +30,8 @@ const (
 
 	UploadPartPending  = "pending"
 	UploadPartComplete = "complete"
+
+	S3MultipartMinPartSizeBytes int64 = 5 * 1024 * 1024
 )
 
 type MultipartUploadStartInput struct {
@@ -82,6 +84,15 @@ func (s *Service) StartMultipartUploadSession(ctx context.Context, userID string
 	}
 	if input.TotalParts <= 0 {
 		validationErrors.Add("totalParts", "total parts is required")
+	}
+	if input.TotalParts > 1 {
+		provider, providerErr := s.storage.ActiveProvider(ctx)
+		if providerErr != nil {
+			return models.UploadStartResponse{}, nil, providerErr
+		}
+		if provider == "s3" && input.PartSize < S3MultipartMinPartSizeBytes {
+			validationErrors.Add("partSize", "part size must be at least 5 MiB for multipart S3 uploads")
+		}
 	}
 	if validationErrors.HasAny() {
 		return models.UploadStartResponse{}, validationErrors, nil
