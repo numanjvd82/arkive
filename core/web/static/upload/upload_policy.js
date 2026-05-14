@@ -1,5 +1,7 @@
 export const UPLOAD_POLICY = Object.freeze({
 	maxActiveFiles: 1,
 	defaultPartSize: 8 * 1024 * 1024,
-	partConcurrency: 1,
+	partConcurrency: 3,
+	presignBatchSize: 8,
+	encryptReadAhead: 1,
 });

@@ -36,6 +36,17 @@ export async function presignUploadPart(sessionId, partNumber, signal) {
 	return readJSON(response, "Part presign failed");
 }
 
+export async function presignUploadParts(sessionId, partNumbers, signal) {
+	const response = await fetch("/api/uploads/" + encodeURIComponent(sessionId) + "/parts/presign", {
+		method: "POST",
+		credentials: "include",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ parts: partNumbers || [] }),
+		signal: signal,
+	});
+	return readJSON(response, "Part presign failed");
+}
+
 export async function recordUploadPart(sessionId, payload, signal) {
 	const response = await fetch("/api/uploads/" + encodeURIComponent(sessionId) + "/parts", {
 		method: "POST",

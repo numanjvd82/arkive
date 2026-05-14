@@ -44,6 +44,7 @@ func (r *Repository) GetUploadSessionForUser(ctx context.Context, db database.Pg
 	var upload models.UploadSession
 	query := `SELECT
 		upload_sessions.id, upload_sessions.file_id, upload_sessions.provider_upload_id,
+		files.chunk_count,
 		upload_sessions.status, upload_sessions.expires_at, upload_sessions.created_at, upload_sessions.updated_at
 	FROM
 		upload_sessions
@@ -55,6 +56,7 @@ func (r *Repository) GetUploadSessionForUser(ctx context.Context, db database.Pg
 		&upload.ID,
 		&upload.FileID,
 		&upload.ProviderUploadID,
+		&upload.TotalParts,
 		&upload.Status,
 		&upload.ExpiresAt,
 		&upload.CreatedAt,

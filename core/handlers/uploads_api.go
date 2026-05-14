@@ -23,6 +23,10 @@ type uploadPartRecordRequest struct {
 	ETag          string `json:"etag"`
 }
 
+type uploadPartPresignBatchRequest struct {
+	Parts []int `json:"parts"`
+}
+
 type uploadCompleteRequest struct {
 	EncryptedMetadata string `json:"encryptedMetadata"`
 	EncryptedFileKey  string `json:"encryptedFileKey"`
@@ -112,6 +116,48 @@ func APIUploadPartPresign(svc *uploads.Service) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, gin.H{"url": url})
+	}
+}
+
+func APIUploadPartPresignBatch(svc *uploads.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		uploadSessionID := c.Param("id")
+		if uploadSessionID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			return
+		}
+
+		var req uploadPartPresignBatchRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			return
+		}
+
+		userID, ok := c.Get("user_id")
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			return
+		}
+
+		urls, err := svc.PresignMultipartUploadParts(c.Request.Context(), userID.(string), uploadSessionID, req.Parts)
+		if err != nil {
+			switch err {
+			case uploads.ErrUnauthorized:
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			case uploads.ErrNotFound:
+				c.JSON(http.StatusNotFound, gin.H{"error": "upload not found"})
+			case uploads.ErrInvalidInput:
+				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			case uploads.ErrUploadCancelled:
+				c.JSON(http.StatusConflict, gin.H{"error": "upload cancelled"})
+			default:
+				_ = c.Error(errs.WithStack(err))
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "part presign failed"})
+			}
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"urls": urls})
 	}
 }
 

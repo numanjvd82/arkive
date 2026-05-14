@@ -102,6 +102,7 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 	{
 		apiUploads.POST("/start", handlers.APIUploadStart(uploadService))
 		apiUploads.POST("/:id/parts", handlers.APIUploadPartRecord(uploadService))
+		apiUploads.POST("/:id/parts/presign", handlers.APIUploadPartPresignBatch(uploadService))
 		apiUploads.POST("/:id/parts/:part/presign", handlers.APIUploadPartPresign(uploadService))
 		apiUploads.POST("/:id/complete", handlers.APIUploadComplete(uploadService))
 		apiUploads.POST("/:id/cancel", handlers.APIUploadCancel(uploadService))

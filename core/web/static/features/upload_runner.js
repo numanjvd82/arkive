@@ -1,9 +1,65 @@
 import { UPLOAD_POLICY } from "../upload/upload_policy.js";
 import { STATUS, isTerminal } from "../upload/upload_state.js";
-import { startUpload, presignUploadPart, recordUploadPart, completeUpload, cancelUpload, cancelUploadBestEffort } from "../upload/upload_api.js";
+import { startUpload, presignUploadPart, presignUploadParts, recordUploadPart, completeUpload, cancelUpload, cancelUploadBestEffort } from "../upload/upload_api.js";
 import { setVaultSession, restoreVaultSession, prepareUpload, encryptUploadPart, finalizeUpload, clearUploadContext } from "../upload/upload_crypto.js";
 
 const STOPPED_UPLOAD = new Error("Upload stopped");
+
+class PresignCache {
+	constructor(options) {
+		options = options || {};
+		this.sessionId = String(options.sessionId || "");
+		this.batchSize = Math.max(1, Number(options.batchSize || 1));
+		this.fetcher = typeof options.fetcher === "function" ? options.fetcher : null;
+		this.cache = new Map();
+		this.inFlight = new Map();
+	}
+
+	async get(partNumber) {
+		const key = Number(partNumber || 0);
+		if (this.cache.has(key)) {
+			const url = this.cache.get(key);
+			this.cache.delete(key);
+			return url;
+		}
+		if (this.inFlight.has(key)) {
+			return this.inFlight.get(key);
+		}
+
+		const promise = this.fetchBatch(key)
+			.then(() => {
+				if (!this.cache.has(key)) {
+					throw new Error("Part presign failed");
+				}
+				const url = this.cache.get(key);
+				this.cache.delete(key);
+				return url;
+			})
+			.finally(() => {
+				this.inFlight.delete(key);
+			});
+
+		this.inFlight.set(key, promise);
+		return promise;
+	}
+
+	async fetchBatch(partNumber) {
+		if (!this.fetcher) {
+			throw new Error("Part presign failed");
+		}
+
+		const parts = [];
+		for (let i = 0; i < this.batchSize; i++) {
+			parts.push(partNumber + i);
+		}
+
+		const response = await this.fetcher(parts);
+		const urls = response && response.urls ? response.urls : {};
+		for (const [key, value] of Object.entries(urls)) {
+			this.cache.set(Number(key), value);
+		}
+	}
+}
 
 function nowISO() {
 	return new Date().toISOString();
@@ -13,6 +69,20 @@ function uuid() {
 	return self.crypto && self.crypto.randomUUID ? self.crypto.randomUUID() : "job-" + Date.now() + "-" + Math.random().toString(36).slice(2);
 }
 
+function getUploadPartConcurrency(defaultConcurrency) {
+	const base = Math.max(1, Number(defaultConcurrency || 1));
+	const nav = typeof navigator !== "undefined" ? navigator : null;
+	const ua = nav && nav.userAgent ? nav.userAgent : "";
+	const platform = nav && nav.platform ? nav.platform : "";
+	const maxTouchPoints = nav && nav.maxTouchPoints ? nav.maxTouchPoints : 0;
+	const isIOS = /iPad|iPhone|iPod/.test(ua) || (platform === "MacIntel" && maxTouchPoints > 1);
+	const isAndroid = /android/i.test(ua);
+	if (!isIOS && !isAndroid) {
+		return base;
+	}
+	return Math.min(base, 2);
+}
+
 export class UploadRunner {
 	constructor(options) {
 		options = options || {};
@@ -20,7 +90,7 @@ export class UploadRunner {
 		this.jobs = new Map();
 		this.jobCleanupTimers = new Map();
 		this.activeJobId = null;
-		this.currentController = null;
+		this.currentControllers = new Set();
 		this.stateHandlers = [];
 		this.eventHandlers = [];
 		this.completedBatches = new Set();
@@ -165,7 +235,6 @@ export class UploadRunner {
 			return this.failJob(next, error);
 		}).finally(() => {
 			this.activeJobId = null;
-			this.currentController = null;
 			this.emitState();
 			this.processQueue();
 		});
@@ -222,10 +291,10 @@ export class UploadRunner {
 				throw STOPPED_UPLOAD;
 			}
 
-			const parts = [];
-			for (let partNumber = 1; partNumber <= job.public.totalParts; partNumber++) {
-				parts.push(await this.uploadPart(job, started, partNumber));
-			}
+				const parts = await this.uploadPartsPooled(job, started, {
+					concurrency: getUploadPartConcurrency(UPLOAD_POLICY.partConcurrency),
+					presignBatchSize: UPLOAD_POLICY.presignBatchSize,
+				});
 			if (this.shouldStopJob(job)) {
 				throw STOPPED_UPLOAD;
 			}
@@ -296,17 +365,64 @@ export class UploadRunner {
 
 	async runWithController(fn) {
 		const controller = new AbortController();
-		this.currentController = controller;
+		this.currentControllers.add(controller);
 		try {
 			return await fn(controller.signal);
 		} finally {
-			if (this.currentController === controller) {
-				this.currentController = null;
-			}
+			this.currentControllers.delete(controller);
 		}
 	}
 
-	async uploadPart(job, started, partNumber) {
+	async uploadPartsPooled(job, started, policy) {
+		const settings = policy || {};
+		const concurrency = Math.max(1, Number(settings.concurrency || 1));
+		const results = new Array(job.public.totalParts);
+		let nextPartNumber = 1;
+		const runner = this;
+		const presigner = new PresignCache({
+			sessionId: started.uploadSessionId,
+			batchSize: Math.max(1, Number(settings.presignBatchSize || 1)),
+			fetcher: async function(partNumbers) {
+				const limitedParts = [];
+				for (let i = 0; i < partNumbers.length; i++) {
+					const partNumber = Number(partNumbers[i] || 0);
+					if (partNumber <= 0 || partNumber > job.public.totalParts) {
+						continue;
+					}
+					limitedParts.push(partNumber);
+				}
+				if (!limitedParts.length) {
+					return { urls: {} };
+				}
+				return runner.runWithController(async function(signal) {
+					return presignUploadParts(started.uploadSessionId, limitedParts, signal);
+				});
+			},
+		});
+
+		async function worker() {
+			while (true) {
+				if (runner.shouldStopJob(job)) {
+					throw STOPPED_UPLOAD;
+				}
+				if (nextPartNumber > job.public.totalParts) {
+					return;
+				}
+				const partNumber = nextPartNumber++;
+				const result = await runner.uploadPart(job, started, partNumber, presigner);
+				results[partNumber - 1] = result;
+			}
+		}
+
+		const workers = [];
+		for (let i = 0; i < concurrency; i++) {
+			workers.push(worker());
+		}
+		await Promise.all(workers);
+		return results;
+	}
+
+	async uploadPart(job, started, partNumber, presigner) {
 		if (this.shouldStopJob(job)) {
 			throw STOPPED_UPLOAD;
 		}
@@ -320,9 +436,11 @@ export class UploadRunner {
 			aad: "arkive:file-chunk:v1:" + started.vaultId + ":" + started.fileId + ":" + partNumber + ":" + job.public.chunkSize + ":" + job.public.totalParts,
 		});
 
-		const presigned = await this.runWithController(async (signal) => {
-			return presignUploadPart(started.uploadSessionId, partNumber, signal);
-		});
+		const presigned = presigner
+			? { url: await presigner.get(partNumber) }
+			: await this.runWithController(async (signal) => {
+				return presignUploadPart(started.uploadSessionId, partNumber, signal);
+			});
 		if (this.shouldStopJob(job)) {
 			throw STOPPED_UPLOAD;
 		}
@@ -389,8 +507,10 @@ export class UploadRunner {
 		this.releaseJobFile(job);
 		job.public.transferRate = 0;
 		job.public.updatedAt = nowISO();
-		if (this.activeJobId === jobId && this.currentController) {
-			this.currentController.abort();
+		if (this.activeJobId === jobId) {
+			for (const controller of this.currentControllers) {
+				controller.abort();
+			}
 		}
 		if (job.public.sessionId) {
 			await cancelUpload(job.public.sessionId).catch(function () {});
@@ -408,8 +528,8 @@ export class UploadRunner {
 		this.jobs.delete(jobId);
 		if (this.activeJobId === jobId) {
 			this.activeJobId = null;
-			if (this.currentController) {
-				this.currentController.abort();
+			for (const controller of this.currentControllers) {
+				controller.abort();
 			}
 		}
 		this.emitState();
@@ -425,8 +545,8 @@ export class UploadRunner {
 	}
 
 	cancelActiveUploadsBestEffort() {
-		if (this.currentController) {
-			this.currentController.abort();
+		for (const controller of this.currentControllers) {
+			controller.abort();
 		}
 		for (const [jobId, job] of this.jobs.entries()) {
 			if (job.public.status !== STATUS.QUEUED && job.public.status !== STATUS.RUNNING) {

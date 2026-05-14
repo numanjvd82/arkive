@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"log"
+	"strconv"
 	"strings"
 	"time"
 
@@ -32,6 +33,7 @@ const (
 	UploadPartComplete = "complete"
 
 	S3MultipartMinPartSizeBytes int64 = 5 * 1024 * 1024
+	MaxPresignBatchParts        = 32
 )
 
 type MultipartUploadStartInput struct {
@@ -207,6 +209,66 @@ func (s *Service) PresignMultipartUploadPart(ctx context.Context, userID, upload
 		return "", err
 	}
 	return s.storage.PresignUploadPart(ctx, objectKey, uploadSession.ProviderUploadID, int32(partNumber), s.uploadExpires)
+}
+
+func (s *Service) PresignMultipartUploadParts(ctx context.Context, userID, uploadSessionID string, partNumbers []int) (map[string]string, error) {
+	var err error
+	userID, err = validateUserID(userID)
+	if err != nil {
+		return nil, err
+	}
+	uploadSessionID, err = validateUploadID(uploadSessionID)
+	if err != nil {
+		return nil, err
+	}
+	if len(partNumbers) == 0 {
+		return nil, ErrInvalidInput
+	}
+	if len(partNumbers) > MaxPresignBatchParts {
+		return nil, ErrInvalidInput
+	}
+
+	uploadSession, err := s.uploadRepo.GetUploadSessionForUser(ctx, s.db, uploadSessionID, userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	if uploadSession.Status != UploadStatusActive || isExpired(&uploadSession.ExpiresAt) {
+		return nil, ErrUploadCancelled
+	}
+
+	if err := s.uploadRepo.UpdateUploadSessionStatus(ctx, s.db, uploadSessionID, UploadStatusActive); err != nil {
+		return nil, err
+	}
+	objectKey, err := storage.BuildObjectKey(userID, uploadSession.FileID)
+	if err != nil {
+		return nil, err
+	}
+
+	urls := make(map[string]string, len(partNumbers))
+	seen := make(map[int]struct{}, len(partNumbers))
+	for _, partNumber := range partNumbers {
+		if partNumber <= 0 {
+			return nil, ErrInvalidInput
+		}
+		if uploadSession.TotalParts > 0 && partNumber > uploadSession.TotalParts {
+			return nil, ErrInvalidInput
+		}
+		if _, exists := seen[partNumber]; exists {
+			continue
+		}
+		seen[partNumber] = struct{}{}
+
+		url, presignErr := s.storage.PresignUploadPart(ctx, objectKey, uploadSession.ProviderUploadID, int32(partNumber), s.uploadExpires)
+		if presignErr != nil {
+			return nil, presignErr
+		}
+		urls[strconv.Itoa(partNumber)] = url
+	}
+
+	return urls, nil
 }
 
 func (s *Service) RecordMultipartUploadPart(ctx context.Context, userID, uploadSessionID string, input UploadPartRecordInput) error {
