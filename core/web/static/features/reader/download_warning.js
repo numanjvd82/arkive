@@ -2,6 +2,11 @@ import { getDownloadCapabilities } from "./capabilities.js";
 import { canUseBlobFallback, formatBytes } from "./download_limits.js";
 import { supportsServiceWorkerDownload } from "../streaming/stream_capabilities.js";
 
+export function canDownloadInCurrentBrowser(record) {
+  const caps = getDownloadCapabilities();
+  return caps.supportsStreamedSave || canUseBlobFallback(record, caps) || supportsServiceWorkerDownload();
+}
+
 export function showLargeDownloadWarning(container, record) {
   if (!container) {
     return;
@@ -63,9 +68,8 @@ export function isDownloadAbortError(error) {
 
 export function maybeShowDownloadCapabilityWarning(root, record) {
   const container = (root || document).querySelector("#download-warning");
-  const caps = getDownloadCapabilities();
 
-  if (!caps.supportsStreamedSave && !canUseBlobFallback(record, caps) && !supportsServiceWorkerDownload()) {
+  if (!canDownloadInCurrentBrowser(record)) {
     showLargeDownloadWarning(container, record);
     return;
   }

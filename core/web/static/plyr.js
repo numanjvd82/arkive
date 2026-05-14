@@ -69,6 +69,13 @@
     }
 
     const playback = getPlaybackContext();
+    if (playback.isMobile) {
+      videoEl.setAttribute("controls", "controls");
+      videoEl.controls = true;
+      videoEl.__arkivePlyr = null;
+      return null;
+    }
+
     const controls = [
       "play",
       "progress",
@@ -79,9 +86,7 @@
       "settings",
       "pip",
     ];
-    if (!playback.isMobile) {
-      controls.push("fullscreen");
-    }
+    controls.push("fullscreen");
 
     const player = new window.Plyr(videoEl, {
       controls: controls,
@@ -114,19 +119,6 @@
     const mediaView = document.querySelector(".media-view, .share-view");
     const controlsEl = player.elements && player.elements.controls ? player.elements.controls : null;
     let cinemaToggle = null;
-    if (controlsEl && playback.isMobile) {
-      const fullscreenToggle = document.createElement("button");
-      fullscreenToggle.type = "button";
-      fullscreenToggle.className = "plyr__control";
-      fullscreenToggle.setAttribute("aria-label", "Full screen");
-      fullscreenToggle.innerHTML =
-        '<svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path fill="currentColor" d="M7 3H5a2 2 0 0 0-2 2v2h2V5h2V3zm12 0h-2v2h2v2h2V5a2 2 0 0 0-2-2zM3 17v2a2 2 0 0 0 2 2h2v-2H5v-2H3zm16 2h-2v2h2a2 2 0 0 0 2-2v-2h-2v2z"></path></svg>';
-      fullscreenToggle.addEventListener("click", function(event) {
-        event.preventDefault();
-        enterNativeFullscreen(videoEl, player);
-      });
-      controlsEl.appendChild(fullscreenToggle);
-    }
     if (controlsEl) {
       cinemaToggle = document.createElement("button");
       cinemaToggle.type = "button";

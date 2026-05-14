@@ -515,8 +515,13 @@
 
   readerReady
     .then(function() {
+      const downloadSupported =
+        !window.ArkiveDownloadWarning ||
+        typeof window.ArkiveDownloadWarning.canDownloadInCurrentBrowser !== "function" ||
+        window.ArkiveDownloadWarning.canDownloadInCurrentBrowser(reader.record);
       if (downloadButton) {
-        downloadButton.disabled = false;
+        downloadButton.disabled = !downloadSupported;
+        downloadButton.hidden = !downloadSupported;
       }
       if (window.ArkiveDownloadWarning && typeof window.ArkiveDownloadWarning.maybeShowDownloadCapabilityWarning === "function") {
         window.ArkiveDownloadWarning.maybeShowDownloadCapabilityWarning(document, reader.record);

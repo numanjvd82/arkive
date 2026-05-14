@@ -345,15 +345,25 @@
       const metadata = reader.getMetadata();
       updateMetadata(metadata, Number(metadata.size || reader.record.plaintextSize || 0));
       const mime = String((metadata && metadata.mime) || "").toLowerCase();
+      const downloadRecord = {
+        plaintextSize: Number(metadata.size || reader.record.plaintextSize || 0),
+      };
+      const downloadSupported =
+        !window.ArkiveDownloadWarning ||
+        typeof window.ArkiveDownloadWarning.canDownloadInCurrentBrowser !== "function" ||
+        window.ArkiveDownloadWarning.canDownloadInCurrentBrowser(downloadRecord);
       if (reader.record && reader.record.allowDownload === false && download) {
         download.setAttribute("aria-disabled", "true");
+        download.hidden = false;
+      } else if (download && !downloadSupported) {
+        download.setAttribute("aria-disabled", "true");
+        download.hidden = true;
       } else if (download) {
         download.setAttribute("aria-disabled", "false");
+        download.hidden = false;
       }
       if (window.ArkiveDownloadWarning && typeof window.ArkiveDownloadWarning.maybeShowDownloadCapabilityWarning === "function") {
-        window.ArkiveDownloadWarning.maybeShowDownloadCapabilityWarning(document, {
-          plaintextSize: Number(metadata.size || reader.record.plaintextSize || 0),
-        });
+        window.ArkiveDownloadWarning.maybeShowDownloadCapabilityWarning(document, downloadRecord);
       }
       if (reader.record && reader.record.allowPreview === false) {
         unavailable("Preview is disabled for this share.");

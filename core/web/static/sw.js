@@ -3,7 +3,7 @@ const sessions = new Map();
 const pendingReads = new Map();
 const INITIAL_PROBE_BYTES = 4 * 1024 * 1024;
 const MAX_STREAM_RESPONSE_BYTES = 4 * 1024 * 1024;
-const STREAM_READ_TIMEOUT_MS = 60000;
+const STREAM_READ_TIMEOUT_MS = 5 * 60 * 1000;
 const PREVIEW_SESSION_MAX_LIFETIME_MS = 6 * 60 * 60 * 1000;
 const DOWNLOAD_SESSION_MAX_LIFETIME_MS = 45 * 60 * 1000;
 
