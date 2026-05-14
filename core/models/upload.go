@@ -10,8 +10,10 @@ type UploadStartResponse struct {
 	UploadURL        string
 	UploadSessionID  string
 	ProviderUploadID string
-	PartSize         int64
-	TotalParts       int
+	FileChunkSize    int64
+	TotalChunks      int
+	UploadPartSize   int64
+	UploadPartCount  int
 }
 
 type SingleStartResponse struct {
@@ -24,7 +26,7 @@ type UploadSession struct {
 	ID               string
 	FileID           string
 	ProviderUploadID string
-	TotalParts       int
+	UploadPartCount  int
 	Status           string
 	ExpiresAt        time.Time
 	CreatedAt        time.Time

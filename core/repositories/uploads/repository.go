@@ -16,20 +16,22 @@ func New() *Repository {
 func (r *Repository) CreateUploadSession(ctx context.Context, db database.PgExecutor, upload models.UploadSession) (models.UploadSession, error) {
 	var created models.UploadSession
 	query := `INSERT INTO upload_sessions
-		(file_id, provider_upload_id, status, expires_at)
+		(file_id, provider_upload_id, upload_part_count, status, expires_at)
 	VALUES
-		($1, $2, $3, $4)
+		($1, $2, $3, $4, $5)
 	RETURNING
-		id, file_id, provider_upload_id, status, expires_at, created_at, updated_at`
+		id, file_id, provider_upload_id, upload_part_count, status, expires_at, created_at, updated_at`
 	if err := db.QueryRow(ctx, query,
 		upload.FileID,
 		upload.ProviderUploadID,
+		upload.UploadPartCount,
 		upload.Status,
 		upload.ExpiresAt,
 	).Scan(
 		&created.ID,
 		&created.FileID,
 		&created.ProviderUploadID,
+		&created.UploadPartCount,
 		&created.Status,
 		&created.ExpiresAt,
 		&created.CreatedAt,
@@ -44,7 +46,7 @@ func (r *Repository) GetUploadSessionForUser(ctx context.Context, db database.Pg
 	var upload models.UploadSession
 	query := `SELECT
 		upload_sessions.id, upload_sessions.file_id, upload_sessions.provider_upload_id,
-		files.chunk_count,
+		upload_sessions.upload_part_count,
 		upload_sessions.status, upload_sessions.expires_at, upload_sessions.created_at, upload_sessions.updated_at
 	FROM
 		upload_sessions
@@ -56,7 +58,7 @@ func (r *Repository) GetUploadSessionForUser(ctx context.Context, db database.Pg
 		&upload.ID,
 		&upload.FileID,
 		&upload.ProviderUploadID,
-		&upload.TotalParts,
+		&upload.UploadPartCount,
 		&upload.Status,
 		&upload.ExpiresAt,
 		&upload.CreatedAt,

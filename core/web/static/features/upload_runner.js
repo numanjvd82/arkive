@@ -1,7 +1,7 @@
 import { UPLOAD_POLICY } from "../upload/upload_policy.js";
 import { STATUS, isTerminal } from "../upload/upload_state.js";
 import { startUpload, presignUploadPart, presignUploadParts, recordUploadPart, completeUpload, cancelUpload, cancelUploadBestEffort } from "../upload/upload_api.js";
-import { setVaultSession, restoreVaultSession, prepareUpload, encryptUploadPart, finalizeUpload, clearUploadContext } from "../upload/upload_crypto.js";
+import { setVaultSession, restoreVaultSession, prepareUpload, encryptUploadPart, hashUploadPayload, finalizeUpload, clearUploadContext } from "../upload/upload_crypto.js";
 
 const STOPPED_UPLOAD = new Error("Upload stopped");
 
@@ -81,6 +81,38 @@ function getUploadPartConcurrency(defaultConcurrency) {
 		return base;
 	}
 	return Math.min(base, 2);
+}
+
+function joinUint8Arrays(parts) {
+	let total = 0;
+	for (let i = 0; i < parts.length; i++) {
+		total += Number(parts[i] ? parts[i].length : 0);
+	}
+	const output = new Uint8Array(total);
+	let offset = 0;
+	for (let i = 0; i < parts.length; i++) {
+		const part = parts[i];
+		if (!part) {
+			continue;
+		}
+		output.set(part, offset);
+		offset += part.length;
+	}
+	return output;
+}
+
+function flattenChunkGroups(groups) {
+	const output = [];
+	for (let i = 0; i < groups.length; i++) {
+		const group = groups[i];
+		if (!Array.isArray(group)) {
+			continue;
+		}
+		for (let j = 0; j < group.length; j++) {
+			output.push(group[j]);
+		}
+	}
+	return output;
 }
 
 export class UploadRunner {
@@ -177,7 +209,8 @@ export class UploadRunner {
 		for (let i = 0; i < files.length; i++) {
 			const file = files[i];
 			const jobId = uuid();
-			const chunkSize = UPLOAD_POLICY.defaultPartSize;
+			const fileChunkSize = UPLOAD_POLICY.fileChunkSize;
+			const uploadPartSize = UPLOAD_POLICY.uploadPartSize;
 			this.jobs.set(jobId, {
 				file: file,
 				public: {
@@ -188,8 +221,12 @@ export class UploadRunner {
 					sessionId: "",
 					fileName: file.name,
 					fileSize: file.size,
-					chunkSize: chunkSize,
-					totalParts: Math.max(1, Math.ceil(file.size / chunkSize)),
+					fileChunkSize: fileChunkSize,
+					totalChunks: Math.max(1, Math.ceil(file.size / fileChunkSize)),
+					uploadPartSize: uploadPartSize,
+					uploadPartCount: Math.max(1, Math.ceil(file.size / uploadPartSize)),
+					completedUploadParts: 0,
+					totalParts: Math.max(1, Math.ceil(file.size / uploadPartSize)),
 					completedParts: 0,
 					completedBytes: 0,
 					transferRate: 0,
@@ -249,13 +286,15 @@ export class UploadRunner {
 		await restoreVaultSession();
 
 		const started = await this.runWithController(async (signal) => {
-			return startUpload({
-				originalSize: job.file.size,
-				partSize: job.public.chunkSize,
-				totalParts: job.public.totalParts,
-				encryptionVersion: 1,
-			}, signal);
-		});
+				return startUpload({
+					originalSize: job.file.size,
+					fileChunkSize: job.public.fileChunkSize,
+					totalChunks: job.public.totalChunks,
+					uploadPartSize: job.public.uploadPartSize,
+					uploadPartCount: job.public.uploadPartCount,
+					encryptionVersion: 1,
+				}, signal);
+			});
 		if (this.shouldStopJob(job)) {
 			throw STOPPED_UPLOAD;
 		}
@@ -283,7 +322,7 @@ export class UploadRunner {
 					modified_at_client: job.file.lastModified ? new Date(job.file.lastModified).toISOString() : null,
 					preview: { thumbnail_file_id: null, has_thumbnail: false },
 				},
-				totalParts: job.public.totalParts,
+				totalParts: job.public.totalChunks,
 				metadataAad: "arkive:file-metadata:v1:" + started.vaultId + ":" + started.fileId,
 				fileKeyAad: "arkive:file-key:v1:" + started.vaultId + ":" + started.fileId,
 			});
@@ -291,10 +330,10 @@ export class UploadRunner {
 				throw STOPPED_UPLOAD;
 			}
 
-				const parts = await this.uploadPartsPooled(job, started, {
-					concurrency: getUploadPartConcurrency(UPLOAD_POLICY.partConcurrency),
-					presignBatchSize: UPLOAD_POLICY.presignBatchSize,
-				});
+			const chunks = await this.uploadPartsPooled(job, started, {
+				concurrency: getUploadPartConcurrency(UPLOAD_POLICY.partConcurrency),
+				presignBatchSize: UPLOAD_POLICY.presignBatchSize,
+			});
 			if (this.shouldStopJob(job)) {
 				throw STOPPED_UPLOAD;
 			}
@@ -306,27 +345,26 @@ export class UploadRunner {
 				manifest: {
 					schema: "arkive.file.manifest",
 					version: 1,
-					hash_alg: "blake3",
-					hash_encoding: "base64",
-					file_id: started.fileId,
-					name: job.file.name,
-					mime: job.file.type || "application/octet-stream",
-					extension: (job.file.name.split(".").pop() || "").toLowerCase(),
-					size: job.file.size,
-					chunk_size: job.public.chunkSize,
-					chunks: parts.map((part) => {
-						return {
-							n: part.partNumber,
-							offset: part.offset,
-							plain_size: part.plainSize,
-							cipher_size: part.encryptedSize,
-							hash: part.encryptedHash,
-						};
-					}),
-				},
-				manifestAad: "arkive:file-manifest:v1:" + started.vaultId + ":" + started.fileId,
-				partHashes: parts.map((part) => part.encryptedHash),
-			});
+						hash_alg: "blake3",
+						hash_encoding: "base64",
+						file_id: started.fileId,
+						name: job.file.name,
+						mime: job.file.type || "application/octet-stream",
+						extension: (job.file.name.split(".").pop() || "").toLowerCase(),
+						size: job.file.size,
+						chunk_size: job.public.fileChunkSize,
+						chunks: chunks.map((part) => {
+							return {
+								n: part.chunkNumber,
+								plain_size: part.plainSize,
+								cipher_size: part.encryptedSize,
+								hash: part.encryptedHash,
+							};
+						}),
+					},
+					manifestAad: "arkive:file-manifest:v1:" + started.vaultId + ":" + started.fileId,
+					chunkHashes: chunks.map((part) => part.encryptedHash),
+				});
 			if (this.shouldStopJob(job)) {
 				throw STOPPED_UPLOAD;
 			}
@@ -376,7 +414,7 @@ export class UploadRunner {
 	async uploadPartsPooled(job, started, policy) {
 		const settings = policy || {};
 		const concurrency = Math.max(1, Number(settings.concurrency || 1));
-		const results = new Array(job.public.totalParts);
+		const results = new Array(job.public.uploadPartCount);
 		let nextPartNumber = 1;
 		const runner = this;
 		const presigner = new PresignCache({
@@ -386,7 +424,7 @@ export class UploadRunner {
 				const limitedParts = [];
 				for (let i = 0; i < partNumbers.length; i++) {
 					const partNumber = Number(partNumbers[i] || 0);
-					if (partNumber <= 0 || partNumber > job.public.totalParts) {
+						if (partNumber <= 0 || partNumber > job.public.uploadPartCount) {
 						continue;
 					}
 					limitedParts.push(partNumber);
@@ -405,7 +443,7 @@ export class UploadRunner {
 				if (runner.shouldStopJob(job)) {
 					throw STOPPED_UPLOAD;
 				}
-				if (nextPartNumber > job.public.totalParts) {
+					if (nextPartNumber > job.public.uploadPartCount) {
 					return;
 				}
 				const partNumber = nextPartNumber++;
@@ -419,7 +457,7 @@ export class UploadRunner {
 			workers.push(worker());
 		}
 		await Promise.all(workers);
-		return results;
+		return flattenChunkGroups(results);
 	}
 
 	async uploadPart(job, started, partNumber, presigner) {
@@ -427,14 +465,29 @@ export class UploadRunner {
 			throw STOPPED_UPLOAD;
 		}
 
-		const start = (partNumber - 1) * job.public.chunkSize;
-		const end = Math.min(start + job.public.chunkSize, job.file.size);
-		const chunk = new Uint8Array(await job.file.slice(start, end).arrayBuffer());
-		const encrypted = await encryptUploadPart({
-			uploadToken: job.public.jobId,
-			chunkBytes: chunk,
-			aad: "arkive:file-chunk:v1:" + started.vaultId + ":" + started.fileId + ":" + partNumber + ":" + job.public.chunkSize + ":" + job.public.totalParts,
-		});
+		const start = (partNumber - 1) * job.public.uploadPartSize;
+		const end = Math.min(start + job.public.uploadPartSize, job.file.size);
+		const firstChunkNumber = Math.floor(start / job.public.fileChunkSize) + 1;
+		const encryptedChunks = [];
+		const chunkResults = [];
+		for (let chunkStart = start, chunkNumber = firstChunkNumber; chunkStart < end; chunkStart += job.public.fileChunkSize, chunkNumber++) {
+			const chunkEnd = Math.min(chunkStart + job.public.fileChunkSize, job.file.size, end);
+			const chunk = new Uint8Array(await job.file.slice(chunkStart, chunkEnd).arrayBuffer());
+			const encrypted = await encryptUploadPart({
+				uploadToken: job.public.jobId,
+				chunkBytes: chunk,
+				aad: "arkive:file-chunk:v1:" + started.vaultId + ":" + started.fileId + ":" + chunkNumber + ":" + job.public.fileChunkSize + ":" + job.public.totalChunks,
+			});
+			encryptedChunks.push(encrypted.encryptedChunk);
+			chunkResults.push({
+				chunkNumber: chunkNumber,
+				plainSize: chunkEnd - chunkStart,
+				encryptedHash: encrypted.encryptedHash,
+				encryptedSize: encrypted.encryptedSize,
+				});
+		}
+		const uploadBody = joinUint8Arrays(encryptedChunks);
+		const uploadHash = await hashUploadPayload({ bytes: uploadBody });
 
 		const presigned = presigner
 			? { url: await presigner.get(partNumber) }
@@ -447,7 +500,7 @@ export class UploadRunner {
 		const response = await this.runWithController(async (signal) => {
 			return fetch(presigned.url, {
 				method: "PUT",
-				body: encrypted.encryptedChunk,
+				body: uploadBody,
 				signal: signal,
 			});
 		});
@@ -461,15 +514,17 @@ export class UploadRunner {
 		await this.runWithController(async (signal) => {
 			return recordUploadPart(started.uploadSessionId, {
 				partNumber: partNumber,
-				encryptedHash: encrypted.encryptedHash,
+				encryptedHash: uploadHash,
 				etag: etag,
 			}, signal);
 		});
+		uploadBody.fill(0);
 		if (this.shouldStopJob(job)) {
 			throw STOPPED_UPLOAD;
 		}
 
-		job.public.completedParts += 1;
+		job.public.completedUploadParts += 1;
+		job.public.completedParts = job.public.completedUploadParts;
 		job.public.completedBytes += end - start;
 		const startedAt = job.public.startedAt ? new Date(job.public.startedAt).getTime() : Date.now();
 		const elapsed = Math.max(1, Date.now() - startedAt);
@@ -477,13 +532,7 @@ export class UploadRunner {
 		job.public.updatedAt = nowISO();
 		this.emitState();
 
-		return {
-			partNumber: partNumber,
-			offset: start,
-			plainSize: end - start,
-			encryptedHash: encrypted.encryptedHash,
-			encryptedSize: encrypted.encryptedSize,
-		};
+		return chunkResults;
 	}
 
 	async failJob(job, error) {

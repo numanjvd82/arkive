@@ -33,13 +33,15 @@ const (
 	UploadPartComplete = "complete"
 
 	S3MultipartMinPartSizeBytes int64 = 5 * 1024 * 1024
-	MaxPresignBatchParts        = 32
+	MaxPresignBatchParts              = 32
 )
 
 type MultipartUploadStartInput struct {
 	OriginalSize      int64
-	PartSize          int64
-	TotalParts        int
+	FileChunkSize     int64
+	TotalChunks       int
+	UploadPartSize    int64
+	UploadPartCount   int
 	EncryptionVersion int16
 }
 
@@ -81,31 +83,51 @@ func (s *Service) StartMultipartUploadSession(ctx context.Context, userID string
 	if input.OriginalSize <= 0 {
 		validationErrors.Add("size", ErrFileSizeRequired.Error())
 	}
-	if input.PartSize <= 0 {
-		validationErrors.Add("partSize", "part size is required")
+	if input.FileChunkSize <= 0 {
+		validationErrors.Add("fileChunkSize", "file chunk size is required")
 	}
-	if input.TotalParts <= 0 {
-		validationErrors.Add("totalParts", "total parts is required")
+	if input.TotalChunks <= 0 {
+		validationErrors.Add("totalChunks", "total chunks is required")
 	}
-	if input.TotalParts > 1 {
+	if input.UploadPartSize <= 0 {
+		validationErrors.Add("uploadPartSize", "upload part size is required")
+	}
+	if input.UploadPartCount <= 0 {
+		validationErrors.Add("uploadPartCount", "upload part count is required")
+	}
+	if input.UploadPartCount > 1 {
 		provider, providerErr := s.storage.ActiveProvider(ctx)
 		if providerErr != nil {
 			return models.UploadStartResponse{}, nil, providerErr
 		}
-		if provider == "s3" && input.PartSize < S3MultipartMinPartSizeBytes {
-			validationErrors.Add("partSize", "part size must be at least 5 MiB for multipart S3 uploads")
+		if provider == "s3" && input.UploadPartSize < S3MultipartMinPartSizeBytes {
+			validationErrors.Add("uploadPartSize", "upload part size must be at least 5 MiB for multipart S3 uploads")
 		}
 	}
 	if validationErrors.HasAny() {
 		return models.UploadStartResponse{}, validationErrors, nil
 	}
 
-	expectedParts := int((input.OriginalSize + input.PartSize - 1) / input.PartSize)
-	if expectedParts != input.TotalParts {
-		validationErrors.Add("totalParts", "total parts does not match original size")
+	expectedChunks := int((input.OriginalSize + input.FileChunkSize - 1) / input.FileChunkSize)
+	if expectedChunks != input.TotalChunks {
+		validationErrors.Add("totalChunks", "total chunks does not match original size")
 		return models.UploadStartResponse{}, validationErrors, nil
 	}
-	declaredEncryptedSize := encryptedFileSize(input.OriginalSize, input.TotalParts)
+	chunksPerUploadPart := int(input.UploadPartSize / input.FileChunkSize)
+	if chunksPerUploadPart <= 0 {
+		validationErrors.Add("uploadPartSize", "upload part size must be greater than or equal to file chunk size")
+		return models.UploadStartResponse{}, validationErrors, nil
+	}
+	expectedUploadParts := (input.TotalChunks + chunksPerUploadPart - 1) / chunksPerUploadPart
+	if expectedUploadParts != input.UploadPartCount {
+		validationErrors.Add("uploadPartCount", "upload part count does not match original size")
+		return models.UploadStartResponse{}, validationErrors, nil
+	}
+	if input.UploadPartSize%input.FileChunkSize != 0 {
+		validationErrors.Add("uploadPartSize", "upload part size must align to file chunk size")
+		return models.UploadStartResponse{}, validationErrors, nil
+	}
+	declaredEncryptedSize := encryptedFileSize(input.OriginalSize, input.TotalChunks)
 
 	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
@@ -118,8 +140,8 @@ func (s *Service) StartMultipartUploadSession(ctx context.Context, userID string
 		EncryptedFileKey:    []byte{},
 		EncryptedManifest:   []byte{},
 		EncryptionVersion:   input.EncryptionVersion,
-		ChunkSize:           input.PartSize,
-		ChunkCount:          input.TotalParts,
+		ChunkSize:           input.FileChunkSize,
+		ChunkCount:          input.TotalChunks,
 		PlaintextSize:       input.OriginalSize,
 		ActualEncryptedSize: 0,
 		UploadStatus:        FileUploadUploading,
@@ -153,6 +175,7 @@ func (s *Service) StartMultipartUploadSession(ctx context.Context, userID string
 	session, err := s.uploadRepo.CreateUploadSession(ctx, tx, models.UploadSession{
 		FileID:           file.ID,
 		ProviderUploadID: providerUploadID,
+		UploadPartCount:  input.UploadPartCount,
 		Status:           UploadStatusActive,
 		ExpiresAt:        time.Now().Add(s.uploadExpires),
 	})
@@ -171,8 +194,10 @@ func (s *Service) StartMultipartUploadSession(ctx context.Context, userID string
 		VaultID:          file.UserID,
 		UploadSessionID:  session.ID,
 		ProviderUploadID: providerUploadID,
-		PartSize:         input.PartSize,
-		TotalParts:       input.TotalParts,
+		FileChunkSize:    input.FileChunkSize,
+		TotalChunks:      input.TotalChunks,
+		UploadPartSize:   input.UploadPartSize,
+		UploadPartCount:  input.UploadPartCount,
 	}, nil, nil
 }
 
@@ -199,6 +224,9 @@ func (s *Service) PresignMultipartUploadPart(ctx context.Context, userID, upload
 	}
 	if uploadSession.Status != UploadStatusActive || isExpired(&uploadSession.ExpiresAt) {
 		return "", ErrUploadCancelled
+	}
+	if uploadSession.UploadPartCount > 0 && partNumber > uploadSession.UploadPartCount {
+		return "", ErrInvalidInput
 	}
 
 	if err := s.uploadRepo.UpdateUploadSessionStatus(ctx, s.db, uploadSessionID, UploadStatusActive); err != nil {
@@ -253,7 +281,7 @@ func (s *Service) PresignMultipartUploadParts(ctx context.Context, userID, uploa
 		if partNumber <= 0 {
 			return nil, ErrInvalidInput
 		}
-		if uploadSession.TotalParts > 0 && partNumber > uploadSession.TotalParts {
+		if uploadSession.UploadPartCount > 0 && partNumber > uploadSession.UploadPartCount {
 			return nil, ErrInvalidInput
 		}
 		if _, exists := seen[partNumber]; exists {
@@ -346,7 +374,7 @@ func (s *Service) CompleteMultipartUploadSession(ctx context.Context, userID, up
 	if err != nil {
 		return err
 	}
-	if len(parts) != file.ChunkCount {
+	if uploadSession.UploadPartCount <= 0 || len(parts) != uploadSession.UploadPartCount {
 		return ErrPartsRequired
 	}
 	encryptedMetadata, err := base64.StdEncoding.DecodeString(strings.TrimSpace(input.EncryptedMetadata))

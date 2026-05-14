@@ -1,7 +1,18 @@
 # Uploads TODO
 
 ## Not Implemented Yet
-- Periodic cleanup for stale multipart uploads (database records + R2 uploads/objects).
+- Multipart upload orphan cleanup hardening => Priority: HIGH
+  - Keep user cancel optimistic: abort active PUTs, call backend cancel, attempt provider `AbortMultipartUpload`, then mark DB upload/file aborted.
+  - Do not rely on a single abort request as perfect cleanup for S3/R2 multipart uploads.
+  - Add periodic cleanup cron for orphaned multipart uploads.
+  - Cleanup path:
+    - list stale DB `upload_sessions` and/or provider multipart uploads
+    - abort orphaned multipart uploads older than a safety window
+    - reconcile DB state for uploads left in limbo after browser crash, deploy, restart, or timeout
+  - Follow-up hardening:
+    - stop swallowing `AbortMultipartUpload()` errors silently
+    - log structured abort failures
+    - optionally add `cleanup_pending` state if we need explicit retry tracking later
 - Make upload size/quota enforcement authoritative with server-counted bytes instead of browser-reported sizes.
   - Local storage: count bytes while writing with `io.Copy` + `http.MaxBytesReader`.
   - S3/R2 multipart: reserve quota up front, `HeadObject` after completion, commit `actual_encrypted_size`, delete object on overflow.

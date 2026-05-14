@@ -144,6 +144,19 @@ export async function encryptUploadPart(input) {
 	}
 }
 
+export async function hashUploadPayload(input) {
+	const crypto = await ensureCrypto();
+	const bytes = toUint8Array(input && input.bytes);
+	try {
+		const hash = crypto.hash_bytes_blake3(bytes);
+		try {
+			return encodeBase64(hash);
+		} finally {
+			crypto.zeroize(hash);
+		}
+	} finally {}
+}
+
 export async function finalizeUpload(input) {
 	const crypto = await ensureCrypto();
 	const upload = activeUploads.get(String(input.uploadToken || ""));
@@ -155,7 +168,7 @@ export async function finalizeUpload(input) {
 	try {
 		const encryptedManifest = crypto.encrypt_chunk(manifest, upload.fileKey, aadBytes(input.manifestAad));
 		try {
-			const partHashes = input.partHashes || [];
+				const partHashes = input.chunkHashes || input.partHashes || [];
 			let totalLength = 0;
 			const decoded = [];
 			for (let i = 0; i < partHashes.length; i++) {

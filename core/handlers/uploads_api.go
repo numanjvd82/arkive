@@ -12,8 +12,10 @@ import (
 
 type uploadStartRequest struct {
 	OriginalSize      int64 `json:"originalSize"`
-	PartSize          int64 `json:"partSize"`
-	TotalParts        int   `json:"totalParts"`
+	FileChunkSize     int64 `json:"fileChunkSize"`
+	TotalChunks       int   `json:"totalChunks"`
+	UploadPartSize    int64 `json:"uploadPartSize"`
+	UploadPartCount   int   `json:"uploadPartCount"`
 	EncryptionVersion int16 `json:"encryptionVersion"`
 }
 
@@ -50,8 +52,10 @@ func APIUploadStart(svc *uploads.Service) gin.HandlerFunc {
 
 		resp, validationErrors, err := svc.StartMultipartUploadSession(c.Request.Context(), userID.(string), uploads.MultipartUploadStartInput{
 			OriginalSize:      req.OriginalSize,
-			PartSize:          req.PartSize,
-			TotalParts:        req.TotalParts,
+			FileChunkSize:     req.FileChunkSize,
+			TotalChunks:       req.TotalChunks,
+			UploadPartSize:    req.UploadPartSize,
+			UploadPartCount:   req.UploadPartCount,
 			EncryptionVersion: req.EncryptionVersion,
 		})
 		if err != nil {
@@ -76,8 +80,10 @@ func APIUploadStart(svc *uploads.Service) gin.HandlerFunc {
 			"vaultId":          resp.VaultID,
 			"uploadSessionId":  resp.UploadSessionID,
 			"providerUploadId": resp.ProviderUploadID,
-			"partSize":         resp.PartSize,
-			"totalParts":       resp.TotalParts,
+			"fileChunkSize":    resp.FileChunkSize,
+			"totalChunks":      resp.TotalChunks,
+			"uploadPartSize":   resp.UploadPartSize,
+			"uploadPartCount":  resp.UploadPartCount,
 		})
 	}
 }
