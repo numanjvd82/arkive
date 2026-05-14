@@ -17,7 +17,7 @@ export function showLargeDownloadWarning(container, record) {
       "<h3>Large download needs a supported browser</h3>" +
       "<p>This file is " + formatBytes(record && record.plaintextSize) + ". Your browser cannot save decrypted chunks directly to disk.</p>" +
       "<p>For large encrypted downloads, use Chrome or Edge on desktop.</p>" +
-      '<p class="muted">Safari, iOS browsers, and Firefox may only support smaller downloads because they require Arkive to decrypt the file into browser memory first.</p>' +
+      '<p class="muted">Large encrypted downloads are limited on iPhone and iPad browsers. Streaming playback works, but saving very large decrypted files currently requires desktop Chrome/Edge or a future native Arkive app.</p>' +
     "</div>";
 }
 

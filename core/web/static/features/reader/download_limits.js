@@ -1,7 +1,8 @@
 import { getDownloadCapabilities } from "./capabilities.js";
+import { DOWNLOAD_POLICY } from "./download_policy.js";
 
-export const DESKTOP_BLOB_DOWNLOAD_LIMIT_BYTES = 512 * 1024 * 1024;
-export const MOBILE_BLOB_DOWNLOAD_LIMIT_BYTES = 128 * 1024 * 1024;
+export const DESKTOP_BLOB_DOWNLOAD_LIMIT_BYTES = DOWNLOAD_POLICY.blobFallbackLimitDesktop;
+export const MOBILE_BLOB_DOWNLOAD_LIMIT_BYTES = DOWNLOAD_POLICY.blobFallbackLimitIOS;
 
 export function blobDownloadLimitBytes(capabilities) {
   const caps = capabilities || getDownloadCapabilities();

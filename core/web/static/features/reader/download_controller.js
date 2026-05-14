@@ -1,5 +1,6 @@
 import { getDownloadCapabilities } from "./capabilities.js";
 import { canUseBlobFallback } from "./download_limits.js";
+import { DOWNLOAD_POLICY } from "./download_policy.js";
 import { clearDownloadWarning, showLargeDownloadWarning } from "./download_warning.js";
 import { downloadBlobFallback } from "./download_blob.js";
 import { downloadStreamedToDisk } from "./download_stream.js";
@@ -24,6 +25,9 @@ export async function downloadFile(options) {
       signal: signal,
       onProgress: options.onProgress,
       readAhead: options.readAhead,
+      prepareConcurrency: caps.isAndroid
+        ? DOWNLOAD_POLICY.mobileDownloadConcurrency
+        : DOWNLOAD_POLICY.desktopFilePickerConcurrency,
     });
     return { mode: "stream" };
   }

@@ -1,0 +1,105 @@
+diff --git a/core/web/static/features/reader/download_controller.js b/core/web/static/features/reader/download_controller.js
+index 85ffb45..0528427 100644
+--- a/core/web/static/features/reader/download_controller.js
++++ b/core/web/static/features/reader/download_controller.js
+@@ -1,5 +1,6 @@
+ import { getDownloadCapabilities } from "./capabilities.js";
+ import { canUseBlobFallback } from "./download_limits.js";
++import { DOWNLOAD_POLICY } from "./download_policy.js";
+ import { clearDownloadWarning, showLargeDownloadWarning } from "./download_warning.js";
+ import { downloadBlobFallback } from "./download_blob.js";
+ import { downloadStreamedToDisk } from "./download_stream.js";
+@@ -24,6 +25,9 @@ export async function downloadFile(options) {
+       signal: signal,
+       onProgress: options.onProgress,
+       readAhead: options.readAhead,
++      prepareConcurrency: caps.isAndroid
++        ? DOWNLOAD_POLICY.mobileDownloadConcurrency
++        : DOWNLOAD_POLICY.desktopFilePickerConcurrency,
+     });
+     return { mode: "stream" };
+   }
+diff --git a/core/web/static/features/reader/download_limits.js b/core/web/static/features/reader/download_limits.js
+index b8bd9e3..f95bf2e 100644
+--- a/core/web/static/features/reader/download_limits.js
++++ b/core/web/static/features/reader/download_limits.js
+@@ -1,7 +1,8 @@
+ import { getDownloadCapabilities } from "./capabilities.js";
++import { DOWNLOAD_POLICY } from "./download_policy.js";
+ 
+-export const DESKTOP_BLOB_DOWNLOAD_LIMIT_BYTES = 512 * 1024 * 1024;
+-export const MOBILE_BLOB_DOWNLOAD_LIMIT_BYTES = 128 * 1024 * 1024;
++export const DESKTOP_BLOB_DOWNLOAD_LIMIT_BYTES = DOWNLOAD_POLICY.blobFallbackLimitDesktop;
++export const MOBILE_BLOB_DOWNLOAD_LIMIT_BYTES = DOWNLOAD_POLICY.blobFallbackLimitIOS;
+ 
+ export function blobDownloadLimitBytes(capabilities) {
+   const caps = capabilities || getDownloadCapabilities();
+diff --git a/core/web/static/features/reader/download_stream.js b/core/web/static/features/reader/download_stream.js
+index 9550649..4572505 100644
+--- a/core/web/static/features/reader/download_stream.js
++++ b/core/web/static/features/reader/download_stream.js
+@@ -8,6 +8,10 @@ export async function downloadStreamedToDisk(options) {
+   const signal = options.signal;
+   const onProgress = options.onProgress;
+   const readAhead = options.readAhead === true;
++  const prepareConcurrency = Math.min(
++    3,
++    Math.max(1, Number(options.prepareConcurrency || 1)),
++  );
+ 
+   if (!("showSaveFilePicker" in window) || !window.isSecureContext) {
+     throw new Error("Streamed save is not supported in this browser");
+@@ -41,10 +45,25 @@ export async function downloadStreamedToDisk(options) {
+         }
+       }
+     } else {
+-      let pending = prepareChunk(chunkMap, 0, record.sourceUrl, signal, decryptChunk);
++      const prepared = new Map();
++      let nextIndexToSchedule = 0;
++
++      function fillPreparationQueue() {
++        while (nextIndexToSchedule < chunkMap.length && prepared.size < prepareConcurrency) {
++          prepared.set(
++            nextIndexToSchedule,
++            prepareChunk(chunkMap, nextIndexToSchedule, record.sourceUrl, signal, decryptChunk),
++          );
++          nextIndexToSchedule += 1;
++        }
++      }
++
++      fillPreparationQueue();
++
+       for (let i = 0; i < chunkMap.length; i++) {
+-        const current = await pending;
+-        pending = prepareChunk(chunkMap, i + 1, record.sourceUrl, signal, decryptChunk);
++        const current = await prepared.get(i);
++        prepared.delete(i);
++        fillPreparationQueue();
+ 
+         const chunk = current.chunk;
+         const plainBuffer = current.plainBuffer;
+diff --git a/core/web/static/features/reader/download_warning.js b/core/web/static/features/reader/download_warning.js
+index c15bd0c..fc48f74 100644
+--- a/core/web/static/features/reader/download_warning.js
++++ b/core/web/static/features/reader/download_warning.js
+@@ -17,7 +17,7 @@ export function showLargeDownloadWarning(container, record) {
+       "<h3>Large download needs a supported browser</h3>" +
+       "<p>This file is " + formatBytes(record && record.plaintextSize) + ". Your browser cannot save decrypted chunks directly to disk.</p>" +
+       "<p>For large encrypted downloads, use Chrome or Edge on desktop.</p>" +
+-      '<p class="muted">Safari, iOS browsers, and Firefox may only support smaller downloads because they require Arkive to decrypt the file into browser memory first.</p>' +
++      '<p class="muted">Large encrypted downloads are limited on iPhone and iPad browsers. Streaming playback works, but saving very large decrypted files currently requires desktop Chrome/Edge or a future native Arkive app.</p>' +
+     "</div>";
+ }
+ 
+diff --git a/core/web/static/features/reader/download_policy.js b/core/web/static/features/reader/download_policy.js
+new file mode 100644
+index 0000000..f96bac1
+--- /dev/null
++++ b/core/web/static/features/reader/download_policy.js
+@@ -0,0 +1,6 @@
++export const DOWNLOAD_POLICY = Object.freeze({
++  desktopFilePickerConcurrency: 3,
++  mobileDownloadConcurrency: 2,
++  blobFallbackLimitIOS: 128 * 1024 * 1024,
++  blobFallbackLimitDesktop: 512 * 1024 * 1024,
++});
