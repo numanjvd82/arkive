@@ -11,3 +11,10 @@ export function createStreamUrl(fileId, sessionId) {
     "?session=" +
     encodeURIComponent(String(sessionId || ""));
 }
+
+export function createDownloadUrl(fileId, sessionId) {
+  return "/arkive-download/" +
+    encodeURIComponent(String(fileId || "file")) +
+    "?session=" +
+    encodeURIComponent(String(sessionId || ""));
+}

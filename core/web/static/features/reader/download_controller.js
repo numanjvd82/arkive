@@ -3,6 +3,8 @@ import { canUseBlobFallback } from "./download_limits.js";
 import { clearDownloadWarning, showLargeDownloadWarning } from "./download_warning.js";
 import { downloadBlobFallback } from "./download_blob.js";
 import { downloadStreamedToDisk } from "./download_stream.js";
+import { supportsServiceWorkerStreaming } from "../streaming/stream_capabilities.js";
+import { startServiceWorkerDownload } from "../streaming/stream_session.js";
 
 export async function downloadFile(options) {
   const record = options.record;
@@ -36,6 +38,21 @@ export async function downloadFile(options) {
       onProgress: options.onProgress,
     });
     return { mode: "blob" };
+  }
+
+  if (supportsServiceWorkerStreaming()) {
+    await startServiceWorkerDownload({
+      reader: options.reader,
+      record: record,
+      metadata: {
+        name: options.filename || record.filename || "download",
+        size: Number(record.plaintextSize || 0),
+        mime: record.mimeType || "application/octet-stream",
+      },
+      fileId: record.fileId,
+      filename: options.filename || record.filename || "download",
+    });
+    return { mode: "service-worker" };
   }
 
   if (warningContainer) {

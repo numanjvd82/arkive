@@ -1,4 +1,4 @@
-import { createStreamSessionId } from "./stream_url.js";
+import { createDownloadUrl, createStreamSessionId } from "./stream_url.js";
 
 const providers = new Map();
 let providerBridgeBound = false;
@@ -26,6 +26,10 @@ function bindProviderBridge() {
 
   navigator.serviceWorker.addEventListener("message", function(event) {
     const message = event.data || {};
+    if (message.type === "ARKIVE_STREAM_FINISH") {
+      providers.delete(String(message.sessionId || ""));
+      return;
+    }
     if (message.type !== "ARKIVE_STREAM_READ") {
       return;
     }
@@ -133,6 +137,7 @@ export async function openStreamSession(options) {
   const session = {
     sessionId: sessionId,
     fileId: String(record.fileId || settings.fileId || "file"),
+    filename: String(settings.filename || metadata.name || record.filename || "download"),
     plaintextSize: Number(metadata.size || record.plaintextSize || 0),
     mimeType: String(metadata.mime || record.mimeType || "application/octet-stream"),
   };
@@ -164,4 +169,18 @@ export function closeStreamSession(sessionId) {
       sessionId: key,
     });
   } catch (_) {}
+}
+
+export async function startServiceWorkerDownload(options) {
+  const settings = options || {};
+  const session = await openStreamSession(settings);
+  const anchor = document.createElement("a");
+  anchor.href = createDownloadUrl(session.fileId, session.sessionId);
+  anchor.download = session.filename || "download";
+  anchor.rel = "noopener";
+  anchor.style.display = "none";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  return session;
 }

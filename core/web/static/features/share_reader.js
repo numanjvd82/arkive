@@ -227,6 +227,7 @@ export class ArkiveShareReader {
     });
 
     return downloadFile({
+      reader: this,
       record: record,
       chunkMap: this.chunkMap,
       decryptChunk: this.decryptChunk.bind(this),

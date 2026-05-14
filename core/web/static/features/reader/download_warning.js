@@ -1,5 +1,6 @@
 import { getDownloadCapabilities } from "./capabilities.js";
 import { canUseBlobFallback, formatBytes } from "./download_limits.js";
+import { supportsServiceWorkerStreaming } from "../streaming/stream_capabilities.js";
 
 export function showLargeDownloadWarning(container, record) {
   if (!container) {
@@ -34,6 +35,19 @@ export function showDownloadError(container, message) {
     "</div>";
 }
 
+export function showServiceWorkerDownloadNotice(container) {
+  if (!container) {
+    return;
+  }
+
+  container.innerHTML =
+    '<div class="arkive-download-warning">' +
+      "<h3>Browser download started</h3>" +
+      "<p>Arkive is streaming decrypted bytes to the browser download manager.</p>" +
+      '<p class="muted">Keep this tab open until the download has clearly started or completed, especially on mobile browsers.</p>' +
+    "</div>";
+}
+
 export function isDownloadAbortError(error) {
   if (!error) {
     return false;
@@ -51,7 +65,7 @@ export function maybeShowDownloadCapabilityWarning(root, record) {
   const container = (root || document).querySelector("#download-warning");
   const caps = getDownloadCapabilities();
 
-  if (!caps.supportsStreamedSave && !canUseBlobFallback(record, caps)) {
+  if (!caps.supportsStreamedSave && !canUseBlobFallback(record, caps) && !supportsServiceWorkerStreaming()) {
     showLargeDownloadWarning(container, record);
     return;
   }

@@ -399,7 +399,10 @@
           }
           return;
         }
-        setDownloadState("complete", "Saved");
+        if (result && result.mode === "service-worker" && downloadWarning && window.ArkiveDownloadWarning && typeof window.ArkiveDownloadWarning.showServiceWorkerDownloadNotice === "function") {
+          window.ArkiveDownloadWarning.showServiceWorkerDownloadNotice(downloadWarning);
+        }
+        setDownloadState("complete", result && result.mode === "service-worker" ? "Browser download started" : "Saved");
         hideDownloadQueueSoon();
       } catch (error) {
         if (window.ArkiveDownloadWarning && typeof window.ArkiveDownloadWarning.isDownloadAbortError === "function" && window.ArkiveDownloadWarning.isDownloadAbortError(error)) {

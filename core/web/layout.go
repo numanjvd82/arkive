@@ -65,11 +65,6 @@ func buildHeadNodes(data LayoutData) []g.Node {
 		h.Link(h.Rel("preconnect"), h.Href("https://fonts.googleapis.com")),
 		h.Link(h.Rel("preconnect"), h.Href("https://fonts.gstatic.com"), g.Attr("crossorigin", "")),
 		h.Link(
-			h.Rel("preload"),
-			h.As("style"),
-			h.Href("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"),
-		),
-		h.Link(
 			h.Rel("stylesheet"),
 			h.Href("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"),
 		),
