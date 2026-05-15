@@ -1,6 +1,7 @@
 import { fetchEncryptedChunk } from "./chunk_fetcher.js";
 import { buildChunkMap } from "./chunk_map.js";
 import { downloadFile } from "./download_controller.js";
+import { thumbnailCache } from "../../upload/thumbnail_cache.js";
 
 function createContextId() {
   if (window.crypto && window.crypto.randomUUID) {
@@ -212,17 +213,33 @@ export class ArkiveFileReader {
 
   async readThumbnail() {
     await this.load();
-    const response = await fetch(
-      this.apiBase + "/" + encodeURIComponent(this.fileId) + "/thumbnail",
-      {
-        method: "GET",
-        headers: { "Content-Type": "application/octet-stream" },
-      },
+    const preview = this.metadata && this.metadata.preview ? this.metadata.preview : null;
+    const thumbnailVersion = Number((preview && preview.thumbnail_version) || 0);
+    const thumbnailSize = Number((preview && preview.thumbnail_size) || 0);
+    let encryptedBytes = await thumbnailCache.get(
+      this.fileId,
+      thumbnailVersion,
+      thumbnailSize,
     );
-    if (!response.ok) {
-      throw new Error("Failed to load thumbnail");
+    if (!encryptedBytes) {
+      const response = await fetch(
+        this.apiBase + "/" + encodeURIComponent(this.fileId) + "/thumbnail",
+        {
+          method: "GET",
+          headers: { "Content-Type": "application/octet-stream" },
+        },
+      );
+      if (!response.ok) {
+        throw new Error("Failed to load thumbnail");
+      }
+      encryptedBytes = new Uint8Array(await response.arrayBuffer());
+      thumbnailCache.put(
+        this.fileId,
+        thumbnailVersion,
+        thumbnailSize,
+        encryptedBytes,
+      ).catch(function() {});
     }
-    const encryptedBytes = new Uint8Array(await response.arrayBuffer());
     const result = await window.ArkiveVault.decryptFileChunk(
       this.contextId,
       encryptedBytes,
