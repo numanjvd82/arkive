@@ -2,6 +2,8 @@ const THUMBNAIL_MAX_DIMENSION = 320;
 const THUMBNAIL_QUALITY = 0.7;
 const VIDEO_THUMBNAIL_TIME_SECONDS = 1;
 const VIDEO_THUMBNAIL_RATIO = 0.1;
+const VIDEO_THUMBNAIL_LONG_DURATION_SECONDS = 30 * 60;
+const VIDEO_THUMBNAIL_LONG_RATIO = 0.5;
 
 function canvasToBlob(canvas, type, quality) {
 	return new Promise(function(resolve, reject) {
@@ -127,10 +129,13 @@ async function renderVideoThumbnail(file) {
 		if (!video.videoWidth || !video.videoHeight) {
 			await waitForEvent(video, "loadeddata", "error");
 		}
-		const targetTime = Math.min(
-			VIDEO_THUMBNAIL_TIME_SECONDS,
-			Math.max(0, Number(video.duration || 0) * VIDEO_THUMBNAIL_RATIO),
-		);
+		const duration = Math.max(0, Number(video.duration || 0));
+		const targetTime = duration >= VIDEO_THUMBNAIL_LONG_DURATION_SECONDS
+			? duration * VIDEO_THUMBNAIL_LONG_RATIO
+			: Math.min(
+				VIDEO_THUMBNAIL_TIME_SECONDS,
+				duration * VIDEO_THUMBNAIL_RATIO,
+			);
 		await seekVideo(video, targetTime);
 
 		const target = fitWithin(video.videoWidth || 0, video.videoHeight || 0, THUMBNAIL_MAX_DIMENSION);
