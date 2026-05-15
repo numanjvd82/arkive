@@ -360,26 +360,160 @@
       method: "GET",
       headers: { "Content-Type": "application/json" }
     }).then(function(res) {
-      if (!res.ok) {
-        throw res;
-      }
-      return res.json();
+      return parseJSON(res).then(function(data) {
+        if (!res.ok) {
+          if (res.status === 404) {
+            const missing = new Error("Share not found");
+            missing.status = 404;
+            throw missing;
+          }
+          throw new Error(normalizeAPIError(data, "Share failed"));
+        }
+        return data;
+      });
     });
   }
 
-  function createShare(fileID) {
-    return fetch("/api/files/" + encodeURIComponent(fileID) + "/share", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({})
-    }).then(function(res) {
-      if (!res.ok) {
-        return res.json().then(function(data) {
-          throw new Error((data && data.error) || "Share failed");
-        });
+  function parseJSON(res) {
+    return res.text().then(function(text) {
+      if (!text) {
+        return null;
       }
-      return res.json();
+      try {
+        return JSON.parse(text);
+      } catch (_) {
+        return null;
+      }
     });
+  }
+
+  function normalizeAPIError(data, fallback) {
+    if (data && data.errors) {
+      const keys = Object.keys(data.errors);
+      if (keys.length) {
+        return String(data.errors[keys[0]] || fallback || "Request failed.");
+      }
+    }
+    if (data && data.error) {
+      return String(data.error);
+    }
+    return fallback || "Request failed.";
+  }
+
+  function loadFileRecord(fileID) {
+    return fetch("/api/files/" + encodeURIComponent(fileID) + "/record", {
+      method: "GET",
+      headers: { "Content-Type": "application/json" }
+    }).then(function(res) {
+      return parseJSON(res).then(function(data) {
+        if (!res.ok) {
+          throw new Error(normalizeAPIError(data, "Failed to load file"));
+        }
+        return data;
+      });
+    });
+  }
+
+  function createRandomShareToken() {
+    const bytes = new Uint8Array(24);
+    window.crypto.getRandomValues(bytes);
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  }
+
+  function createSharePayload(fileID, token) {
+    if (!window.ArkiveVault || !window.ArkiveVault.prepareShare) {
+      return Promise.reject(new Error("Share encryption is unavailable."));
+    }
+    return window.ArkiveVault.waitUntilReady()
+      .then(function() {
+        return loadFileRecord(fileID);
+      })
+      .then(function(record) {
+        return window.ArkiveVault.prepareShare(record, token);
+      })
+      .then(function(prepared) {
+        return {
+          encryptedShareKey: String((prepared && prepared.encryptedShareKey) || ""),
+          encryptedFileKeyForShare: String((prepared && prepared.encryptedFileKeyForShare) || ""),
+          shareSecret: String((prepared && prepared.shareSecret) || ""),
+        };
+      });
+  }
+
+  function createShare(fileID) {
+    const token = createRandomShareToken();
+    return createSharePayload(fileID, token).then(function(cryptoPayload) {
+      return fetch("/api/files/" + encodeURIComponent(fileID) + "/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: token,
+          password: "",
+          expiresAt: "",
+          encryptedShareKey: cryptoPayload.encryptedShareKey,
+          encryptedFileKeyForShare: cryptoPayload.encryptedFileKeyForShare,
+        })
+      }).then(function(res) {
+        return parseJSON(res).then(function(data) {
+          if (!res.ok) {
+            throw new Error(normalizeAPIError(data, "Share failed"));
+          }
+          return {
+            share: data,
+            shareSecret: cryptoPayload.shareSecret,
+          };
+        });
+      });
+    });
+  }
+
+  function openShareSecret(share) {
+    if (!share || !share.encryptedShareKey) {
+      return Promise.resolve("");
+    }
+    if (!window.ArkiveVault || !window.ArkiveVault.openShareKey) {
+      return Promise.reject(new Error("Share encryption is unavailable."));
+    }
+    return window.ArkiveVault.waitUntilReady()
+      .then(function() {
+        return window.ArkiveVault.openShareKey(share.encryptedShareKey, share.token || "");
+      })
+      .then(function(result) {
+        return String((result && result.shareSecret) || "");
+      });
+  }
+
+  function shareURL(token, shareSecret) {
+    const hash = shareSecret ? "#s=" + encodeURIComponent(shareSecret) : "";
+    return window.location.origin + "/s/" + token + hash;
+  }
+
+  function resolveShareForCopy(fileID) {
+    return fetchExistingShare(fileID)
+      .then(function(share) {
+        return openShareSecret(share).then(function(secret) {
+          return {
+            token: String((share && share.token) || ""),
+            shareSecret: secret,
+          };
+        });
+      })
+      .catch(function(error) {
+        if (error && error.status === 404) {
+          return createShare(fileID).then(function(created) {
+            const share = created && created.share ? created.share : null;
+            return {
+              token: String((share && share.token) || ""),
+              shareSecret: String((created && created.shareSecret) || ""),
+            };
+          });
+        }
+        throw error;
+      });
   }
 
   if (downloadButton) {
@@ -459,19 +593,13 @@
   if (shareButton) {
     shareButton.addEventListener("click", function() {
       shareButton.disabled = true;
-      fetchExistingShare(fileId)
-        .catch(function(res) {
-          if (res && res.status === 404) {
-            return createShare(fileId);
-          }
-          throw new Error("Share failed");
-        })
+      resolveShareForCopy(fileId)
         .then(function(data) {
           const token = data && data.token;
           if (!token) {
             throw new Error("Share failed");
           }
-          const url = window.location.origin + "/s/" + token;
+          const url = shareURL(token, String((data && data.shareSecret) || ""));
           return copyText(url).then(function() {
             if (window.Toast) {
               window.Toast.success("Share link copied.", { title: "Shared" });

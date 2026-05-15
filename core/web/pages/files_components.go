@@ -53,24 +53,10 @@ func renderShareDialog() g.Node {
 						),
 						h.Span(g.Attr("id", "share-file-name"), g.Text("Encrypted file")),
 					),
-					h.P(
-						h.Class("share-hero-text"),
-						g.Text("Send the complete link, including the "),
-						h.Code(g.Text("#")),
-						g.Text(" fragment, so the recipient can open this file in the browser."),
-					),
-					h.P(
-						h.Class("share-hero-text share-hero-text-muted"),
-						g.Text("Add a password if you want the link to require both the URL and a separate secret."),
-					),
 				),
 			),
 			h.Div(
 				h.Class("share-section"),
-				h.Div(
-					h.Class("share-section-heading"),
-					h.Span(g.Text("Share Link")),
-				),
 				h.Label(
 					h.Class("form-label"),
 					g.Attr("for", "share-link-input"),

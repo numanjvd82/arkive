@@ -125,6 +125,8 @@
 }
 
 .public-share-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
   background: #161b22;
   border: 1px solid #30363d;
   border-radius: 8px;
@@ -134,11 +136,12 @@
 
 .public-share-preview {
   position: relative;
-  height: clamp(280px, 54vh, 640px);
+  min-width: 0;
+  min-height: clamp(320px, 62vh, 760px);
   background:
     radial-gradient(circle at top, rgba(78, 140, 173, 0.12), transparent 46%),
     #0d1217;
-  border-bottom: 1px solid #30363d;
+  border-right: 1px solid #30363d;
   overflow: hidden;
 }
 
@@ -231,10 +234,14 @@
 
 .public-share-meta {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 32px;
-  align-items: end;
-  padding: 22px 28px 24px;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: space-between;
+  gap: 28px;
+  min-width: 0;
+  padding: 28px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.01), rgba(255, 255, 255, 0)),
+    #161b22;
 }
 
 .public-share-copy {
@@ -321,7 +328,8 @@
 .public-share-actions {
   display: grid;
   gap: 12px;
-  width: min(100%, 254px);
+  width: 100%;
+  align-self: start;
 }
 
 .public-share-download {
@@ -576,8 +584,11 @@
     padding-right: 16px;
   }
 
+  .public-share-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .public-share-meta {
-    grid-template-columns: 1fr;
     gap: 24px;
     padding: 22px 22px 24px;
     align-items: stretch;
@@ -589,7 +600,10 @@
   }
 
   .public-share-preview {
+    min-height: 0;
     height: clamp(240px, 42vw, 420px);
+    border-right: 0;
+    border-bottom: 1px solid #30363d;
   }
 }
 
