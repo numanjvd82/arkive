@@ -30,6 +30,7 @@ func AuthLayout(data LayoutData, content ...g.Node) g.Node {
 		JSONLD:        data.JSONLD,
 		CSS:           data.CSS,
 		JS:            data.JS,
+		ModuleJS:      data.ModuleJS,
 	})
 	return h.Doctype(h.HTML(
 		h.Lang("en"),

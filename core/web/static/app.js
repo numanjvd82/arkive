@@ -1,4 +1,5 @@
 import { initCopyButtons } from "./features/copy_button.js";
+import { setButtonBusy } from "./features/button_state.js";
 import { initCrypto } from "./features/crypto.js";
 import { initDialogs } from "./features/dialog.js";
 import { initDropdowns } from "./features/dropdown.js";
@@ -110,6 +111,21 @@ function initPasswordToggles() {
   });
 }
 
+function initSubmitButtonStates() {
+  document.addEventListener("submit", function(event) {
+    const form = event.target;
+    if (!form || !(form instanceof HTMLFormElement)) {
+      return;
+    }
+    const submitter = event.submitter;
+    if (!submitter) {
+      return;
+    }
+    const busyText = String(submitter.getAttribute("data-busy-text") || "");
+    setButtonBusy(submitter, true, { busyText: busyText });
+  });
+}
+
 function buildLockURL() {
   const next = window.location.pathname + window.location.search + window.location.hash;
   return "/lock?next=" + encodeURIComponent(next || "/dashboard");
@@ -165,6 +181,7 @@ function initVaultAccessGuard() {
 
 initTheme();
 initPasswordToggles();
+initSubmitButtonStates();
 initCrypto();
 initVault();
 initToast();

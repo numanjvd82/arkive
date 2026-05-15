@@ -18,6 +18,16 @@
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
 
+.button:disabled,
+.button[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.button.is-busy {
+  cursor: progress;
+}
+
 .button.primary {
   background: var(--accent);
   color: var(--accent-ink);
@@ -72,6 +82,11 @@
   justify-content: center;
 }
 
+.button-label {
+  display: inline-flex;
+  align-items: center;
+}
+
 .button-icon .icon {
   display: block;
 }
@@ -81,4 +96,26 @@
   height: 18px;
   display: block;
   stroke-width: 2;
+}
+
+.button-spinner {
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: button-spin 0.7s linear infinite;
+}
+
+.button.is-busy .button-icon,
+.button.is-busy .button-lucide {
+  display: none;
+}
+
+@keyframes button-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }

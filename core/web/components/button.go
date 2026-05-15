@@ -41,7 +41,7 @@ func Button(props ButtonProps) g.Node {
 					h.Class("button-icon"),
 					renderButtonIcon(props.Icon),
 				)),
-				h.Span(g.Text(props.Text)),
+				h.Span(h.Class("button-label"), g.Text(props.Text)),
 			),
 		})
 	}
@@ -61,7 +61,7 @@ func Button(props ButtonProps) g.Node {
 				h.Class("button-icon"),
 				renderButtonIcon(props.Icon),
 			)),
-			h.Span(g.Text(props.Text)),
+			h.Span(h.Class("button-label"), g.Text(props.Text)),
 		),
 	})
 }

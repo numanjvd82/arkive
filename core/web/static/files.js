@@ -1,3 +1,5 @@
+import { setButtonBusy } from "./features/button_state.js";
+
 (function() {
   document.addEventListener("click", async function(event) {
     const target = event.target.closest("[data-file-action='download']");
@@ -387,7 +389,7 @@
         closeDialog();
         return;
       }
-      confirmButton.disabled = true;
+      setButtonBusy(confirmButton, true, { busyText: "Deleting..." });
       const isBulk = pendingDeleteIds.length > 1;
       const request = isBulk
         ? fetch("/api/files/bulk-delete", {
@@ -422,7 +424,7 @@
           closeDialog();
         })
         .finally(function() {
-          confirmButton.disabled = false;
+          setButtonBusy(confirmButton, false);
         });
     });
   }
@@ -860,6 +862,7 @@
       if (!activeFileId) {
         return;
       }
+      setButtonBusy(saveButton, true, { busyText: "Saving..." });
       setShareError("");
       setSaveState("Saving...", "saving");
 
@@ -872,6 +875,7 @@
       if (payload.requirePassword && (!activeShareId || payload.password)) {
         const passwordMessage = passwordValidationMessage(payload.password);
         if (passwordMessage) {
+          setButtonBusy(saveButton, false);
           setSaveState("Save failed", "error");
           setShareError(passwordMessage);
           updatePasswordStrength(passwordMessage);
@@ -923,6 +927,9 @@
         .catch(function(error) {
           setSaveState("Save failed", "error");
           setShareError((error && error.message) || "Failed to save share settings.");
+        })
+        .finally(function() {
+          setButtonBusy(saveButton, false);
         });
     });
   }
@@ -932,6 +939,7 @@
       if (!activeShareId) {
         return;
       }
+      setButtonBusy(deleteButton, true, { busyText: "Deleting...", restoreDisabled: false });
       setShareError("");
       setSaveState("Deleting...", "saving");
       fetch("/api/shares/" + encodeURIComponent(activeShareId), {
@@ -949,6 +957,9 @@
         .catch(function(error) {
           setSaveState("Delete failed", "error");
           setShareError((error && error.message) || "Failed to delete share.");
+        })
+        .finally(function() {
+          setButtonBusy(deleteButton, false, { restoreDisabled: false });
         });
     });
   }

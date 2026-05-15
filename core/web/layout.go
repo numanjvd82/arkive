@@ -21,6 +21,7 @@ type LayoutData struct {
 	JSONLD             string
 	CSS                []string
 	JS                 []string
+	ModuleJS           []string
 	HideNav            bool
 	User               *models.User
 	ActiveNav          string
@@ -49,6 +50,7 @@ func Layout(data LayoutData, content ...g.Node) g.Node {
 			JSONLD:        data.JSONLD,
 			CSS:           data.CSS,
 			JS:            data.JS,
+			ModuleJS:      data.ModuleJS,
 		})...),
 		h.Body(
 			g.If(!data.HideNav, components.Nav()),
@@ -101,6 +103,9 @@ func buildHeadNodes(data LayoutData) []g.Node {
 	}
 	for _, src := range data.JS {
 		headNodes = append(headNodes, h.Script(h.Src(src), h.Defer()))
+	}
+	for _, src := range data.ModuleJS {
+		headNodes = append(headNodes, h.Script(h.Type("module"), h.Src(src)))
 	}
 	return headNodes
 }

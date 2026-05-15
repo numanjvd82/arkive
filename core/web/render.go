@@ -24,6 +24,7 @@ type Page struct {
 	JSONLD             string
 	CSS                []string
 	JS                 []string
+	ModuleJS           []string
 	Body               g.Node
 	HideNav            bool
 	AuthLayout         bool
@@ -78,6 +79,7 @@ func Render(c *gin.Context, page Page) {
 				JSONLD:             page.JSONLD,
 				CSS:                page.CSS,
 				JS:                 page.JS,
+				ModuleJS:           page.ModuleJS,
 				User:               page.User,
 				ActiveNav:          page.ActiveNav,
 				SearchPlaceholder:  page.SearchPlaceholder,
@@ -97,6 +99,7 @@ func Render(c *gin.Context, page Page) {
 				JSONLD:             page.JSONLD,
 				CSS:                page.CSS,
 				JS:                 page.JS,
+				ModuleJS:           page.ModuleJS,
 				User:               page.User,
 				ActiveNav:          page.ActiveNav,
 				SearchPlaceholder:  page.SearchPlaceholder,
@@ -117,6 +120,7 @@ func Render(c *gin.Context, page Page) {
 			JSONLD:        page.JSONLD,
 			CSS:           page.CSS,
 			JS:            page.JS,
+			ModuleJS:      page.ModuleJS,
 			HideNav:       page.HideNav,
 			User:          page.User,
 		})
@@ -134,6 +138,7 @@ func Render(c *gin.Context, page Page) {
 			JSONLD:        page.JSONLD,
 			CSS:           page.CSS,
 			JS:            page.JS,
+			ModuleJS:      page.ModuleJS,
 			HideNav:       page.HideNav,
 			User:          page.User,
 		}, page.Body)

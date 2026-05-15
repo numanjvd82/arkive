@@ -1,3 +1,5 @@
+import { setButtonBusy } from "./features/button_state.js";
+
 (function() {
   const actionsPanel = document.querySelector("[data-media-file-id]");
   const stage = document.querySelector("[data-media-stage='true']");
@@ -599,7 +601,7 @@
 
   if (shareButton) {
     shareButton.addEventListener("click", function() {
-      shareButton.disabled = true;
+      setButtonBusy(shareButton, true, { busyText: "Sharing..." });
       resolveShareForCopy(fileId)
         .then(function(data) {
           const token = data && data.token;
@@ -619,7 +621,7 @@
           }
         })
         .finally(function() {
-          shareButton.disabled = false;
+          setButtonBusy(shareButton, false);
         });
     });
   }
@@ -630,7 +632,7 @@
       if (!confirmed) {
         return;
       }
-      deleteButton.disabled = true;
+      setButtonBusy(deleteButton, true, { busyText: "Deleting..." });
       fetch("/api/files/" + encodeURIComponent(fileId), {
         method: "DELETE",
         headers: { "Content-Type": "application/json" }
@@ -646,7 +648,7 @@
             });
         })
         .catch(function() {
-          deleteButton.disabled = false;
+          setButtonBusy(deleteButton, false);
           if (window.Toast) {
             window.Toast.error("Delete failed. Try again.");
           }

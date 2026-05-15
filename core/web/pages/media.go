@@ -30,6 +30,7 @@ func MediaViewPage(props MediaViewPageProps) web.Page {
 		Robots:             RobotsNoIndex,
 		CSS:                buildMediaCSS(props),
 		JS:                 buildMediaJS(props),
+		ModuleJS:           buildMediaModuleJS(props),
 		AuthLayout:         true,
 		RequireVaultUnlock: true,
 		User:               props.Ctx.User,
@@ -207,6 +208,11 @@ func buildMediaJS(props MediaViewPageProps) []string {
 	return []string{
 		"/static/vendor/plyr/plyr.polyfilled.js",
 		"/static/plyr.js",
+	}
+}
+
+func buildMediaModuleJS(props MediaViewPageProps) []string {
+	return []string{
 		"/static/media.js",
 	}
 }

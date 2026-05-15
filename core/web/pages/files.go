@@ -34,7 +34,7 @@ func FilesPage(props FilesPageProps) web.Page {
 		Title:              "Arkive · Files",
 		Robots:             RobotsNoIndex,
 		CSS:                []string{"/web/pages/files.css"},
-		JS:                 []string{"/static/files.js"},
+		ModuleJS:           []string{"/static/files.js"},
 		AuthLayout:         true,
 		RequireVaultUnlock: true,
 		User:               props.Ctx.User,
