@@ -104,6 +104,7 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 		apiUploads.POST("/:id/parts", handlers.APIUploadPartRecord(uploadService))
 		apiUploads.POST("/:id/parts/presign", handlers.APIUploadPartPresignBatch(uploadService))
 		apiUploads.POST("/:id/parts/:part/presign", handlers.APIUploadPartPresign(uploadService))
+		apiUploads.POST("/:id/thumbnail/presign", handlers.APIThumbnailPresign(uploadService))
 		apiUploads.POST("/:id/complete", handlers.APIUploadComplete(uploadService))
 		apiUploads.POST("/:id/cancel", handlers.APIUploadCancel(uploadService))
 	}
@@ -113,6 +114,7 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 	{
 		apiFiles.POST("/bulk-delete", handlers.APIBulkDeleteFiles(uploadService))
 		apiFiles.GET("/:id/record", handlers.APIFileRecord(uploadService))
+		apiFiles.GET("/:id/thumbnail", handlers.APIThumbnailRedirect(uploadService))
 		apiFiles.GET("/:id/share", handlers.APIGetShareForFile(shareService))
 		apiFiles.GET("/:id/download", handlers.APIDownloadFile(uploadService))
 		apiFiles.GET("/:id/media", handlers.APIMediaRedirect(uploadService))

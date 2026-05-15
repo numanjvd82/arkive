@@ -57,6 +57,21 @@ func (s *Service) PresignView(ctx context.Context, userID, fileID string) (strin
 	return s.storage.PresignDownload(ctx, objectKey, file.ID, "inline", s.downloadExpire)
 }
 
+func (s *Service) PresignThumbnailDownload(ctx context.Context, userID, fileID string) (string, error) {
+	file, err := s.GetFileForDisplay(ctx, userID, fileID)
+	if err != nil {
+		return "", err
+	}
+	if file.ThumbnailStatus != "complete" || file.ThumbnailSizeBytes <= 0 {
+		return "", ErrNotFound
+	}
+	objectKey, err := storage.BuildThumbnailObjectKey(userID, file.ID)
+	if err != nil {
+		return "", err
+	}
+	return s.storage.PresignDownload(ctx, objectKey, "thumbnail.enc", "inline", s.downloadExpire)
+}
+
 func (s *Service) GetFileForShare(ctx context.Context, fileID string) (models.File, error) {
 	fileID = strings.TrimSpace(fileID)
 	if fileID == "" {

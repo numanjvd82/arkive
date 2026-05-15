@@ -21,7 +21,9 @@ func (r *Repository) CreateEncryptedFile(ctx context.Context, db database.PgExec
 		($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 	RETURNING
 		id, user_id, encrypted_metadata, encrypted_file_key, encrypted_manifest, encryption_version, chunk_size, chunk_count,
-		plaintext_size, actual_encrypted_size, encrypted_hash, upload_status, completed_at, created_at, updated_at, expires_at`
+		plaintext_size, actual_encrypted_size, encrypted_hash, upload_status,
+		thumbnail_status, thumbnail_size_bytes, thumbnail_mime, thumbnail_width, thumbnail_height,
+		completed_at, created_at, updated_at, expires_at`
 	if err := db.QueryRow(ctx, query,
 		file.UserID,
 		file.EncryptedMetadata,
@@ -48,6 +50,11 @@ func (r *Repository) CreateEncryptedFile(ctx context.Context, db database.PgExec
 		&created.ActualEncryptedSize,
 		&created.EncryptedHash,
 		&created.UploadStatus,
+		&created.ThumbnailStatus,
+		&created.ThumbnailSizeBytes,
+		&created.ThumbnailMime,
+		&created.ThumbnailWidth,
+		&created.ThumbnailHeight,
 		&created.CompletedAt,
 		&created.CreatedAt,
 		&created.UpdatedAt,
@@ -62,7 +69,9 @@ func (r *Repository) GetEncryptedFileForUser(ctx context.Context, db database.Pg
 	var file models.File
 	query := `SELECT
 		id, user_id, encrypted_metadata, encrypted_file_key, encrypted_manifest, encryption_version, chunk_size, chunk_count,
-		plaintext_size, actual_encrypted_size, encrypted_hash, upload_status, completed_at, created_at, updated_at, expires_at
+		plaintext_size, actual_encrypted_size, encrypted_hash, upload_status,
+		thumbnail_status, thumbnail_size_bytes, thumbnail_mime, thumbnail_width, thumbnail_height,
+		completed_at, created_at, updated_at, expires_at
 	FROM
 		files
 	WHERE
@@ -80,6 +89,11 @@ func (r *Repository) GetEncryptedFileForUser(ctx context.Context, db database.Pg
 		&file.ActualEncryptedSize,
 		&file.EncryptedHash,
 		&file.UploadStatus,
+		&file.ThumbnailStatus,
+		&file.ThumbnailSizeBytes,
+		&file.ThumbnailMime,
+		&file.ThumbnailWidth,
+		&file.ThumbnailHeight,
 		&file.CompletedAt,
 		&file.CreatedAt,
 		&file.UpdatedAt,
@@ -109,7 +123,8 @@ func (r *Repository) GetEncryptedFileRecordForUser(ctx context.Context, db datab
 	var file models.File
 	query := `SELECT
 		id, user_id, encrypted_metadata, encrypted_file_key, encrypted_manifest, encryption_version,
-		chunk_size, chunk_count, plaintext_size, actual_encrypted_size, encrypted_hash, upload_status
+		chunk_size, chunk_count, plaintext_size, actual_encrypted_size, encrypted_hash, upload_status,
+		thumbnail_status, thumbnail_size_bytes, thumbnail_mime, thumbnail_width, thumbnail_height
 	FROM
 		files
 	WHERE
@@ -127,6 +142,11 @@ func (r *Repository) GetEncryptedFileRecordForUser(ctx context.Context, db datab
 		&file.ActualEncryptedSize,
 		&file.EncryptedHash,
 		&file.UploadStatus,
+		&file.ThumbnailStatus,
+		&file.ThumbnailSizeBytes,
+		&file.ThumbnailMime,
+		&file.ThumbnailWidth,
+		&file.ThumbnailHeight,
 	); err != nil {
 		return models.File{}, err
 	}
@@ -146,6 +166,22 @@ func (r *Repository) MarkEncryptedFileComplete(ctx context.Context, db database.
 	WHERE
 		id = $1`
 	_, err := db.Exec(ctx, query, fileID, actualEncryptedSize, encryptedHash)
+	return err
+}
+
+func (r *Repository) UpdateThumbnailInfo(ctx context.Context, db database.PgExecutor, fileID, status string, sizeBytes int64, mime string, width, height int) error {
+	query := `UPDATE
+		files
+	SET
+		thumbnail_status = $2,
+		thumbnail_size_bytes = $3,
+		thumbnail_mime = $4,
+		thumbnail_width = $5,
+		thumbnail_height = $6,
+		updated_at = now()
+	WHERE
+		id = $1`
+	_, err := db.Exec(ctx, query, fileID, status, sizeBytes, mime, width, height)
 	return err
 }
 
@@ -203,7 +239,9 @@ func (r *Repository) GetFileByID(ctx context.Context, db database.PgExecutor, fi
 	var file models.File
 	query := `SELECT
 		id, user_id, encrypted_metadata, encrypted_file_key, encrypted_manifest, encryption_version, chunk_size, chunk_count,
-		plaintext_size, actual_encrypted_size, encrypted_hash, upload_status, completed_at, created_at, updated_at, expires_at
+		plaintext_size, actual_encrypted_size, encrypted_hash, upload_status,
+		thumbnail_status, thumbnail_size_bytes, thumbnail_mime, thumbnail_width, thumbnail_height,
+		completed_at, created_at, updated_at, expires_at
 	FROM
 		files
 	WHERE
@@ -221,6 +259,11 @@ func (r *Repository) GetFileByID(ctx context.Context, db database.PgExecutor, fi
 		&file.ActualEncryptedSize,
 		&file.EncryptedHash,
 		&file.UploadStatus,
+		&file.ThumbnailStatus,
+		&file.ThumbnailSizeBytes,
+		&file.ThumbnailMime,
+		&file.ThumbnailWidth,
+		&file.ThumbnailHeight,
 		&file.CompletedAt,
 		&file.CreatedAt,
 		&file.UpdatedAt,
@@ -235,7 +278,9 @@ func (r *Repository) GetFileForUser(ctx context.Context, db database.PgExecutor,
 	var file models.File
 	query := `SELECT
 		id, user_id, encrypted_metadata, encrypted_file_key, encrypted_manifest, encryption_version, chunk_size, chunk_count,
-		plaintext_size, actual_encrypted_size, encrypted_hash, upload_status, completed_at, created_at, updated_at, expires_at
+		plaintext_size, actual_encrypted_size, encrypted_hash, upload_status,
+		thumbnail_status, thumbnail_size_bytes, thumbnail_mime, thumbnail_width, thumbnail_height,
+		completed_at, created_at, updated_at, expires_at
 	FROM
 		files
 	WHERE
@@ -253,6 +298,11 @@ func (r *Repository) GetFileForUser(ctx context.Context, db database.PgExecutor,
 		&file.ActualEncryptedSize,
 		&file.EncryptedHash,
 		&file.UploadStatus,
+		&file.ThumbnailStatus,
+		&file.ThumbnailSizeBytes,
+		&file.ThumbnailMime,
+		&file.ThumbnailWidth,
+		&file.ThumbnailHeight,
 		&file.CompletedAt,
 		&file.CreatedAt,
 		&file.UpdatedAt,

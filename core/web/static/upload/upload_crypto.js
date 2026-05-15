@@ -90,29 +90,64 @@ export async function prepareUpload(input) {
 	if (!unlockedMasterKey) {
 		throw new Error("Vault is locked");
 	}
-	const metadata = new TextEncoder().encode(JSON.stringify(input.metadata || {}));
 	const fileKey = crypto.generate_file_key();
 	try {
-		const encryptedMetadata = crypto.encrypt_chunk(metadata, fileKey, aadBytes(input.metadataAad));
+		const encryptedFileKey = crypto.wrap_file_key(fileKey, unlockedMasterKey, aadBytes(input.fileKeyAad));
 		try {
-			const encryptedFileKey = crypto.wrap_file_key(fileKey, unlockedMasterKey, aadBytes(input.fileKeyAad));
-			try {
-				activeUploads.set(input.uploadToken, { fileKey: fileKey.slice() });
-				return {
-					encryptedMetadata: encodeBase64(encryptedMetadata),
-					encryptedFileKey: encodeBase64(encryptedFileKey),
-					totalParts: Number(input.totalParts || 0),
-					encryptionVersion: 1,
-				};
-			} finally {
-				crypto.zeroize(encryptedFileKey);
-			}
+			activeUploads.set(String(input.uploadToken || ""), { fileKey: fileKey.slice() });
+			return {
+				encryptedFileKey: encodeBase64(encryptedFileKey),
+				totalParts: Number(input.totalParts || 0),
+				encryptionVersion: 1,
+			};
+		} finally {
+			crypto.zeroize(encryptedFileKey);
+		}
+	} finally {
+		crypto.zeroize(fileKey);
+	}
+}
+
+export async function encryptUploadMetadata(input) {
+	const crypto = await ensureCrypto();
+	const upload = activeUploads.get(String(input.uploadToken || ""));
+	if (!upload || !upload.fileKey) {
+		throw new Error("Upload context is missing");
+	}
+	const metadata = new TextEncoder().encode(JSON.stringify(input.metadata || {}));
+	try {
+		const encryptedMetadata = crypto.encrypt_chunk(metadata, upload.fileKey, aadBytes(input.metadataAad));
+		try {
+			return {
+				encryptedMetadata: encodeBase64(encryptedMetadata),
+			};
 		} finally {
 			crypto.zeroize(encryptedMetadata);
 		}
 	} finally {
 		crypto.zeroize(metadata);
-		crypto.zeroize(fileKey);
+	}
+}
+
+export async function encryptUploadThumbnail(input) {
+	const crypto = await ensureCrypto();
+	const upload = activeUploads.get(String(input.uploadToken || ""));
+	if (!upload || !upload.fileKey) {
+		throw new Error("Upload context is missing");
+	}
+	const thumbnailBytes = toUint8Array(input.thumbnailBytes);
+	try {
+		const encryptedThumbnail = crypto.encrypt_chunk(thumbnailBytes, upload.fileKey, aadBytes(input.aad));
+		try {
+			return {
+				encryptedThumbnail: encryptedThumbnail.slice(),
+				encryptedSize: encryptedThumbnail.length,
+			};
+		} finally {
+			crypto.zeroize(encryptedThumbnail);
+		}
+	} finally {
+		crypto.zeroize(thumbnailBytes);
 	}
 }
 

@@ -69,6 +69,17 @@ export async function completeUpload(sessionId, payload, signal) {
 	return readJSON(response, "Upload complete failed");
 }
 
+export async function presignThumbnailUpload(sessionId, payload, signal) {
+	const response = await fetch("/api/uploads/" + encodeURIComponent(sessionId) + "/thumbnail/presign", {
+		method: "POST",
+		credentials: "include",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(payload),
+		signal: signal,
+	});
+	return readJSON(response, "Thumbnail presign failed");
+}
+
 export async function cancelUpload(sessionId) {
 	const response = await fetch("/api/uploads/" + encodeURIComponent(sessionId) + "/cancel", {
 		method: "POST",

@@ -96,6 +96,15 @@ export class ArkiveFileReader {
     );
   }
 
+  thumbnailAAD() {
+    return (
+      "arkive:file-thumbnail:v1:" +
+      String(this.record.vaultId || "") +
+      ":" +
+      String(this.record.fileId || "")
+    );
+  }
+
   async decryptChunk(mappedChunk, encryptedBytes) {
     const result = await window.ArkiveVault.decryptFileChunk(
       this.contextId,
@@ -199,6 +208,28 @@ export class ArkiveFileReader {
     return new Blob(parts, {
       type: (this.metadata && this.metadata.mime) || "application/octet-stream",
     });
+  }
+
+  async readThumbnail() {
+    await this.load();
+    const response = await fetch(
+      this.apiBase + "/" + encodeURIComponent(this.fileId) + "/thumbnail",
+      {
+        method: "GET",
+        headers: { "Content-Type": "application/octet-stream" },
+      },
+    );
+    if (!response.ok) {
+      throw new Error("Failed to load thumbnail");
+    }
+    const encryptedBytes = new Uint8Array(await response.arrayBuffer());
+    const result = await window.ArkiveVault.decryptFileChunk(
+      this.contextId,
+      encryptedBytes,
+      this.thumbnailAAD(),
+      "",
+    );
+    return result.chunkBytes;
   }
 
   async download(options) {

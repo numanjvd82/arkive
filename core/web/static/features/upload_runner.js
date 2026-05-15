@@ -1,7 +1,8 @@
 import { UPLOAD_POLICY } from "../upload/upload_policy.js";
 import { STATUS, isTerminal } from "../upload/upload_state.js";
-import { startUpload, presignUploadPart, presignUploadParts, recordUploadPart, completeUpload, cancelUpload, cancelUploadBestEffort } from "../upload/upload_api.js";
-import { setVaultSession, restoreVaultSession, prepareUpload, encryptUploadPart, hashUploadPayload, finalizeUpload, clearUploadContext } from "../upload/upload_crypto.js";
+import { startUpload, presignUploadPart, presignUploadParts, presignThumbnailUpload, recordUploadPart, completeUpload, cancelUpload, cancelUploadBestEffort } from "../upload/upload_api.js";
+import { setVaultSession, restoreVaultSession, prepareUpload, encryptUploadMetadata, encryptUploadThumbnail, encryptUploadPart, hashUploadPayload, finalizeUpload, clearUploadContext } from "../upload/upload_crypto.js";
+import { generateUploadThumbnail } from "../upload/upload_thumbnail.js";
 
 const STOPPED_UPLOAD = new Error("Upload stopped");
 
@@ -113,6 +114,21 @@ function flattenChunkGroups(groups) {
 		}
 	}
 	return output;
+}
+
+function previewMetadataFromThumbnail(thumbnail) {
+	if (!thumbnail) {
+		return { thumbnail_file_id: null, has_thumbnail: false };
+	}
+	return {
+		thumbnail_file_id: null,
+		has_thumbnail: true,
+		thumbnail_mime: thumbnail.mime,
+		thumbnail_width: thumbnail.width,
+		thumbnail_height: thumbnail.height,
+		thumbnail_size: thumbnail.encryptedSize,
+		thumbnail_version: 1,
+	};
 }
 
 export class UploadRunner {
@@ -311,6 +327,27 @@ export class UploadRunner {
 				uploadToken: job.public.jobId,
 				vaultId: started.vaultId,
 				fileId: started.fileId,
+				totalParts: job.public.totalChunks,
+				fileKeyAad: "arkive:file-key:v1:" + started.vaultId + ":" + started.fileId,
+			});
+			if (this.shouldStopJob(job)) {
+				throw STOPPED_UPLOAD;
+			}
+			const thumbnailPromise = this.createAndUploadThumbnail(job, started);
+
+			const chunks = await this.uploadPartsPooled(job, started, {
+				concurrency: getUploadPartConcurrency(UPLOAD_POLICY.partConcurrency),
+				presignBatchSize: UPLOAD_POLICY.presignBatchSize,
+			});
+			if (this.shouldStopJob(job)) {
+				throw STOPPED_UPLOAD;
+			}
+			const uploadedThumbnail = await thumbnailPromise;
+			if (this.shouldStopJob(job)) {
+				throw STOPPED_UPLOAD;
+			}
+			const preparedMetadata = await encryptUploadMetadata({
+				uploadToken: job.public.jobId,
 				metadata: {
 					schema: "arkive.file.metadata",
 					version: 1,
@@ -320,19 +357,9 @@ export class UploadRunner {
 					size: job.file.size,
 					created_at_client: nowISO(),
 					modified_at_client: job.file.lastModified ? new Date(job.file.lastModified).toISOString() : null,
-					preview: { thumbnail_file_id: null, has_thumbnail: false },
+					preview: previewMetadataFromThumbnail(uploadedThumbnail),
 				},
-				totalParts: job.public.totalChunks,
 				metadataAad: "arkive:file-metadata:v1:" + started.vaultId + ":" + started.fileId,
-				fileKeyAad: "arkive:file-key:v1:" + started.vaultId + ":" + started.fileId,
-			});
-			if (this.shouldStopJob(job)) {
-				throw STOPPED_UPLOAD;
-			}
-
-			const chunks = await this.uploadPartsPooled(job, started, {
-				concurrency: getUploadPartConcurrency(UPLOAD_POLICY.partConcurrency),
-				presignBatchSize: UPLOAD_POLICY.presignBatchSize,
 			});
 			if (this.shouldStopJob(job)) {
 				throw STOPPED_UPLOAD;
@@ -371,10 +398,14 @@ export class UploadRunner {
 
 			await this.runWithController(async (signal) => {
 				return completeUpload(started.uploadSessionId, {
-					encryptedMetadata: prepared.encryptedMetadata,
+					encryptedMetadata: preparedMetadata.encryptedMetadata,
 					encryptedFileKey: prepared.encryptedFileKey,
 					encryptedManifest: finalized.encryptedManifest,
 					encryptedHash: finalized.encryptedHash,
+					hasThumbnail: !!uploadedThumbnail,
+					thumbnailMime: uploadedThumbnail ? uploadedThumbnail.mime : "",
+					thumbnailWidth: uploadedThumbnail ? uploadedThumbnail.width : 0,
+					thumbnailHeight: uploadedThumbnail ? uploadedThumbnail.height : 0,
 				}, signal);
 			});
 			if (this.shouldStopJob(job)) {
@@ -393,6 +424,69 @@ export class UploadRunner {
 		} finally {
 			if (!completed) {
 				await clearUploadContext(job.public.jobId).catch(function () {});
+			}
+		}
+	}
+
+	async createAndUploadThumbnail(job, started) {
+		const thumbnailCandidate = await generateUploadThumbnail(job.file);
+		if (!thumbnailCandidate) {
+			return null;
+		}
+		try {
+			return await this.uploadThumbnail(job, started, thumbnailCandidate);
+		} catch (error) {
+			if (window.location && window.location.hostname === "localhost" && typeof console !== "undefined" && console.warn) {
+				console.warn(error);
+			}
+			return null;
+		}
+	}
+
+	async uploadThumbnail(job, started, thumbnail) {
+		if (!thumbnail || this.shouldStopJob(job)) {
+			return null;
+		}
+		try {
+			const encrypted = await encryptUploadThumbnail({
+				uploadToken: job.public.jobId,
+				thumbnailBytes: thumbnail.bytes,
+				aad: "arkive:file-thumbnail:v1:" + started.vaultId + ":" + started.fileId,
+			});
+			try {
+				const presigned = await this.runWithController(async (signal) => {
+					return presignThumbnailUpload(started.uploadSessionId, {
+						encryptedSize: encrypted.encryptedSize,
+						mime: thumbnail.mime,
+						width: thumbnail.width,
+						height: thumbnail.height,
+					}, signal);
+				});
+				if (this.shouldStopJob(job)) {
+					throw STOPPED_UPLOAD;
+				}
+				const response = await this.runWithController(async (signal) => {
+					return fetch(presigned.url, {
+						method: "PUT",
+						body: encrypted.encryptedThumbnail,
+						signal: signal,
+					});
+				});
+				if (!response.ok) {
+					throw new Error("Thumbnail upload failed");
+				}
+				return {
+					mime: thumbnail.mime,
+					width: thumbnail.width,
+					height: thumbnail.height,
+					encryptedSize: encrypted.encryptedSize,
+				};
+			} finally {
+				encrypted.encryptedThumbnail.fill(0);
+			}
+		} finally {
+			if (thumbnail.bytes && typeof thumbnail.bytes.fill === "function") {
+				thumbnail.bytes.fill(0);
 			}
 		}
 	}
@@ -538,6 +632,9 @@ export class UploadRunner {
 	async failJob(job, error) {
 		if (!job || job.public.status === STATUS.CANCELED) {
 			return;
+		}
+		if (job.public.sessionId) {
+			await cancelUpload(job.public.sessionId).catch(function () {});
 		}
 		this.releaseJobFile(job);
 		job.public.status = STATUS.FAILED;

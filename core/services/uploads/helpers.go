@@ -4,9 +4,13 @@ import (
 	"context"
 	"strings"
 	"time"
+
+	"arkive/core/models"
 )
 
 const encryptedChunkEnvelopeOverheadBytes int64 = 41
+const thumbnailMaxEncryptedBytes int64 = 150 * 1024
+const thumbnailMimeWebP = "image/webp"
 
 func validateUserID(userID string) (string, error) {
 	userID = strings.TrimSpace(userID)
@@ -40,6 +44,18 @@ func encryptedFileSize(plaintextSize int64, chunkCount int) int64 {
 		return 0
 	}
 	return plaintextSize + int64(chunkCount)*encryptedChunkEnvelopeOverheadBytes
+}
+
+func reservedUploadSize(plaintextSize int64, chunkCount int) int64 {
+	return encryptedFileSize(plaintextSize, chunkCount) + thumbnailMaxEncryptedBytes
+}
+
+func totalStoredSize(file models.File) int64 {
+	total := file.ActualEncryptedSize
+	if file.ThumbnailSizeBytes > 0 {
+		total += file.ThumbnailSizeBytes
+	}
+	return total
 }
 
 func objectSizeWithRetry(ctx context.Context, measure func(context.Context) (int64, error)) (int64, error) {

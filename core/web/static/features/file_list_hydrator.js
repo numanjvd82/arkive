@@ -61,6 +61,10 @@ function clearPreview(previewEl) {
   previewEl.classList.remove("has-media");
   const stale = previewEl.querySelector("[data-file-preview-media='true']");
   if (stale) {
+    const objectURL = stale.getAttribute("data-object-url");
+    if (objectURL) {
+      URL.revokeObjectURL(objectURL);
+    }
     if (stale.tagName === "VIDEO") {
       stale.pause();
       stale.removeAttribute("src");
@@ -79,10 +83,32 @@ async function updateGridPreview(card, metadata, reader) {
   if (!previewEl) {
     return;
   }
-  void metadata;
-  void reader;
-  // Grid cards stay metadata-only until Arkive has bounded thumbnail assets.
   clearPreview(previewEl);
+  const preview = metadata && metadata.preview ? metadata.preview : null;
+  if (!preview || !preview.has_thumbnail || !reader || typeof reader.readThumbnail !== "function") {
+    return;
+  }
+  try {
+    const thumbnailBytes = await reader.readThumbnail();
+    const mime = String(preview.thumbnail_mime || "image/webp");
+    const objectURL = URL.createObjectURL(new Blob([thumbnailBytes], { type: mime }));
+    const image = document.createElement("img");
+    image.className = "files-card-preview-media";
+    image.setAttribute("data-file-preview-media", "true");
+    image.setAttribute("data-object-url", objectURL);
+    image.alt = metadata && metadata.name ? metadata.name : "Encrypted file thumbnail";
+    image.loading = "lazy";
+    image.decoding = "async";
+    image.src = objectURL;
+    previewEl.appendChild(image);
+    previewEl.classList.add("has-media");
+    const icon = previewEl.querySelector("[data-file-field='icon']");
+    if (icon) {
+      icon.hidden = true;
+    }
+  } catch (_) {
+    clearPreview(previewEl);
+  }
 }
 
 async function hydrateItem(item) {

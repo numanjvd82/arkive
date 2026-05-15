@@ -147,7 +147,7 @@ func (s *Service) DeleteFile(ctx context.Context, userID, fileID string) error {
 
 	switch file.UploadStatus {
 	case FileStatusComplete:
-		if err := s.storageRepo.DecreaseUsedStorage(ctx, tx, userID, file.ActualEncryptedSize); err != nil {
+		if err := s.storageRepo.DecreaseUsedStorage(ctx, tx, userID, totalStoredSize(file)); err != nil {
 			_ = tx.Rollback(ctx)
 			return err
 		}
@@ -172,6 +172,9 @@ func (s *Service) DeleteFile(ctx context.Context, userID, fileID string) error {
 
 	if objectKey, keyErr := storage.BuildObjectKey(userID, file.ID); keyErr == nil {
 		_ = s.storage.DeleteObject(ctx, objectKey)
+	}
+	if thumbnailKey, keyErr := storage.BuildThumbnailObjectKey(userID, file.ID); keyErr == nil {
+		_ = s.storage.DeleteObject(ctx, thumbnailKey)
 	}
 	return nil
 }
@@ -221,7 +224,7 @@ func (s *Service) DeleteFiles(ctx context.Context, userID string, fileIDs []stri
 
 		switch file.UploadStatus {
 		case FileStatusComplete:
-			if err := s.storageRepo.DecreaseUsedStorage(ctx, tx, userID, file.ActualEncryptedSize); err != nil {
+			if err := s.storageRepo.DecreaseUsedStorage(ctx, tx, userID, totalStoredSize(file)); err != nil {
 				_ = tx.Rollback(ctx)
 				return 0, err
 			}
@@ -249,6 +252,9 @@ func (s *Service) DeleteFiles(ctx context.Context, userID string, fileIDs []stri
 	for _, file := range files {
 		if objectKey, keyErr := storage.BuildObjectKey(userID, file.ID); keyErr == nil {
 			_ = s.storage.DeleteObject(ctx, objectKey)
+		}
+		if thumbnailKey, keyErr := storage.BuildThumbnailObjectKey(userID, file.ID); keyErr == nil {
+			_ = s.storage.DeleteObject(ctx, thumbnailKey)
 		}
 	}
 	return len(files), nil

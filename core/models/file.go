@@ -15,6 +15,11 @@ type File struct {
 	ActualEncryptedSize int64
 	EncryptedHash       []byte
 	UploadStatus        string
+	ThumbnailStatus     string
+	ThumbnailSizeBytes  int64
+	ThumbnailMime       string
+	ThumbnailWidth      int
+	ThumbnailHeight     int
 	CompletedAt         *time.Time
 	CreatedAt           time.Time
 	UpdatedAt           time.Time

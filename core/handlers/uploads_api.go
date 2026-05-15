@@ -34,6 +34,17 @@ type uploadCompleteRequest struct {
 	EncryptedFileKey  string `json:"encryptedFileKey"`
 	EncryptedManifest string `json:"encryptedManifest"`
 	EncryptedHash     string `json:"encryptedHash"`
+	HasThumbnail      bool   `json:"hasThumbnail"`
+	ThumbnailMime     string `json:"thumbnailMime"`
+	ThumbnailWidth    int    `json:"thumbnailWidth"`
+	ThumbnailHeight   int    `json:"thumbnailHeight"`
+}
+
+type thumbnailPresignRequest struct {
+	EncryptedSize int64  `json:"encryptedSize"`
+	Mime          string `json:"mime"`
+	Width         int    `json:"width"`
+	Height        int    `json:"height"`
 }
 
 func APIUploadStart(svc *uploads.Service) gin.HandlerFunc {
@@ -236,6 +247,10 @@ func APIUploadComplete(svc *uploads.Service) gin.HandlerFunc {
 			EncryptedFileKey:  req.EncryptedFileKey,
 			EncryptedManifest: req.EncryptedManifest,
 			EncryptedHash:     req.EncryptedHash,
+			HasThumbnail:      req.HasThumbnail,
+			ThumbnailMime:     req.ThumbnailMime,
+			ThumbnailWidth:    req.ThumbnailWidth,
+			ThumbnailHeight:   req.ThumbnailHeight,
 		}); err != nil {
 			switch err {
 			case uploads.ErrUnauthorized:
@@ -258,6 +273,50 @@ func APIUploadComplete(svc *uploads.Service) gin.HandlerFunc {
 		}
 
 		c.Status(http.StatusNoContent)
+	}
+}
+
+func APIThumbnailPresign(svc *uploads.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		uploadSessionID := c.Param("id")
+		userID, ok := c.Get("user_id")
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			return
+		}
+
+		var req thumbnailPresignRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			return
+		}
+
+		url, err := svc.PresignThumbnailUpload(c.Request.Context(), userID.(string), uploadSessionID, uploads.ThumbnailUploadInput{
+			EncryptedSize: req.EncryptedSize,
+			Mime:          req.Mime,
+			Width:         req.Width,
+			Height:        req.Height,
+		})
+		if err != nil {
+			switch err {
+			case uploads.ErrUnauthorized:
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			case uploads.ErrNotFound:
+				c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+			case uploads.ErrInvalidInput:
+				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			case uploads.ErrFileTooLarge:
+				c.JSON(http.StatusBadRequest, gin.H{"error": "thumbnail is too large"})
+			case uploads.ErrUploadCancelled:
+				c.JSON(http.StatusConflict, gin.H{"error": "upload cancelled"})
+			default:
+				_ = c.Error(errs.WithStack(err))
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "thumbnail presign failed"})
+			}
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"url": url})
 	}
 }
 
@@ -354,6 +413,35 @@ func APIMediaRedirect(svc *uploads.Service) gin.HandlerFunc {
 			default:
 				_ = c.Error(errs.WithStack(err))
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "media failed"})
+			}
+			return
+		}
+
+		c.Redirect(http.StatusFound, url)
+	}
+}
+
+func APIThumbnailRedirect(svc *uploads.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		fileID := c.Param("id")
+		userID, ok := c.Get("user_id")
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			return
+		}
+
+		url, err := svc.PresignThumbnailDownload(c.Request.Context(), userID.(string), fileID)
+		if err != nil {
+			switch err {
+			case uploads.ErrUnauthorized:
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			case uploads.ErrNotFound:
+				c.JSON(http.StatusNotFound, gin.H{"error": "thumbnail not found"})
+			case uploads.ErrInvalidInput:
+				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			default:
+				_ = c.Error(errs.WithStack(err))
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "thumbnail failed"})
 			}
 			return
 		}
