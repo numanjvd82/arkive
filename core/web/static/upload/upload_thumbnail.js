@@ -1,5 +1,7 @@
 const THUMBNAIL_MAX_DIMENSION = 320;
 const THUMBNAIL_QUALITY = 0.7;
+const VIDEO_THUMBNAIL_TIME_SECONDS = 1;
+const VIDEO_THUMBNAIL_RATIO = 0.1;
 
 function canvasToBlob(canvas, type, quality) {
 	return new Promise(function(resolve, reject) {
@@ -76,12 +78,99 @@ async function renderImageThumbnail(file) {
 	}
 }
 
+function waitForEvent(target, eventName, errorName) {
+	return new Promise(function(resolve, reject) {
+		function cleanup() {
+			target.removeEventListener(eventName, onSuccess);
+			if (errorName) {
+				target.removeEventListener(errorName, onError);
+			}
+		}
+		function onSuccess() {
+			cleanup();
+			resolve();
+		}
+		function onError() {
+			cleanup();
+			reject(new Error("Thumbnail media load failed"));
+		}
+		target.addEventListener(eventName, onSuccess, { once: true });
+		if (errorName) {
+			target.addEventListener(errorName, onError, { once: true });
+		}
+	});
+}
+
+async function seekVideo(video, timeSeconds) {
+	if (!Number.isFinite(timeSeconds) || timeSeconds < 0) {
+		return;
+	}
+	const clamped = Math.max(0, Math.min(timeSeconds, Math.max(0, Number(video.duration || 0))));
+	if (Math.abs(Number(video.currentTime || 0) - clamped) < 0.05) {
+		return;
+	}
+	const seeked = waitForEvent(video, "seeked", "error");
+	video.currentTime = clamped;
+	await seeked;
+}
+
+async function renderVideoThumbnail(file) {
+	const objectURL = URL.createObjectURL(file);
+	const video = document.createElement("video");
+	video.preload = "metadata";
+	video.muted = true;
+	video.playsInline = true;
+	video.crossOrigin = "anonymous";
+	video.src = objectURL;
+	try {
+		await waitForEvent(video, "loadedmetadata", "error");
+		const targetTime = Math.min(
+			VIDEO_THUMBNAIL_TIME_SECONDS,
+			Math.max(0, Number(video.duration || 0) * VIDEO_THUMBNAIL_RATIO),
+		);
+		await seekVideo(video, targetTime);
+
+		const target = fitWithin(video.videoWidth || 0, video.videoHeight || 0, THUMBNAIL_MAX_DIMENSION);
+		if (target.width <= 0 || target.height <= 0) {
+			return null;
+		}
+
+		const canvas = document.createElement("canvas");
+		canvas.width = target.width;
+		canvas.height = target.height;
+		const context = canvas.getContext("2d", { alpha: false });
+		if (!context) {
+			return null;
+		}
+		context.drawImage(video, 0, 0, target.width, target.height);
+		const blob = await canvasToBlob(canvas, "image/webp", THUMBNAIL_QUALITY);
+		return {
+			bytes: new Uint8Array(await blob.arrayBuffer()),
+			mime: "image/webp",
+			width: target.width,
+			height: target.height,
+		};
+	} finally {
+		video.pause();
+		video.removeAttribute("src");
+		video.load();
+		URL.revokeObjectURL(objectURL);
+	}
+}
+
 export async function generateUploadThumbnail(file) {
-	if (!file || !file.type || String(file.type).toLowerCase().indexOf("image/") !== 0) {
+	if (!file || !file.type) {
 		return null;
 	}
+	const mime = String(file.type).toLowerCase();
 	try {
-		return await renderImageThumbnail(file);
+		if (mime.indexOf("image/") === 0) {
+			return await renderImageThumbnail(file);
+		}
+		if (mime === "video/mp4" || mime === "video/webm") {
+			return await renderVideoThumbnail(file);
+		}
+		return null;
 	} catch (_) {
 		return null;
 	}

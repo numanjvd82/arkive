@@ -12,6 +12,8 @@ function formatBytes(bytes) {
   return amount.toFixed(index > 0 ? 1 : 0) + " " + units[index];
 }
 
+const THUMBNAIL_HYDRATION_CONCURRENCY = 6;
+
 function updateItem(item, metadata, plaintextSize) {
   const nameEl = item.querySelector("[data-file-field='name']");
   const typeEl = item.querySelector("[data-file-field='type']");
@@ -138,7 +140,20 @@ export async function initFileListHydrator() {
   if (typeof window.ArkiveVault.waitUntilReady === "function") {
     await window.ArkiveVault.waitUntilReady();
   }
-  for (let i = 0; i < items.length; i++) {
-    await hydrateItem(items[i]);
+
+  let nextIndex = 0;
+
+  async function worker() {
+    while (nextIndex < items.length) {
+      const currentIndex = nextIndex++;
+      await hydrateItem(items[currentIndex]);
+    }
   }
+
+  const workers = [];
+  const count = Math.min(THUMBNAIL_HYDRATION_CONCURRENCY, items.length);
+  for (let i = 0; i < count; i++) {
+    workers.push(worker());
+  }
+  await Promise.all(workers);
 }
