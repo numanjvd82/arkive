@@ -54,6 +54,7 @@ func DashboardPage(props DashboardPageProps) web.Page {
 		Title:              "Arkive · Dashboard",
 		Robots:             RobotsNoIndex,
 		CSS:                []string{"/web/pages/dashboard.css"},
+		JS:                 []string{"/static/dashboard.js"},
 		AuthLayout:         true,
 		RequireVaultUnlock: true,
 		User:               props.Ctx.User,
@@ -151,11 +152,14 @@ func renderDashboardRows(files []models.File) []g.Node {
 
 	rows := make([]g.Node, 0, len(files))
 	for _, file := range files {
+		viewURL := fmt.Sprintf("/files/%s/view", file.ID)
 		rows = append(rows, h.Tr(
 			h.Class("activity-row"),
 			g.Attr("aria-busy", "true"),
+			g.Attr("data-activity-open", viewURL),
 			g.Attr("data-file-item", file.ID),
 			g.Attr("data-file-name", ""),
+			g.Attr("tabindex", "0"),
 			h.Td(
 				h.Div(
 					h.Class("activity-file"),

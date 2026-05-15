@@ -287,6 +287,7 @@ func setupBody(props SetupPageProps) g.Node {
 					h.Button(
 						h.Class("setup-submit"),
 						h.Type("submit"),
+						g.Attr("data-busy-text", "Initializing..."),
 						h.Span(g.Text("Initialize Arkive Core")),
 						lucide.Rocket(
 							h.Class("setup-lucide setup-lucide-submit"),

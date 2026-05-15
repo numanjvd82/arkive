@@ -151,6 +151,7 @@ func setupRecoveryBody(props SetupRecoveryPageProps) g.Node {
 								h.Type("submit"),
 								h.Class("button primary recovery-submit"),
 								g.Attr("data-recovery-submit", "true"),
+								g.Attr("data-busy-text", "Securing..."),
 								g.Attr("disabled", "disabled"),
 								h.Span(g.Text("Confirm & Secure Vault")),
 								lucide.ShieldCheck(

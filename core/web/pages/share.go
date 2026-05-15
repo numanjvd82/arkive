@@ -97,6 +97,7 @@ func PublicSharePassword(props PublicSharePasswordProps) web.Page {
 						h.Button(
 							h.Class("button primary share-submit"),
 							h.Type("submit"),
+							g.Attr("data-busy-text", "Unlocking..."),
 							g.Text("Unlock file"),
 						),
 					),

@@ -148,6 +148,7 @@
 
 .activity-row {
   border-bottom: 1px solid var(--border);
+  cursor: pointer;
 }
 
 .activity-row:last-child {
@@ -155,6 +156,12 @@
 }
 
 .activity-row:hover {
+  background: var(--surface);
+}
+
+.activity-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
   background: var(--surface);
 }
 

@@ -9,13 +9,14 @@ import (
 )
 
 type ButtonProps struct {
-	Text    string
-	Variant string
-	Type    string
-	Href    string
-	Class   string
-	ID      string
-	Icon    string
+	Text     string
+	Variant  string
+	Type     string
+	Href     string
+	Class    string
+	ID       string
+	Icon     string
+	BusyText string
 }
 
 const ButtonCSS = "/web/components/button.css"
@@ -57,6 +58,7 @@ func Button(props ButtonProps) g.Node {
 			h.Class(className),
 			g.Attr("type", buttonType),
 			g.If(props.ID != "", g.Attr("id", props.ID)),
+			g.If(props.BusyText != "", g.Attr("data-busy-text", props.BusyText)),
 			g.If(props.Icon != "", h.Span(
 				h.Class("button-icon"),
 				renderButtonIcon(props.Icon),
