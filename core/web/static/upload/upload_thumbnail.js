@@ -124,6 +124,9 @@ async function renderVideoThumbnail(file) {
 	video.src = objectURL;
 	try {
 		await waitForEvent(video, "loadedmetadata", "error");
+		if (!video.videoWidth || !video.videoHeight) {
+			await waitForEvent(video, "loadeddata", "error");
+		}
 		const targetTime = Math.min(
 			VIDEO_THUMBNAIL_TIME_SECONDS,
 			Math.max(0, Number(video.duration || 0) * VIDEO_THUMBNAIL_RATIO),
