@@ -492,6 +492,13 @@
     return window.location.origin + "/s/" + token + hash;
   }
 
+  function clearThumbnailCache(fileID) {
+    if (!window.ArkiveThumbnailCache || typeof window.ArkiveThumbnailCache.deleteForFiles !== "function") {
+      return Promise.resolve();
+    }
+    return window.ArkiveThumbnailCache.deleteForFiles([fileID]);
+  }
+
   function resolveShareForCopy(fileID) {
     return fetchExistingShare(fileID)
       .then(function(share) {
@@ -632,7 +639,11 @@
           if (!res.ok) {
             throw new Error("Delete failed");
           }
-          window.location.href = "/files";
+          return clearThumbnailCache(fileId)
+            .catch(function() {})
+            .then(function() {
+              window.location.href = "/files";
+            });
         })
         .catch(function() {
           deleteButton.disabled = false;

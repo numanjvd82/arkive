@@ -178,6 +178,13 @@
     return document.querySelector("[data-file-item]") !== null;
   }
 
+  function clearThumbnailCache(fileIds) {
+    if (!window.ArkiveThumbnailCache || typeof window.ArkiveThumbnailCache.deleteForFiles !== "function") {
+      return Promise.resolve();
+    }
+    return window.ArkiveThumbnailCache.deleteForFiles(fileIds);
+  }
+
   function openDialog(fileIds, names) {
     if (!backdrop || !confirmButton) {
       return;
@@ -398,13 +405,17 @@
             throw new Error("Delete failed");
           }
           const removedIds = pendingDeleteIds.slice();
-          removeRows(removedIds);
-          closeDialog();
-          if (!pageHasRows() || removedIds.length > 1) {
-            window.location.reload();
-            return;
-          }
-          window.Toast.success(removedIds.length === 1 ? "File deleted." : "Files deleted.", { title: "Deleted" });
+          return clearThumbnailCache(removedIds)
+            .catch(function() {})
+            .then(function() {
+              removeRows(removedIds);
+              closeDialog();
+              if (!pageHasRows() || removedIds.length > 1) {
+                window.location.reload();
+                return;
+              }
+              window.Toast.success(removedIds.length === 1 ? "File deleted." : "Files deleted.", { title: "Deleted" });
+            });
         })
         .catch(function() {
           window.Toast.error("Delete failed. Try again.");

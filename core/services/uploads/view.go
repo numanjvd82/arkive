@@ -69,6 +69,10 @@ func (s *Service) PresignThumbnailDownload(ctx context.Context, userID, fileID s
 	if err != nil {
 		return "", err
 	}
+	size, sizeErr := s.storage.ObjectSize(ctx, objectKey)
+	if sizeErr != nil || size <= 0 {
+		return "", ErrNotFound
+	}
 	return s.storage.PresignDownload(ctx, objectKey, "thumbnail.enc", "inline", s.downloadExpire)
 }
 

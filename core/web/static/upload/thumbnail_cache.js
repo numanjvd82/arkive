@@ -160,4 +160,35 @@ export const thumbnailCache = {
     } catch (_) {
     }
   },
+
+  async deleteForFiles(fileIds) {
+    const db = await openDatabase();
+    if (!db || !Array.isArray(fileIds) || !fileIds.length) {
+      return;
+    }
+    const wanted = new Set(
+      fileIds
+        .map(function(fileId) {
+          return String(fileId || "").trim();
+        })
+        .filter(Boolean),
+    );
+    if (!wanted.size) {
+      return;
+    }
+    try {
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      const store = tx.objectStore(STORE_NAME);
+      const records = await requestResult(store.getAll());
+      for (let i = 0; i < records.length; i++) {
+        const record = records[i];
+        if (!record || !wanted.has(String(record.fileId || ""))) {
+          continue;
+        }
+        store.delete(record.cacheKey);
+      }
+      await transactionDone(tx);
+    } catch (_) {
+    }
+  },
 };

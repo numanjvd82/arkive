@@ -21,5 +21,5 @@ func BuildThumbnailObjectKey(userID, fileID string) (string, error) {
 	if fileID == "" {
 		return "", fmt.Errorf("fileID is required")
 	}
-	return fmt.Sprintf("u/%s/%s/thumb", userID, fileID), nil
+	return fmt.Sprintf("u/%s/%s.thumb", userID, fileID), nil
 }

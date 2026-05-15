@@ -13,12 +13,14 @@ import * as ArkiveStreaming from "./features/streaming/stream_player.js";
 import { initToast } from "./features/toast.js";
 import { initTooltips } from "./features/tooltip.js";
 import { initUploads } from "./features/uploads.js";
+import { thumbnailCache } from "./upload/thumbnail_cache.js";
 import { initVault } from "./features/vault.js";
 
 window.ArkiveFileReader = ArkiveFileReader;
 window.ArkiveShareReader = ArkiveShareReader;
 window.ArkiveDownloadWarning = ArkiveDownloadWarning;
 window.ArkiveStreaming = ArkiveStreaming;
+window.ArkiveThumbnailCache = thumbnailCache;
 
 function initTheme() {
   const modes = ["dark", "system", "light"];
