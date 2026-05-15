@@ -373,7 +373,7 @@ func (s *Service) CompleteMultipartUploadSession(ctx context.Context, userID, up
 		return ErrInvalidInput
 	}
 	if input.HasThumbnail {
-		if strings.TrimSpace(input.ThumbnailMime) == "" || input.ThumbnailWidth <= 0 || input.ThumbnailHeight <= 0 {
+		if strings.TrimSpace(input.ThumbnailMime) != thumbnailMimeWebP || input.ThumbnailWidth <= 0 || input.ThumbnailHeight <= 0 {
 			return ErrInvalidInput
 		}
 	}

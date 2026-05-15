@@ -5,6 +5,7 @@ import { setVaultSession, restoreVaultSession, prepareUpload, encryptUploadMetad
 import { generateUploadThumbnail } from "../upload/upload_thumbnail.js";
 
 const STOPPED_UPLOAD = new Error("Upload stopped");
+const THUMBNAIL_TIMEOUT_MS = 15000;
 
 class PresignCache {
 	constructor(options) {
@@ -129,6 +130,18 @@ function previewMetadataFromThumbnail(thumbnail) {
 		thumbnail_size: thumbnail.encryptedSize,
 		thumbnail_version: 1,
 	};
+}
+
+function waitForThumbnailResult(promise, timeoutMs) {
+	const timeout = Math.max(1, Number(timeoutMs || THUMBNAIL_TIMEOUT_MS));
+	return Promise.race([
+		Promise.resolve(promise),
+		new Promise(function(resolve) {
+			setTimeout(function() {
+				resolve(null);
+			}, timeout);
+		}),
+	]);
 }
 
 export class UploadRunner {
@@ -342,7 +355,7 @@ export class UploadRunner {
 			if (this.shouldStopJob(job)) {
 				throw STOPPED_UPLOAD;
 			}
-			const uploadedThumbnail = await thumbnailPromise;
+			const uploadedThumbnail = await waitForThumbnailResult(thumbnailPromise, THUMBNAIL_TIMEOUT_MS);
 			if (this.shouldStopJob(job)) {
 				throw STOPPED_UPLOAD;
 			}
