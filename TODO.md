@@ -13,6 +13,12 @@
     - stop swallowing `AbortMultipartUpload()` errors silently
     - log structured abort failures
     - optionally add `cleanup_pending` state if we need explicit retry tracking later
+- Large-file Android web downloads => Priority: HIGH
+  - Support full large encrypted downloads on Android browsers as a first-class web path.
+  - Improve Android-specific chunk prepare/decrypt/write flow for multi-GB files.
+  - Keep memory bounded and writes ordered.
+  - Be explicit that this is still browser-bound, not true OS background downloading.
+  - Long-term: evaluate whether Android needs a stronger web path only, or whether the native app becomes the real background-download solution.
 - Make upload size/quota enforcement authoritative with server-counted bytes instead of browser-reported sizes.
   - Local storage: count bytes while writing with `io.Copy` + `http.MaxBytesReader`.
   - S3/R2 multipart: reserve quota up front, `HeadObject` after completion, commit `actual_encrypted_size`, delete object on overflow.
