@@ -5,7 +5,9 @@ import { initDialogs } from "./features/dialog.js";
 import { initDropdowns } from "./features/dropdown.js";
 import { ArkiveFileReader } from "./features/file_reader.js";
 import { initFileSelection } from "./features/file_selection.js";
+import { initDragSelect } from "./features/drag_select.js";
 import * as ArkiveDownloadWarning from "./features/reader/download_warning.js";
+import { initEntryDragMove } from "./features/entry_drag_move.js";
 import { initFileListHydrator } from "./features/file_list_hydrator.js";
 import { initFolders } from "./features/folders.js";
 import { initLightbox } from "./features/lightbox.js";
@@ -202,6 +204,8 @@ initFileSelection();
 initFolders();
 initMoveEntries();
 initContextMenu();
+initDragSelect();
+initEntryDragMove();
 initUploads();
 
 if ("serviceWorker" in navigator && window.isSecureContext) {

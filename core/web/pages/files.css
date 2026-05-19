@@ -3,6 +3,26 @@
   overflow-x: clip;
 }
 
+[data-selectable-entry] {
+  transition: transform 140ms ease, opacity 140ms ease, box-shadow 140ms ease, border-color 140ms ease, background-color 140ms ease;
+}
+
+[data-selectable-entry].is-selected {
+  transform: translateY(-1px);
+}
+
+[data-selectable-entry].is-dragging {
+  opacity: 0.45;
+}
+
+[data-selectable-entry].is-drop-target {
+  transform: scale(1.02);
+}
+
+[data-selectable-entry].drop-success {
+  animation: dropPulse 260ms ease;
+}
+
 .files-page .container {
   width: min(1440px, calc(100% - 40px));
   margin: 0 auto;
@@ -333,6 +353,19 @@
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+  padding: 6px 0;
+}
+
+.files-browser-actions .files-table-actions {
+  padding: 0;
+  padding-right: 16px;
+}
+
+.files-selection-count {
+  color: var(--text);
+  font-size: var(--text-body-lg-size);
+  line-height: var(--text-body-lg-lh);
+  font-weight: 600;
 }
 
 .files-grid {
@@ -350,6 +383,7 @@
   background: rgba(255, 255, 255, 0.01);
   cursor: pointer;
   justify-items: center;
+  position: relative;
 }
 
 .files-card:hover {
@@ -382,6 +416,11 @@
 
 .files-context-menu[hidden] {
   display: none;
+}
+
+.files-context-menu-item:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .files-context-menu-item {
@@ -464,12 +503,6 @@
 .files-bulk-delete[disabled] {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-.files-selection-count {
-  color: var(--muted);
-  font-size: var(--text-body-sm-size);
-  line-height: var(--text-body-sm-lh);
 }
 
 .files-cell-name {
@@ -624,7 +657,7 @@
 .files-cell-actions {
   display: flex;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: nowrap;
   white-space: nowrap;
   opacity: 0;
@@ -642,9 +675,9 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-height: 32px;
-  min-width: 32px;
-  padding: 0 8px;
+  min-height: 34px;
+  min-width: 34px;
+  padding: 0 9px;
   flex: 0 0 auto;
   border: 1px solid rgba(135, 146, 154, 0.18);
   border-radius: 6px;
@@ -657,30 +690,6 @@
 .files-action-button:hover {
   background: var(--surface-raised);
   color: var(--text);
-}
-
-.files-action-button[title="Share"] {
-  color: var(--accent-strong);
-}
-
-.files-action-button[title="View"] {
-  color: #c4cfdd;
-}
-
-.files-action-button[title="Download"] {
-  color: var(--success);
-}
-
-.files-action-button[title="Share"]:hover {
-  color: var(--accent);
-}
-
-.files-action-button[title="View"]:hover {
-  color: var(--text);
-}
-
-.files-action-button[title="Download"]:hover {
-  color: var(--success);
 }
 
 .files-action-button.is-danger {
@@ -707,6 +716,43 @@
   display: none;
 }
 
+.files-card-menu {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid rgba(135, 146, 154, 0.16);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 140ms ease, background-color 140ms ease, color 140ms ease;
+}
+
+.files-card:hover .files-card-menu,
+.files-card:focus-within .files-card-menu,
+.files-card.is-selected .files-card-menu {
+  opacity: 1;
+}
+
+.files-card-menu:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.files-drag-select-box {
+  position: fixed;
+  z-index: 95;
+  border: 1px solid rgba(56, 189, 248, 0.9);
+  background: rgba(56, 189, 248, 0.14);
+  border-radius: 8px;
+  pointer-events: none;
+}
+
 .files-empty {
   min-height: 220px;
   display: grid;
@@ -727,6 +773,15 @@
   margin: 0;
   color: var(--muted);
   max-width: 420px;
+}
+
+@keyframes dropPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.24);
+  }
+  100% {
+    box-shadow: 0 0 0 12px rgba(56, 189, 248, 0);
+  }
 }
 
 .folder-dialog,

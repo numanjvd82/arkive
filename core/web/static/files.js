@@ -1,17 +1,20 @@
 import { setButtonBusy } from "./features/button_state.js";
 
+function filesActions() {
+  if (!window.ArkiveFilesActions) {
+    window.ArkiveFilesActions = {};
+  }
+  return window.ArkiveFilesActions;
+}
+
 (function() {
-  document.addEventListener("click", async function(event) {
-    const target = event.target.closest("[data-file-action='download']");
-    if (!target) {
-      return;
-    }
-    event.preventDefault();
-    const fileId = target.getAttribute("data-file-id");
+  async function downloadFile(fileId, trigger) {
     if (!fileId || !window.ArkiveFileReader) {
       return;
     }
-    target.disabled = true;
+    if (trigger) {
+      trigger.disabled = true;
+    }
     const reader = new window.ArkiveFileReader({ fileId: fileId });
     try {
       await reader.download();
@@ -20,15 +23,38 @@ import { setButtonBusy } from "./features/button_state.js";
         window.Toast.error((error && error.message) || "Download failed.");
       }
     } finally {
-      target.disabled = false;
+      if (trigger) {
+        trigger.disabled = false;
+      }
       await reader.dispose();
     }
+  }
+
+  filesActions().downloadFile = downloadFile;
+
+  document.addEventListener("click", async function(event) {
+    const target = event.target.closest("[data-file-action='download']");
+    if (!target) {
+      return;
+    }
+    event.preventDefault();
+    await downloadFile(target.getAttribute("data-file-id"), target);
   });
 })();
 
 (function() {
   const fileRows = document.querySelectorAll("[data-file-row]");
   const fileCards = document.querySelectorAll("[data-file-card]");
+
+  function openEntry(node) {
+    if (!node) {
+      return;
+    }
+    const href = node.getAttribute("data-file-open") || node.getAttribute("data-folder-open") || "";
+    if (href) {
+      window.location.href = href;
+    }
+  }
 
   function bindOpen(node) {
     if (!node || node.hasAttribute("data-file-open-bound")) {
@@ -39,35 +65,29 @@ import { setButtonBusy } from "./features/button_state.js";
       if (event.target.closest("a, button, input, label")) {
         return;
       }
-      const href = node.getAttribute("data-file-open") || "";
-      if (href) {
-        window.location.href = href;
-      }
+      openEntry(node);
     });
     node.addEventListener("keydown", function(event) {
       if (event.key !== "Enter") {
         return;
       }
-      const href = node.getAttribute("data-file-open") || "";
-      if (href) {
-        window.location.href = href;
-      }
+      openEntry(node);
     });
   }
 
+  filesActions().openEntry = openEntry;
   fileRows.forEach(bindOpen);
   fileCards.forEach(bindOpen);
 })();
 
 (function() {
-  const deleteButtons = document.querySelectorAll("[data-file-action='delete']");
   const backdrop = document.getElementById("file-delete-backdrop");
   const meta = document.getElementById("file-delete-meta");
   const cancelButton = document.getElementById("file-delete-cancel");
   const confirmButton = document.getElementById("file-delete-confirm");
   let pendingDeleteIds = [];
 
-  if (!deleteButtons.length && !confirmButton) {
+  if (!confirmButton) {
     return;
   }
 
@@ -138,15 +158,25 @@ import { setButtonBusy } from "./features/button_state.js";
     }
   }
 
-  deleteButtons.forEach(function(button) {
-    button.addEventListener("click", function() {
-      const fileId = button.getAttribute("data-file-id");
-      if (!fileId) {
-        return;
-      }
-      const filename = button.getAttribute("data-file-name") || "";
-      openDialog([fileId], filename ? [filename] : []);
-    });
+  filesActions().requestDeleteFiles = function(fileIds) {
+    const ids = Array.isArray(fileIds) ? fileIds.filter(Boolean) : [];
+    if (!ids.length) {
+      return;
+    }
+    openDialog(ids, selectedFileNames(ids));
+  };
+
+  document.addEventListener("click", function(event) {
+    const button = event.target.closest("[data-file-action='delete']");
+    if (!button) {
+      return;
+    }
+    const fileId = button.getAttribute("data-file-id");
+    if (!fileId) {
+      return;
+    }
+    const filename = button.getAttribute("data-file-name") || "";
+    openDialog([fileId], filename ? [filename] : []);
   });
 
   if (cancelButton) {
@@ -221,7 +251,6 @@ import { setButtonBusy } from "./features/button_state.js";
 })();
 
 (function() {
-  const shareButtons = document.querySelectorAll("[data-file-action='share']");
   const backdrop = document.getElementById("file-share-backdrop");
   const linkInput = document.getElementById("share-link-input");
   const copyButton = document.getElementById("share-copy-button");
@@ -248,7 +277,7 @@ import { setButtonBusy } from "./features/button_state.js";
   let activeShareId = "";
   let activeShareSecret = "";
 
-  if (!shareButtons.length || !backdrop || !saveButton || !statusEl) {
+  if (!backdrop || !saveButton || !statusEl) {
     return;
   }
 
@@ -553,6 +582,8 @@ import { setButtonBusy } from "./features/button_state.js";
       });
   }
 
+  filesActions().openShare = openShareDialog;
+
   function closeShareDialog() {
     activeFileId = null;
     if (window.Dialog && window.Dialog.close) {
@@ -562,14 +593,16 @@ import { setButtonBusy } from "./features/button_state.js";
     }
   }
 
-  shareButtons.forEach(function(button) {
-    button.addEventListener("click", function() {
-      const fileId = button.getAttribute("data-file-id") || "";
-      if (!fileId) {
-        return;
-      }
-      openShareDialog(fileId, button.getAttribute("data-file-name") || "");
-    });
+  document.addEventListener("click", function(event) {
+    const button = event.target.closest("[data-file-action='share']");
+    if (!button) {
+      return;
+    }
+    const fileId = button.getAttribute("data-file-id") || "";
+    if (!fileId) {
+      return;
+    }
+    openShareDialog(fileId, button.getAttribute("data-file-name") || "");
   });
 
   if (copyButton) {

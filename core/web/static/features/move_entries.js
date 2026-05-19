@@ -23,8 +23,16 @@ function folderOptions() {
   return options;
 }
 
-function openMoveDialog() {
-  const selected = selection();
+function movePayload(selected, targetFolderId) {
+  return {
+    targetFolderId: targetFolderId || null,
+    fileIds: selected.filter(function(entry) { return entry.type === "file"; }).map(function(entry) { return entry.id; }),
+    folderIds: selected.filter(function(entry) { return entry.type === "folder"; }).map(function(entry) { return entry.id; })
+  };
+}
+
+function openMoveDialog(entries) {
+  const selected = Array.isArray(entries) && entries.length ? entries : selection();
   if (!selected.length) {
     return;
   }
@@ -48,18 +56,41 @@ function openMoveDialog() {
   }
 }
 
+async function submitMove(selected, targetFolderId) {
+  const entries = Array.isArray(selected) ? selected.filter(Boolean) : [];
+  if (!entries.length) {
+    return;
+  }
+  const response = await fetch("/api/entries/move", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(movePayload(entries, targetFolderId))
+  });
+  if (!response.ok) {
+    throw new Error("Move failed");
+  }
+}
+
 export function initMoveEntries() {
   const openButtons = [document.getElementById("move-entries-button"), document.getElementById("move-entries-selected")].filter(Boolean);
   const cancelButton = document.getElementById("move-entries-cancel");
   const confirmButton = document.getElementById("move-entries-confirm");
   const select = document.getElementById("move-target-folder");
 
+  window.ArkiveMoveEntries = {
+    openDialog: openMoveDialog,
+    submitMove: submitMove,
+  };
+
   openButtons.forEach(function(button) {
     if (button.hasAttribute("data-move-bound")) {
       return;
     }
     button.setAttribute("data-move-bound", "true");
-    button.addEventListener("click", openMoveDialog);
+    button.addEventListener("click", function() {
+      openMoveDialog();
+    });
   });
 
   if (cancelButton && !cancelButton.hasAttribute("data-move-cancel-bound")) {
@@ -80,19 +111,7 @@ export function initMoveEntries() {
       }
       try {
         setButtonBusy(confirmButton, true, { busyText: "Moving..." });
-        const response = await fetch("/api/entries/move", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            targetFolderId: select.value || null,
-            fileIds: selected.filter(function(entry) { return entry.type === "file"; }).map(function(entry) { return entry.id; }),
-            folderIds: selected.filter(function(entry) { return entry.type === "folder"; }).map(function(entry) { return entry.id; })
-          })
-        });
-        if (!response.ok) {
-          throw new Error("Move failed");
-        }
+        await submitMove(selected, select.value || null);
         window.location.reload();
       } catch (error) {
         if (window.Toast) {

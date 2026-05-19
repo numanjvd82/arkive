@@ -24,6 +24,7 @@ func FolderCard(props FolderCardProps) g.Node {
 		g.Attr("data-folder-meta-b64", props.EncryptedMetaBase64),
 		g.Attr("data-folder-open", props.Href),
 		g.Attr("tabindex", "0"),
+		g.Attr("draggable", "true"),
 		h.Div(
 			h.Class("files-card-preview"),
 			h.Span(
@@ -42,6 +43,18 @@ func FolderCard(props FolderCardProps) g.Node {
 				g.Text("Encrypted folder"),
 			),
 		),
+		h.Button(
+			h.Class("files-card-menu"),
+			h.Type("button"),
+			g.Attr("data-entry-menu-trigger", "true"),
+			g.Attr("data-entry-menu-id", props.ID),
+			g.Attr("data-entry-menu-type", "folder"),
+			g.Attr("aria-label", "Entry actions"),
+			lucide.Ellipsis(
+				h.Class("files-lucide files-lucide-action"),
+				g.Attr("aria-hidden", "true"),
+			),
+		),
 	)
 }
 
@@ -55,6 +68,7 @@ func FolderRow(id, href, encryptedNameBase64, encryptedMetaBase64 string) g.Node
 		g.Attr("data-folder-name-b64", encryptedNameBase64),
 		g.Attr("data-folder-meta-b64", encryptedMetaBase64),
 		g.Attr("data-folder-open", href),
+		g.Attr("draggable", "true"),
 		h.Td(
 			h.Class("files-cell files-select-cell"),
 			h.Input(
@@ -98,15 +112,18 @@ func FolderRow(id, href, encryptedNameBase64, encryptedMetaBase64 string) g.Node
 		),
 		h.Td(
 			h.Class("files-cell files-cell-actions"),
-			h.A(
+			h.Button(
 				h.Class("files-action-button"),
-				h.Href(href),
-				h.Title("Open folder"),
-				lucide.FolderOpen(
+				h.Type("button"),
+				g.Attr("data-entry-menu-trigger", "true"),
+				g.Attr("data-entry-menu-id", id),
+				g.Attr("data-entry-menu-type", "folder"),
+				g.Attr("title", "Actions"),
+				lucide.Ellipsis(
 					h.Class("files-lucide files-lucide-action"),
 					g.Attr("aria-hidden", "true"),
 				),
-				h.Span(h.Class("files-action-label"), g.Text("Open")),
+				h.Span(h.Class("files-action-label"), g.Text("Actions")),
 			),
 		),
 	)

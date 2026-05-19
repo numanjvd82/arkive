@@ -232,16 +232,34 @@ func renderEntriesBrowserToolbar(pagination *components.PaginationProps) g.Node 
 			g.Attr("hidden", "hidden"),
 			h.Div(
 				h.Class("files-table-actions"),
-				h.Button(
-					h.Class("button secondary"),
-					h.Type("button"),
-					g.Attr("id", "move-entries-selected"),
-					g.Text("Move selected"),
-				),
 				h.Span(
 					h.Class("files-selection-count"),
 					g.Attr("id", "entries-selection-count"),
 					g.Text("0 selected"),
+				),
+				h.Button(
+					h.Class("button secondary"),
+					h.Type("button"),
+					g.Attr("id", "move-entries-selected"),
+					g.Text("Move"),
+				),
+				h.Button(
+					h.Class("button secondary"),
+					h.Type("button"),
+					g.Attr("id", "share-entries-selected"),
+					g.Text("Share"),
+				),
+				h.Button(
+					h.Class("button danger-outline"),
+					h.Type("button"),
+					g.Attr("id", "delete-entries-selected"),
+					g.Text("Delete"),
+				),
+				h.Button(
+					h.Class("button secondary"),
+					h.Type("button"),
+					g.Attr("id", "clear-entries-selection"),
+					g.Text("Clear"),
 				),
 			),
 		),
@@ -317,6 +335,7 @@ func renderGridList(folders []models.Folder, files []models.File, viewMode strin
 
 	return h.Div(
 		h.Class("files-grid-wrap"),
+		g.Attr("data-drag-select-root", "grid"),
 		h.Div(
 			h.Class("files-grid"),
 			g.Group(cards),
@@ -420,6 +439,7 @@ func renderFileRow(file models.File) g.Node {
 		g.Attr("data-file-item", file.ID),
 		g.Attr("data-file-name", ""),
 		g.Attr("id", "file-"+file.ID),
+		g.Attr("draggable", "true"),
 		h.Td(
 			h.Class("files-cell files-select-cell"),
 			h.Input(
@@ -478,45 +498,17 @@ func renderFileRow(file models.File) g.Node {
 		h.Td(
 			h.Class("files-cell files-cell-actions"),
 			renderActionLink(
-				"Share",
+				"Actions",
 				"",
 				"button",
 				g.Group([]g.Node{
 					h.Type("button"),
-					g.Attr("data-file-action", "share"),
-					g.Attr("data-file-id", file.ID),
-					g.Attr("data-file-name", ""),
-				}),
-				lucide.Share2(
-					h.Class("files-lucide files-lucide-action"),
-					g.Attr("aria-hidden", "true"),
-				),
-			),
-			renderActionLink(
-				"Download",
-				"",
-				"button",
-				g.Group([]g.Node{
-					h.Type("button"),
-					g.Attr("data-file-action", "download"),
+					g.Attr("data-entry-menu-trigger", "true"),
+					g.Attr("data-entry-menu-id", file.ID),
+					g.Attr("data-entry-menu-type", "file"),
 					g.Attr("data-file-id", file.ID),
 				}),
-				lucide.Download(
-					h.Class("files-lucide files-lucide-action"),
-					g.Attr("aria-hidden", "true"),
-				),
-			),
-			renderActionLink(
-				"Delete",
-				"",
-				"button",
-				g.Group([]g.Node{
-					h.Type("button"),
-					g.Attr("data-file-action", "delete"),
-					g.Attr("data-file-id", file.ID),
-					g.Attr("data-file-name", ""),
-				}),
-				lucide.Trash2(
+				lucide.Ellipsis(
 					h.Class("files-lucide files-lucide-action"),
 					g.Attr("aria-hidden", "true"),
 				),
@@ -540,6 +532,7 @@ func renderFileCard(file models.File) g.Node {
 		g.Attr("data-file-grid-select", file.ID),
 		g.Attr("data-file-open", viewURL),
 		g.Attr("tabindex", "0"),
+		g.Attr("draggable", "true"),
 		h.Div(
 			h.Class("files-card-preview"),
 			g.Attr("data-file-preview", "true"),
@@ -554,6 +547,18 @@ func renderFileCard(file models.File) g.Node {
 			h.Span(
 				h.Class("files-name files-skeleton files-skeleton-name"),
 				g.Attr("data-file-field", "name"),
+				g.Attr("aria-hidden", "true"),
+			),
+		),
+		h.Button(
+			h.Class("files-card-menu"),
+			h.Type("button"),
+			g.Attr("data-entry-menu-trigger", "true"),
+			g.Attr("data-entry-menu-id", file.ID),
+			g.Attr("data-entry-menu-type", "file"),
+			g.Attr("aria-label", "Entry actions"),
+			lucide.Ellipsis(
+				h.Class("files-lucide files-lucide-action"),
 				g.Attr("aria-hidden", "true"),
 			),
 		),
