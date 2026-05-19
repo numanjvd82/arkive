@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"arkive/core/models"
+	"arkive/pkg/validation"
 )
 
 const encryptedChunkEnvelopeOverheadBytes int64 = 41
@@ -26,6 +27,17 @@ func validateUploadID(uploadID string) (string, error) {
 		return "", ErrInvalidInput
 	}
 	return uploadID, nil
+}
+
+func validateOptionalFolderID(folderID *string) (*string, error) {
+	if folderID == nil {
+		return nil, nil
+	}
+	normalized, ok := validation.NormalizeUUID(*folderID)
+	if !ok {
+		return nil, ErrInvalidInput
+	}
+	return &normalized, nil
 }
 
 func expiresAtPtr(t time.Time) *time.Time {

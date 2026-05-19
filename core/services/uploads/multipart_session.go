@@ -43,6 +43,7 @@ type MultipartUploadStartInput struct {
 	UploadPartSize    int64
 	UploadPartCount   int
 	EncryptionVersion int16
+	FolderID          *string
 }
 
 type MultipartUploadCompleteInput struct {
@@ -139,14 +140,29 @@ func (s *Service) StartMultipartUploadSession(ctx context.Context, userID string
 		return models.UploadStartResponse{}, validationErrors, nil
 	}
 	declaredEncryptedSize := reservedUploadSize(input.OriginalSize, input.TotalChunks)
+	input.FolderID, err = validateOptionalFolderID(input.FolderID)
+	if err != nil {
+		return models.UploadStartResponse{}, nil, err
+	}
 
 	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return models.UploadStartResponse{}, nil, err
 	}
 
+	if input.FolderID != nil {
+		if _, err := s.folderRepo.GetForUser(ctx, tx, userID, *input.FolderID); err != nil {
+			_ = tx.Rollback(ctx)
+			if errors.Is(err, pgx.ErrNoRows) {
+				return models.UploadStartResponse{}, nil, ErrNotFound
+			}
+			return models.UploadStartResponse{}, nil, err
+		}
+	}
+
 	file, err := s.fileRepo.CreateEncryptedFile(ctx, tx, models.File{
 		UserID:              userID,
+		FolderID:            input.FolderID,
 		EncryptedMetadata:   []byte{},
 		EncryptedFileKey:    []byte{},
 		EncryptedManifest:   []byte{},

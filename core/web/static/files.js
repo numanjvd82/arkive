@@ -27,68 +27,48 @@ import { setButtonBusy } from "./features/button_state.js";
 })();
 
 (function() {
-  const tableRows = Array.from(document.querySelectorAll("[data-file-row]"));
+  const fileRows = document.querySelectorAll("[data-file-row]");
+  const fileCards = document.querySelectorAll("[data-file-card]");
+
+  function bindOpen(node) {
+    if (!node || node.hasAttribute("data-file-open-bound")) {
+      return;
+    }
+    node.setAttribute("data-file-open-bound", "true");
+    node.addEventListener("dblclick", function(event) {
+      if (event.target.closest("a, button, input, label")) {
+        return;
+      }
+      const href = node.getAttribute("data-file-open") || "";
+      if (href) {
+        window.location.href = href;
+      }
+    });
+    node.addEventListener("keydown", function(event) {
+      if (event.key !== "Enter") {
+        return;
+      }
+      const href = node.getAttribute("data-file-open") || "";
+      if (href) {
+        window.location.href = href;
+      }
+    });
+  }
+
+  fileRows.forEach(bindOpen);
+  fileCards.forEach(bindOpen);
+})();
+
+(function() {
   const deleteButtons = document.querySelectorAll("[data-file-action='delete']");
-  const selectAll = document.getElementById("files-select-all");
-  const bulkDeleteButton = document.getElementById("files-delete-selected");
-  const selectionCount = document.getElementById("files-selection-count");
-  const selectionToolbar = document.getElementById("files-selection-toolbar");
-  const gridCards = Array.from(document.querySelectorAll("[data-file-grid-select]"));
-  const gridWrap = document.querySelector(".files-grid-wrap");
-  const contextMenu = document.getElementById("files-grid-context-menu");
-  const fileContextItems = Array.from(document.querySelectorAll("[data-grid-menu-action]"));
-  const spaceContextItems = Array.from(document.querySelectorAll("[data-grid-space-action]"));
   const backdrop = document.getElementById("file-delete-backdrop");
   const meta = document.getElementById("file-delete-meta");
   const cancelButton = document.getElementById("file-delete-cancel");
   const confirmButton = document.getElementById("file-delete-confirm");
   let pendingDeleteIds = [];
-  let activeContextFileId = "";
 
-  if (!deleteButtons.length && !bulkDeleteButton && !gridCards.length && !tableRows.length) {
+  if (!deleteButtons.length && !confirmButton) {
     return;
-  }
-
-  tableRows.forEach(function(row) {
-    row.addEventListener("click", function(event) {
-      if (event.target.closest("a, button, input, label")) {
-        return;
-      }
-      const href = row.getAttribute("data-file-open") || "";
-      if (href) {
-        window.location.href = href;
-      }
-    });
-  });
-
-  function fileCheckboxes() {
-    return Array.from(document.querySelectorAll("[data-file-select]"));
-  }
-
-  function selectedGridCards() {
-    return gridCards.filter(function(card) {
-      return card.classList.contains("is-selected");
-    });
-  }
-
-  function selectedFileIds() {
-    const ids = new Set();
-    fileCheckboxes().forEach(function(checkbox) {
-      if (!checkbox.checked) {
-        return;
-      }
-      const fileId = checkbox.getAttribute("data-file-select") || "";
-      if (fileId) {
-        ids.add(fileId);
-      }
-    });
-    selectedGridCards().forEach(function(card) {
-      const fileId = card.getAttribute("data-file-grid-select") || "";
-      if (fileId) {
-        ids.add(fileId);
-      }
-    });
-    return Array.from(ids);
   }
 
   function selectedFileNames(ids) {
@@ -100,71 +80,6 @@ import { setButtonBusy } from "./features/button_state.js";
       .filter(Boolean);
   }
 
-  function clearGridSelection(exceptId) {
-    gridCards.forEach(function(card) {
-      const fileId = card.getAttribute("data-file-grid-select") || "";
-      if (exceptId && fileId === exceptId) {
-        return;
-      }
-      card.classList.remove("is-selected");
-    });
-  }
-
-  function closeContextMenu() {
-    activeContextFileId = "";
-    if (contextMenu) {
-      contextMenu.setAttribute("hidden", "hidden");
-    }
-  }
-
-  function updateContextMenuMode(mode) {
-    fileContextItems.forEach(function(item) {
-      item.hidden = mode !== "file";
-    });
-    spaceContextItems.forEach(function(item) {
-      item.hidden = mode !== "space";
-    });
-  }
-
-  function openContextMenu(mode, fileId, x, y) {
-    if (!contextMenu) {
-      return;
-    }
-    activeContextFileId = mode === "file" ? fileId : "";
-    updateContextMenuMode(mode);
-    contextMenu.removeAttribute("hidden");
-    const menuWidth = contextMenu.offsetWidth || 180;
-    const menuHeight = contextMenu.offsetHeight || 180;
-    const left = Math.min(x, window.innerWidth - menuWidth - 12);
-    const top = Math.min(y, window.innerHeight - menuHeight - 12);
-    contextMenu.style.left = Math.max(12, left) + "px";
-    contextMenu.style.top = Math.max(12, top) + "px";
-  }
-
-  function updateSelectionState() {
-    const checkboxes = fileCheckboxes();
-    const checked = selectedFileIds().length;
-    const allChecked = checkboxes.length > 0 && checkboxes.every(function(checkbox) { return checkbox.checked; });
-    const someChecked = checked > 0;
-    if (selectAll) {
-      selectAll.checked = allChecked;
-      selectAll.indeterminate = someChecked && !allChecked;
-    }
-    if (bulkDeleteButton) {
-      bulkDeleteButton.disabled = checked === 0;
-    }
-    if (selectionCount) {
-      selectionCount.textContent = checked === 1 ? "1 selected" : checked + " selected";
-    }
-    if (selectionToolbar) {
-      if (checked > 0) {
-        selectionToolbar.removeAttribute("hidden");
-      } else {
-        selectionToolbar.setAttribute("hidden", "hidden");
-      }
-    }
-  }
-
   function removeRows(fileIds) {
     fileIds.forEach(function(fileId) {
       document.querySelectorAll("[data-file-item='" + fileId + "']").forEach(function(item) {
@@ -173,7 +88,9 @@ import { setButtonBusy } from "./features/button_state.js";
         }
       });
     });
-    updateSelectionState();
+    if (window.ArkiveEntrySelection && typeof window.ArkiveEntrySelection.clear === "function") {
+      window.ArkiveEntrySelection.clear();
+    }
   }
 
   function pageHasRows() {
@@ -232,151 +149,6 @@ import { setButtonBusy } from "./features/button_state.js";
     });
   });
 
-  fileCheckboxes().forEach(function(checkbox) {
-    checkbox.addEventListener("change", updateSelectionState);
-  });
-
-  gridCards.forEach(function(card) {
-    card.addEventListener("click", function(event) {
-      if (event.target.closest("a, button, input, label")) {
-        return;
-      }
-      const fileId = card.getAttribute("data-file-grid-select") || "";
-      if (!fileId) {
-        return;
-      }
-      if (event.ctrlKey || event.metaKey) {
-        card.classList.toggle("is-selected");
-      } else {
-        clearGridSelection(fileId);
-        card.classList.add("is-selected");
-      }
-      updateSelectionState();
-    });
-
-    card.addEventListener("dblclick", function() {
-      const href = card.getAttribute("data-file-open") || "";
-      if (href) {
-        window.location.href = href;
-      }
-    });
-
-    card.addEventListener("contextmenu", function(event) {
-      event.preventDefault();
-      const fileId = card.getAttribute("data-file-grid-select") || "";
-      if (!fileId) {
-        return;
-      }
-      if (!card.classList.contains("is-selected")) {
-        clearGridSelection(fileId);
-        card.classList.add("is-selected");
-        updateSelectionState();
-      }
-      openContextMenu("file", fileId, event.clientX, event.clientY);
-    });
-
-    card.addEventListener("keydown", function(event) {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        const href = card.getAttribute("data-file-open") || "";
-        if (href) {
-          window.location.href = href;
-        }
-        return;
-      }
-      if (event.key !== " " && event.key !== "Spacebar") {
-        return;
-      }
-      event.preventDefault();
-      const fileId = card.getAttribute("data-file-grid-select") || "";
-      if (!fileId) {
-        return;
-      }
-      if (event.ctrlKey || event.metaKey) {
-        card.classList.toggle("is-selected");
-      } else {
-        clearGridSelection(fileId);
-        card.classList.add("is-selected");
-      }
-      updateSelectionState();
-    });
-  });
-
-  fileContextItems.forEach(function(button) {
-    button.addEventListener("click", function() {
-      const action = button.getAttribute("data-grid-menu-action") || "";
-      let fileName = "";
-      if (activeContextFileId) {
-        const item = document.querySelector("[data-file-item='" + activeContextFileId + "']");
-        if (item) {
-          fileName = String(item.getAttribute("data-file-name") || "");
-        }
-      }
-      closeContextMenu();
-      if (window.Toast) {
-        window.Toast.success((fileName || "File") + ": " + action + " coming soon.", { title: "Context menu" });
-      }
-    });
-  });
-
-  spaceContextItems.forEach(function(button) {
-    button.addEventListener("click", function() {
-      const action = button.getAttribute("data-grid-space-action") || "";
-      closeContextMenu();
-      if (window.Toast) {
-        window.Toast.success(action + " coming soon.", { title: "Context menu" });
-      }
-    });
-  });
-
-  if (gridWrap) {
-    gridWrap.addEventListener("contextmenu", function(event) {
-      if (event.target.closest("[data-file-grid-select]")) {
-        return;
-      }
-      event.preventDefault();
-      clearGridSelection("");
-      updateSelectionState();
-      openContextMenu("space", "", event.clientX, event.clientY);
-    });
-  }
-
-  document.addEventListener("click", function(event) {
-    if (!contextMenu || contextMenu.hasAttribute("hidden")) {
-      return;
-    }
-    if (event.target.closest("#files-grid-context-menu")) {
-      return;
-    }
-    closeContextMenu();
-  });
-
-  document.addEventListener("keydown", function(event) {
-    if (event.key === "Escape") {
-      closeContextMenu();
-    }
-  });
-
-  if (selectAll) {
-    selectAll.addEventListener("change", function() {
-      const checked = !!selectAll.checked;
-      fileCheckboxes().forEach(function(checkbox) {
-        checkbox.checked = checked;
-      });
-      updateSelectionState();
-    });
-  }
-
-  if (bulkDeleteButton) {
-    bulkDeleteButton.addEventListener("click", function() {
-      const ids = selectedFileIds();
-      if (!ids.length) {
-        return;
-      }
-      openDialog(ids, selectedFileNames(ids));
-    });
-  }
-
   if (cancelButton) {
     cancelButton.addEventListener("click", function() {
       closeDialog();
@@ -425,11 +197,27 @@ import { setButtonBusy } from "./features/button_state.js";
         })
         .finally(function() {
           setButtonBusy(confirmButton, false);
-        });
+      });
     });
   }
 
-  updateSelectionState();
+  document.addEventListener("arkive:entries-delete-request", function(event) {
+    const detail = event && event.detail ? event.detail : {};
+    const selectedEntries = Array.isArray(detail.selectedEntries) ? detail.selectedEntries : [];
+    const selectedFiles = selectedEntries.filter(function(entry) {
+      return entry && entry.type === "file";
+    });
+    if (!selectedFiles.length) {
+      if (window.Toast) {
+        window.Toast.error("Folder delete is not available yet.");
+      }
+      return;
+    }
+    openDialog(
+      selectedFiles.map(function(entry) { return entry.id; }),
+      selectedFileNames(selectedFiles.map(function(entry) { return entry.id; }))
+    );
+  });
 })();
 
 (function() {

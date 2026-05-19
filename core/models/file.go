@@ -5,6 +5,7 @@ import "time"
 type File struct {
 	ID                  string
 	UserID              string
+	FolderID            *string
 	EncryptedMetadata   []byte
 	EncryptedFileKey    []byte
 	EncryptedManifest   []byte

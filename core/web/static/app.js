@@ -4,12 +4,16 @@ import { initCrypto } from "./features/crypto.js";
 import { initDialogs } from "./features/dialog.js";
 import { initDropdowns } from "./features/dropdown.js";
 import { ArkiveFileReader } from "./features/file_reader.js";
+import { initFileSelection } from "./features/file_selection.js";
 import * as ArkiveDownloadWarning from "./features/reader/download_warning.js";
 import { initFileListHydrator } from "./features/file_list_hydrator.js";
+import { initFolders } from "./features/folders.js";
 import { initLightbox } from "./features/lightbox.js";
+import { initMoveEntries } from "./features/move_entries.js";
 import { initSearchPalette } from "./features/search_palette.js";
 import { ArkiveShareReader } from "./features/share_reader.js";
 import { initSidebar } from "./features/sidebar.js";
+import { initContextMenu } from "./features/context_menu.js";
 import * as ArkiveStreaming from "./features/streaming/stream_player.js";
 import { initToast } from "./features/toast.js";
 import { initTooltips } from "./features/tooltip.js";
@@ -194,6 +198,10 @@ initSidebar();
 initSearchPalette();
 initLightbox();
 initFileListHydrator();
+initFileSelection();
+initFolders();
+initMoveEntries();
+initContextMenu();
 initUploads();
 
 if ("serviceWorker" in navigator && window.isSecureContext) {

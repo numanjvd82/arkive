@@ -11,12 +11,13 @@ import (
 )
 
 type uploadStartRequest struct {
-	OriginalSize      int64 `json:"originalSize"`
-	FileChunkSize     int64 `json:"fileChunkSize"`
-	TotalChunks       int   `json:"totalChunks"`
-	UploadPartSize    int64 `json:"uploadPartSize"`
-	UploadPartCount   int   `json:"uploadPartCount"`
-	EncryptionVersion int16 `json:"encryptionVersion"`
+	OriginalSize      int64   `json:"originalSize"`
+	FileChunkSize     int64   `json:"fileChunkSize"`
+	TotalChunks       int     `json:"totalChunks"`
+	UploadPartSize    int64   `json:"uploadPartSize"`
+	UploadPartCount   int     `json:"uploadPartCount"`
+	EncryptionVersion int16   `json:"encryptionVersion"`
+	FolderID          *string `json:"folderId"`
 }
 
 type uploadPartRecordRequest struct {
@@ -68,6 +69,7 @@ func APIUploadStart(svc *uploads.Service) gin.HandlerFunc {
 			UploadPartSize:    req.UploadPartSize,
 			UploadPartCount:   req.UploadPartCount,
 			EncryptionVersion: req.EncryptionVersion,
+			FolderID:          req.FolderID,
 		})
 		if err != nil {
 			switch err {
@@ -75,6 +77,10 @@ func APIUploadStart(svc *uploads.Service) gin.HandlerFunc {
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 			case uploads.ErrQuotaExceeded:
 				c.JSON(http.StatusForbidden, gin.H{"error": "quota exceeded"})
+			case uploads.ErrNotFound:
+				c.JSON(http.StatusNotFound, gin.H{"error": "folder not found"})
+			case uploads.ErrInvalidInput:
+				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
 			default:
 				_ = c.Error(errs.WithStack(err))
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "upload start failed"})

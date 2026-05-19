@@ -17,6 +17,7 @@ import (
 	sharerepo "arkive/core/repositories/shares"
 	usersrepo "arkive/core/repositories/users"
 	"arkive/core/services/auth"
+	folderssvc "arkive/core/services/folders"
 	settingssvc "arkive/core/services/settings"
 	"arkive/core/services/setup"
 	"arkive/core/services/shares"
@@ -26,7 +27,7 @@ import (
 	"arkive/pkg/storage/localclient"
 )
 
-func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, localStorage *localclient.Client) *gin.Engine {
+func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, folderService *folderssvc.Service, localStorage *localclient.Client) *gin.Engine {
 	r := gin.Default()
 	r.Use(middleware.ErrorLogger())
 	r.Use(middleware.SecurityHeaders())
@@ -76,8 +77,9 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 	protected := r.Group("/")
 	protected.Use(middleware.RequireSessionRedirect(authService))
 	protected.GET("/lock", handlers.WebLockGet())
-	protected.GET("/dashboard", handlers.WebDashboard(uploadService, settingsService))
-	protected.GET("/files", handlers.WebFiles(uploadService))
+	protected.GET("/dashboard", handlers.WebDashboard(uploadService, folderService, settingsService))
+	protected.GET("/files", handlers.WebFiles(uploadService, folderService))
+	protected.GET("/folders/:id", handlers.WebFolder(uploadService, folderService))
 	protected.GET("/files/:id/view", handlers.WebFileView(uploadService))
 	protected.GET("/shares", handlers.WebShares(shareService, uploadService))
 	protected.GET("/settings", handlers.WebSettings(uploadService, settingsService))
@@ -128,6 +130,15 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 		apiShares.PATCH("/:id", handlers.APIUpdateShare(shareService))
 		apiShares.GET("/:id/crypto-record", handlers.APIGetShareCryptoRecord(shareService))
 		apiShares.DELETE("/:id", handlers.APIDeleteShare(shareService))
+	}
+
+	apiFolders := api.Group("")
+	apiFolders.Use(middleware.RequireSessionJSON(authService))
+	{
+		apiFolders.POST("/folders", handlers.APICreateFolder(folderService))
+		apiFolders.GET("/folders/root/entries", handlers.APIListRootFolderEntries(folderService))
+		apiFolders.GET("/folders/:id/entries", handlers.APIListFolderEntries(folderService))
+		apiFolders.POST("/entries/move", handlers.APIMoveEntries(folderService))
 	}
 
 	r.NoRoute(handlers.WebNotFound())

@@ -569,7 +569,8 @@ async function handleMessage(message) {
         crypto.zeroize(encryptedChunk);
       }
     }
-    case "encryptFileMetadata": {
+    case "encryptFileMetadata":
+    case "encryptFolderMetadata": {
       const master = activeMasterKey(message.params.masterKey);
       const metadata = new TextEncoder().encode(
         JSON.stringify(message.params.metadata || {}),
@@ -586,6 +587,28 @@ async function handleMessage(message) {
           crypto.zeroize(encrypted);
         }
       } finally {
+        if (master.temporary) {
+          crypto.zeroize(master.bytes);
+        }
+      }
+    }
+    case "decryptFileMetadata":
+    case "decryptFolderMetadata": {
+      const master = activeMasterKey(message.params.masterKey);
+      const encryptedMetadata = decodeBase64(message.params.encryptedMetadata);
+      try {
+        const metadata = crypto.decrypt_chunk(
+          encryptedMetadata,
+          master.bytes,
+          aadBytes(message.params.aad),
+        );
+        try {
+          return { metadata: JSON.parse(new TextDecoder().decode(metadata)) };
+        } finally {
+          crypto.zeroize(metadata);
+        }
+      } finally {
+        crypto.zeroize(encryptedMetadata);
         if (master.temporary) {
           crypto.zeroize(master.bytes);
         }

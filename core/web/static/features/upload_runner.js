@@ -144,6 +144,15 @@ function waitForThumbnailResult(promise, timeoutMs) {
 	]);
 }
 
+function currentFolderId() {
+	const current = document.querySelector("[data-current-folder-id]");
+	if (!current) {
+		return null;
+	}
+	const value = String(current.getAttribute("data-current-folder-id") || "").trim();
+	return value || null;
+}
+
 export class UploadRunner {
 	constructor(options) {
 		options = options || {};
@@ -322,6 +331,7 @@ export class UploadRunner {
 					uploadPartSize: job.public.uploadPartSize,
 					uploadPartCount: job.public.uploadPartCount,
 					encryptionVersion: 1,
+					folderId: currentFolderId(),
 				}, signal);
 			});
 		if (this.shouldStopJob(job)) {

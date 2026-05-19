@@ -15,17 +15,19 @@ func New() *Repository {
 
 func (r *Repository) CreateEncryptedFile(ctx context.Context, db database.PgExecutor, file models.File) (models.File, error) {
 	var created models.File
+	var folderID *string
 	query := `INSERT INTO files
-		(user_id, encrypted_metadata, encrypted_file_key, encrypted_manifest, encryption_version, chunk_size, chunk_count, plaintext_size, actual_encrypted_size, encrypted_hash, upload_status, expires_at)
+		(user_id, folder_id, encrypted_metadata, encrypted_file_key, encrypted_manifest, encryption_version, chunk_size, chunk_count, plaintext_size, actual_encrypted_size, encrypted_hash, upload_status, expires_at)
 	VALUES
-		($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+		($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 	RETURNING
-		id, user_id, encrypted_metadata, encrypted_file_key, encrypted_manifest, encryption_version, chunk_size, chunk_count,
+		id, user_id, folder_id, encrypted_metadata, encrypted_file_key, encrypted_manifest, encryption_version, chunk_size, chunk_count,
 		plaintext_size, actual_encrypted_size, encrypted_hash, upload_status,
 		thumbnail_status, thumbnail_size_bytes, thumbnail_mime, thumbnail_width, thumbnail_height,
 		completed_at, created_at, updated_at, expires_at`
 	if err := db.QueryRow(ctx, query,
 		file.UserID,
+		file.FolderID,
 		file.EncryptedMetadata,
 		file.EncryptedFileKey,
 		file.EncryptedManifest,
@@ -40,6 +42,7 @@ func (r *Repository) CreateEncryptedFile(ctx context.Context, db database.PgExec
 	).Scan(
 		&created.ID,
 		&created.UserID,
+		&folderID,
 		&created.EncryptedMetadata,
 		&created.EncryptedFileKey,
 		&created.EncryptedManifest,
@@ -62,13 +65,15 @@ func (r *Repository) CreateEncryptedFile(ctx context.Context, db database.PgExec
 	); err != nil {
 		return models.File{}, err
 	}
+	created.FolderID = folderID
 	return created, nil
 }
 
 func (r *Repository) GetEncryptedFileForUser(ctx context.Context, db database.PgExecutor, fileID, userID string) (models.File, error) {
 	var file models.File
+	var folderID *string
 	query := `SELECT
-		id, user_id, encrypted_metadata, encrypted_file_key, encrypted_manifest, encryption_version, chunk_size, chunk_count,
+		id, user_id, folder_id, encrypted_metadata, encrypted_file_key, encrypted_manifest, encryption_version, chunk_size, chunk_count,
 		plaintext_size, actual_encrypted_size, encrypted_hash, upload_status,
 		thumbnail_status, thumbnail_size_bytes, thumbnail_mime, thumbnail_width, thumbnail_height,
 		completed_at, created_at, updated_at, expires_at
@@ -79,6 +84,7 @@ func (r *Repository) GetEncryptedFileForUser(ctx context.Context, db database.Pg
 	if err := db.QueryRow(ctx, query, fileID, userID).Scan(
 		&file.ID,
 		&file.UserID,
+		&folderID,
 		&file.EncryptedMetadata,
 		&file.EncryptedFileKey,
 		&file.EncryptedManifest,
@@ -101,6 +107,7 @@ func (r *Repository) GetEncryptedFileForUser(ctx context.Context, db database.Pg
 	); err != nil {
 		return models.File{}, err
 	}
+	file.FolderID = folderID
 	return file, nil
 }
 
@@ -121,8 +128,9 @@ func (r *Repository) UpdateEncryptedFileEnvelope(ctx context.Context, db databas
 
 func (r *Repository) GetEncryptedFileRecordForUser(ctx context.Context, db database.PgExecutor, fileID, userID string) (models.File, error) {
 	var file models.File
+	var folderID *string
 	query := `SELECT
-		id, user_id, encrypted_metadata, encrypted_file_key, encrypted_manifest, encryption_version,
+		id, user_id, folder_id, encrypted_metadata, encrypted_file_key, encrypted_manifest, encryption_version,
 		chunk_size, chunk_count, plaintext_size, actual_encrypted_size, encrypted_hash, upload_status,
 		thumbnail_status, thumbnail_size_bytes, thumbnail_mime, thumbnail_width, thumbnail_height
 	FROM
@@ -132,6 +140,7 @@ func (r *Repository) GetEncryptedFileRecordForUser(ctx context.Context, db datab
 	if err := db.QueryRow(ctx, query, fileID, userID).Scan(
 		&file.ID,
 		&file.UserID,
+		&folderID,
 		&file.EncryptedMetadata,
 		&file.EncryptedFileKey,
 		&file.EncryptedManifest,
@@ -150,6 +159,7 @@ func (r *Repository) GetEncryptedFileRecordForUser(ctx context.Context, db datab
 	); err != nil {
 		return models.File{}, err
 	}
+	file.FolderID = folderID
 	return file, nil
 }
 
@@ -237,8 +247,9 @@ func (r *Repository) CountArchivedFilesForUser(ctx context.Context, db database.
 
 func (r *Repository) GetFileByID(ctx context.Context, db database.PgExecutor, fileID string) (models.File, error) {
 	var file models.File
+	var folderID *string
 	query := `SELECT
-		id, user_id, encrypted_metadata, encrypted_file_key, encrypted_manifest, encryption_version, chunk_size, chunk_count,
+		id, user_id, folder_id, encrypted_metadata, encrypted_file_key, encrypted_manifest, encryption_version, chunk_size, chunk_count,
 		plaintext_size, actual_encrypted_size, encrypted_hash, upload_status,
 		thumbnail_status, thumbnail_size_bytes, thumbnail_mime, thumbnail_width, thumbnail_height,
 		completed_at, created_at, updated_at, expires_at
@@ -249,6 +260,7 @@ func (r *Repository) GetFileByID(ctx context.Context, db database.PgExecutor, fi
 	if err := db.QueryRow(ctx, query, fileID).Scan(
 		&file.ID,
 		&file.UserID,
+		&folderID,
 		&file.EncryptedMetadata,
 		&file.EncryptedFileKey,
 		&file.EncryptedManifest,
@@ -271,13 +283,15 @@ func (r *Repository) GetFileByID(ctx context.Context, db database.PgExecutor, fi
 	); err != nil {
 		return models.File{}, err
 	}
+	file.FolderID = folderID
 	return file, nil
 }
 
 func (r *Repository) GetFileForUser(ctx context.Context, db database.PgExecutor, fileID, userID string) (models.File, error) {
 	var file models.File
+	var folderID *string
 	query := `SELECT
-		id, user_id, encrypted_metadata, encrypted_file_key, encrypted_manifest, encryption_version, chunk_size, chunk_count,
+		id, user_id, folder_id, encrypted_metadata, encrypted_file_key, encrypted_manifest, encryption_version, chunk_size, chunk_count,
 		plaintext_size, actual_encrypted_size, encrypted_hash, upload_status,
 		thumbnail_status, thumbnail_size_bytes, thumbnail_mime, thumbnail_width, thumbnail_height,
 		completed_at, created_at, updated_at, expires_at
@@ -288,6 +302,7 @@ func (r *Repository) GetFileForUser(ctx context.Context, db database.PgExecutor,
 	if err := db.QueryRow(ctx, query, fileID, userID).Scan(
 		&file.ID,
 		&file.UserID,
+		&folderID,
 		&file.EncryptedMetadata,
 		&file.EncryptedFileKey,
 		&file.EncryptedManifest,
@@ -310,6 +325,7 @@ func (r *Repository) GetFileForUser(ctx context.Context, db database.PgExecutor,
 	); err != nil {
 		return models.File{}, err
 	}
+	file.FolderID = folderID
 	return file, nil
 }
 
@@ -322,7 +338,7 @@ func (r *Repository) ListCompletedForUser(ctx context.Context, db database.PgExe
 	}
 	offset := (page - 1) * pageSize
 	query := `SELECT
-		id, user_id, encrypted_metadata, encrypted_file_key, encrypted_manifest, encryption_version, chunk_size, chunk_count,
+		id, user_id, folder_id, encrypted_metadata, encrypted_file_key, encrypted_manifest, encryption_version, chunk_size, chunk_count,
 		plaintext_size, actual_encrypted_size, encrypted_hash, upload_status, completed_at, created_at, updated_at, expires_at
 	FROM
 		files
@@ -341,9 +357,11 @@ func (r *Repository) ListCompletedForUser(ctx context.Context, db database.PgExe
 	var files []models.File
 	for rows.Next() {
 		var file models.File
+		var folderID *string
 		if err := rows.Scan(
 			&file.ID,
 			&file.UserID,
+			&folderID,
 			&file.EncryptedMetadata,
 			&file.EncryptedFileKey,
 			&file.EncryptedManifest,
@@ -361,6 +379,7 @@ func (r *Repository) ListCompletedForUser(ctx context.Context, db database.PgExe
 		); err != nil {
 			return nil, err
 		}
+		file.FolderID = folderID
 		files = append(files, file)
 	}
 	if rows.Err() != nil {
@@ -383,6 +402,99 @@ func (r *Repository) CountCompletedForUser(ctx context.Context, db database.PgEx
 		return 0, err
 	}
 	return count, nil
+}
+
+func (r *Repository) CountByFolder(ctx context.Context, db database.PgExecutor, userID string, folderID *string) (int, error) {
+	query := `SELECT
+		COUNT(1)
+	FROM
+		files
+	WHERE
+		user_id = $1
+		AND upload_status = 'complete'
+		AND expires_at IS NULL
+		AND (
+			($2::uuid IS NULL AND folder_id IS NULL)
+			OR folder_id = $2
+		)`
+	var count int
+	if err := db.QueryRow(ctx, query, userID, folderID).Scan(&count); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+func (r *Repository) ListByFolder(ctx context.Context, db database.PgExecutor, userID string, folderID *string, limit, offset int) ([]models.File, error) {
+	query := `SELECT
+		id, user_id, folder_id, encrypted_metadata, encrypted_file_key, encrypted_manifest, encryption_version, chunk_size, chunk_count,
+		plaintext_size, actual_encrypted_size, encrypted_hash, upload_status, completed_at, created_at, updated_at, expires_at
+	FROM
+		files
+	WHERE
+		user_id = $1
+		AND upload_status = 'complete'
+		AND expires_at IS NULL
+		AND (
+			($2::uuid IS NULL AND folder_id IS NULL)
+			OR folder_id = $2
+		)
+	ORDER BY created_at DESC
+	LIMIT $3 OFFSET $4`
+	rows, err := db.Query(ctx, query, userID, folderID, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	files := []models.File{}
+	for rows.Next() {
+		var file models.File
+		var scannedFolderID *string
+		if err := rows.Scan(
+			&file.ID,
+			&file.UserID,
+			&scannedFolderID,
+			&file.EncryptedMetadata,
+			&file.EncryptedFileKey,
+			&file.EncryptedManifest,
+			&file.EncryptionVersion,
+			&file.ChunkSize,
+			&file.ChunkCount,
+			&file.PlaintextSize,
+			&file.ActualEncryptedSize,
+			&file.EncryptedHash,
+			&file.UploadStatus,
+			&file.CompletedAt,
+			&file.CreatedAt,
+			&file.UpdatedAt,
+			&file.ExpiresAt,
+		); err != nil {
+			return nil, err
+		}
+		file.FolderID = scannedFolderID
+		files = append(files, file)
+	}
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+	return files, nil
+}
+
+func (r *Repository) MoveFilesToFolder(ctx context.Context, db database.PgExecutor, userID string, fileIDs []string, targetFolderID *string) (int64, error) {
+	query := `UPDATE files
+	SET
+		folder_id = $3,
+		updated_at = now()
+	WHERE
+		user_id = $1
+		AND id = ANY($2::uuid[])
+		AND upload_status = 'complete'
+		AND expires_at IS NULL`
+	tag, err := db.Exec(ctx, query, userID, fileIDs, targetFolderID)
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
 }
 
 func (r *Repository) DeleteFileForUser(ctx context.Context, db database.PgExecutor, fileID, userID string) (bool, error) {

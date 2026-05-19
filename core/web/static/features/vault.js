@@ -455,6 +455,46 @@ export function initVault() {
         aad: "arkive:file-metadata:v1"
       });
     },
+    decryptFileMetadata: function(encryptedMetadata, masterKey) {
+      touchSessionUnlock();
+      return callWorker("decryptFileMetadata", {
+        encryptedMetadata: toBase64(encryptedMetadata),
+        masterKey: toBase64(masterKey),
+        aad: "arkive:file-metadata:v1"
+      });
+    },
+    encryptFolderName: function(metadata, masterKey) {
+      touchSessionUnlock();
+      return callWorker("encryptFolderMetadata", {
+        metadata: metadata || {},
+        masterKey: toBase64(masterKey),
+        aad: "arkive:folder-name:v1"
+      });
+    },
+    encryptFolderMetadata: function(metadata, masterKey) {
+      touchSessionUnlock();
+      return callWorker("encryptFolderMetadata", {
+        metadata: metadata || {},
+        masterKey: toBase64(masterKey),
+        aad: "arkive:folder-metadata:v1"
+      });
+    },
+    decryptFolderName: function(encryptedMetadata, masterKey) {
+      touchSessionUnlock();
+      return callWorker("decryptFolderMetadata", {
+        encryptedMetadata: toBase64(encryptedMetadata),
+        masterKey: toBase64(masterKey),
+        aad: "arkive:folder-name:v1"
+      });
+    },
+    decryptFolderMetadata: function(encryptedMetadata, masterKey) {
+      touchSessionUnlock();
+      return callWorker("decryptFolderMetadata", {
+        encryptedMetadata: toBase64(encryptedMetadata),
+        masterKey: toBase64(masterKey),
+        aad: "arkive:folder-metadata:v1"
+      });
+    },
     encryptFileKey: function(fileKey, masterKey, aad) {
       touchSessionUnlock();
       return callWorker("encryptFileKey", {

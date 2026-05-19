@@ -18,6 +18,7 @@ type DashboardPageProps struct {
 	Ctx            PageContext
 	RecentFiles    []models.File
 	TotalFiles     int
+	CurrentFolder  *string
 	UploadSettings models.UploadSettings
 }
 
@@ -30,6 +31,10 @@ func DefaultUploadSettings() models.UploadSettings {
 func DashboardPage(props DashboardPageProps) web.Page {
 	user := props.Ctx.User
 	uploadSettings := props.UploadSettings
+	currentFolderAttr := g.Node(nil)
+	if props.CurrentFolder != nil {
+		currentFolderAttr = g.Attr("data-current-folder-id", *props.CurrentFolder)
+	}
 	defaultUploadSettings := DefaultUploadSettings()
 	if uploadSettings.MaxQueueItems <= 0 {
 		uploadSettings.MaxQueueItems = defaultUploadSettings.MaxQueueItems
@@ -62,6 +67,7 @@ func DashboardPage(props DashboardPageProps) web.Page {
 		SearchPlaceholder:  "Search system...",
 		Body: h.Main(
 			h.Class("dashboard"),
+			currentFolderAttr,
 			h.Div(
 				h.Class("container dashboard-shell"),
 				components.InlineStyle(components.DataTableCSS),

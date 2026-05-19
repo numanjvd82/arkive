@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net/url"
 	"strings"
@@ -18,17 +19,23 @@ import (
 
 type FilesPageProps struct {
 	Ctx           PageContext
+	Path          []models.Folder
+	Folders       []models.Folder
 	Files         []models.File
 	ArchivedCount int64
 	Query         url.Values
 	ViewMode      string
+	CurrentFolder *string
 	Page          int
 	PageSize      int
-	TotalFiles    int
+	TotalEntries  int
 }
 
 func FilesPage(props FilesPageProps) web.Page {
-	archivedCount := props.ArchivedCount
+	currentFolderAttr := g.Node(nil)
+	if props.CurrentFolder != nil {
+		currentFolderAttr = g.Attr("data-current-folder-id", *props.CurrentFolder)
+	}
 
 	return web.Page{
 		Title:              "Arkive · Files",
@@ -39,14 +46,16 @@ func FilesPage(props FilesPageProps) web.Page {
 		RequireVaultUnlock: true,
 		User:               props.Ctx.User,
 		ActiveNav:          "files",
-
 		Body: g.Group([]g.Node{
 			components.InlineStyle(components.InputCSS),
 			components.InlineStyle(components.DataTableCSS),
 			h.Main(
 				h.Class("files-page"),
+				currentFolderAttr,
+				g.Attr("data-files-view-mode", props.ViewMode),
 				h.Div(
 					h.Class("container"),
+					renderFolderLocation(props.Path, props.ViewMode),
 					h.Div(
 						h.Class("page-header"),
 						h.Div(
@@ -56,10 +65,20 @@ func FilesPage(props FilesPageProps) web.Page {
 						),
 						h.Div(
 							h.Class("page-actions"),
-							renderFilesViewToggle(props.Query, props.ViewMode),
+							renderFilesViewToggle(props.Query, props.ViewMode, entriesBaseURL(props.CurrentFolder)),
+							h.Button(
+								h.Class("button secondary files-header-button"),
+								h.Type("button"),
+								g.Attr("id", "new-folder-button"),
+								lucide.FolderPlus(
+									h.Class("files-lucide files-lucide-action"),
+									g.Attr("aria-hidden", "true"),
+								),
+								h.Span(g.Text("New Folder")),
+							),
 							h.A(
 								h.Class("files-upload-link"),
-								h.Href("/dashboard"),
+								h.Href(uploadHref(props.CurrentFolder)),
 								lucide.Upload(
 									h.Class("files-lucide files-lucide-action"),
 									g.Attr("aria-hidden", "true"),
@@ -68,10 +87,10 @@ func FilesPage(props FilesPageProps) web.Page {
 							),
 						),
 					),
-					renderArchivedBanner(archivedCount),
+					renderArchivedBanner(props.ArchivedCount),
 					h.Section(
 						h.Class("files-table-panel"),
-						renderCompletedList(props),
+						renderEntriesList(props),
 					),
 				),
 				components.Dialog(components.DialogProps{
@@ -94,10 +113,63 @@ func FilesPage(props FilesPageProps) web.Page {
 						),
 					}),
 				}),
+				components.FolderDialog(),
+				components.MoveDialog(),
 				renderShareDialog(),
 			),
 		}),
 	}
+}
+
+func renderFolderLocation(path []models.Folder, viewMode string) g.Node {
+	nodes := []g.Node{
+		h.A(
+			h.Class("files-location-link"),
+			h.Href(filesNavURL("/files", viewMode)),
+			lucide.House(
+				h.Class("files-lucide files-location-home"),
+				g.Attr("aria-hidden", "true"),
+			),
+			h.Span(g.Text("Root")),
+		),
+	}
+
+	for index, folder := range path {
+		nodes = append(nodes,
+			lucide.ChevronRight(
+				h.Class("files-lucide files-location-separator"),
+				g.Attr("aria-hidden", "true"),
+			),
+		)
+
+		if index == len(path)-1 {
+			nodes = append(nodes,
+				h.Span(
+					h.Class("files-location-current"),
+					g.Attr("data-folder-breadcrumb", folder.ID),
+					g.Attr("data-folder-meta-b64", base64.StdEncoding.EncodeToString(folder.EncryptedMetadata)),
+					g.Attr("data-folder-name-b64", base64.StdEncoding.EncodeToString(folder.EncryptedName)),
+					g.Text("Encrypted folder"),
+				),
+			)
+			continue
+		}
+
+		nodes = append(nodes,
+			h.A(
+				h.Class("files-location-link"),
+				h.Href(filesNavURL("/folders/"+folder.ID, viewMode)),
+				g.Attr("data-folder-breadcrumb", folder.ID),
+				g.Attr("data-folder-meta-b64", base64.StdEncoding.EncodeToString(folder.EncryptedMetadata)),
+				g.Attr("data-folder-name-b64", base64.StdEncoding.EncodeToString(folder.EncryptedName)),
+				g.Text("Encrypted folder"),
+			),
+		)
+	}
+	return h.Div(
+		h.Class("files-location"),
+		g.Group(nodes),
+	)
 }
 
 func renderArchivedBanner(count int64) g.Node {
@@ -112,8 +184,8 @@ func renderArchivedBanner(count int64) g.Node {
 	)
 }
 
-func renderCompletedList(props FilesPageProps) g.Node {
-	if len(props.Files) == 0 {
+func renderEntriesList(props FilesPageProps) g.Node {
+	if len(props.Folders) == 0 && len(props.Files) == 0 {
 		return h.Div(
 			h.Class("data-table-wrap files-table-wrap"),
 			h.Div(
@@ -122,11 +194,11 @@ func renderCompletedList(props FilesPageProps) g.Node {
 					h.Class("files-lucide files-lucide-empty"),
 					g.Attr("aria-hidden", "true"),
 				),
-				h.H2(g.Text("No completed uploads yet.")),
-				h.P(g.Text("Upload a file from the dashboard to start building your vault.")),
+				h.H2(g.Text("This folder is empty.")),
+				h.P(g.Text("Create a folder or upload a file to start organizing your vault.")),
 				h.A(
 					h.Class("files-empty-link"),
-					h.Href("/dashboard"),
+					h.Href(uploadHref(props.CurrentFolder)),
 					g.Text("Go to upload"),
 				),
 			),
@@ -134,32 +206,43 @@ func renderCompletedList(props FilesPageProps) g.Node {
 	}
 
 	pagination := &components.PaginationProps{
-		TotalRecords: props.TotalFiles,
+		TotalRecords: props.TotalEntries,
 		CurrentPage:  props.Page,
 		PageSize:     props.PageSize,
-		BaseURL:      "/files",
+		BaseURL:      entriesBaseURL(props.CurrentFolder),
 		Query:        props.Query,
 		PageSizes:    []int{25, 50, 100},
 	}
 
 	return h.Div(
 		h.Class("files-browser"),
-		renderFilesBrowserToolbar(pagination, true),
-		g.If(props.ViewMode == "grid", renderGridList(props.Files)),
-		g.If(props.ViewMode != "grid", renderTableList(props.Files)),
+		renderEntriesBrowserToolbar(pagination),
+		g.If(props.ViewMode == "grid", renderGridList(props.Folders, props.Files, props.ViewMode)),
+		g.If(props.ViewMode != "grid", renderTableList(props.Folders, props.Files, props.ViewMode)),
 		renderFilesPagination(pagination),
 	)
 }
 
-func renderFilesBrowserToolbar(pagination *components.PaginationProps, showActions bool) g.Node {
+func renderEntriesBrowserToolbar(pagination *components.PaginationProps) g.Node {
 	return h.Div(
 		h.Class("files-browser-toolbar"),
-		g.If(showActions,
+		h.Div(
+			h.Class("files-browser-actions"),
+			g.Attr("id", "entries-selection-toolbar"),
+			g.Attr("hidden", "hidden"),
 			h.Div(
-				h.Class("files-browser-actions"),
-				g.Attr("id", "files-selection-toolbar"),
-				g.Attr("hidden", "hidden"),
-				renderTableActions(),
+				h.Class("files-table-actions"),
+				h.Button(
+					h.Class("button secondary"),
+					h.Type("button"),
+					g.Attr("id", "move-entries-selected"),
+					g.Text("Move selected"),
+				),
+				h.Span(
+					h.Class("files-selection-count"),
+					g.Attr("id", "entries-selection-count"),
+					g.Text("0 selected"),
+				),
 			),
 		),
 		h.Div(
@@ -179,8 +262,16 @@ func renderFilesPagination(pagination *components.PaginationProps) g.Node {
 	)
 }
 
-func renderTableList(files []models.File) g.Node {
-	rows := make([]g.Node, 0, len(files))
+func renderTableList(folders []models.Folder, files []models.File, viewMode string) g.Node {
+	rows := make([]g.Node, 0, len(folders)+len(files))
+	for _, folder := range folders {
+		rows = append(rows, components.FolderRow(
+			folder.ID,
+			filesNavURL("/folders/"+folder.ID, viewMode),
+			base64.StdEncoding.EncodeToString(folder.EncryptedName),
+			base64.StdEncoding.EncodeToString(folder.EncryptedMetadata),
+		))
+	}
 	for _, file := range files {
 		rows = append(rows, renderFileRow(file))
 	}
@@ -194,10 +285,11 @@ func renderTableList(files []models.File) g.Node {
 					h.Class("files-select-cell"),
 					h.Input(
 						h.Type("checkbox"),
-						g.Attr("id", "files-select-all"),
-						g.Attr("aria-label", "Select all files"),
+						g.Attr("id", "entries-select-all"),
+						g.Attr("aria-label", "Select visible entries"),
 					),
 				),
+				h.Th(h.Class("files-icon-column")),
 				h.Th(g.Text("Name")),
 				h.Th(g.Text("Type")),
 				h.Th(h.Class("files-align-right"), g.Text("Size")),
@@ -209,43 +301,30 @@ func renderTableList(files []models.File) g.Node {
 	})
 }
 
-func renderGridList(files []models.File) g.Node {
-	cards := make([]g.Node, 0, len(files))
+func renderGridList(folders []models.Folder, files []models.File, viewMode string) g.Node {
+	cards := make([]g.Node, 0, len(folders)+len(files))
+	for _, folder := range folders {
+		cards = append(cards, components.FolderCard(components.FolderCardProps{
+			ID:                  folder.ID,
+			Href:                filesNavURL("/folders/"+folder.ID, viewMode),
+			EncryptedNameBase64: base64.StdEncoding.EncodeToString(folder.EncryptedName),
+			EncryptedMetaBase64: base64.StdEncoding.EncodeToString(folder.EncryptedMetadata),
+		}))
+	}
 	for _, file := range files {
 		cards = append(cards, renderFileCard(file))
 	}
 
-	return g.Group([]g.Node{
-		h.Div(
-			h.Class("files-grid-wrap"),
-			h.Div(
-				h.Class("files-grid"),
-				g.Group(cards),
-			),
-		),
-		renderGridContextMenu(),
-	})
-}
-
-func renderTableActions() g.Node {
 	return h.Div(
-		h.Class("files-table-actions"),
-		h.Button(
-			h.Class("button danger files-bulk-delete"),
-			h.Type("button"),
-			g.Attr("id", "files-delete-selected"),
-			g.Attr("disabled", "disabled"),
-			g.Text("Delete selected"),
-		),
-		h.Span(
-			h.Class("files-selection-count"),
-			g.Attr("id", "files-selection-count"),
-			g.Text("0 selected"),
+		h.Class("files-grid-wrap"),
+		h.Div(
+			h.Class("files-grid"),
+			g.Group(cards),
 		),
 	)
 }
 
-func renderFilesViewToggle(query url.Values, viewMode string) g.Node {
+func renderFilesViewToggle(query url.Values, viewMode, baseURL string) g.Node {
 	listClass := "files-view-toggle-button"
 	gridClass := "files-view-toggle-button"
 	if viewMode == "grid" {
@@ -259,35 +338,57 @@ func renderFilesViewToggle(query url.Values, viewMode string) g.Node {
 		g.Attr("aria-label", "Choose file layout"),
 		h.A(
 			h.Class(listClass),
-			h.Href(buildFilesViewURL(query, "list")),
+			h.Href(buildFilesViewURL(baseURL, query, "list")),
 			g.Attr("data-files-view-link", "list"),
+			g.Attr("aria-label", "List view"),
 			lucide.List(
 				h.Class("files-lucide files-lucide-action"),
 				g.Attr("aria-hidden", "true"),
 			),
-			h.Span(g.Text("List")),
 		),
 		h.A(
 			h.Class(gridClass),
-			h.Href(buildFilesViewURL(query, "grid")),
+			h.Href(buildFilesViewURL(baseURL, query, "grid")),
 			g.Attr("data-files-view-link", "grid"),
+			g.Attr("aria-label", "Grid view"),
 			lucide.Grid2x2(
 				h.Class("files-lucide files-lucide-action"),
 				g.Attr("aria-hidden", "true"),
 			),
-			h.Span(g.Text("Grid")),
 		),
 	)
 }
 
-func buildFilesViewURL(query url.Values, viewMode string) string {
+func buildFilesViewURL(baseURL string, query url.Values, viewMode string) string {
 	next := cloneQuery(query)
 	next.Set("view", viewMode)
 	next.Del("page")
 	if encoded := next.Encode(); encoded != "" {
-		return "/files?" + encoded
+		return baseURL + "?" + encoded
 	}
-	return "/files"
+	return baseURL
+}
+
+func entriesBaseURL(currentFolder *string) string {
+	if currentFolder == nil || strings.TrimSpace(*currentFolder) == "" {
+		return "/files"
+	}
+	return "/folders/" + strings.TrimSpace(*currentFolder)
+}
+
+func uploadHref(currentFolder *string) string {
+	if currentFolder == nil || strings.TrimSpace(*currentFolder) == "" {
+		return "/dashboard"
+	}
+	return "/dashboard?folder=" + url.QueryEscape(strings.TrimSpace(*currentFolder))
+}
+
+func filesNavURL(baseURL, viewMode string) string {
+	mode := strings.TrimSpace(viewMode)
+	if mode != "grid" {
+		mode = "list"
+	}
+	return baseURL + "?view=" + url.QueryEscape(mode)
 }
 
 func cloneQuery(values url.Values) url.Values {
@@ -311,6 +412,9 @@ func renderFileRow(file models.File) g.Node {
 	return h.Tr(
 		h.Class("files-row"),
 		g.Attr("aria-busy", "true"),
+		g.Attr("data-entry-id", file.ID),
+		g.Attr("data-entry-type", "file"),
+		g.Attr("data-selectable-entry", ""),
 		g.Attr("data-file-row", file.ID),
 		g.Attr("data-file-open", viewURL),
 		g.Attr("data-file-item", file.ID),
@@ -320,23 +424,34 @@ func renderFileRow(file models.File) g.Node {
 			h.Class("files-cell files-select-cell"),
 			h.Input(
 				h.Type("checkbox"),
+				g.Attr("data-entry-checkbox", file.ID),
 				g.Attr("data-file-select", file.ID),
 				g.Attr("aria-label", "Select file"),
 			),
 		),
 		h.Td(
-			h.Class("files-cell files-cell-name"),
+			h.Class("files-cell files-cell-icon"),
 			h.Span(
 				h.Class("files-type-icon"),
 				g.Attr("data-file-field", "icon"),
 				fileTypeGlyph(file),
 			),
+		),
+		h.Td(
+			h.Class("files-cell files-cell-name"),
 			h.Div(
 				h.Class("files-meta"),
-				h.Span(
-					h.Class("files-name files-skeleton files-skeleton-name"),
-					g.Attr("data-file-field", "name"),
-					g.Attr("aria-hidden", "true"),
+				h.Div(
+					h.Class("files-name-row"),
+					h.Span(
+						h.Class("files-name files-skeleton files-skeleton-name"),
+						g.Attr("data-file-field", "name"),
+						g.Attr("aria-hidden", "true"),
+					),
+					lucide.Lock(
+						h.Class("files-lucide files-file-lock"),
+						g.Attr("aria-hidden", "true"),
+					),
 				),
 			),
 		),
@@ -416,6 +531,9 @@ func renderFileCard(file models.File) g.Node {
 	return h.Article(
 		h.Class("files-card"),
 		g.Attr("aria-busy", "true"),
+		g.Attr("data-entry-id", file.ID),
+		g.Attr("data-entry-type", "file"),
+		g.Attr("data-selectable-entry", ""),
 		g.Attr("data-file-card", file.ID),
 		g.Attr("data-file-item", file.ID),
 		g.Attr("data-file-name", ""),
@@ -438,52 +556,6 @@ func renderFileCard(file models.File) g.Node {
 				g.Attr("data-file-field", "name"),
 				g.Attr("aria-hidden", "true"),
 			),
-		),
-	)
-}
-
-func renderGridContextMenu() g.Node {
-	return h.Div(
-		h.Class("files-context-menu"),
-		g.Attr("id", "files-grid-context-menu"),
-		g.Attr("hidden", "hidden"),
-		h.Button(
-			h.Class("files-context-menu-item"),
-			h.Type("button"),
-			g.Attr("data-grid-menu-action", "open"),
-			g.Text("Open"),
-		),
-		h.Button(
-			h.Class("files-context-menu-item"),
-			h.Type("button"),
-			g.Attr("data-grid-menu-action", "rename"),
-			g.Text("Rename"),
-		),
-		h.Button(
-			h.Class("files-context-menu-item"),
-			h.Type("button"),
-			g.Attr("data-grid-menu-action", "move"),
-			g.Text("Move"),
-		),
-		h.Div(h.Class("files-context-menu-divider")),
-		h.Button(
-			h.Class("files-context-menu-item"),
-			h.Type("button"),
-			g.Attr("data-grid-menu-action", "properties"),
-			g.Text("Properties"),
-		),
-		h.Div(h.Class("files-context-menu-divider")),
-		h.Button(
-			h.Class("files-context-menu-item"),
-			h.Type("button"),
-			g.Attr("data-grid-space-action", "new-folder"),
-			g.Text("New Folder"),
-		),
-		h.Button(
-			h.Class("files-context-menu-item"),
-			h.Type("button"),
-			g.Attr("data-grid-space-action", "upload-here"),
-			g.Text("Upload Here"),
 		),
 	)
 }

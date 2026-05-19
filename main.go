@@ -9,11 +9,13 @@ import (
 	"arkive/core/config"
 	"arkive/core/database"
 	filerepo "arkive/core/repositories/files"
+	foldersrepo "arkive/core/repositories/folders"
 	settingsrepo "arkive/core/repositories/settings"
 	storagerepo "arkive/core/repositories/storage"
 	uploadrepo "arkive/core/repositories/uploads"
 	usersrepo "arkive/core/repositories/users"
 	"arkive/core/router"
+	folderssvc "arkive/core/services/folders"
 	settingssvc "arkive/core/services/settings"
 	"arkive/core/services/storageprovider"
 	"arkive/core/services/uploads"
@@ -50,11 +52,15 @@ func main() {
 	settingsRepo := settingsrepo.New()
 	localStorage := settingssvc.NewLocalStorage(db, settingsRepo)
 	storageProvider := storageprovider.New(db, settingsRepo, localStorage)
+	folderRepo := foldersrepo.New()
+	fileRepo := filerepo.New()
+	folderService := folderssvc.NewService(db, folderRepo, fileRepo)
 
 	uploadService := uploads.NewService(
 		db,
 		storagerepo.New(),
-		filerepo.New(),
+		folderRepo,
+		fileRepo,
 		settingsRepo,
 		uploadrepo.New(),
 		usersrepo.New(),
@@ -71,7 +77,7 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	r := router.New(db, cfg, uploadService, localStorage)
+	r := router.New(db, cfg, uploadService, folderService, localStorage)
 
 	if err := r.Run(cfg.Port); err != nil {
 		log.Fatalf("server failed: %v", err)

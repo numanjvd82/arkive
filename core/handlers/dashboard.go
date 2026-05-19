@@ -2,9 +2,11 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
+	folderssvc "arkive/core/services/folders"
 	settingssvc "arkive/core/services/settings"
 	"arkive/core/services/uploads"
 	"arkive/core/web"
@@ -13,7 +15,7 @@ import (
 	"arkive/pkg/errs"
 )
 
-func WebDashboard(uploadService *uploads.Service, settingsService *settingssvc.Service) gin.HandlerFunc {
+func WebDashboard(uploadService *uploads.Service, folderService *folderssvc.Service, settingsService *settingssvc.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user, ok := appcontext.UserFromContext(c)
 		if !ok || user.ID == "" {
@@ -37,10 +39,18 @@ func WebDashboard(uploadService *uploads.Service, settingsService *settingssvc.S
 			uploadSettings = pages.DefaultUploadSettings()
 		}
 
+		var currentFolder *string
+		if folderID := strings.TrimSpace(c.Query("folder")); folderID != "" {
+			if _, err := folderService.ValidateFolderAccess(c.Request.Context(), user.ID, folderID); err == nil {
+				currentFolder = &folderID
+			}
+		}
+
 		web.Render(c, pages.DashboardPage(pages.DashboardPageProps{
 			Ctx:            pages.ContextWithUser(user),
 			RecentFiles:    list.Files,
 			TotalFiles:     list.TotalFiles,
+			CurrentFolder:  currentFolder,
 			UploadSettings: uploadSettings,
 		}))
 	}

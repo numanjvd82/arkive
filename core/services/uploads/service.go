@@ -11,6 +11,7 @@ import (
 	"arkive/core/database"
 	"arkive/core/models"
 	filerepo "arkive/core/repositories/files"
+	folderrepo "arkive/core/repositories/folders"
 	settingsrepo "arkive/core/repositories/settings"
 	storagerepo "arkive/core/repositories/storage"
 	uploadrepo "arkive/core/repositories/uploads"
@@ -29,6 +30,7 @@ const (
 type Service struct {
 	db                  database.PgPool
 	storageRepo         *storagerepo.Repository
+	folderRepo          *folderrepo.Repository
 	fileRepo            *filerepo.Repository
 	settingsRepo        *settingsrepo.Repository
 	uploadRepo          *uploadrepo.Repository
@@ -48,6 +50,7 @@ type Config struct {
 func NewService(
 	db database.PgPool,
 	storageRepo *storagerepo.Repository,
+	folderRepo *folderrepo.Repository,
 	fileRepo *filerepo.Repository,
 	settingsRepo *settingsrepo.Repository,
 	uploadRepo *uploadrepo.Repository,
@@ -58,6 +61,7 @@ func NewService(
 	return &Service{
 		db:                  db,
 		storageRepo:         storageRepo,
+		folderRepo:          folderRepo,
 		fileRepo:            fileRepo,
 		settingsRepo:        settingsRepo,
 		uploadRepo:          uploadRepo,
