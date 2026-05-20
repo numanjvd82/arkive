@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	filessvc "arkive/core/services/files"
 	"arkive/core/services/uploads"
 	"arkive/pkg/errs"
 )
@@ -359,7 +360,7 @@ func APIUploadCancel(svc *uploads.Service) gin.HandlerFunc {
 	}
 }
 
-func APIDownloadFile(svc *uploads.Service) gin.HandlerFunc {
+func APIDownloadFile(svc *filessvc.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		fileID := c.Param("id")
 		userID, ok := c.Get("user_id")
@@ -376,11 +377,11 @@ func APIDownloadFile(svc *uploads.Service) gin.HandlerFunc {
 		url, err := svc.PresignDownload(c.Request.Context(), userID.(string), fileID)
 		if err != nil {
 			switch err {
-			case uploads.ErrUnauthorized:
+			case filessvc.ErrUnauthorized:
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-			case uploads.ErrNotFound:
+			case filessvc.ErrNotFound:
 				c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
-			case uploads.ErrInvalidInput:
+			case filessvc.ErrInvalidInput:
 				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
 			default:
 				_ = c.Error(errs.WithStack(err))
@@ -393,7 +394,7 @@ func APIDownloadFile(svc *uploads.Service) gin.HandlerFunc {
 	}
 }
 
-func APIMediaRedirect(svc *uploads.Service) gin.HandlerFunc {
+func APIMediaRedirect(svc *filessvc.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		fileID := c.Param("id")
 		userID, ok := c.Get("user_id")
@@ -410,11 +411,11 @@ func APIMediaRedirect(svc *uploads.Service) gin.HandlerFunc {
 		url, err := svc.PresignView(c.Request.Context(), userID.(string), fileID)
 		if err != nil {
 			switch err {
-			case uploads.ErrUnauthorized:
+			case filessvc.ErrUnauthorized:
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-			case uploads.ErrNotFound:
+			case filessvc.ErrNotFound:
 				c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
-			case uploads.ErrInvalidInput:
+			case filessvc.ErrInvalidInput:
 				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
 			default:
 				_ = c.Error(errs.WithStack(err))
@@ -427,7 +428,7 @@ func APIMediaRedirect(svc *uploads.Service) gin.HandlerFunc {
 	}
 }
 
-func APIThumbnailRedirect(svc *uploads.Service) gin.HandlerFunc {
+func APIThumbnailRedirect(svc *filessvc.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		fileID := c.Param("id")
 		userID, ok := c.Get("user_id")
@@ -439,11 +440,11 @@ func APIThumbnailRedirect(svc *uploads.Service) gin.HandlerFunc {
 		url, err := svc.PresignThumbnailDownload(c.Request.Context(), userID.(string), fileID)
 		if err != nil {
 			switch err {
-			case uploads.ErrUnauthorized:
+			case filessvc.ErrUnauthorized:
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-			case uploads.ErrNotFound:
+			case filessvc.ErrNotFound:
 				c.JSON(http.StatusNotFound, gin.H{"error": "thumbnail not found"})
-			case uploads.ErrInvalidInput:
+			case filessvc.ErrInvalidInput:
 				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
 			default:
 				_ = c.Error(errs.WithStack(err))
@@ -456,7 +457,7 @@ func APIThumbnailRedirect(svc *uploads.Service) gin.HandlerFunc {
 	}
 }
 
-func APIFileRecord(svc *uploads.Service) gin.HandlerFunc {
+func APIFileRecord(svc *filessvc.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		fileID := c.Param("id")
 		userID, ok := c.Get("user_id")
@@ -467,11 +468,11 @@ func APIFileRecord(svc *uploads.Service) gin.HandlerFunc {
 		record, err := svc.GetEncryptedFileRecord(c.Request.Context(), userID.(string), fileID)
 		if err != nil {
 			switch err {
-			case uploads.ErrUnauthorized:
+			case filessvc.ErrUnauthorized:
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-			case uploads.ErrNotFound:
+			case filessvc.ErrNotFound:
 				c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
-			case uploads.ErrInvalidInput:
+			case filessvc.ErrInvalidInput:
 				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
 			default:
 				_ = c.Error(errs.WithStack(err))

@@ -11,6 +11,7 @@ import (
 	"arkive/core/models"
 	filerepo "arkive/core/repositories/files"
 	foldersrepo "arkive/core/repositories/folders"
+	filessvc "arkive/core/services/files"
 	"arkive/pkg/validation"
 )
 
@@ -25,13 +26,15 @@ type Service struct {
 	db         database.PgPool
 	folderRepo *foldersrepo.Repository
 	fileRepo   *filerepo.Repository
+	filesSvc   *filessvc.Service
 }
 
-func NewService(db database.PgPool, folderRepo *foldersrepo.Repository, fileRepo *filerepo.Repository) *Service {
+func NewService(db database.PgPool, folderRepo *foldersrepo.Repository, fileRepo *filerepo.Repository, filesSvc *filessvc.Service) *Service {
 	return &Service{
 		db:         db,
 		folderRepo: folderRepo,
 		fileRepo:   fileRepo,
+		filesSvc:   filesSvc,
 	}
 }
 
@@ -49,7 +52,7 @@ func (s *Service) CreateFolder(ctx context.Context, input CreateFolderInput) (mo
 	if err != nil {
 		return models.Folder{}, err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	if input.ParentFolderID != nil {
 		parentID, err := validateUUIDValue(*input.ParentFolderID)
@@ -254,7 +257,7 @@ func (s *Service) MoveEntries(ctx context.Context, input MoveEntriesInput) error
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	var targetFolderID *string
 	if input.TargetFolderID != nil {
@@ -307,6 +310,138 @@ func (s *Service) MoveEntries(ctx context.Context, input MoveEntriesInput) error
 	}
 
 	return tx.Commit(ctx)
+}
+
+func (s *Service) ResolveDeleteScope(ctx context.Context, input ResolveDeleteScopeInput) (DeleteScope, error) {
+	return s.resolveDeleteScope(ctx, s.db, input)
+}
+
+func (s *Service) resolveDeleteScope(ctx context.Context, db database.PgExecutor, input ResolveDeleteScopeInput) (DeleteScope, error) {
+	userID := strings.TrimSpace(input.UserID)
+	if userID == "" {
+		return DeleteScope{}, ErrInvalidInput
+	}
+
+	fileIDs := uniqueNonEmpty(input.FileIDs)
+	folderIDs := uniqueNonEmpty(input.FolderIDs)
+	if len(fileIDs) == 0 && len(folderIDs) == 0 {
+		return DeleteScope{}, ErrInvalidInput
+	}
+
+	var err error
+	fileIDs, err = validateUUIDList(fileIDs)
+	if err != nil {
+		return DeleteScope{}, err
+	}
+	folderIDs, err = validateUUIDList(folderIDs)
+	if err != nil {
+		return DeleteScope{}, err
+	}
+
+	explicitFiles := make([]string, 0, len(fileIDs))
+	for _, fileID := range fileIDs {
+		file, getErr := s.fileRepo.GetFileForUser(ctx, db, fileID, userID)
+		if getErr != nil {
+			if errors.Is(getErr, pgx.ErrNoRows) {
+				return DeleteScope{}, ErrNotFound
+			}
+			return DeleteScope{}, getErr
+		}
+		if file.UploadStatus != "complete" || file.ExpiresAt != nil {
+			return DeleteScope{}, ErrNotFound
+		}
+		explicitFiles = append(explicitFiles, file.ID)
+	}
+
+	resolvedFolderIDs := []string{}
+	folderFileIDs := []string{}
+	if len(folderIDs) > 0 {
+		resolvedFolderIDs, err = s.folderRepo.DescendantFolderIDs(ctx, db, userID, folderIDs)
+		if err != nil {
+			return DeleteScope{}, err
+		}
+		if len(resolvedFolderIDs) == 0 {
+			return DeleteScope{}, ErrNotFound
+		}
+
+		resolvedSet := make(map[string]struct{}, len(resolvedFolderIDs))
+		for _, folderID := range resolvedFolderIDs {
+			resolvedSet[folderID] = struct{}{}
+		}
+		for _, folderID := range folderIDs {
+			if _, ok := resolvedSet[folderID]; !ok {
+				return DeleteScope{}, ErrNotFound
+			}
+		}
+
+		folderFileIDs, err = s.folderRepo.FileIDsInFolders(ctx, db, userID, resolvedFolderIDs)
+		if err != nil {
+			return DeleteScope{}, err
+		}
+	}
+
+	return DeleteScope{
+		FolderIDs: uniqueNonEmpty(resolvedFolderIDs),
+		FileIDs:   uniqueNonEmpty(append(explicitFiles, folderFileIDs...)),
+	}, nil
+}
+
+func (s *Service) DeleteEntries(ctx context.Context, input DeleteEntriesInput) (DeleteEntriesResult, error) {
+	userID := strings.TrimSpace(input.UserID)
+	if userID == "" {
+		return DeleteEntriesResult{}, ErrInvalidInput
+	}
+	if s.filesSvc == nil {
+		return DeleteEntriesResult{}, ErrInvalidInput
+	}
+
+	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return DeleteEntriesResult{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	scope, err := s.resolveDeleteScope(ctx, tx, ResolveDeleteScopeInput{
+		UserID:    userID,
+		FileIDs:   input.FileIDs,
+		FolderIDs: input.FolderIDs,
+	})
+	if err != nil {
+		return DeleteEntriesResult{}, err
+	}
+
+	deletedFiles := make([]models.File, 0)
+	if len(scope.FileIDs) > 0 {
+		deletedFiles, err = s.filesSvc.DeleteFilesWithinTx(ctx, tx, userID, scope.FileIDs)
+		if err != nil {
+			return DeleteEntriesResult{}, err
+		}
+	}
+
+	deletedFolders := 0
+	if len(scope.FolderIDs) > 0 {
+		affected, err := s.folderRepo.SoftDeleteFolders(ctx, tx, userID, scope.FolderIDs)
+		if err != nil {
+			return DeleteEntriesResult{}, err
+		}
+		if affected != int64(len(scope.FolderIDs)) {
+			return DeleteEntriesResult{}, ErrNotFound
+		}
+		deletedFolders = int(affected)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return DeleteEntriesResult{}, err
+	}
+
+	if len(deletedFiles) > 0 {
+		s.filesSvc.CleanupDeletedFiles(ctx, userID, deletedFiles)
+	}
+
+	return DeleteEntriesResult{
+		DeletedFiles:   len(deletedFiles),
+		DeletedFolders: deletedFolders,
+	}, nil
 }
 
 func uniqueNonEmpty(values []string) []string {

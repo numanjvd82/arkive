@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"arkive/core/services/uploads"
+	filessvc "arkive/core/services/files"
 	"arkive/pkg/errs"
 )
 
@@ -13,7 +13,7 @@ type bulkDeleteFilesRequest struct {
 	FileIDs []string `json:"fileIds"`
 }
 
-func APIDeleteFile(svc *uploads.Service) gin.HandlerFunc {
+func APIDeleteFile(svc *filessvc.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		fileID := c.Param("id")
 		userID, ok := c.Get("user_id")
@@ -24,13 +24,13 @@ func APIDeleteFile(svc *uploads.Service) gin.HandlerFunc {
 
 		if err := svc.DeleteFile(c.Request.Context(), userID.(string), fileID); err != nil {
 			switch err {
-			case uploads.ErrUnauthorized:
+			case filessvc.ErrUnauthorized:
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-			case uploads.ErrUploadCancelled:
+			case filessvc.ErrUploadCancelled:
 				c.JSON(http.StatusConflict, gin.H{"error": "upload in progress"})
-			case uploads.ErrNotFound:
+			case filessvc.ErrNotFound:
 				c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
-			case uploads.ErrInvalidInput:
+			case filessvc.ErrInvalidInput:
 				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
 			default:
 				_ = c.Error(errs.WithStack(err))
@@ -43,7 +43,7 @@ func APIDeleteFile(svc *uploads.Service) gin.HandlerFunc {
 	}
 }
 
-func APIBulkDeleteFiles(svc *uploads.Service) gin.HandlerFunc {
+func APIBulkDeleteFiles(svc *filessvc.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID, ok := c.Get("user_id")
 		if !ok {
@@ -60,13 +60,13 @@ func APIBulkDeleteFiles(svc *uploads.Service) gin.HandlerFunc {
 		deletedCount, err := svc.DeleteFiles(c.Request.Context(), userID.(string), req.FileIDs)
 		if err != nil {
 			switch err {
-			case uploads.ErrUnauthorized:
+			case filessvc.ErrUnauthorized:
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-			case uploads.ErrUploadCancelled:
+			case filessvc.ErrUploadCancelled:
 				c.JSON(http.StatusConflict, gin.H{"error": "upload in progress"})
-			case uploads.ErrNotFound:
+			case filessvc.ErrNotFound:
 				c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
-			case uploads.ErrInvalidInput:
+			case filessvc.ErrInvalidInput:
 				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
 			default:
 				_ = c.Error(errs.WithStack(err))

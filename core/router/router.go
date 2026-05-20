@@ -17,6 +17,7 @@ import (
 	sharerepo "arkive/core/repositories/shares"
 	usersrepo "arkive/core/repositories/users"
 	"arkive/core/services/auth"
+	filessvc "arkive/core/services/files"
 	folderssvc "arkive/core/services/folders"
 	settingssvc "arkive/core/services/settings"
 	"arkive/core/services/setup"
@@ -27,7 +28,7 @@ import (
 	"arkive/pkg/storage/localclient"
 )
 
-func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, folderService *folderssvc.Service, localStorage *localclient.Client) *gin.Engine {
+func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, filesService *filessvc.Service, folderService *folderssvc.Service, localStorage *localclient.Client) *gin.Engine {
 	r := gin.Default()
 	r.Use(middleware.ErrorLogger())
 	r.Use(middleware.SecurityHeaders())
@@ -71,18 +72,18 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 	r.POST("/setup", handlers.WebSetupPost(setupService))
 	r.GET("/setup/recovery-key", handlers.WebSetupRecoveryGet(setupService))
 	r.POST("/setup/recovery-key", handlers.WebSetupRecoveryPost(setupService))
-	r.GET("/s/:token", handlers.PublicShareView(shareService, uploadService, cfg.CookieSecret))
-	r.POST("/s/:token", handlers.PublicShareUnlock(shareService, uploadService, cfg.CookieSecret))
+	r.GET("/s/:token", handlers.PublicShareView(shareService, filesService, cfg.CookieSecret))
+	r.POST("/s/:token", handlers.PublicShareUnlock(shareService, filesService, cfg.CookieSecret))
 	r.GET("/login", handlers.WebLoginGet(authService, setupService))
 	protected := r.Group("/")
 	protected.Use(middleware.RequireSessionRedirect(authService))
 	protected.GET("/lock", handlers.WebLockGet())
-	protected.GET("/dashboard", handlers.WebDashboard(uploadService, folderService, settingsService))
-	protected.GET("/files", handlers.WebFiles(uploadService, folderService))
-	protected.GET("/folders/:id", handlers.WebFolder(uploadService, folderService))
-	protected.GET("/files/:id/view", handlers.WebFileView(uploadService))
-	protected.GET("/shares", handlers.WebShares(shareService, uploadService))
-	protected.GET("/settings", handlers.WebSettings(uploadService, settingsService))
+	protected.GET("/dashboard", handlers.WebDashboard(filesService, folderService, settingsService))
+	protected.GET("/files", handlers.WebFiles(filesService, folderService))
+	protected.GET("/folders/:id", handlers.WebFolder(filesService, folderService))
+	protected.GET("/files/:id/view", handlers.WebFileView(filesService))
+	protected.GET("/shares", handlers.WebShares(shareService, filesService))
+	protected.GET("/settings", handlers.WebSettings(filesService, settingsService))
 	protected.POST("/settings/storage", handlers.WebSettingsStoragePost(settingsService))
 	protected.POST("/settings/email", handlers.WebSettingsEmailPost(settingsService))
 	protected.POST("/settings/uploads", handlers.WebSettingsUploadPost(settingsService))
@@ -94,8 +95,8 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 		api.POST("/auth/unlock", middleware.RequireSessionJSON(authService), handlers.APIUnlockVault(authService))
 		api.GET("/me", middleware.RequireSessionJSON(authService), handlers.APIMe(authService))
 		api.GET("/health", handlers.Health(db))
-		api.GET("/public/shares/:token", handlers.APIPublicShareRecord(shareService, uploadService, cfg.CookieSecret))
-		api.GET("/search", middleware.RequireSessionJSON(authService), handlers.APISearch(uploadService, shareService))
+		api.GET("/public/shares/:token", handlers.APIPublicShareRecord(shareService, filesService, cfg.CookieSecret))
+		api.GET("/search", middleware.RequireSessionJSON(authService), handlers.APISearch(filesService, shareService))
 	}
 
 	apiUploads := api.Group("/uploads")
@@ -114,13 +115,13 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 	apiFiles := api.Group("/files")
 	apiFiles.Use(middleware.RequireSessionJSON(authService))
 	{
-		apiFiles.POST("/bulk-delete", handlers.APIBulkDeleteFiles(uploadService))
-		apiFiles.GET("/:id/record", handlers.APIFileRecord(uploadService))
-		apiFiles.GET("/:id/thumbnail", handlers.APIThumbnailRedirect(uploadService))
+		apiFiles.POST("/bulk-delete", handlers.APIBulkDeleteFiles(filesService))
+		apiFiles.GET("/:id/record", handlers.APIFileRecord(filesService))
+		apiFiles.GET("/:id/thumbnail", handlers.APIThumbnailRedirect(filesService))
 		apiFiles.GET("/:id/share", handlers.APIGetShareForFile(shareService))
-		apiFiles.GET("/:id/download", handlers.APIDownloadFile(uploadService))
-		apiFiles.GET("/:id/media", handlers.APIMediaRedirect(uploadService))
-		apiFiles.DELETE("/:id", handlers.APIDeleteFile(uploadService))
+		apiFiles.GET("/:id/download", handlers.APIDownloadFile(filesService))
+		apiFiles.GET("/:id/media", handlers.APIMediaRedirect(filesService))
+		apiFiles.DELETE("/:id", handlers.APIDeleteFile(filesService))
 		apiFiles.POST("/:id/share", handlers.APICreateShare(shareService))
 	}
 

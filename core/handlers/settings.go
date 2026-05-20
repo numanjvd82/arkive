@@ -8,8 +8,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"arkive/core/models"
+	filessvc "arkive/core/services/files"
 	settingssvc "arkive/core/services/settings"
-	"arkive/core/services/uploads"
 	"arkive/core/web"
 	pages "arkive/core/web/pages"
 	appcontext "arkive/pkg/context"
@@ -44,14 +44,14 @@ type uploadSettingsForm struct {
 	MaxQueueItems string `form:"max_queue_items"`
 }
 
-func WebSettings(uploadService *uploads.Service, settingsService *settingssvc.Service) gin.HandlerFunc {
+func WebSettings(filesService *filessvc.Service, settingsService *settingssvc.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user, ok := appcontext.UserFromContext(c)
 		if !ok || user.ID == "" {
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
-		if err := uploadService.TouchUserActivity(c.Request.Context(), user.ID); err != nil {
+		if err := filesService.TouchUserActivity(c.Request.Context(), user.ID); err != nil {
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}

@@ -15,8 +15,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"arkive/core/models"
+	filessvc "arkive/core/services/files"
 	"arkive/core/services/shares"
-	"arkive/core/services/uploads"
 	"arkive/core/web"
 	"arkive/core/web/pages"
 	"arkive/pkg/cookies"
@@ -28,7 +28,7 @@ const (
 	shareAccessTTL        = 15 * time.Minute
 )
 
-func PublicShareView(shareService *shares.Service, uploadService *uploads.Service, cookieSecret string) gin.HandlerFunc {
+func PublicShareView(shareService *shares.Service, filesService *filessvc.Service, cookieSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := strings.TrimSpace(c.Param("token"))
 		if token == "" {
@@ -56,12 +56,12 @@ func PublicShareView(shareService *shares.Service, uploadService *uploads.Servic
 			return
 		}
 
-		file, err := uploadService.GetFileForShare(c.Request.Context(), share.FileID)
+		file, err := filesService.GetFileForShare(c.Request.Context(), share.FileID)
 		if err != nil {
 			switch err {
-			case uploads.ErrNotFound, uploads.ErrUploadCancelled:
+			case filessvc.ErrNotFound, filessvc.ErrUploadCancelled:
 				c.AbortWithStatus(http.StatusNotFound)
-			case uploads.ErrInvalidInput:
+			case filessvc.ErrInvalidInput:
 				c.AbortWithStatus(http.StatusBadRequest)
 			default:
 				_ = c.Error(errs.WithStack(err))
@@ -78,11 +78,11 @@ func PublicShareView(shareService *shares.Service, uploadService *uploads.Servic
 			return
 		}
 
-		renderShareLanding(c, uploadService, token, share, file)
+		renderShareLanding(c, filesService, token, share, file)
 	}
 }
 
-func PublicShareUnlock(shareService *shares.Service, uploadService *uploads.Service, cookieSecret string) gin.HandlerFunc {
+func PublicShareUnlock(shareService *shares.Service, filesService *filessvc.Service, cookieSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := strings.TrimSpace(c.Param("token"))
 		if token == "" {
@@ -110,12 +110,12 @@ func PublicShareUnlock(shareService *shares.Service, uploadService *uploads.Serv
 			return
 		}
 
-		file, err := uploadService.GetFileForShare(c.Request.Context(), share.FileID)
+		file, err := filesService.GetFileForShare(c.Request.Context(), share.FileID)
 		if err != nil {
 			switch err {
-			case uploads.ErrNotFound, uploads.ErrUploadCancelled:
+			case filessvc.ErrNotFound, filessvc.ErrUploadCancelled:
 				c.AbortWithStatus(http.StatusNotFound)
-			case uploads.ErrInvalidInput:
+			case filessvc.ErrInvalidInput:
 				c.AbortWithStatus(http.StatusBadRequest)
 			default:
 				_ = c.Error(errs.WithStack(err))
@@ -125,7 +125,7 @@ func PublicShareUnlock(shareService *shares.Service, uploadService *uploads.Serv
 		}
 
 		if share.PasswordHash == nil || hasShareAccess(c, share, cookieSecret) {
-			renderShareLanding(c, uploadService, token, share, file)
+			renderShareLanding(c, filesService, token, share, file)
 			return
 		}
 
@@ -149,11 +149,11 @@ func PublicShareUnlock(shareService *shares.Service, uploadService *uploads.Serv
 			c.Status(http.StatusNoContent)
 			return
 		}
-		renderShareLanding(c, uploadService, token, share, file)
+		renderShareLanding(c, filesService, token, share, file)
 	}
 }
 
-func APIPublicShareRecord(shareService *shares.Service, uploadService *uploads.Service, cookieSecret string) gin.HandlerFunc {
+func APIPublicShareRecord(shareService *shares.Service, filesService *filessvc.Service, cookieSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := strings.TrimSpace(c.Param("token"))
 		if token == "" {
@@ -188,12 +188,12 @@ func APIPublicShareRecord(shareService *shares.Service, uploadService *uploads.S
 			return
 		}
 
-		file, err := uploadService.GetFileForShare(c.Request.Context(), share.FileID)
+		file, err := filesService.GetFileForShare(c.Request.Context(), share.FileID)
 		if err != nil {
 			switch err {
-			case uploads.ErrNotFound, uploads.ErrUploadCancelled:
+			case filessvc.ErrNotFound, filessvc.ErrUploadCancelled:
 				c.JSON(http.StatusNotFound, gin.H{"error": "share not found"})
-			case uploads.ErrInvalidInput:
+			case filessvc.ErrInvalidInput:
 				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
 			default:
 				_ = c.Error(errs.WithStack(err))
@@ -202,7 +202,7 @@ func APIPublicShareRecord(shareService *shares.Service, uploadService *uploads.S
 			return
 		}
 
-		sourceURL, err := uploadService.PresignShareSourceForFile(c.Request.Context(), file)
+		sourceURL, err := filesService.PresignShareSourceForFile(c.Request.Context(), file)
 		if err != nil {
 			_ = c.Error(errs.WithStack(err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "share source failed"})
@@ -243,12 +243,12 @@ func APIPublicShareRecord(shareService *shares.Service, uploadService *uploads.S
 	}
 }
 
-func renderShareLanding(c *gin.Context, uploadService *uploads.Service, token string, share models.Share, file models.File) {
+func renderShareLanding(c *gin.Context, filesService *filessvc.Service, token string, share models.Share, file models.File) {
 	viewURL := ""
 	isImage := false
 	isVideo := false
 	viewable := false
-	downloadURL, err := uploadService.PresignShareDownloadForFile(c.Request.Context(), file)
+	downloadURL, err := filesService.PresignShareDownloadForFile(c.Request.Context(), file)
 	if err != nil {
 		_ = c.Error(errs.WithStack(err))
 		c.AbortWithStatus(http.StatusInternalServerError)

@@ -9,8 +9,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"arkive/core/models"
+	filessvc "arkive/core/services/files"
 	"arkive/core/services/shares"
-	"arkive/core/services/uploads"
 	appcontext "arkive/pkg/context"
 )
 
@@ -24,7 +24,7 @@ type searchResult struct {
 	Category string `json:"category"`
 }
 
-func APISearch(uploadService *uploads.Service, shareService *shares.Service) gin.HandlerFunc {
+func APISearch(filesService *filessvc.Service, shareService *shares.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user, ok := appcontext.UserFromContext(c)
 		if !ok || user.ID == "" {
@@ -38,7 +38,7 @@ func APISearch(uploadService *uploads.Service, shareService *shares.Service) gin
 			return
 		}
 
-		files, err := uploadService.SearchCompletedUploads(c.Request.Context(), user.ID, query, 5)
+		files, err := filesService.SearchCompletedUploads(c.Request.Context(), user.ID, query, 5)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "search failed"})
 			return

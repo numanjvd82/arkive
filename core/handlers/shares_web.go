@@ -5,22 +5,22 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	filessvc "arkive/core/services/files"
 	"arkive/core/services/shares"
-	"arkive/core/services/uploads"
 	"arkive/core/web"
 	"arkive/core/web/pages"
 	appcontext "arkive/pkg/context"
 	"arkive/pkg/errs"
 )
 
-func WebShares(shareService *shares.Service, uploadService *uploads.Service) gin.HandlerFunc {
+func WebShares(shareService *shares.Service, filesService *filessvc.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user, ok := appcontext.UserFromContext(c)
 		if !ok || user.ID == "" {
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
-		if err := uploadService.TouchUserActivity(c.Request.Context(), user.ID); err != nil {
+		if err := filesService.TouchUserActivity(c.Request.Context(), user.ID); err != nil {
 			_ = c.Error(errs.WithStack(err))
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return

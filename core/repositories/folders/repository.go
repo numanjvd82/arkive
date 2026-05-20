@@ -181,3 +181,82 @@ func (r *Repository) TargetIsDescendant(ctx context.Context, db database.PgExecu
 	}
 	return exists, nil
 }
+
+func (r *Repository) DescendantFolderIDs(ctx context.Context, db database.PgExecutor, userID string, folderIDs []string) ([]string, error) {
+	query := `WITH RECURSIVE descendants AS (
+		SELECT id
+		FROM folders
+		WHERE user_id = $1
+			AND id = ANY($2::uuid[])
+			AND deleted_at IS NULL
+		UNION ALL
+		SELECT f.id
+		FROM folders f
+		INNER JOIN descendants d ON f.parent_folder_id = d.id
+		WHERE f.user_id = $1
+			AND f.deleted_at IS NULL
+	)
+	SELECT id::text
+	FROM descendants`
+	rows, err := db.Query(ctx, query, userID, folderIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	resolved := make([]string, 0, len(folderIDs))
+	for rows.Next() {
+		var folderID string
+		if err := rows.Scan(&folderID); err != nil {
+			return nil, err
+		}
+		resolved = append(resolved, folderID)
+	}
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+	return resolved, nil
+}
+
+func (r *Repository) FileIDsInFolders(ctx context.Context, db database.PgExecutor, userID string, folderIDs []string) ([]string, error) {
+	query := `SELECT id::text
+	FROM files
+	WHERE user_id = $1
+		AND upload_status = 'complete'
+		AND expires_at IS NULL
+		AND folder_id = ANY($2::uuid[])`
+	rows, err := db.Query(ctx, query, userID, folderIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	fileIDs := make([]string, 0)
+	for rows.Next() {
+		var fileID string
+		if err := rows.Scan(&fileID); err != nil {
+			return nil, err
+		}
+		fileIDs = append(fileIDs, fileID)
+	}
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+	return fileIDs, nil
+}
+
+func (r *Repository) SoftDeleteFolders(ctx context.Context, db database.PgExecutor, userID string, folderIDs []string) (int64, error) {
+	query := `UPDATE folders
+	SET
+		deleted_at = now(),
+		updated_at = now()
+	WHERE
+		user_id = $1
+		AND id = ANY($2::uuid[])
+		AND deleted_at IS NULL`
+	tag, err := db.Exec(ctx, query, userID, folderIDs)
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
+}

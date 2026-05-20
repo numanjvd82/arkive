@@ -15,6 +15,7 @@ import (
 	uploadrepo "arkive/core/repositories/uploads"
 	usersrepo "arkive/core/repositories/users"
 	"arkive/core/router"
+	filessvc "arkive/core/services/files"
 	folderssvc "arkive/core/services/folders"
 	settingssvc "arkive/core/services/settings"
 	"arkive/core/services/storageprovider"
@@ -54,11 +55,22 @@ func main() {
 	storageProvider := storageprovider.New(db, settingsRepo, localStorage)
 	folderRepo := foldersrepo.New()
 	fileRepo := filerepo.New()
-	folderService := folderssvc.NewService(db, folderRepo, fileRepo)
+	storageRepo := storagerepo.New()
+	filesService := filessvc.NewService(
+		db,
+		storageRepo,
+		fileRepo,
+		usersrepo.New(),
+		storageProvider,
+		filessvc.Config{
+			DownloadExpire:      3 * time.Hour,
+			ShareDownloadExpire: 30 * time.Minute,
+		},
+	)
 
 	uploadService := uploads.NewService(
 		db,
-		storagerepo.New(),
+		storageRepo,
 		folderRepo,
 		fileRepo,
 		settingsRepo,
@@ -70,6 +82,7 @@ func main() {
 			DownloadExpire:      3 * time.Hour,
 			ShareDownloadExpire: 30 * time.Minute,
 		})
+	folderService := folderssvc.NewService(db, folderRepo, fileRepo, filesService)
 
 	if strings.EqualFold(cfg.Env, "dev") {
 		gin.SetMode(gin.DebugMode)
@@ -77,7 +90,7 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	r := router.New(db, cfg, uploadService, folderService, localStorage)
+	r := router.New(db, cfg, uploadService, filesService, folderService, localStorage)
 
 	if err := r.Run(cfg.Port); err != nil {
 		log.Fatalf("server failed: %v", err)

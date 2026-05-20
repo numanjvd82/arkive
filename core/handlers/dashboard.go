@@ -6,29 +6,29 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	filessvc "arkive/core/services/files"
 	folderssvc "arkive/core/services/folders"
 	settingssvc "arkive/core/services/settings"
-	"arkive/core/services/uploads"
 	"arkive/core/web"
 	"arkive/core/web/pages"
 	appcontext "arkive/pkg/context"
 	"arkive/pkg/errs"
 )
 
-func WebDashboard(uploadService *uploads.Service, folderService *folderssvc.Service, settingsService *settingssvc.Service) gin.HandlerFunc {
+func WebDashboard(filesService *filessvc.Service, folderService *folderssvc.Service, settingsService *settingssvc.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user, ok := appcontext.UserFromContext(c)
 		if !ok || user.ID == "" {
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
-		if err := uploadService.TouchUserActivity(c.Request.Context(), user.ID); err != nil {
+		if err := filesService.TouchUserActivity(c.Request.Context(), user.ID); err != nil {
 			_ = c.Error(errs.WithStack(err))
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
 
-		list, err := uploadService.ListCompletedUploads(c.Request.Context(), user.ID, 1, 4)
+		list, err := filesService.ListCompletedUploads(c.Request.Context(), user.ID, 1, 4)
 		if err != nil {
 			_ = c.Error(errs.WithStack(err))
 			c.AbortWithStatus(http.StatusInternalServerError)

@@ -7,8 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	filessvc "arkive/core/services/files"
 	folderssvc "arkive/core/services/folders"
-	"arkive/core/services/uploads"
 	"arkive/core/web"
 	"arkive/core/web/pages"
 	appcontext "arkive/pkg/context"
@@ -40,14 +40,14 @@ func filesPageQuery(c *gin.Context) url.Values {
 	return query
 }
 
-func WebFiles(uploadService *uploads.Service, folderService *folderssvc.Service) gin.HandlerFunc {
+func WebFiles(filesService *filessvc.Service, folderService *folderssvc.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user, ok := appcontext.UserFromContext(c)
 		if !ok || user.ID == "" {
 			c.Redirect(http.StatusSeeOther, "/login")
 			return
 		}
-		if err := uploadService.TouchUserActivity(c.Request.Context(), user.ID); err != nil {
+		if err := filesService.TouchUserActivity(c.Request.Context(), user.ID); err != nil {
 			_ = c.Error(errs.WithStack(err))
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
@@ -68,7 +68,7 @@ func WebFiles(uploadService *uploads.Service, folderService *folderssvc.Service)
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
-		archivedCount, err := uploadService.CountArchivedFiles(c.Request.Context(), user.ID)
+		archivedCount, err := filesService.CountArchivedFiles(c.Request.Context(), user.ID)
 		if err != nil {
 			_ = c.Error(errs.WithStack(err))
 			c.AbortWithStatus(http.StatusInternalServerError)
@@ -91,14 +91,14 @@ func WebFiles(uploadService *uploads.Service, folderService *folderssvc.Service)
 	}
 }
 
-func WebFolder(uploadService *uploads.Service, folderService *folderssvc.Service) gin.HandlerFunc {
+func WebFolder(filesService *filessvc.Service, folderService *folderssvc.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user, ok := appcontext.UserFromContext(c)
 		if !ok || user.ID == "" {
 			c.Redirect(http.StatusSeeOther, "/login")
 			return
 		}
-		if err := uploadService.TouchUserActivity(c.Request.Context(), user.ID); err != nil {
+		if err := filesService.TouchUserActivity(c.Request.Context(), user.ID); err != nil {
 			_ = c.Error(errs.WithStack(err))
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
@@ -130,7 +130,7 @@ func WebFolder(uploadService *uploads.Service, folderService *folderssvc.Service
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
-		archivedCount, err := uploadService.CountArchivedFiles(c.Request.Context(), user.ID)
+		archivedCount, err := filesService.CountArchivedFiles(c.Request.Context(), user.ID)
 		if err != nil {
 			_ = c.Error(errs.WithStack(err))
 			c.AbortWithStatus(http.StatusInternalServerError)
@@ -153,14 +153,14 @@ func WebFolder(uploadService *uploads.Service, folderService *folderssvc.Service
 	}
 }
 
-func WebFileView(uploadService *uploads.Service) gin.HandlerFunc {
+func WebFileView(filesService *filessvc.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user, ok := appcontext.UserFromContext(c)
 		if !ok || user.ID == "" {
 			c.Redirect(http.StatusSeeOther, "/login")
 			return
 		}
-		if err := uploadService.TouchUserActivity(c.Request.Context(), user.ID); err != nil {
+		if err := filesService.TouchUserActivity(c.Request.Context(), user.ID); err != nil {
 			_ = c.Error(errs.WithStack(err))
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
@@ -172,12 +172,12 @@ func WebFileView(uploadService *uploads.Service) gin.HandlerFunc {
 			return
 		}
 
-		file, err := uploadService.GetFileForDisplay(c.Request.Context(), user.ID, fileID)
+		file, err := filesService.GetFileForDisplay(c.Request.Context(), user.ID, fileID)
 		if err != nil {
 			switch err {
-			case uploads.ErrNotFound, uploads.ErrUploadCancelled:
+			case filessvc.ErrNotFound, filessvc.ErrUploadCancelled:
 				c.AbortWithStatus(http.StatusNotFound)
-			case uploads.ErrUnauthorized, uploads.ErrInvalidInput:
+			case filessvc.ErrUnauthorized, filessvc.ErrInvalidInput:
 				c.AbortWithStatus(http.StatusBadRequest)
 			default:
 				_ = c.Error(errs.WithStack(err))

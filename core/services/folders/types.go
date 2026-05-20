@@ -41,3 +41,25 @@ type MoveEntriesInput struct {
 	FileIDs        []string
 	FolderIDs      []string
 }
+
+type ResolveDeleteScopeInput struct {
+	UserID    string
+	FileIDs   []string
+	FolderIDs []string
+}
+
+type DeleteScope struct {
+	FolderIDs []string
+	FileIDs   []string
+}
+
+type DeleteEntriesInput struct {
+	UserID    string
+	FileIDs   []string
+	FolderIDs []string
+}
+
+type DeleteEntriesResult struct {
+	DeletedFiles   int
+	DeletedFolders int
+}
