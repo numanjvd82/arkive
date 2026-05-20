@@ -26,12 +26,13 @@ async function decryptFolderItem(item) {
     }
     item.querySelectorAll("[data-folder-field='name']").forEach(function(node) {
       node.textContent = name;
+      node.removeAttribute("aria-hidden");
     });
-    if (item.hasAttribute("data-folder-breadcrumb")) {
-      item.textContent = name;
-    }
     item.setAttribute("data-folder-name", name);
+    item.classList.add("is-hydrated");
+    return name;
   } catch (_) {}
+  return "";
 }
 
 function currentFolderId() {
@@ -41,6 +42,19 @@ function currentFolderId() {
   }
   const value = String(current.getAttribute("data-current-folder-id") || "").trim();
   return value || null;
+}
+
+function updateUploadLabel(name) {
+  const label = document.querySelector("[data-upload-label='true']");
+  if (!label) {
+    return;
+  }
+  if (!currentFolderId()) {
+    label.textContent = "Upload";
+    return;
+  }
+  const value = String(name || "").trim();
+  label.textContent = value ? "Upload to " + value : "Upload here";
 }
 
 export function initFolders() {
@@ -77,13 +91,25 @@ export function initFolders() {
 
   if (window.ArkiveVault && typeof window.ArkiveVault.waitUntilReady === "function") {
     window.ArkiveVault.waitUntilReady().then(function() {
-      folderItems.forEach(function(item) {
-        void decryptFolderItem(item);
+      const itemJobs = folderItems.map(function(item) {
+        return decryptFolderItem(item);
       });
-      folderBreadcrumbs.forEach(function(item) {
-        void decryptFolderItem(item);
+      const breadcrumbJobs = folderBreadcrumbs.map(function(item) {
+        return decryptFolderItem(item).then(function(name) {
+          if (item.classList.contains("files-location-current")) {
+            updateUploadLabel(name);
+          }
+          return name;
+        });
+      });
+      return Promise.all(itemJobs.concat(breadcrumbJobs)).then(function() {
+        if (currentFolderId() && !document.querySelector(".files-location-current[data-folder-name]")) {
+          updateUploadLabel("");
+        }
       });
     }).catch(function() {});
+  } else {
+    updateUploadLabel("");
   }
 
   if (newFolderButton && !newFolderButton.hasAttribute("data-folder-create-bound")) {

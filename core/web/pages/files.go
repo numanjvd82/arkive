@@ -83,7 +83,10 @@ func FilesPage(props FilesPageProps) web.Page {
 									h.Class("files-lucide files-lucide-action"),
 									g.Attr("aria-hidden", "true"),
 								),
-								h.Span(g.Text("Upload")),
+								h.Span(
+									g.Attr("data-upload-label", "true"),
+									g.Text(uploadActionLabel(props.CurrentFolder)),
+								),
 							),
 						),
 					),
@@ -149,7 +152,11 @@ func renderFolderLocation(path []models.Folder, viewMode string) g.Node {
 					g.Attr("data-folder-breadcrumb", folder.ID),
 					g.Attr("data-folder-meta-b64", base64.StdEncoding.EncodeToString(folder.EncryptedMetadata)),
 					g.Attr("data-folder-name-b64", base64.StdEncoding.EncodeToString(folder.EncryptedName)),
-					g.Text("Encrypted folder"),
+					h.Span(
+						h.Class("files-location-name files-skeleton files-skeleton-breadcrumb"),
+						g.Attr("data-folder-field", "name"),
+						g.Text(" "),
+					),
 				),
 			)
 			continue
@@ -162,7 +169,11 @@ func renderFolderLocation(path []models.Folder, viewMode string) g.Node {
 				g.Attr("data-folder-breadcrumb", folder.ID),
 				g.Attr("data-folder-meta-b64", base64.StdEncoding.EncodeToString(folder.EncryptedMetadata)),
 				g.Attr("data-folder-name-b64", base64.StdEncoding.EncodeToString(folder.EncryptedName)),
-				g.Text("Encrypted folder"),
+				h.Span(
+					h.Class("files-location-name files-skeleton files-skeleton-breadcrumb"),
+					g.Attr("data-folder-field", "name"),
+					g.Text(" "),
+				),
 			),
 		)
 	}
@@ -363,6 +374,13 @@ func uploadHref(currentFolder *string) string {
 		return "/dashboard"
 	}
 	return "/dashboard?folder=" + url.QueryEscape(strings.TrimSpace(*currentFolder))
+}
+
+func uploadActionLabel(currentFolder *string) string {
+	if currentFolder == nil || strings.TrimSpace(*currentFolder) == "" {
+		return "Upload"
+	}
+	return "Upload here"
 }
 
 func filesNavURL(baseURL, viewMode string) string {

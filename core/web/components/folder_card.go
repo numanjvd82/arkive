@@ -38,9 +38,9 @@ func FolderCard(props FolderCardProps) g.Node {
 		h.Div(
 			h.Class("files-card-main"),
 			h.Span(
-				h.Class("files-name"),
+				h.Class("files-name files-skeleton files-skeleton-name"),
 				g.Attr("data-folder-field", "name"),
-				g.Text("Encrypted folder"),
+				g.Text(" "),
 			),
 		),
 		h.Button(
@@ -92,9 +92,9 @@ func FolderRow(id, href, encryptedNameBase64, encryptedMetaBase64 string) g.Node
 			h.Div(
 				h.Class("files-meta"),
 				h.Span(
-					h.Class("files-name"),
+					h.Class("files-name files-skeleton files-skeleton-name"),
 					g.Attr("data-folder-field", "name"),
-					g.Text("Encrypted folder"),
+					g.Text(" "),
 				),
 			),
 		),

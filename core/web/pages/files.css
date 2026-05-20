@@ -165,6 +165,11 @@
   font-weight: 600;
 }
 
+.files-location-name {
+  display: inline-block;
+  min-width: 72px;
+}
+
 .files-upload-link,
 .files-empty-link {
   display: inline-flex;
@@ -363,17 +368,17 @@
 
 .files-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(136px, 1fr));
+  gap: 8px;
 }
 
 .files-card {
   display: grid;
-  gap: 6px;
-  padding: 10px 9px;
-  border: 1px solid rgba(135, 146, 154, 0.12);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.01);
+  gap: 5px;
+  padding: 8px 7px;
+  border: 1px solid rgba(135, 146, 154, 0.1);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.008);
   cursor: pointer;
   justify-items: center;
   position: relative;
@@ -390,10 +395,10 @@
 }
 
 .files-grid-wrap {
-  border: 1px solid rgba(135, 146, 154, 0.2);
-  border-radius: 10px;
+  border: 1px solid rgba(135, 146, 154, 0.18);
+  border-radius: 9px;
   background: var(--surface-raised);
-  padding: 10px;
+  padding: 8px;
 }
 
 .files-context-menu {
@@ -442,8 +447,8 @@
 
 .files-card-preview {
   position: relative;
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border-radius: 0;
   background: transparent;
   overflow: hidden;
@@ -480,8 +485,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   text-align: center;
-  font-size: 0.9rem;
-  line-height: 1.2rem;
+  font-size: 0.86rem;
+  line-height: 1.15rem;
 }
 
 .files-card-main .files-skeleton-name {
@@ -515,9 +520,9 @@
 }
 
 .files-folder-emblem {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -547,6 +552,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  transition: opacity 180ms ease, color 180ms ease, transform 180ms ease, background-color 180ms ease;
 }
 
 .files-file-lock {
@@ -577,6 +583,11 @@
   height: 18px;
 }
 
+.files-skeleton-breadcrumb {
+  width: 88px;
+  height: 16px;
+}
+
 .files-skeleton-type {
   width: 140px;
   height: 18px;
@@ -586,6 +597,8 @@
   color: inherit;
   background: transparent;
   animation: none;
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .files-row.is-hydrated .files-skeleton-name,
@@ -598,9 +611,29 @@
   color: inherit;
   background: transparent;
   animation: none;
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .files-card.is-hydrated .files-skeleton-name {
+  width: auto;
+  height: auto;
+}
+
+[data-folder-item] .files-skeleton,
+[data-folder-breadcrumb] .files-skeleton,
+[data-file-item] .files-skeleton {
+  opacity: 0.92;
+}
+
+[data-folder-item].is-hydrated .files-skeleton,
+[data-folder-breadcrumb].is-hydrated .files-skeleton,
+[data-file-item].is-hydrated .files-skeleton {
+  color: inherit;
+  background: transparent;
+  animation: none;
+  opacity: 1;
+  transform: translateY(0);
   width: auto;
   height: auto;
 }
