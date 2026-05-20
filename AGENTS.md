@@ -311,6 +311,7 @@ Removed:
 
 * SQL only in repositories
 * Services own transactions
+* The server only stores encrypted file and folder metadata. Pages may render encrypted blobs, but plaintext names and details must be decrypted client-side through the unlocked user vault.
 * Handlers remain thin
 * Validation via `pkg/validation`
 * Errors centralized in services

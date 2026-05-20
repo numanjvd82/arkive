@@ -237,11 +237,17 @@ function filesActions() {
     const selectedFiles = selectedEntries.filter(function(entry) {
       return entry && entry.type === "file";
     });
+    const selectedFolders = selectedEntries.filter(function(entry) {
+      return entry && entry.type === "folder";
+    });
     if (!selectedFiles.length) {
       if (window.Toast) {
         window.Toast.error("Folder delete is not available yet.");
       }
       return;
+    }
+    if (selectedFolders.length && window.Toast) {
+      window.Toast.error("Folders cannot be deleted yet. Only selected files will be deleted.");
     }
     openDialog(
       selectedFiles.map(function(entry) { return entry.id; }),

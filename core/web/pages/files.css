@@ -7,9 +7,23 @@
   transition: transform 140ms ease, opacity 140ms ease, box-shadow 140ms ease, border-color 140ms ease, background-color 140ms ease;
 }
 
+[data-selectable-entry]:focus {
+  outline: none;
+}
+
+[data-selectable-entry].is-focused {
+  box-shadow:
+    0 0 0 2px rgba(56, 189, 248, 0.42),
+    0 8px 24px rgba(0, 0, 0, 0.16);
+}
+
 [data-selectable-entry].is-selected {
   transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+}
+
+[data-entry-cut="true"] {
+  opacity: 0.45;
 }
 
 [data-selectable-entry].is-dragging {
@@ -200,6 +214,10 @@
   border-color: var(--accent-strong);
 }
 
+.files-empty-link[hidden] {
+  display: none;
+}
+
 .files-lucide {
   display: block;
   stroke-width: 2;
@@ -346,6 +364,10 @@
 
 .files-row.is-selected td {
   background: rgba(56, 189, 248, 0.08);
+}
+
+.files-row.is-focused td {
+  background: rgba(56, 189, 248, 0.06);
 }
 
 .files-row.is-selected td:first-child {
@@ -824,6 +846,14 @@
   margin: 0;
   color: var(--muted);
   max-width: 420px;
+}
+
+.files-empty-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 @keyframes dropPulse {

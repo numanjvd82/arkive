@@ -20,6 +20,12 @@ function selectableEntries() {
   return Array.from(document.querySelectorAll("[data-selectable-entry]"));
 }
 
+function visibleEntries() {
+  return selectableEntries().filter(function(entry) {
+    return entry && entry.offsetParent !== null;
+  });
+}
+
 function entryID(entry) {
   return String(entry && entry.getAttribute("data-entry-id") || "");
 }
@@ -70,6 +76,97 @@ function isInteractiveTarget(target) {
 
 function interactionOverlayOpen() {
   return document.querySelector(".dialog-backdrop:not(.is-hidden), .files-context-menu:not([hidden])") !== null;
+}
+
+function focusedEntry() {
+  const active = document.activeElement && document.activeElement.closest
+    ? document.activeElement.closest("[data-selectable-entry]")
+    : null;
+  if (active) {
+    return active;
+  }
+  return document.querySelector("[data-selectable-entry].is-focused") || null;
+}
+
+function updateFocusVisuals(targetEntry) {
+  selectableEntries().forEach(function(entry) {
+    const focused = !!targetEntry && entry === targetEntry;
+    entry.classList.toggle("is-focused", focused);
+    entry.tabIndex = focused ? 0 : -1;
+  });
+}
+
+function focusEntry(entry) {
+  if (!entry) {
+    return;
+  }
+  updateFocusVisuals(entry);
+  try {
+    entry.focus({ preventScroll: true });
+  } catch (_error) {
+    entry.focus();
+  }
+}
+
+function focusEntryAt(index) {
+  const entries = visibleEntries();
+  if (!entries.length) {
+    return;
+  }
+  const clamped = Math.max(0, Math.min(index, entries.length - 1));
+  focusEntry(entries[clamped]);
+}
+
+function gridColumnCount(entries) {
+  if (!entries.length) {
+    return 1;
+  }
+  const firstTop = entries[0].getBoundingClientRect().top;
+  let count = 0;
+  for (let index = 0; index < entries.length; index += 1) {
+    if (Math.abs(entries[index].getBoundingClientRect().top - firstTop) > 12) {
+      break;
+    }
+    count += 1;
+  }
+  return Math.max(1, count);
+}
+
+function moveFocusByKey(key) {
+  const entries = visibleEntries();
+  if (!entries.length) {
+    return;
+  }
+  const current = focusedEntry() || entries[0];
+  const index = entries.findIndex(function(entry) {
+    return entry === current;
+  });
+  const currentIndex = index >= 0 ? index : 0;
+  const inGrid = document.querySelector(".files-grid") !== null;
+  const columns = inGrid ? gridColumnCount(entries) : 1;
+
+  switch (key) {
+    case "ArrowLeft":
+      focusEntryAt(currentIndex - 1);
+      return true;
+    case "ArrowRight":
+      focusEntryAt(currentIndex + 1);
+      return true;
+    case "ArrowUp":
+      focusEntryAt(currentIndex - columns);
+      return true;
+    case "ArrowDown":
+      focusEntryAt(currentIndex + columns);
+      return true;
+    case "Home":
+      focusEntryAt(0);
+      return true;
+    case "End":
+      focusEntryAt(entries.length - 1);
+      return true;
+    default:
+      return false;
+  }
 }
 
 function syncEntryVisual(entry, selected) {
@@ -220,11 +317,53 @@ function requestNewFolder() {
   }
 }
 
+function requestCutSelected() {
+  const selected = selectedEntries();
+  if (!selected.length || !window.ArkiveMoveEntries || typeof window.ArkiveMoveEntries.cutEntries !== "function") {
+    return;
+  }
+  window.ArkiveMoveEntries.cutEntries(selected);
+  if (window.Toast) {
+    window.Toast.success("Cut " + selected.length + (selected.length === 1 ? " item." : " items."), {
+      title: "Ready to move"
+    });
+  }
+}
+
+async function requestPasteHere() {
+  if (!window.ArkiveMoveEntries || typeof window.ArkiveMoveEntries.pasteInto !== "function") {
+    return;
+  }
+  try {
+    await window.ArkiveMoveEntries.pasteInto(
+      document.querySelector("[data-current-folder-id]")
+        ? document.querySelector("[data-current-folder-id]").getAttribute("data-current-folder-id") || ""
+        : ""
+    );
+  } catch (error) {
+    if (window.Toast) {
+      window.Toast.error((error && error.message) || "Paste failed.");
+    }
+  }
+}
+
+function clearCutClipboard() {
+  if (!window.ArkiveMoveEntries || typeof window.ArkiveMoveEntries.clearClipboard !== "function") {
+    return false;
+  }
+  if (!window.ArkiveMoveEntries.hasClipboard || !window.ArkiveMoveEntries.hasClipboard()) {
+    return false;
+  }
+  window.ArkiveMoveEntries.clearClipboard();
+  if (window.Toast) {
+    window.Toast.success("Cut cancelled.", { title: "Clipboard cleared" });
+  }
+  return true;
+}
+
 function openSelectedOrFocused() {
   const selected = selectedEntries();
-  const focusEntry = document.activeElement && document.activeElement.closest
-    ? document.activeElement.closest("[data-selectable-entry]")
-    : null;
+  const focusNode = focusedEntry();
 
   if (selected.length === 1) {
     const node = findEntryByID(selected[0].id);
@@ -234,8 +373,8 @@ function openSelectedOrFocused() {
     return;
   }
 
-  if (focusEntry && window.ArkiveFilesActions && typeof window.ArkiveFilesActions.openEntry === "function") {
-    window.ArkiveFilesActions.openEntry(focusEntry);
+  if (focusNode && window.ArkiveFilesActions && typeof window.ArkiveFilesActions.openEntry === "function") {
+    window.ArkiveFilesActions.openEntry(focusNode);
   }
 }
 
@@ -270,6 +409,7 @@ function bindEntry(entry) {
     if (isInteractiveTarget(event.target)) {
       return;
     }
+    focusEntry(entry);
     applyClickSelection(entry, event);
   });
 
@@ -296,6 +436,7 @@ function bindEntry(entry) {
       event.preventDefault();
       return;
     }
+    focusEntry(entry);
     if (window.ArkiveFilesActions && typeof window.ArkiveFilesActions.openEntry === "function") {
       window.ArkiveFilesActions.openEntry(entry);
     }
@@ -304,6 +445,14 @@ function bindEntry(entry) {
   entry.addEventListener("touchmove", function() {
     window.clearTimeout(selectionState().touchTimer);
   }, { passive: true });
+
+  if (!entry.hasAttribute("tabindex")) {
+    entry.tabIndex = -1;
+  }
+
+  entry.addEventListener("focus", function() {
+    updateFocusVisuals(entry);
+  });
 }
 
 function bindEmptySpaceClear() {
@@ -341,13 +490,52 @@ function bindShortcuts() {
       selectAllVisible();
       return;
     }
+    if ((event.metaKey || event.ctrlKey) && lower === "x") {
+      if (!selectedEntries().length) {
+        return;
+      }
+      event.preventDefault();
+      requestCutSelected();
+      return;
+    }
+    if ((event.metaKey || event.ctrlKey) && lower === "v") {
+      const targetFolderId = window.ArkiveMoveEntries && typeof window.ArkiveMoveEntries.currentTargetFolderId === "function"
+        ? window.ArkiveMoveEntries.currentTargetFolderId()
+        : (document.querySelector("[data-current-folder-id]") ? document.querySelector("[data-current-folder-id]").getAttribute("data-current-folder-id") || "" : "");
+      if (!window.ArkiveMoveEntries || typeof window.ArkiveMoveEntries.canPasteTo !== "function" || !window.ArkiveMoveEntries.canPasteTo(targetFolderId)) {
+        return;
+      }
+      event.preventDefault();
+      requestPasteHere();
+      return;
+    }
     if (key === "Escape") {
-      clearSelection();
-      document.dispatchEvent(new CustomEvent("arkive:context-menu-close"));
+      if (interactionOverlayOpen()) {
+        document.dispatchEvent(new CustomEvent("arkive:context-menu-close"));
+        return;
+      }
+      if (selectedEntries().length) {
+        clearSelection();
+        return;
+      }
+      clearCutClipboard();
+      return;
+    }
+    if (moveFocusByKey(key)) {
+      event.preventDefault();
       return;
     }
     if (key === "Delete") {
       requestDeleteSelected();
+      return;
+    }
+    if (key === " " || key === "Spacebar") {
+      const entry = focusedEntry();
+      if (!entry) {
+        return;
+      }
+      event.preventDefault();
+      toggleEntry(entry);
       return;
     }
     if (key === "Enter") {
@@ -397,6 +585,7 @@ export function initFileSelection() {
 
   window.ArkiveEntrySelection = {
     clear: clearSelection,
+    focusEntry: focusEntry,
     getSelectedEntries: selectedEntries,
     findEntryByID: findEntryByID,
     selectOnly: selectOnly,

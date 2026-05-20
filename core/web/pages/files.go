@@ -207,10 +207,20 @@ func renderEntriesList(props FilesPageProps) g.Node {
 				),
 				h.H2(g.Text("This folder is empty.")),
 				h.P(g.Text("Create a folder or upload a file to start organizing your vault.")),
-				h.A(
-					h.Class("files-empty-link"),
-					h.Href(uploadHref(props.CurrentFolder)),
-					g.Text("Go to upload"),
+				h.Div(
+					h.Class("files-empty-actions"),
+					h.Button(
+						h.Class("files-empty-link"),
+						h.Type("button"),
+						g.Attr("id", "empty-folder-paste"),
+						g.Attr("hidden", "hidden"),
+						g.Text("Paste here"),
+					),
+					h.A(
+						h.Class("files-empty-link"),
+						h.Href(uploadHref(props.CurrentFolder)),
+						g.Text("Go to upload"),
+					),
 				),
 			),
 		)

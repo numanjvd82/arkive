@@ -90,6 +90,31 @@ function openMove(entries) {
   window.ArkiveMoveEntries.openDialog(entries);
 }
 
+function cutEntries(entries) {
+  if (!entries.length || !window.ArkiveMoveEntries || typeof window.ArkiveMoveEntries.cutEntries !== "function") {
+    return;
+  }
+  window.ArkiveMoveEntries.cutEntries(entries);
+  if (window.Toast) {
+    window.Toast.success("Cut " + entries.length + (entries.length === 1 ? " item." : " items."), {
+      title: "Ready to move"
+    });
+  }
+}
+
+async function pasteEntries(targetFolderId) {
+  if (!window.ArkiveMoveEntries || typeof window.ArkiveMoveEntries.pasteInto !== "function") {
+    return;
+  }
+  try {
+    await window.ArkiveMoveEntries.pasteInto(targetFolderId);
+  } catch (error) {
+    if (window.Toast) {
+      window.Toast.error((error && error.message) || "Paste failed.");
+    }
+  }
+}
+
 function deleteEntries(entries) {
   document.dispatchEvent(new CustomEvent("arkive:entries-delete-request", {
     detail: { selectedEntries: entries }
@@ -131,12 +156,47 @@ function selectAll() {
   }
 }
 
+function currentFolderTargetId() {
+  return window.ArkiveMoveEntries && typeof window.ArkiveMoveEntries.currentTargetFolderId === "function"
+    ? window.ArkiveMoveEntries.currentTargetFolderId()
+    : (document.querySelector("[data-current-folder-id]") ? document.querySelector("[data-current-folder-id]").getAttribute("data-current-folder-id") || "" : "");
+}
+
+function canPasteTo(targetFolderId) {
+  return !!(
+    window.ArkiveMoveEntries &&
+    typeof window.ArkiveMoveEntries.canPasteTo === "function" &&
+    window.ArkiveMoveEntries.canPasteTo(targetFolderId)
+  );
+}
+
+function hasClipboard() {
+  return !!(
+    window.ArkiveMoveEntries &&
+    typeof window.ArkiveMoveEntries.hasClipboard === "function" &&
+    window.ArkiveMoveEntries.hasClipboard()
+  );
+}
+
+function clearCut() {
+  if (!window.ArkiveMoveEntries || typeof window.ArkiveMoveEntries.clearClipboard !== "function") {
+    return;
+  }
+  window.ArkiveMoveEntries.clearClipboard();
+  if (window.Toast) {
+    window.Toast.success("Cut cancelled.", { title: "Clipboard cleared" });
+  }
+}
+
 function entryMenuItems(entry, selection) {
   const type = String(entry.getAttribute("data-entry-type") || "");
   if (type === "folder") {
     return [
       { label: "Open", action: "open" },
-      { label: "Move", action: "move" },
+      { label: "Cut", action: "cut" },
+      { label: "Move...", action: "move" },
+      { label: "Paste into folder", action: "paste-into-folder", disabled: !canPasteTo(entry.getAttribute("data-entry-id") || "") },
+      { label: "Cancel cut", action: "clear-cut", disabled: !hasClipboard() },
       "divider",
       { label: "Rename", action: "rename", disabled: true },
       { label: "Delete", action: "delete", disabled: true },
@@ -145,7 +205,9 @@ function entryMenuItems(entry, selection) {
   return [
     { label: "Open", action: "open" },
     { label: "Share", action: "share" },
-    { label: "Move", action: "move" },
+    { label: "Cut", action: "cut" },
+    { label: "Move...", action: "move" },
+    { label: "Cancel cut", action: "clear-cut", disabled: !hasClipboard() },
     "divider",
     { label: "Delete", action: "delete" },
   ];
@@ -153,6 +215,8 @@ function entryMenuItems(entry, selection) {
 
 function emptyMenuItems() {
   return [
+    { label: "Paste here", action: "paste-here", disabled: !canPasteTo(currentFolderTargetId()) },
+    { label: "Cancel cut", action: "clear-cut", disabled: !hasClipboard() },
     { label: "New folder", action: "new-folder" },
     { label: "Upload here", action: "upload" },
     { label: "Select all", action: "select-all" },
@@ -171,8 +235,20 @@ function handleAction(action) {
     case "share":
       openShareForEntry(entry);
       return;
+    case "cut":
+      cutEntries(selection);
+      return;
     case "move":
       openMove(selection);
+      return;
+    case "paste-here":
+      pasteEntries(currentFolderTargetId());
+      return;
+    case "paste-into-folder":
+      pasteEntries(entry ? entry.getAttribute("data-entry-id") || "" : "");
+      return;
+    case "clear-cut":
+      clearCut();
       return;
     case "delete":
       deleteEntries(selection);
