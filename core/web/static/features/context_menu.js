@@ -52,8 +52,8 @@ function menuButton(item, action) {
     button.setAttribute("aria-disabled", "true");
   } else {
     button.addEventListener("click", function() {
-      closeMenu();
       action(item.action);
+      closeMenu();
     });
   }
   return button;

@@ -361,13 +361,6 @@
   padding-right: 16px;
 }
 
-.files-selection-count {
-  color: var(--text);
-  font-size: var(--text-body-lg-size);
-  line-height: var(--text-body-lg-lh);
-  font-weight: 600;
-}
-
 .files-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));

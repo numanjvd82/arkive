@@ -227,43 +227,6 @@ func renderEntriesBrowserToolbar(pagination *components.PaginationProps) g.Node 
 	return h.Div(
 		h.Class("files-browser-toolbar"),
 		h.Div(
-			h.Class("files-browser-actions"),
-			g.Attr("id", "entries-selection-toolbar"),
-			g.Attr("hidden", "hidden"),
-			h.Div(
-				h.Class("files-table-actions"),
-				h.Span(
-					h.Class("files-selection-count"),
-					g.Attr("id", "entries-selection-count"),
-					g.Text("0 selected"),
-				),
-				h.Button(
-					h.Class("button secondary"),
-					h.Type("button"),
-					g.Attr("id", "move-entries-selected"),
-					g.Text("Move"),
-				),
-				h.Button(
-					h.Class("button secondary"),
-					h.Type("button"),
-					g.Attr("id", "share-entries-selected"),
-					g.Text("Share"),
-				),
-				h.Button(
-					h.Class("button danger-outline"),
-					h.Type("button"),
-					g.Attr("id", "delete-entries-selected"),
-					g.Text("Delete"),
-				),
-				h.Button(
-					h.Class("button secondary"),
-					h.Type("button"),
-					g.Attr("id", "clear-entries-selection"),
-					g.Text("Clear"),
-				),
-			),
-		),
-		h.Div(
 			h.Class("files-browser-pagination"),
 			components.Pagination(*pagination),
 		),

@@ -1,24 +1,57 @@
 import { setButtonBusy } from "./button_state.js";
 
+function moveState() {
+  if (!window.__arkiveMoveEntriesState) {
+    window.__arkiveMoveEntriesState = {
+      pendingEntries: [],
+    };
+  }
+  return window.__arkiveMoveEntriesState;
+}
+
 function selection() {
   return window.ArkiveEntrySelection && typeof window.ArkiveEntrySelection.getSelectedEntries === "function"
     ? window.ArkiveEntrySelection.getSelectedEntries()
     : [];
 }
 
+function currentFolderID() {
+  const current = document.querySelector("[data-current-folder-id]");
+  if (!current) {
+    return "";
+  }
+  return String(current.getAttribute("data-current-folder-id") || "").trim();
+}
+
 function folderOptions() {
   const options = [{ id: "", label: "Root" }];
   const seen = new Set([""]);
-  document.querySelectorAll("[data-folder-item]").forEach(function(item) {
-    const id = String(item.getAttribute("data-entry-id") || item.getAttribute("data-folder-item") || "");
-    if (!id || seen.has(id)) {
+  const currentFolderId = currentFolderID();
+
+  function pushOption(id, label) {
+    const value = String(id || "").trim();
+    if (!value || seen.has(value) || value === currentFolderId) {
       return;
     }
-    seen.add(id);
+    seen.add(value);
     options.push({
-      id: id,
-      label: String(item.getAttribute("data-folder-name") || item.textContent || "Encrypted folder").trim() || "Encrypted folder"
+      id: value,
+      label: String(label || "Encrypted folder").trim() || "Encrypted folder"
     });
+  }
+
+  document.querySelectorAll("[data-folder-breadcrumb]").forEach(function(item) {
+    pushOption(
+      item.getAttribute("data-folder-breadcrumb") || "",
+      item.getAttribute("data-folder-name") || item.textContent || "Encrypted folder",
+    );
+  });
+
+  document.querySelectorAll("[data-folder-item]").forEach(function(item) {
+    pushOption(
+      item.getAttribute("data-entry-id") || item.getAttribute("data-folder-item") || "",
+      item.getAttribute("data-folder-name") || item.textContent || "Encrypted folder",
+    );
   });
   return options;
 }
@@ -36,8 +69,10 @@ function openMoveDialog(entries) {
   if (!selected.length) {
     return;
   }
+  moveState().pendingEntries = selected.slice();
   const select = document.getElementById("move-target-folder");
   const meta = document.getElementById("move-entries-meta");
+  const confirmButton = document.getElementById("move-entries-confirm");
   if (!select) {
     return;
   }
@@ -50,6 +85,9 @@ function openMoveDialog(entries) {
   });
   if (meta) {
     meta.textContent = selected.length === 1 ? "Move 1 selected entry." : "Move " + selected.length + " selected entries.";
+  }
+  if (confirmButton) {
+    setButtonBusy(confirmButton, false);
   }
   if (window.Dialog && window.Dialog.open) {
     window.Dialog.open("entries-move-backdrop");
@@ -96,6 +134,7 @@ export function initMoveEntries() {
   if (cancelButton && !cancelButton.hasAttribute("data-move-cancel-bound")) {
     cancelButton.setAttribute("data-move-cancel-bound", "true");
     cancelButton.addEventListener("click", function() {
+      moveState().pendingEntries = [];
       if (window.Dialog && window.Dialog.close) {
         window.Dialog.close("entries-move-backdrop");
       }
@@ -105,7 +144,7 @@ export function initMoveEntries() {
   if (confirmButton && select && !confirmButton.hasAttribute("data-move-confirm-bound")) {
     confirmButton.setAttribute("data-move-confirm-bound", "true");
     confirmButton.addEventListener("click", async function() {
-      const selected = selection();
+      const selected = moveState().pendingEntries.length ? moveState().pendingEntries.slice() : selection();
       if (!selected.length) {
         return;
       }
@@ -118,6 +157,7 @@ export function initMoveEntries() {
           window.Toast.error((error && error.message) || "Move failed.");
         }
       } finally {
+        moveState().pendingEntries = [];
         setButtonBusy(confirmButton, false);
       }
     });

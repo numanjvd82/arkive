@@ -85,37 +85,11 @@ function updateSelectionUI() {
   const entries = selectableEntries();
   const selectedEntries = selectedMap();
   const count = selectedEntries.size;
-  const toolbar = document.getElementById("entries-selection-toolbar");
-  const countEl = document.getElementById("entries-selection-count");
-  const moveButton = document.getElementById("move-entries-selected");
-  const shareButton = document.getElementById("share-entries-selected");
-  const deleteButton = document.getElementById("delete-entries-selected");
-  const clearButton = document.getElementById("clear-entries-selection");
   const selectAll = document.getElementById("entries-select-all");
   const allSelected = entries.length > 0 && entries.every(function(entry) {
     return selectedEntries.has(entryID(entry));
   });
   const selectedValues = Array.from(selectedEntries.values());
-  const hasFiles = selectedValues.some(function(entry) { return entry.type === "file"; });
-
-  if (toolbar) {
-    toolbar.toggleAttribute("hidden", count === 0);
-  }
-  if (countEl) {
-    countEl.textContent = count === 1 ? "1 selected" : count + " selected";
-  }
-  if (moveButton) {
-    moveButton.disabled = count === 0;
-  }
-  if (shareButton) {
-    shareButton.disabled = count === 0 || !hasFiles;
-  }
-  if (deleteButton) {
-    deleteButton.disabled = count === 0;
-  }
-  if (clearButton) {
-    clearButton.disabled = count === 0;
-  }
   if (selectAll) {
     selectAll.checked = allSelected;
     selectAll.indeterminate = count > 0 && !allSelected;
@@ -399,27 +373,6 @@ function bindShortcuts() {
   });
 }
 
-function bindToolbarButtons() {
-  const shareButton = document.getElementById("share-entries-selected");
-  const deleteButton = document.getElementById("delete-entries-selected");
-  const clearButton = document.getElementById("clear-entries-selection");
-
-  if (shareButton && !shareButton.hasAttribute("data-selection-share-bound")) {
-    shareButton.setAttribute("data-selection-share-bound", "true");
-    shareButton.addEventListener("click", requestShareSelected);
-  }
-  if (deleteButton && !deleteButton.hasAttribute("data-selection-delete-bound")) {
-    deleteButton.setAttribute("data-selection-delete-bound", "true");
-    deleteButton.addEventListener("click", requestDeleteSelected);
-  }
-  if (clearButton && !clearButton.hasAttribute("data-selection-clear-bound")) {
-    clearButton.setAttribute("data-selection-clear-bound", "true");
-    clearButton.addEventListener("click", function() {
-      clearSelection();
-    });
-  }
-}
-
 export function initFileSelection() {
   const entries = selectableEntries();
   if (!entries.length) {
@@ -429,7 +382,6 @@ export function initFileSelection() {
   entries.forEach(bindEntry);
   bindEmptySpaceClear();
   bindShortcuts();
-  bindToolbarButtons();
 
   const selectAll = document.getElementById("entries-select-all");
   if (selectAll && !selectAll.hasAttribute("data-entries-select-all-bound")) {
