@@ -81,28 +81,40 @@ function filesActions() {
 })();
 
 (function() {
+  const DELETE_TOAST_STORAGE_KEY = "arkive:entries-delete-toast:v1";
   const backdrop = document.getElementById("file-delete-backdrop");
+  const title = document.getElementById("file-delete-title");
   const meta = document.getElementById("file-delete-meta");
   const cancelButton = document.getElementById("file-delete-cancel");
   const confirmButton = document.getElementById("file-delete-confirm");
-  let pendingDeleteIds = [];
+  let pendingDeleteEntries = [];
 
   if (!confirmButton) {
     return;
   }
 
-  function selectedFileNames(ids) {
-    return ids
-      .map(function(fileId) {
-        const item = document.querySelector("[data-file-item='" + fileId + "']");
-        return item ? String(item.getAttribute("data-file-name") || "") : "";
-      })
-      .filter(Boolean);
+  function fileName(fileId) {
+    const item = document.querySelector("[data-file-item='" + fileId + "']");
+    return item ? String(item.getAttribute("data-file-name") || "") : "";
   }
 
-  function removeRows(fileIds) {
-    fileIds.forEach(function(fileId) {
-      document.querySelectorAll("[data-file-item='" + fileId + "']").forEach(function(item) {
+  function folderName(folderId) {
+    const item = document.querySelector("[data-folder-item='" + folderId + "']");
+    return item ? String(item.getAttribute("data-folder-name") || "") : "";
+  }
+
+  function selectedFileNames(ids) {
+    return ids.map(fileName).filter(Boolean);
+  }
+
+  function selectedFolderNames(ids) {
+    return ids.map(folderName).filter(Boolean);
+  }
+
+  function removeEntries(entries) {
+    entries.forEach(function(entry) {
+      const selector = entry.type === "folder" ? "[data-folder-item='" + entry.id + "']" : "[data-file-item='" + entry.id + "']";
+      document.querySelectorAll(selector).forEach(function(item) {
         if (item && item.parentNode) {
           item.parentNode.removeChild(item);
         }
@@ -114,7 +126,7 @@ function filesActions() {
   }
 
   function pageHasRows() {
-    return document.querySelector("[data-file-item]") !== null;
+    return document.querySelector("[data-file-item], [data-folder-item]") !== null;
   }
 
   function clearThumbnailCache(fileIds) {
@@ -124,33 +136,101 @@ function filesActions() {
     return window.ArkiveThumbnailCache.deleteForFiles(fileIds);
   }
 
-  function openDialog(fileIds, names) {
+  function describeDeleteResult(result) {
+    const fileCount = Number(result && result.deletedFiles || 0);
+    const folderCount = Number(result && result.deletedFolders || 0);
+    if (fileCount > 0 && folderCount > 0) {
+      return "Deleted " + folderCount + " folder" + (folderCount === 1 ? "" : "s") + " and " + fileCount + " file" + (fileCount === 1 ? "" : "s") + ".";
+    }
+    if (folderCount > 0) {
+      return "Deleted " + folderCount + " folder" + (folderCount === 1 ? "" : "s") + ".";
+    }
+    if (fileCount > 0) {
+      return "Deleted " + fileCount + " file" + (fileCount === 1 ? "" : "s") + ".";
+    }
+    return "Deleted items.";
+  }
+
+  function storeDeleteToast(message) {
+    try {
+      window.sessionStorage.setItem(DELETE_TOAST_STORAGE_KEY, message);
+    } catch (_) {}
+  }
+
+  function flushStoredDeleteToast() {
+    let message = "";
+    try {
+      message = String(window.sessionStorage.getItem(DELETE_TOAST_STORAGE_KEY) || "");
+      if (message) {
+        window.sessionStorage.removeItem(DELETE_TOAST_STORAGE_KEY);
+      }
+    } catch (_) {}
+    if (message && window.Toast) {
+      window.Toast.success(message, { title: "Deleted" });
+    }
+  }
+
+  function describeDelete(entries) {
+    const fileEntries = entries.filter(function(entry) { return entry && entry.type === "file"; });
+    const folderEntries = entries.filter(function(entry) { return entry && entry.type === "folder"; });
+    const fileCount = fileEntries.length;
+    const folderCount = folderEntries.length;
+
+    if (title) {
+      title.textContent = fileCount+folderCount === 1 ? "Delete item?" : "Delete items?";
+    }
+    if (!meta) {
+      return;
+    }
+
+    if (folderCount === 0 && fileCount === 1) {
+      const names = selectedFileNames([fileEntries[0].id]);
+      meta.textContent = names[0]
+        ? "This will permanently delete " + names[0] + ". This action cannot be undone."
+        : "This will permanently delete the file. This action cannot be undone.";
+      return;
+    }
+
+    if (fileCount === 0 && folderCount === 1) {
+      const names = selectedFolderNames([folderEntries[0].id]);
+      meta.textContent = names[0]
+        ? "This will permanently delete " + names[0] + " and everything inside it. This action cannot be undone."
+        : "This will permanently delete the folder and everything inside it. This action cannot be undone.";
+      return;
+    }
+
+    if (folderCount === 0) {
+      meta.textContent = "This will permanently delete " + fileCount + " file" + (fileCount === 1 ? "" : "s") + ". This action cannot be undone.";
+      return;
+    }
+
+    if (fileCount === 0) {
+      meta.textContent = "This will permanently delete " + folderCount + " folder" + (folderCount === 1 ? "" : "s") + " and everything inside " + (folderCount === 1 ? "it." : "them.") + " This action cannot be undone.";
+      return;
+    }
+
+    meta.textContent = "This will permanently delete " + fileCount + " file" + (fileCount === 1 ? "" : "s") + ", " + folderCount + " folder" + (folderCount === 1 ? "" : "s") + ", and everything inside those folders. This action cannot be undone.";
+  }
+
+  function openDialog(entries) {
     if (!backdrop || !confirmButton) {
       return;
     }
-    pendingDeleteIds = fileIds.slice();
-    if (meta) {
-      if (pendingDeleteIds.length === 1) {
-        meta.textContent = names[0]
-          ? "This will permanently delete " + names[0] + ". This action cannot be undone."
-          : "This will permanently delete the file. This action cannot be undone.";
-      } else {
-        meta.textContent = "This will permanently delete " + pendingDeleteIds.length + " files. This action cannot be undone.";
-      }
-    }
+    pendingDeleteEntries = entries.slice();
+    describeDelete(pendingDeleteEntries);
     if (window.Dialog && window.Dialog.open) {
       window.Dialog.open("file-delete-backdrop");
     } else {
       backdrop.classList.remove("is-hidden");
     }
-    confirmButton.disabled = false;
+    setButtonBusy(confirmButton, false);
   }
 
   function closeDialog() {
     if (!backdrop) {
       return;
     }
-    pendingDeleteIds = [];
+    pendingDeleteEntries = [];
     if (window.Dialog && window.Dialog.close) {
       window.Dialog.close("file-delete-backdrop");
     } else {
@@ -158,12 +238,26 @@ function filesActions() {
     }
   }
 
+  flushStoredDeleteToast();
+
   filesActions().requestDeleteFiles = function(fileIds) {
     const ids = Array.isArray(fileIds) ? fileIds.filter(Boolean) : [];
     if (!ids.length) {
       return;
     }
-    openDialog(ids, selectedFileNames(ids));
+    openDialog(ids.map(function(id) {
+      return { id: id, type: "file" };
+    }));
+  };
+
+  filesActions().requestDeleteEntries = function(entries) {
+    const normalized = Array.isArray(entries) ? entries.filter(function(entry) {
+      return entry && entry.id && (entry.type === "file" || entry.type === "folder");
+    }) : [];
+    if (!normalized.length) {
+      return;
+    }
+    openDialog(normalized);
   };
 
   document.addEventListener("click", function(event) {
@@ -175,8 +269,7 @@ function filesActions() {
     if (!fileId) {
       return;
     }
-    const filename = button.getAttribute("data-file-name") || "";
-    openDialog([fileId], filename ? [filename] : []);
+    openDialog([{ id: fileId, type: "file" }]);
   });
 
   if (cancelButton) {
@@ -186,73 +279,64 @@ function filesActions() {
   }
 
   if (confirmButton) {
-    confirmButton.addEventListener("click", function() {
-      if (!pendingDeleteIds.length) {
+    confirmButton.addEventListener("click", async function() {
+      if (!pendingDeleteEntries.length) {
         closeDialog();
         return;
       }
       setButtonBusy(confirmButton, true, { busyText: "Deleting..." });
-      const isBulk = pendingDeleteIds.length > 1;
-      const request = isBulk
-        ? fetch("/api/files/bulk-delete", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ fileIds: pendingDeleteIds.slice() })
-          })
-        : fetch("/api/files/" + encodeURIComponent(pendingDeleteIds[0]), {
-            method: "DELETE",
-            headers: { "Content-Type": "application/json" }
-          });
-      request
-        .then(function(res) {
-          if (!res.ok) {
-            throw new Error("Delete failed");
-          }
-          const removedIds = pendingDeleteIds.slice();
-          return clearThumbnailCache(removedIds)
-            .catch(function() {})
-            .then(function() {
-              removeRows(removedIds);
-              closeDialog();
-              if (!pageHasRows() || removedIds.length > 1) {
-                window.location.reload();
-                return;
-              }
-              window.Toast.success(removedIds.length === 1 ? "File deleted." : "Files deleted.", { title: "Deleted" });
-            });
-        })
-        .catch(function() {
-          window.Toast.error("Delete failed. Try again.");
-          closeDialog();
-        })
-        .finally(function() {
-          setButtonBusy(confirmButton, false);
+      const entries = pendingDeleteEntries.slice();
+      const fileIds = entries.filter(function(entry) {
+        return entry.type === "file";
+      }).map(function(entry) {
+        return entry.id;
       });
+      const folderIds = entries.filter(function(entry) {
+        return entry.type === "folder";
+      }).map(function(entry) {
+        return entry.id;
+      });
+
+      try {
+        const res = await fetch("/api/entries/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fileIds: fileIds, folderIds: folderIds })
+        });
+        if (!res.ok) {
+          throw new Error("Delete failed");
+        }
+        const result = await res.json();
+        const successMessage = describeDeleteResult(result);
+        await clearThumbnailCache(fileIds).catch(function() {});
+        removeEntries(entries);
+        closeDialog();
+        if (!pageHasRows() || folderIds.length > 0 || entries.length > 1) {
+          storeDeleteToast(successMessage);
+          window.location.reload();
+          return;
+        }
+        if (window.Toast) {
+          window.Toast.success(successMessage, { title: "Deleted" });
+        }
+      } catch (_) {
+        if (window.Toast) {
+          window.Toast.error("Delete failed. Try again.");
+        }
+        closeDialog();
+      } finally {
+        setButtonBusy(confirmButton, false);
+      }
     });
   }
 
   document.addEventListener("arkive:entries-delete-request", function(event) {
     const detail = event && event.detail ? event.detail : {};
     const selectedEntries = Array.isArray(detail.selectedEntries) ? detail.selectedEntries : [];
-    const selectedFiles = selectedEntries.filter(function(entry) {
-      return entry && entry.type === "file";
-    });
-    const selectedFolders = selectedEntries.filter(function(entry) {
-      return entry && entry.type === "folder";
-    });
-    if (!selectedFiles.length) {
-      if (window.Toast) {
-        window.Toast.error("Folder delete is not available yet.");
-      }
+    if (!selectedEntries.length) {
       return;
     }
-    if (selectedFolders.length && window.Toast) {
-      window.Toast.error("Folders cannot be deleted yet. Only selected files will be deleted.");
-    }
-    openDialog(
-      selectedFiles.map(function(entry) { return entry.id; }),
-      selectedFileNames(selectedFiles.map(function(entry) { return entry.id; }))
-    );
+    openDialog(selectedEntries);
   });
 })();
 

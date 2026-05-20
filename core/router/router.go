@@ -115,13 +115,11 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 	apiFiles := api.Group("/files")
 	apiFiles.Use(middleware.RequireSessionJSON(authService))
 	{
-		apiFiles.POST("/bulk-delete", handlers.APIBulkDeleteFiles(filesService))
 		apiFiles.GET("/:id/record", handlers.APIFileRecord(filesService))
 		apiFiles.GET("/:id/thumbnail", handlers.APIThumbnailRedirect(filesService))
 		apiFiles.GET("/:id/share", handlers.APIGetShareForFile(shareService))
 		apiFiles.GET("/:id/download", handlers.APIDownloadFile(filesService))
 		apiFiles.GET("/:id/media", handlers.APIMediaRedirect(filesService))
-		apiFiles.DELETE("/:id", handlers.APIDeleteFile(filesService))
 		apiFiles.POST("/:id/share", handlers.APICreateShare(shareService))
 	}
 
@@ -139,6 +137,7 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 		apiFolders.POST("/folders", handlers.APICreateFolder(folderService))
 		apiFolders.GET("/folders/root/entries", handlers.APIListRootFolderEntries(folderService))
 		apiFolders.GET("/folders/:id/entries", handlers.APIListFolderEntries(folderService))
+		apiFolders.POST("/entries/delete", handlers.APIDeleteEntries(folderService))
 		apiFolders.POST("/entries/move", handlers.APIMoveEntries(folderService))
 	}
 

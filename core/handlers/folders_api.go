@@ -2,11 +2,13 @@ package handlers
 
 import (
 	"encoding/base64"
+	"errors"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 
+	filessvc "arkive/core/services/files"
 	folderssvc "arkive/core/services/folders"
 	"arkive/pkg/errs"
 	"arkive/pkg/pagination"
@@ -24,11 +26,21 @@ type moveEntriesRequest struct {
 	FolderIDs      []string `json:"folderIds"`
 }
 
+type deleteEntriesRequest struct {
+	FileIDs   []string `json:"fileIds"`
+	FolderIDs []string `json:"folderIds"`
+}
+
 type createFolderResponse struct {
 	ID                string  `json:"id"`
 	ParentFolderID    *string `json:"parentFolderId"`
 	EncryptedName     string  `json:"encryptedName"`
 	EncryptedMetadata string  `json:"encryptedMetadata,omitempty"`
+}
+
+type deleteEntriesResponse struct {
+	DeletedFiles   int `json:"deletedFiles"`
+	DeletedFolders int `json:"deletedFolders"`
 }
 
 func APICreateFolder(folderService *folderssvc.Service) gin.HandlerFunc {
@@ -173,5 +185,46 @@ func APIMoveEntries(folderService *folderssvc.Service) gin.HandlerFunc {
 		}
 
 		c.Status(http.StatusNoContent)
+	}
+}
+
+func APIDeleteEntries(folderService *folderssvc.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID, ok := c.Get("user_id")
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			return
+		}
+
+		var req deleteEntriesRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			return
+		}
+
+		result, err := folderService.DeleteEntries(c.Request.Context(), folderssvc.DeleteEntriesInput{
+			UserID:    userID.(string),
+			FileIDs:   req.FileIDs,
+			FolderIDs: req.FolderIDs,
+		})
+		if err != nil {
+			switch {
+			case errors.Is(err, folderssvc.ErrInvalidInput):
+				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			case errors.Is(err, folderssvc.ErrNotFound):
+				c.JSON(http.StatusNotFound, gin.H{"error": "entry not found"})
+			case errors.Is(err, filessvc.ErrUploadCancelled):
+				c.JSON(http.StatusConflict, gin.H{"error": "upload in progress"})
+			default:
+				_ = c.Error(errs.WithStack(err))
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "delete failed"})
+			}
+			return
+		}
+
+		c.JSON(http.StatusOK, deleteEntriesResponse{
+			DeletedFiles:   result.DeletedFiles,
+			DeletedFolders: result.DeletedFolders,
+		})
 	}
 }

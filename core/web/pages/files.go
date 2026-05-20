@@ -99,7 +99,7 @@ func FilesPage(props FilesPageProps) web.Page {
 				components.Dialog(components.DialogProps{
 					BackdropID: "file-delete-backdrop",
 					TitleID:    "file-delete-title",
-					Title:      "Delete file?",
+					Title:      "Delete items?",
 					Body:       h.P(g.Attr("id", "file-delete-meta"), g.Text("This will permanently delete the file. This action cannot be undone.")),
 					Actions: g.Group([]g.Node{
 						h.Button(

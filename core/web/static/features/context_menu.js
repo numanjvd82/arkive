@@ -199,7 +199,7 @@ function entryMenuItems(entry, selection) {
       { label: "Cancel cut", action: "clear-cut", disabled: !hasClipboard() },
       "divider",
       { label: "Rename", action: "rename", disabled: true },
-      { label: "Delete", action: "delete", disabled: true },
+      { label: "Delete", action: "delete" },
     ];
   }
   return [
