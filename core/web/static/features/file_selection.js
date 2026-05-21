@@ -179,7 +179,7 @@ function syncEntryVisual(entry, selected) {
 }
 
 function updateSelectionUI() {
-  const entries = selectableEntries();
+  const entries = visibleEntries();
   const selectedEntries = selectedMap();
   const count = selectedEntries.size;
   const selectAll = document.getElementById("entries-select-all");
@@ -225,7 +225,7 @@ function clearSelection(options) {
 }
 
 function selectAllVisible() {
-  selectableEntries().forEach(function(entry) {
+  visibleEntries().forEach(function(entry) {
     setSelected(entry, true, { silent: true });
   });
   updateSelectionUI();
@@ -476,7 +476,7 @@ function bindEmptySpaceClear() {
   }
   document.body.setAttribute("data-entry-empty-clear-bound", "true");
   document.addEventListener("click", function(event) {
-    if (event.target.closest("[data-selectable-entry], .files-context-menu, .dialog-backdrop, .dialog")) {
+    if (event.target.closest("[data-selectable-entry], .files-context-menu, .dialog-backdrop, .dialog, [data-entry-checkbox], #entries-select-all, thead, th, label, button, input")) {
       return;
     }
     clearSelection();
