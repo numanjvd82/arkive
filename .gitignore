@@ -4,6 +4,10 @@
 /tmp/
 .DS_Store
 coverage.out
+node_modules/
+playwright/.auth/
+playwright-report/
+test-results/
 
 # Docker files
 docker-compose.yml
@@ -15,3 +19,11 @@ docker-compose.yml
 deploy.sh
 server-setup.sh
 cleanup.sh
+
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
