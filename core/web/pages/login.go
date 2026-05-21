@@ -21,7 +21,7 @@ type LoginPageProps struct {
 
 func LoginPage(props LoginPageProps) web.Page {
 	return web.Page{
-		Title:   "Arkive · Login",
+		Title:   "Arkive · Admin Login",
 		Robots:  RobotsNoIndex,
 		CSS:     []string{"/web/pages/login.css"},
 		JS:      []string{"/static/login.js"},
@@ -52,7 +52,7 @@ func loginBody(props LoginPageProps) g.Node {
 					h.H1(g.Text("Arkive Core")),
 					h.P(
 						h.Class("auth-subtitle"),
-						g.Text("Secure access to your self-hosted file vault."),
+						g.Text("Sign in to your self-hosted encrypted file server."),
 					),
 				),
 				components.Card(components.CardProps{

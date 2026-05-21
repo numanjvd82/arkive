@@ -41,8 +41,8 @@ func WebLoginGet(svc *auth.Service, setupSvc *setup.Service) gin.HandlerFunc {
 
 		msg := ""
 		switch strings.TrimSpace(c.Query("msg")) {
-		case "account-created":
-			msg = "Account created. You can log in now."
+		case "instance-ready":
+			msg = "Setup complete. Sign in to continue."
 		}
 		webPage := pages.LoginPage(pages.LoginPageProps{
 			Ctx:     pages.PageContext{},

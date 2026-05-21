@@ -74,8 +74,8 @@ func setupBody(props SetupPageProps) g.Node {
 					),
 					h.Div(
 						h.Class("setup-header-copy"),
-						h.H1(g.Text("Arkive Core Initialization")),
-						h.P(g.Text("Configure your sovereign instance parameters.")),
+						h.H1(g.Text("Initialize Arkive Core")),
+						h.P(g.Text("Configure your self-hosted encrypted file server.")),
 					),
 				),
 				h.Div(
@@ -86,7 +86,7 @@ func setupBody(props SetupPageProps) g.Node {
 					),
 					setupSection(
 						"1",
-						"Instance Identity",
+						"Instance Details",
 						lucide.BadgeInfo(
 							h.Class("setup-lucide"),
 							g.Attr("aria-hidden", "true"),
@@ -119,7 +119,7 @@ func setupBody(props SetupPageProps) g.Node {
 					),
 					setupSection(
 						"2",
-						"Security Parameters",
+						"Security",
 						lucide.Lock(
 							h.Class("setup-lucide"),
 							g.Attr("aria-hidden", "true"),
@@ -134,7 +134,7 @@ func setupBody(props SetupPageProps) g.Node {
 								),
 							),
 							h.P(
-								g.Text("Arkive Core operates on a strict zero-knowledge architecture. This password derives your master encryption key. "),
+								g.Text("Arkive Core uses zero-knowledge encryption. This password derives your master encryption key. "),
 								h.Strong(g.Text("It cannot be recovered if lost.")),
 							),
 						),
@@ -164,7 +164,7 @@ func setupBody(props SetupPageProps) g.Node {
 					),
 					setupSection(
 						"3",
-						"Storage Backend",
+						"Storage",
 						lucide.Database(
 							h.Class("setup-lucide"),
 							g.Attr("aria-hidden", "true"),

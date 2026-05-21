@@ -8,7 +8,6 @@ type User struct {
 	Email                       string
 	VaultSalt                   []byte
 	EncryptedMasterKey          []byte
-	QuotaBytes                  int64
 	UsedBytes                   int64
 	ReservedBytes               int64
 	LastLoginAt                 *time.Time

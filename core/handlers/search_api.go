@@ -110,7 +110,7 @@ func searchSettingsResults(query string) []searchResult {
 		meta  string
 	}
 	settings := []item{
-		{title: []string{"Account Overview", "Account", "Workspace", "Email", "Quota", "Usage"}, url: "/settings#settings-account", meta: "Settings"},
+		{title: []string{"Instance Overview", "Instance", "Admin", "Email", "Storage", "Usage"}, url: "/settings#settings-account", meta: "Settings"},
 		{title: []string{"Storage Provider", "Storage Configuration", "Provider", "Local", "S3"}, url: "/settings#settings-provider", meta: "Settings"},
 		{title: []string{"Security", "Authentication", "Session", "Hardening"}, url: "/settings#settings-security", meta: "Settings"},
 	}

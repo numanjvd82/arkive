@@ -39,7 +39,7 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 		SessionTTL: cfg.SessionTTL,
 	})
 	settingsRepo := settingsrepo.New()
-	settingsService := settingssvc.NewService(db, settingsRepo, usersRepo)
+	settingsService := settingssvc.NewService(db, settingsRepo)
 	setupService := setup.NewService(db, authRepo, usersRepo, settingsRepo)
 	emailSettings, err := settingsService.EmailSettings(context.Background())
 	if err != nil {

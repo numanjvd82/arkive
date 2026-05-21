@@ -60,7 +60,7 @@ func (r *Repository) GetPasswordHashByEmail(ctx context.Context, db database.PgE
 func (r *Repository) GetUserByID(ctx context.Context, db database.PgExecutor, userID string) (models.User, error) {
 	var user models.User
 	query := `SELECT
-		id, brand_name, email, vault_salt, encrypted_master_key, quota_bytes, used_bytes, reserved_bytes,
+		id, brand_name, email, vault_salt, encrypted_master_key, used_bytes, reserved_bytes,
 		last_login_at, recovery_setup_token, recovery_setup_token_expires_at, updated_at, created_at
 	FROM
 		users
@@ -72,7 +72,6 @@ func (r *Repository) GetUserByID(ctx context.Context, db database.PgExecutor, us
 		&user.Email,
 		&user.VaultSalt,
 		&user.EncryptedMasterKey,
-		&user.QuotaBytes,
 		&user.UsedBytes,
 		&user.ReservedBytes,
 		&user.LastLoginAt,

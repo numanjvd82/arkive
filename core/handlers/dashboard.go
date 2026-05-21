@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"arkive/core/models"
 	filessvc "arkive/core/services/files"
 	folderssvc "arkive/core/services/folders"
 	settingssvc "arkive/core/services/settings"
@@ -38,6 +39,10 @@ func WebDashboard(filesService *filessvc.Service, folderService *folderssvc.Serv
 		if err != nil {
 			uploadSettings = pages.DefaultUploadSettings()
 		}
+		storageSettings, err := settingsService.StorageSettings(c.Request.Context())
+		if err != nil {
+			storageSettings = models.StorageSettings{}
+		}
 
 		var currentFolder *string
 		if folderID := strings.TrimSpace(c.Query("folder")); folderID != "" {
@@ -47,11 +52,12 @@ func WebDashboard(filesService *filessvc.Service, folderService *folderssvc.Serv
 		}
 
 		web.Render(c, pages.DashboardPage(pages.DashboardPageProps{
-			Ctx:            pages.ContextWithUser(user),
-			RecentFiles:    list.Files,
-			TotalFiles:     list.TotalFiles,
-			CurrentFolder:  currentFolder,
-			UploadSettings: uploadSettings,
+			Ctx:             pages.ContextWithUser(user),
+			RecentFiles:     list.Files,
+			TotalFiles:      list.TotalFiles,
+			CurrentFolder:   currentFolder,
+			StorageSettings: storageSettings,
+			UploadSettings:  uploadSettings,
 		}))
 	}
 }

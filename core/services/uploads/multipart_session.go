@@ -140,6 +140,10 @@ func (s *Service) StartMultipartUploadSession(ctx context.Context, userID string
 		return models.UploadStartResponse{}, validationErrors, nil
 	}
 	declaredEncryptedSize := reservedUploadSize(input.OriginalSize, input.TotalChunks)
+	storageSettings, err := s.settingsRepo.GetStorageSettings(ctx, s.db)
+	if err != nil {
+		return models.UploadStartResponse{}, nil, err
+	}
 	input.FolderID, err = validateOptionalFolderID(input.FolderID)
 	if err != nil {
 		return models.UploadStartResponse{}, nil, err
@@ -189,14 +193,14 @@ func (s *Service) StartMultipartUploadSession(ctx context.Context, userID string
 		return models.UploadStartResponse{}, nil, err
 	}
 
-	reserved, err := s.storageRepo.ReserveStorage(ctx, tx, userID, declaredEncryptedSize)
+	reserved, err := s.storageRepo.ReserveStorage(ctx, tx, userID, declaredEncryptedSize, storageSettings.MaxStorageBytes)
 	if err != nil {
 		_ = tx.Rollback(ctx)
 		return models.UploadStartResponse{}, nil, err
 	}
 	if !reserved {
 		_ = tx.Rollback(ctx)
-		return models.UploadStartResponse{}, nil, ErrQuotaExceeded
+		return models.UploadStartResponse{}, nil, ErrStorageLimitExceeded
 	}
 
 	session, err := s.uploadRepo.CreateUploadSession(ctx, tx, models.UploadSession{
@@ -401,6 +405,10 @@ func (s *Service) CompleteMultipartUploadSession(ctx context.Context, userID, up
 		}
 		return err
 	}
+	storageSettings, err := s.settingsRepo.GetStorageSettings(ctx, s.db)
+	if err != nil {
+		return err
+	}
 
 	parts, err := s.uploadRepo.ListUploadParts(ctx, s.db, uploadSessionID)
 	if err != nil {
@@ -509,7 +517,7 @@ func (s *Service) CompleteMultipartUploadSession(ctx context.Context, userID, up
 	if err != nil {
 		return err
 	}
-	finalized, err := s.storageRepo.FinalizeReservedStorage(ctx, tx, userID, reservedSize, actualStoredSize)
+	finalized, err := s.storageRepo.FinalizeReservedStorage(ctx, tx, userID, reservedSize, actualStoredSize, storageSettings.MaxStorageBytes)
 	if err != nil {
 		_ = tx.Rollback(ctx)
 		return err
@@ -526,7 +534,7 @@ func (s *Service) CompleteMultipartUploadSession(ctx context.Context, userID, up
 		}
 		failTx, failErr := s.db.BeginTx(ctx, pgx.TxOptions{})
 		if failErr != nil {
-			return ErrQuotaExceeded
+			return ErrStorageLimitExceeded
 		}
 		if err := s.uploadRepo.UpdateUploadSessionStatus(ctx, failTx, uploadSessionID, UploadStatusFailed); err != nil {
 			_ = failTx.Rollback(ctx)
@@ -543,7 +551,7 @@ func (s *Service) CompleteMultipartUploadSession(ctx context.Context, userID, up
 		if err := failTx.Commit(ctx); err != nil {
 			return err
 		}
-		return ErrQuotaExceeded
+		return ErrStorageLimitExceeded
 	}
 	if err := s.uploadRepo.UpdateUploadSessionStatus(ctx, tx, uploadSessionID, UploadStatusCompleted); err != nil {
 		_ = tx.Rollback(ctx)

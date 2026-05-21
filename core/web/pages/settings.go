@@ -1,7 +1,6 @@
 package pages
 
 import (
-	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -64,10 +63,10 @@ func SettingsPage(props SettingsPageProps) web.Page {
 			lastLogin = user.LastLoginAt.Format(time.RFC1123)
 		}
 		usedStorage = format.Bytes(user.UsedBytes)
-		if user.QuotaBytes > 0 && user.QuotaBytes != math.MaxInt64 {
-			quotaStorage = format.Bytes(user.QuotaBytes)
+		if storageSettings.MaxStorageBytes > 0 {
+			quotaStorage = format.Bytes(storageSettings.MaxStorageBytes)
 			if user.UsedBytes > 0 {
-				usagePercent = int((float64(user.UsedBytes) / float64(user.QuotaBytes)) * 100)
+				usagePercent = int((float64(user.UsedBytes) / float64(storageSettings.MaxStorageBytes)) * 100)
 				if usagePercent > 100 {
 					usagePercent = 100
 				}
@@ -92,14 +91,14 @@ func SettingsPage(props SettingsPageProps) web.Page {
 					h.Div(
 						h.Class("page-title"),
 						h.H1(g.Text("Settings")),
-						h.P(g.Text("Manage storage for this self-hosted Core instance.")),
+						h.P(g.Text("Manage this self-hosted encrypted file server.")),
 					),
 				),
 				h.Div(
 					h.Class("settings-grid"),
 					h.Aside(
 						h.Class("settings-tabs"),
-						settingsTabLink("settings-account", "Account"),
+						settingsTabLink("settings-account", "Instance"),
 						settingsTabLink("settings-provider", "Storage Provider"),
 						settingsTabLink("settings-email", "Email"),
 						settingsTabLink("settings-upload", "Uploads"),
@@ -114,22 +113,22 @@ func SettingsPage(props SettingsPageProps) web.Page {
 								h.Class("settings-panel-header"),
 								h.Div(
 									h.Class("settings-panel-title"),
-									h.H2(g.Text("Account Overview")),
-									h.P(g.Text("Current account, workspace, and storage details for this Core instance.")),
+									h.H2(g.Text("Instance Overview")),
+									h.P(g.Text("Current admin, instance, and storage details for this Core deployment.")),
 								),
 							),
 							h.Div(
 								h.Class("settings-stack"),
 								components.Card(components.CardProps{
-									Title:    "Account details",
-									Subtitle: "Identity and workspace metadata for the active admin session.",
+									Title:    "Admin details",
+									Subtitle: "Identity and session details for current Core administrator.",
 									Class:    "settings-card",
 									Body: []g.Node{
 										h.Div(
 											h.Class("settings-meta"),
 											h.Div(
 												h.Class("settings-meta-row"),
-												h.Span(g.Text("Workspace")),
+												h.Span(g.Text("Instance")),
 												h.Span(g.Text(displayOrDash(brandName))),
 											),
 											h.Div(
@@ -151,7 +150,7 @@ func SettingsPage(props SettingsPageProps) web.Page {
 									},
 								}),
 								components.Card(components.CardProps{
-									Title:    "Storage quota",
+									Title:    "Storage limit",
 									Subtitle: "Usage and limits for this single-user Core deployment.",
 									Class:    "settings-card",
 									Body: []g.Node{
@@ -182,7 +181,7 @@ func SettingsPage(props SettingsPageProps) web.Page {
 											h.Class("settings-info-grid"),
 											settingsInfoTile("Instance", instanceLabel, "Self-hosted mode"),
 											settingsInfoTile("Provider", storageProviderLabel, "Active upload backend"),
-											settingsInfoTile("Utilization", formatPercent(usagePercent), "Based on the configured quota"),
+											settingsInfoTile("Utilization", formatPercent(usagePercent), "Based on configured storage limit"),
 										),
 										h.P(
 											h.Class("settings-note"),
@@ -231,7 +230,7 @@ func SettingsPage(props SettingsPageProps) web.Page {
 								h.Div(
 									h.Class("settings-panel-title"),
 									h.H2(g.Text("Email")),
-									h.P(g.Text("Configure the instance mailer from settings instead of environment variables.")),
+									h.P(g.Text("Configure mail delivery for this instance from settings.")),
 								),
 							),
 							h.Div(
@@ -245,7 +244,7 @@ func SettingsPage(props SettingsPageProps) web.Page {
 											h.Class("settings-provider-status"),
 											h.Span(h.Class("settings-badge"), g.Text(emailProviderLabel)),
 											h.H4(g.Text("Mailer configured from settings")),
-											h.P(g.Text("The app reads provider, sender, host, and credentials from instance settings.")),
+											h.P(g.Text("Mailer provider, sender, host, and credentials are stored in instance settings.")),
 										),
 									},
 								}),
@@ -267,7 +266,7 @@ func SettingsPage(props SettingsPageProps) web.Page {
 								h.Div(
 									h.Class("settings-panel-title"),
 									h.H2(g.Text("Uploads")),
-									h.P(g.Text("Configure upload queue limits from settings instead of environment variables.")),
+									h.P(g.Text("Configure upload queue behavior for this instance.")),
 								),
 							),
 							h.Div(

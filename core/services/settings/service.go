@@ -2,7 +2,6 @@ package settings
 
 import (
 	"context"
-	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -13,7 +12,6 @@ import (
 	"arkive/core/database"
 	"arkive/core/models"
 	settingsrepo "arkive/core/repositories/settings"
-	usersrepo "arkive/core/repositories/users"
 	"arkive/pkg/storage/localclient"
 	"arkive/pkg/validation"
 )
@@ -21,7 +19,6 @@ import (
 type Service struct {
 	db           database.PgPool
 	settingsRepo *settingsrepo.Repository
-	userRepo     *usersrepo.Repository
 }
 
 type StorageInput struct {
@@ -51,11 +48,10 @@ type UploadInput struct {
 	MaxQueueItems string
 }
 
-func NewService(db database.PgPool, settingsRepo *settingsrepo.Repository, userRepo *usersrepo.Repository) *Service {
+func NewService(db database.PgPool, settingsRepo *settingsrepo.Repository) *Service {
 	return &Service{
 		db:           db,
 		settingsRepo: settingsRepo,
-		userRepo:     userRepo,
 	}
 }
 
@@ -98,7 +94,7 @@ func (s *Service) UpdateStorageSettings(ctx context.Context, userID string, inpu
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	if err := SaveStorageSettingsTx(ctx, tx, s.settingsRepo, s.userRepo, userID, settings); err != nil {
+	if err := SaveStorageSettingsTx(ctx, tx, s.settingsRepo, settings); err != nil {
 		return models.StorageSettings{}, nil, err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -155,15 +151,12 @@ func (s *Service) UpdateUploadSettings(ctx context.Context, userID string, input
 	return settings, nil, nil
 }
 
-func SaveStorageSettingsTx(ctx context.Context, tx pgx.Tx, settingsRepo *settingsrepo.Repository, userRepo *usersrepo.Repository, userID string, settings models.StorageSettings) error {
+func SaveStorageSettingsTx(ctx context.Context, tx pgx.Tx, settingsRepo *settingsrepo.Repository, settings models.StorageSettings) error {
 	settings = NormalizeStorageSettings(settings)
 	if settings.Provider == "local" {
 		if err := os.MkdirAll(settings.LocalPath, 0o700); err != nil {
 			return err
 		}
-	}
-	if err := userRepo.UpdateQuota(ctx, tx, userID, quotaBytes(settings.MaxStorageBytes)); err != nil {
-		return err
 	}
 	return settingsRepo.SaveStorageSettings(ctx, tx, settings)
 }
@@ -298,11 +291,4 @@ func ValidateUploadSettings(settings models.UploadSettings, validationErrors val
 	if settings.MaxQueueItems <= 0 {
 		validationErrors.Add("max_queue_items", "must be a positive number")
 	}
-}
-
-func quotaBytes(maxStorageBytes int64) int64 {
-	if maxStorageBytes <= 0 {
-		return math.MaxInt64
-	}
-	return maxStorageBytes
 }

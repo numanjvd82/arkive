@@ -100,7 +100,7 @@ func (s *Service) CreateInitialAdmin(ctx context.Context, input InitialAdminInpu
 	if err != nil {
 		return models.User{}, nil, err
 	}
-	if err := settingssvc.SaveStorageSettingsTx(ctx, tx, s.settingsRepo, s.userRepo, user.ID, input.Storage); err != nil {
+	if err := settingssvc.SaveStorageSettingsTx(ctx, tx, s.settingsRepo, input.Storage); err != nil {
 		return models.User{}, nil, err
 	}
 

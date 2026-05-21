@@ -38,7 +38,7 @@ func forbiddenBody() g.Node {
 					),
 					h.P(
 						h.Class("forbidden-lead body-lg"),
-						g.Text("You need an account to reach this page. Sign in to continue to your dashboard."),
+						g.Text("You must sign in as instance administrator to reach this page."),
 					),
 					h.Div(
 						h.Class("forbidden-actions"),

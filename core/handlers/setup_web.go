@@ -247,7 +247,7 @@ func WebSetupRecoveryPost(svc *setup.Service) gin.HandlerFunc {
 			c.Status(http.StatusInternalServerError)
 			return
 		}
-		c.Redirect(http.StatusSeeOther, "/login?msg=account-created")
+		c.Redirect(http.StatusSeeOther, "/login?msg=instance-ready")
 	}
 }
 

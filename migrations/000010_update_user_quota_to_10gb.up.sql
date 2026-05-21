@@ -1,6 +1,0 @@
-ALTER TABLE users
-  ALTER COLUMN quota_bytes SET DEFAULT 10737418240;
-
-UPDATE users
-SET quota_bytes = 10737418240
-WHERE quota_bytes = 5368709120;

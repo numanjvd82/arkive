@@ -2,7 +2,6 @@ package pages
 
 import (
 	"fmt"
-	"math"
 
 	lucide "github.com/eduardolat/gomponents-lucide"
 	g "maragu.dev/gomponents"
@@ -15,11 +14,12 @@ import (
 )
 
 type DashboardPageProps struct {
-	Ctx            PageContext
-	RecentFiles    []models.File
-	TotalFiles     int
-	CurrentFolder  *string
-	UploadSettings models.UploadSettings
+	Ctx             PageContext
+	RecentFiles     []models.File
+	TotalFiles      int
+	CurrentFolder   *string
+	StorageSettings models.StorageSettings
+	UploadSettings  models.UploadSettings
 }
 
 func DefaultUploadSettings() models.UploadSettings {
@@ -40,15 +40,14 @@ func DashboardPage(props DashboardPageProps) web.Page {
 		uploadSettings.MaxQueueItems = defaultUploadSettings.MaxQueueItems
 	}
 	usedBytes := int64(0)
-	quotaBytes := int64(0)
+	maxStorageBytes := props.StorageSettings.MaxStorageBytes
 	isUnlimitedQuota := true
 	usagePercent := 0.0
 	if user != nil {
 		usedBytes = user.UsedBytes
-		quotaBytes = user.QuotaBytes
-		if quotaBytes > 0 && quotaBytes != math.MaxInt64 {
+		if maxStorageBytes > 0 {
 			isUnlimitedQuota = false
-			usagePercent = (float64(usedBytes) / float64(quotaBytes)) * 100
+			usagePercent = (float64(usedBytes) / float64(maxStorageBytes)) * 100
 			if usagePercent > 100 {
 				usagePercent = 100
 			}
@@ -56,7 +55,7 @@ func DashboardPage(props DashboardPageProps) web.Page {
 	}
 
 	return web.Page{
-		Title:              "Arkive · Dashboard",
+		Title:              "Arkive · Vault",
 		Robots:             RobotsNoIndex,
 		CSS:                []string{"/web/pages/dashboard.css"},
 		JS:                 []string{"/static/dashboard.js"},
@@ -64,7 +63,7 @@ func DashboardPage(props DashboardPageProps) web.Page {
 		RequireVaultUnlock: true,
 		User:               props.Ctx.User,
 		ActiveNav:          "dashboard",
-		SearchPlaceholder:  "Search system...",
+		SearchPlaceholder:  "Search vault...",
 		Body: h.Main(
 			h.Class("dashboard"),
 			currentFolderAttr,
@@ -90,7 +89,7 @@ func DashboardPage(props DashboardPageProps) web.Page {
 							h.Span(h.Class("summary-value summary-value-storage"), g.Text(format.Bytes(usedBytes))),
 							h.Span(
 								h.Class("summary-quota"),
-								g.If(!isUnlimitedQuota, g.Text("/ "+format.Bytes(quotaBytes))),
+								g.If(!isUnlimitedQuota, g.Text("/ "+format.Bytes(maxStorageBytes))),
 								g.If(isUnlimitedQuota, g.Text("/ Unlimited")),
 							),
 						),
@@ -108,8 +107,8 @@ func DashboardPage(props DashboardPageProps) web.Page {
 					h.ID("upload-panel"),
 					components.UploadControls(components.UploadControlsProps{
 						InputRequired: true,
-						InputLabel:    "Secure Payload Drop",
-						InputHelper:   "Drag and drop files here to begin encrypted transfer. All data is zero-knowledge encrypted client-side before transmission.",
+						InputLabel:    "Secure Upload",
+						InputHelper:   "Drag and drop files here to begin encrypted upload. Data is encrypted in browser before transfer.",
 						StatusText:    "Select files manually to start a secure upload.",
 						MaxQueueItems: uploadSettings.MaxQueueItems,
 					}),
@@ -119,7 +118,7 @@ func DashboardPage(props DashboardPageProps) web.Page {
 					h.ID("recent-activity"),
 					h.Div(
 						h.Class("dashboard-section-header"),
-						h.H2(g.Text("Recent Activity")),
+						h.H2(g.Text("Recent Files")),
 					),
 					h.Div(
 						h.Class("data-table-wrap activity-table-wrap"),

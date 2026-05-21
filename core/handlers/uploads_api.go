@@ -76,8 +76,8 @@ func APIUploadStart(svc *uploads.Service) gin.HandlerFunc {
 			switch err {
 			case uploads.ErrUnauthorized:
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-			case uploads.ErrQuotaExceeded:
-				c.JSON(http.StatusForbidden, gin.H{"error": "quota exceeded"})
+			case uploads.ErrStorageLimitExceeded:
+				c.JSON(http.StatusForbidden, gin.H{"error": "storage limit exceeded"})
 			case uploads.ErrNotFound:
 				c.JSON(http.StatusNotFound, gin.H{"error": "folder not found"})
 			case uploads.ErrInvalidInput:
@@ -266,8 +266,8 @@ func APIUploadComplete(svc *uploads.Service) gin.HandlerFunc {
 				c.JSON(http.StatusNotFound, gin.H{"error": "upload not found"})
 			case uploads.ErrUploadCancelled:
 				c.JSON(http.StatusConflict, gin.H{"error": "upload cancelled"})
-			case uploads.ErrQuotaExceeded:
-				c.JSON(http.StatusForbidden, gin.H{"error": "quota exceeded"})
+			case uploads.ErrStorageLimitExceeded:
+				c.JSON(http.StatusForbidden, gin.H{"error": "storage limit exceeded"})
 			case uploads.ErrFileTooLarge:
 				c.JSON(http.StatusBadRequest, gin.H{"error": "file is too large"})
 			case uploads.ErrPartsRequired:
