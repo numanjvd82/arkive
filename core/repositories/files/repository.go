@@ -497,6 +497,23 @@ func (r *Repository) MoveFilesToFolder(ctx context.Context, db database.PgExecut
 	return tag.RowsAffected(), nil
 }
 
+func (r *Repository) RenameFileForUser(ctx context.Context, db database.PgExecutor, fileID, userID string, encryptedMetadata []byte) (bool, error) {
+	query := `UPDATE files
+	SET
+		encrypted_metadata = $3,
+		updated_at = now()
+	WHERE
+		id = $1
+		AND user_id = $2
+		AND upload_status = 'complete'
+		AND expires_at IS NULL`
+	tag, err := db.Exec(ctx, query, fileID, userID, encryptedMetadata)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() > 0, nil
+}
+
 func (r *Repository) DeleteFileForUser(ctx context.Context, db database.PgExecutor, fileID, userID string) (bool, error) {
 	query := `DELETE FROM
 		files

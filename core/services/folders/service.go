@@ -206,6 +206,27 @@ func (s *Service) ValidateFolderAccess(ctx context.Context, userID, folderID str
 	return folder, nil
 }
 
+func (s *Service) RenameFolder(ctx context.Context, input RenameFolderInput) error {
+	userID := strings.TrimSpace(input.UserID)
+	if userID == "" || len(input.EncryptedName) == 0 || len(input.EncryptedMetadata) == 0 {
+		return ErrInvalidInput
+	}
+
+	folderID, err := validateUUIDValue(input.FolderID)
+	if err != nil {
+		return err
+	}
+
+	renamed, err := s.folderRepo.RenameFolderForUser(ctx, s.db, userID, folderID, input.EncryptedName, input.EncryptedMetadata)
+	if err != nil {
+		return err
+	}
+	if !renamed {
+		return ErrNotFound
+	}
+	return nil
+}
+
 func (s *Service) folderPath(ctx context.Context, db database.PgExecutor, userID, folderID string) ([]models.Folder, error) {
 	path := []models.Folder{}
 	currentID := folderID

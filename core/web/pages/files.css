@@ -186,7 +186,7 @@
 
 .files-location-name {
   display: inline-block;
-  min-width: 72px;
+  min-width: 0;
 }
 
 .files-upload-link,
@@ -586,6 +586,42 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   transition: opacity 180ms ease, color 180ms ease, transform 180ms ease, background-color 180ms ease;
+}
+
+.files-rename-input {
+  width: 100%;
+  min-width: 0;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid rgba(56, 189, 248, 0.38);
+  border-radius: 6px;
+  background: rgba(15, 20, 24, 0.92);
+  color: var(--text);
+  font: inherit;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.14);
+}
+
+.files-rename-input:focus {
+  outline: none;
+  border-color: rgba(56, 189, 248, 0.62);
+  box-shadow:
+    0 0 0 2px rgba(56, 189, 248, 0.2),
+    0 8px 18px rgba(0, 0, 0, 0.14);
+}
+
+.files-card.is-renaming,
+.files-row.is-renaming {
+  z-index: 2;
+}
+
+.files-row.is-renaming .files-cell-actions,
+.files-card.is-renaming .files-card-menu {
+  opacity: 1;
+}
+
+.files-row.is-rename-saving,
+.files-card.is-rename-saving {
+  opacity: 0.82;
 }
 
 .is-drop-target .files-folder-emblem {

@@ -42,6 +42,13 @@ type MoveEntriesInput struct {
 	FolderIDs      []string
 }
 
+type RenameFolderInput struct {
+	UserID            string
+	FolderID          string
+	EncryptedName     []byte
+	EncryptedMetadata []byte
+}
+
 type ResolveDeleteScopeInput struct {
 	UserID    string
 	FileIDs   []string

@@ -455,6 +455,22 @@ export function initVault() {
         aad: "arkive:file-metadata:v1"
       });
     },
+    encryptFileMetadataForFile: function(metadata, vaultId, fileId, masterKey) {
+      touchSessionUnlock();
+      return callWorker("encryptFileMetadata", {
+        metadata: metadata || {},
+        masterKey: toBase64(masterKey),
+        aad: "arkive:file-metadata:v1:" + String(vaultId || "") + ":" + String(fileId || "")
+      });
+    },
+    encryptFileMetadataInContext: function(contextId, metadata, vaultId, fileId) {
+      touchSessionUnlock();
+      return callWorker("encryptFileMetadataInContext", {
+        contextId: String(contextId || ""),
+        metadata: metadata || {},
+        aad: "arkive:file-metadata:v1:" + String(vaultId || "") + ":" + String(fileId || "")
+      });
+    },
     decryptFileMetadata: function(encryptedMetadata, masterKey) {
       touchSessionUnlock();
       return callWorker("decryptFileMetadata", {

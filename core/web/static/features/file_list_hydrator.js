@@ -14,7 +14,7 @@ function formatBytes(bytes) {
 
 const THUMBNAIL_HYDRATION_CONCURRENCY = 6;
 
-function updateItem(item, metadata, plaintextSize) {
+function updateItem(item, metadata, plaintextSize, reader) {
   const nameEl = item.querySelector("[data-file-field='name']");
   const typeEl = item.querySelector("[data-file-field='type']");
   const sizeEl = item.querySelector("[data-file-field='size']");
@@ -51,6 +51,12 @@ function updateItem(item, metadata, plaintextSize) {
     shareDeleteEl.setAttribute("data-share-file", realName);
   }
   item.setAttribute("data-file-name", realName);
+  if (reader && reader.record && reader.record.vaultId) {
+    item.setAttribute("data-file-vault-id", String(reader.record.vaultId));
+  }
+  try {
+    item.setAttribute("data-file-metadata-json", JSON.stringify(metadata || {}));
+  } catch (_) {}
 
   item.classList.add("is-hydrated");
   item.removeAttribute("aria-busy");
@@ -122,7 +128,7 @@ async function hydrateItem(item) {
   try {
     await reader.load();
     const metadata = reader.getMetadata();
-    updateItem(item, metadata, reader.record ? reader.record.plaintextSize : 0);
+    updateItem(item, metadata, reader.record ? reader.record.plaintextSize : 0, reader);
     if (item.hasAttribute("data-file-card")) {
       await updateGridPreview(item, metadata, reader);
     }

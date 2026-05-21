@@ -31,6 +31,13 @@ type deleteEntriesRequest struct {
 	FolderIDs []string `json:"folderIds"`
 }
 
+type renameEntryRequest struct {
+	Type              string `json:"type"`
+	ID                string `json:"id"`
+	EncryptedName     string `json:"encryptedName"`
+	EncryptedMetadata string `json:"encryptedMetadata"`
+}
+
 type createFolderResponse struct {
 	ID                string  `json:"id"`
 	ParentFolderID    *string `json:"parentFolderId"`
@@ -226,5 +233,77 @@ func APIDeleteEntries(folderService *folderssvc.Service) gin.HandlerFunc {
 			DeletedFiles:   result.DeletedFiles,
 			DeletedFolders: result.DeletedFolders,
 		})
+	}
+}
+
+func APIRenameEntry(folderService *folderssvc.Service, filesService *filessvc.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID, ok := c.Get("user_id")
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			return
+		}
+
+		var req renameEntryRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			return
+		}
+
+		encryptedMetadata, err := base64.StdEncoding.DecodeString(strings.TrimSpace(req.EncryptedMetadata))
+		if err != nil || len(encryptedMetadata) == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			return
+		}
+
+		switch strings.TrimSpace(req.Type) {
+		case "file":
+			if err := filesService.RenameFile(c.Request.Context(), filessvc.RenameFileInput{
+				UserID:            userID.(string),
+				FileID:            strings.TrimSpace(req.ID),
+				EncryptedMetadata: encryptedMetadata,
+			}); err != nil {
+				switch {
+				case errors.Is(err, filessvc.ErrInvalidInput):
+					c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+				case errors.Is(err, filessvc.ErrNotFound):
+					c.JSON(http.StatusNotFound, gin.H{"error": "entry not found"})
+				case errors.Is(err, filessvc.ErrUploadCancelled):
+					c.JSON(http.StatusConflict, gin.H{"error": "upload in progress"})
+				default:
+					_ = c.Error(errs.WithStack(err))
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "rename failed"})
+				}
+				return
+			}
+		case "folder":
+			encryptedName, decodeErr := base64.StdEncoding.DecodeString(strings.TrimSpace(req.EncryptedName))
+			if decodeErr != nil || len(encryptedName) == 0 {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+				return
+			}
+			if err := folderService.RenameFolder(c.Request.Context(), folderssvc.RenameFolderInput{
+				UserID:            userID.(string),
+				FolderID:          strings.TrimSpace(req.ID),
+				EncryptedName:     encryptedName,
+				EncryptedMetadata: encryptedMetadata,
+			}); err != nil {
+				switch {
+				case errors.Is(err, folderssvc.ErrInvalidInput):
+					c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+				case errors.Is(err, folderssvc.ErrNotFound):
+					c.JSON(http.StatusNotFound, gin.H{"error": "entry not found"})
+				default:
+					_ = c.Error(errs.WithStack(err))
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "rename failed"})
+				}
+				return
+			}
+		default:
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			return
+		}
+
+		c.Status(http.StatusNoContent)
 	}
 }

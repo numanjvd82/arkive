@@ -569,6 +569,30 @@ async function handleMessage(message) {
         crypto.zeroize(encryptedChunk);
       }
     }
+    case "encryptFileMetadataInContext": {
+      const contextID = String(message.params.contextId || "");
+      const fileKey = activeReaders.get(contextID);
+      if (!fileKey) {
+        throw new Error("File context is missing");
+      }
+      const metadata = new TextEncoder().encode(
+        JSON.stringify(message.params.metadata || {}),
+      );
+      try {
+        const encrypted = crypto.encrypt_chunk(
+          metadata,
+          fileKey,
+          aadBytes(message.params.aad),
+        );
+        try {
+          return { encryptedMetadata: encodeBase64(encrypted) };
+        } finally {
+          crypto.zeroize(encrypted);
+        }
+      } finally {
+        crypto.zeroize(metadata);
+      }
+    }
     case "encryptFileMetadata":
     case "encryptFolderMetadata": {
       const master = activeMasterKey(message.params.masterKey);

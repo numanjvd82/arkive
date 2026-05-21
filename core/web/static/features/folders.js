@@ -11,15 +11,19 @@ async function decryptFolderItem(item) {
   }
   try {
     let name = "";
+    let metadata = null;
     if (metaValue) {
       const result = await window.ArkiveVault.decryptFolderMetadata(metaValue);
-      const metadata = result && result.metadata ? result.metadata : {};
-      name = typeof metadata === "string" ? metadata : String(metadata.name || "");
+      metadata = result && result.metadata ? result.metadata : null;
+      name = typeof metadata === "string" ? metadata : String((metadata && metadata.name) || "");
     }
     if (!name && nameValue && typeof window.ArkiveVault.decryptFolderName === "function") {
       const result = await window.ArkiveVault.decryptFolderName(nameValue);
-      const metadata = result && result.metadata ? result.metadata : {};
-      name = typeof metadata === "string" ? metadata : String(metadata.name || "");
+      const fallback = result && result.metadata ? result.metadata : null;
+      if (!metadata && fallback && typeof fallback === "object") {
+        metadata = fallback;
+      }
+      name = typeof fallback === "string" ? fallback : String((fallback && fallback.name) || "");
     }
     if (!name) {
       return;
@@ -29,6 +33,9 @@ async function decryptFolderItem(item) {
       node.removeAttribute("aria-hidden");
     });
     item.setAttribute("data-folder-name", name);
+    try {
+      item.setAttribute("data-folder-metadata-json", JSON.stringify(metadata && typeof metadata === "object" ? metadata : { name: name }));
+    } catch (_) {}
     item.classList.add("is-hydrated");
     return name;
   } catch (_) {}

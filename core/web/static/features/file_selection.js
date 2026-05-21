@@ -317,6 +317,21 @@ function requestNewFolder() {
   }
 }
 
+function requestRenameSelected() {
+  const selected = selectedEntries();
+  if (selected.length > 1) {
+    if (window.Toast) {
+      window.Toast.error("Rename only supports one item at a time.");
+    }
+    return;
+  }
+  document.dispatchEvent(new CustomEvent("arkive:rename-request", {
+    detail: {
+      entry: selected.length === 1 ? findEntryByID(selected[0].id) : focusedEntry()
+    }
+  }));
+}
+
 function requestCutSelected() {
   const selected = selectedEntries();
   if (!selected.length || !window.ArkiveMoveEntries || typeof window.ArkiveMoveEntries.cutEntries !== "function") {
@@ -529,6 +544,11 @@ function bindShortcuts() {
       requestDeleteSelected();
       return;
     }
+    if (key === "F2") {
+      event.preventDefault();
+      requestRenameSelected();
+      return;
+    }
     if (key === " " || key === "Spacebar") {
       const entry = focusedEntry();
       if (!entry) {
@@ -586,6 +606,7 @@ export function initFileSelection() {
   window.ArkiveEntrySelection = {
     clear: clearSelection,
     focusEntry: focusEntry,
+    getFocusedEntry: focusedEntry,
     getSelectedEntries: selectedEntries,
     findEntryByID: findEntryByID,
     selectOnly: selectOnly,
@@ -599,6 +620,7 @@ export function initFileSelection() {
     },
     requestDeleteSelected: requestDeleteSelected,
     requestMoveSelected: requestMoveSelected,
+    requestRenameSelected: requestRenameSelected,
     requestShareSelected: requestShareSelected,
   };
 

@@ -139,6 +139,7 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 		apiFolders.GET("/folders/:id/entries", handlers.APIListFolderEntries(folderService))
 		apiFolders.POST("/entries/delete", handlers.APIDeleteEntries(folderService))
 		apiFolders.POST("/entries/move", handlers.APIMoveEntries(folderService))
+		apiFolders.POST("/entries/rename", handlers.APIRenameEntry(folderService, filesService))
 	}
 
 	r.NoRoute(handlers.WebNotFound())

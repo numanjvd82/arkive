@@ -121,6 +121,21 @@ function deleteEntries(entries) {
   }));
 }
 
+function renameEntries(entries, entry) {
+  if (!entries.length) {
+    return;
+  }
+  if (entries.length > 1) {
+    if (window.Toast) {
+      window.Toast.error("Rename only supports one item at a time.");
+    }
+    return;
+  }
+  document.dispatchEvent(new CustomEvent("arkive:rename-request", {
+    detail: { entry: entry || null }
+  }));
+}
+
 function resolveTargetSelection(entry) {
   const api = selectionAPI();
   const current = selectedEntries();
@@ -198,7 +213,7 @@ function entryMenuItems(entry, selection) {
       { label: "Paste into folder", action: "paste-into-folder", disabled: !canPasteTo(entry.getAttribute("data-entry-id") || "") },
       { label: "Cancel cut", action: "clear-cut", disabled: !hasClipboard() },
       "divider",
-      { label: "Rename", action: "rename", disabled: true },
+      { label: "Rename", action: "rename" },
       { label: "Delete", action: "delete" },
     ];
   }
@@ -207,6 +222,7 @@ function entryMenuItems(entry, selection) {
     { label: "Share", action: "share" },
     { label: "Cut", action: "cut" },
     { label: "Move...", action: "move" },
+    { label: "Rename", action: "rename" },
     { label: "Cancel cut", action: "clear-cut", disabled: !hasClipboard() },
     "divider",
     { label: "Delete", action: "delete" },
@@ -252,6 +268,9 @@ function handleAction(action) {
       return;
     case "delete":
       deleteEntries(selection);
+      return;
+    case "rename":
+      renameEntries(selection, entry);
       return;
     case "new-folder":
       newFolderHere();

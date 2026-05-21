@@ -156,6 +156,23 @@ func (r *Repository) MoveFolders(ctx context.Context, db database.PgExecutor, us
 	return tag.RowsAffected(), nil
 }
 
+func (r *Repository) RenameFolderForUser(ctx context.Context, db database.PgExecutor, userID, folderID string, encryptedName, encryptedMetadata []byte) (bool, error) {
+	query := `UPDATE folders
+	SET
+		encrypted_name = $3,
+		encrypted_metadata = $4,
+		updated_at = now()
+	WHERE
+		id = $1
+		AND user_id = $2
+		AND deleted_at IS NULL`
+	tag, err := db.Exec(ctx, query, folderID, userID, encryptedName, encryptedMetadata)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() > 0, nil
+}
+
 func (r *Repository) TargetIsDescendant(ctx context.Context, db database.PgExecutor, userID string, movingFolderIDs []string, targetFolderID string) (bool, error) {
 	var exists bool
 	query := `WITH RECURSIVE descendants AS (
