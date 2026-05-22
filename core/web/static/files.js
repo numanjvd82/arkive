@@ -341,12 +341,15 @@ export const filesActions = {};
   const saveStateEl = document.getElementById("share-save-state");
   const stateNoteEl = document.getElementById("share-state-note");
   const saveButton = document.getElementById("share-save-button");
+  const cancelButton = document.getElementById("share-cancel-button");
   const expirySelect = document.getElementById("share-expiry-select");
   const expiryToggle = document.getElementById("share-expiry-toggle");
   const expiryCustomWrap = document.querySelector(".share-expiry-custom");
   const expiryCustomInput = document.getElementById("share-expiry-custom");
   const expiryTimeInput = document.getElementById("share-expiry-time");
+  const modePicker = document.getElementById("share-mode-picker");
   const passwordToggle = document.getElementById("share-password-toggle");
+  const passwordVisibilityButton = document.getElementById("share-password-visibility");
   const shareModeStable = document.getElementById("share-mode-stable");
   const shareModeOnce = document.getElementById("share-mode-once");
   const passwordField = document.querySelector(".share-password-field");
@@ -355,11 +358,13 @@ export const filesActions = {};
   const passwordStrength = document.getElementById("share-password-strength");
   const revokeButton = document.getElementById("share-revoke-button");
   const deleteButton = document.getElementById("share-delete-button");
+  const actionsTopRow = document.querySelector(".share-dialog-actions-top");
   const closeButton = document.getElementById("share-close-button");
   const errorEl = document.getElementById("share-error");
 
   let activeFileId = null;
   let activeShareId = "";
+  let activeHasPassword = false;
   let activeShareSecret = "";
   let activeShareStatus = "";
 
@@ -415,41 +420,44 @@ export const filesActions = {};
 
   function setShareEditable(editable) {
     setDisabled(passwordToggle, !editable);
-    setDisabled(passwordInput, !editable || !(passwordToggle && passwordToggle.checked));
+    setDisabled(passwordInput, !editable);
     setDisabled(expiryToggle, !editable);
-    setDisabled(expirySelect, !editable || !(expiryToggle && expiryToggle.checked));
-    setDisabled(expiryCustomInput, !editable || !(expiryToggle && expiryToggle.checked));
-    setDisabled(expiryTimeInput, !editable || !(expiryToggle && expiryToggle.checked));
+    setDisabled(expirySelect, !editable);
+    setDisabled(expiryCustomInput, !editable);
+    setDisabled(expiryTimeInput, !editable);
     setDisabled(shareModeStable, !editable);
     setDisabled(shareModeOnce, !editable);
+    setDisabled(modePicker, !editable);
+    setDisabled(passwordVisibilityButton, !editable);
     if (saveButton) {
       saveButton.hidden = !editable;
       saveButton.disabled = !editable;
+      setButtonLabel(saveButton, activeShareId ? "Update Link" : "Save Link");
     }
   }
 
   function setPasswordVisible(visible) {
     if (passwordField) {
-      passwordField.classList.toggle("is-visible", !!visible);
+      passwordField.classList.toggle("is-visible", !!visible || passwordField.classList.contains("share-password-field-visible"));
     }
     if (passwordHelper) {
-      passwordHelper.classList.toggle("is-visible", !!visible);
+      passwordHelper.classList.toggle("is-visible", false);
     }
     if (!visible && passwordStrength) {
       passwordStrength.textContent = "";
       passwordStrength.classList.remove("is-error");
       passwordStrength.classList.remove("is-success");
     }
-    setDisabled(passwordInput, !visible || !passwordToggle || passwordToggle.disabled || !passwordToggle.checked);
+    setDisabled(passwordInput, !passwordToggle || passwordToggle.disabled);
   }
 
   function setExpiryVisible(visible) {
     if (expiryCustomWrap) {
       expiryCustomWrap.classList.toggle("is-visible", !!visible);
     }
-    setDisabled(expirySelect, !visible || !expiryToggle || expiryToggle.disabled || !expiryToggle.checked);
-    setDisabled(expiryCustomInput, !visible || !expiryToggle || expiryToggle.disabled || !expiryToggle.checked);
-    setDisabled(expiryTimeInput, !visible || !expiryToggle || expiryToggle.disabled || !expiryToggle.checked);
+    setDisabled(expirySelect, true);
+    setDisabled(expiryCustomInput, !expiryToggle || expiryToggle.disabled);
+    setDisabled(expiryTimeInput, true);
   }
 
   function normalizeShareLink(link) {
@@ -465,12 +473,44 @@ export const filesActions = {};
     return timeValue ? dateValue + "T" + timeValue + ":00" : dateValue + "T00:00:00";
   }
 
+  function syncModePicker() {
+    if (!modePicker || !shareModeStable || !shareModeOnce) {
+      return;
+    }
+    modePicker.value = shareModeOnce.checked ? "once" : "stable";
+  }
+
+  function syncModeRadios() {
+    if (!modePicker || !shareModeStable || !shareModeOnce) {
+      return;
+    }
+    const oneTime = String(modePicker.value || "stable") === "once";
+    shareModeOnce.checked = oneTime;
+    shareModeStable.checked = !oneTime;
+  }
+
+  function syncPasswordToggle() {
+    if (!passwordToggle || !passwordInput) {
+      return;
+    }
+    const next = String(passwordInput.value || "").trim() !== "" || activeHasPassword;
+    passwordToggle.checked = next;
+  }
+
+  function syncExpiryToggle() {
+    if (!expiryToggle || !expiryCustomInput) {
+      return;
+    }
+    expiryToggle.checked = String(expiryCustomInput.value || "").trim() !== "";
+  }
+
   function applyShareState(data) {
     const link = normalizeShareLink(data && data.url);
     const hasPassword = !!(data && data.hasPassword);
     const burnAfterRead = !!(data && data.burnAfterRead);
     const expiresAt = data && data.expiresAt ? String(data.expiresAt) : "";
     const shareStatus = data && data.status ? String(data.status) : "";
+    activeHasPassword = hasPassword;
     activeShareId = String((data && data.id) || "");
     activeShareStatus = shareStatus;
 
@@ -485,7 +525,7 @@ export const filesActions = {};
       } else if (shareStatus === "burned") {
         statusEl.textContent = "Burned";
       } else {
-        statusEl.textContent = link ? "Live" : "Ready to create";
+        statusEl.textContent = link ? (burnAfterRead ? "Active (One-Time Link)" : "Active (Stable Link)") : "Ready to create";
       }
     }
     if (copyButton) {
@@ -493,11 +533,16 @@ export const filesActions = {};
     }
     if (deleteButton) {
       deleteButton.disabled = !activeShareId;
+      deleteButton.hidden = !activeShareId || (shareStatus !== "revoked" && shareStatus !== "burned" && shareStatus !== "expired");
     }
     if (revokeButton) {
       revokeButton.hidden = !activeShareId || shareStatus === "burned";
       revokeButton.disabled = !activeShareId || shareStatus === "expired";
       setButtonLabel(revokeButton, shareStatus === "revoked" ? "Restore Link" : "Revoke Link");
+    }
+    if (actionsTopRow) {
+      const hideTopRow = !activeShareId || ((revokeButton ? revokeButton.hidden : true) && (deleteButton ? deleteButton.hidden : true));
+      actionsTopRow.hidden = hideTopRow;
     }
     if (passwordToggle) {
       passwordToggle.checked = hasPassword;
@@ -508,6 +553,7 @@ export const filesActions = {};
     if (shareModeOnce) {
       shareModeOnce.checked = burnAfterRead;
     }
+    syncModePicker();
     if (expiryToggle) {
       expiryToggle.checked = !!expiresAt;
     }
@@ -518,7 +564,7 @@ export const filesActions = {};
 
     if (!activeShareId) {
       setShareEditable(true);
-      setStateNote("");
+      setStateNote("Create link, then configure how it should behave.");
     } else if (shareStatus === "revoked") {
       setShareEditable(false);
       setStateNote("This link is revoked. Restore it before editing settings or using it again.");
@@ -530,14 +576,14 @@ export const filesActions = {};
       setStateNote("This link has expired. Delete it and create a new one if you still need to share the file.");
     } else {
       setShareEditable(true);
-      setStateNote(burnAfterRead ? "This one-time link stays editable until it is used once." : "");
+      setStateNote(burnAfterRead ? "This one-time link stays editable until it is used once." : "This stable link remains usable until revoked or expired.");
     }
 
     if (expiresAt && expiryCustomInput) {
       const parts = expiresAt.split("T");
       expiryCustomInput.value = parts[0] || "";
       if (expiryTimeInput) {
-        expiryTimeInput.value = parts[1] ? parts[1].slice(0, 5) : "";
+        expiryTimeInput.value = parts[1] ? parts[1].slice(0, 5) : "00:00";
       }
       if (expirySelect) {
         expirySelect.value = "custom";
@@ -547,11 +593,16 @@ export const filesActions = {};
         expiryCustomInput.value = "";
       }
       if (expiryTimeInput) {
-        expiryTimeInput.value = "";
+        expiryTimeInput.value = "00:00";
       }
       if (expirySelect) {
         expirySelect.value = "custom";
       }
+    }
+    syncPasswordToggle();
+    syncExpiryToggle();
+    if (saveButton) {
+      setButtonLabel(saveButton, activeShareId ? "Update Link" : "Save Link");
     }
   }
 
@@ -559,6 +610,7 @@ export const filesActions = {};
     if (passwordInput) {
       passwordInput.value = "";
     }
+    activeHasPassword = false;
     activeShareId = "";
     activeShareSecret = "";
     activeShareStatus = "";
@@ -750,17 +802,20 @@ export const filesActions = {};
   if (passwordToggle) {
     passwordToggle.addEventListener("change", function() {
       setPasswordVisible(passwordToggle.checked);
-      updatePasswordHelper(!!activeShareId && passwordToggle.checked);
+      updatePasswordHelper(!!activeShareId && activeHasPassword);
       updatePasswordStrength(passwordToggle.checked ? passwordValidationMessage(passwordInput && passwordInput.value) : "");
     });
   }
 
   if (passwordInput) {
     passwordInput.addEventListener("input", function() {
+      const value = String(passwordInput.value || "");
+      activeHasPassword = activeShareId ? activeHasPassword : false;
+      syncPasswordToggle();
       if (!passwordToggle || !passwordToggle.checked) {
+        updatePasswordStrength("");
         return;
       }
-      const value = String(passwordInput.value || "");
       if (!value && activeShareId) {
         updatePasswordStrength("");
         return;
@@ -772,6 +827,12 @@ export const filesActions = {};
   if (expiryToggle) {
     expiryToggle.addEventListener("change", function() {
       setExpiryVisible(expiryToggle.checked);
+    });
+  }
+
+  if (expiryCustomInput) {
+    expiryCustomInput.addEventListener("change", function() {
+      syncExpiryToggle();
     });
   }
 
@@ -795,6 +856,21 @@ export const filesActions = {};
       if (expiryToggle) {
         expiryToggle.checked = true;
       }
+    });
+  }
+
+  if (modePicker) {
+    modePicker.addEventListener("change", function() {
+      syncModeRadios();
+    });
+  }
+
+  if (passwordVisibilityButton && passwordInput) {
+    passwordVisibilityButton.addEventListener("click", function() {
+      const visible = passwordInput.getAttribute("type") === "text";
+      const nextType = visible ? "password" : "text";
+      passwordInput.setAttribute("type", nextType);
+      passwordVisibilityButton.setAttribute("aria-label", visible ? "Show password" : "Hide password");
     });
   }
 
@@ -936,6 +1012,12 @@ export const filesActions = {};
 
   if (closeButton) {
     closeButton.addEventListener("click", function() {
+      closeShareDialog();
+    });
+  }
+
+  if (cancelButton) {
+    cancelButton.addEventListener("click", function() {
       closeShareDialog();
     });
   }
