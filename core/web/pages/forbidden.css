@@ -1,100 +1,233 @@
 .forbidden-page {
   position: relative;
-  padding: 72px 0 120px;
+  height: 100vh;
+  min-height: 100vh;
   overflow: hidden;
+  background: #0a0f12;
+  color: #dee3e8;
 }
 
-.forbidden-page::before {
-  content: "";
+.forbidden-bg-texture {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.08;
+  background:
+    radial-gradient(900px 420px at 50% 10%, rgba(255, 255, 255, 0.03), transparent 70%),
+    radial-gradient(680px 360px at 20% 70%, rgba(56, 189, 248, 0.03), transparent 72%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.015), rgba(255, 255, 255, 0));
+}
+
+.forbidden-scanline {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.03;
+  background:
+    linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+    linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+  background-size: 100% 2px, 3px 100%;
+  z-index: 2;
+}
+
+.forbidden-shell {
+  position: relative;
+  z-index: 3;
+  height: 100vh;
+  min-height: 100vh;
+  padding: 24px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.forbidden-lock-wrap {
+  position: relative;
+  margin-bottom: 28px;
+}
+
+.forbidden-lock-glow {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(600px 320px at 10% -10%, rgba(255, 192, 120, 0.2), transparent 65%),
-    radial-gradient(520px 340px at 95% 5%, rgba(120, 200, 255, 0.18), transparent 70%),
-    linear-gradient(140deg, rgba(16, 20, 32, 0.95), rgba(19, 24, 36, 0.9));
-  pointer-events: none;
+  background: rgba(255, 180, 171, 0.1);
+  filter: blur(36px);
+  border-radius: 999px;
+  transform: scale(1.45);
+  opacity: 0.55;
 }
 
-.forbidden-page::after {
-  content: "";
-  position: absolute;
-  inset: -20% 35% auto;
-  height: 140%;
-  background: radial-gradient(420px 520px at 30% 40%, rgba(255, 255, 255, 0.06), transparent 70%);
-  pointer-events: none;
-}
-
-.forbidden-page .container {
+.forbidden-lock-card {
   position: relative;
-  z-index: 1;
+  width: 96px;
+  height: 96px;
+  border-radius: 8px;
+  border: 1px solid #3e484f;
+  background: #252b2e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
 }
 
-.forbidden-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 32px;
-  align-items: start;
+.forbidden-lock-icon {
+  width: 58px;
+  height: 58px;
+  display: block;
+  color: #ffb4ab;
+  fill: currentColor;
+  stroke-width: 2;
+}
+
+.forbidden-corner {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+}
+
+.forbidden-corner-top {
+  top: -2px;
+  left: -2px;
+  border-top: 2px solid #38bdf8;
+  border-left: 2px solid #38bdf8;
+}
+
+.forbidden-corner-bottom {
+  right: -2px;
+  bottom: -2px;
+  border-right: 2px solid #38bdf8;
+  border-bottom: 2px solid #38bdf8;
 }
 
 .forbidden-copy {
+  width: min(500px, 100%);
   display: grid;
-  gap: 18px;
+  justify-items: center;
+  text-align: center;
 }
 
 .forbidden-eyebrow {
-  color: var(--accent-warm);
+  margin: 0 0 4px;
+  color: #38bdf8;
+  font-size: 11px;
+  line-height: 16px;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.forbidden-title {
   margin: 0;
+  color: #dee3e8;
+  font-size: 24px;
+  line-height: 32px;
+  letter-spacing: -0.02em;
+  font-weight: 600;
+}
+
+.forbidden-rule {
+  width: 48px;
+  height: 1px;
+  margin: 16px 0;
+  background: #3e484f;
 }
 
 .forbidden-lead {
   margin: 0;
-  color: var(--muted);
+  max-width: 320px;
+  color: #bdc8d1;
+  font-size: 14px;
+  line-height: 20px;
 }
 
 .forbidden-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.forbidden-hint {
+  width: min(280px, 100%);
   display: grid;
   gap: 8px;
-  padding: 16px 18px;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(18, 22, 34, 0.65);
-  color: var(--muted);
+  margin-top: 24px;
 }
 
-.forbidden-hint p {
+.forbidden-actions .button {
+  width: 100%;
+  min-height: 48px;
+  border-radius: 8px;
+  box-shadow: none;
+  font-size: 11px;
+  line-height: 16px;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.forbidden-actions .button.primary {
+  color: #001e2c;
+  background: #38bdf8;
+  border-color: #38bdf8;
+}
+
+.forbidden-actions .button.primary:hover {
+  background: #69cffb;
+  border-color: #69cffb;
+}
+
+.forbidden-actions .button.secondary {
+  border-color: #3e484f;
+  color: #bdc8d1;
+  background: transparent;
+}
+
+.forbidden-actions .button.secondary:hover {
+  background: #252b2e;
+  color: #dee3e8;
+}
+
+.forbidden-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 28px;
+}
+
+.forbidden-footer-copy {
   margin: 0;
+  color: #87929a;
+  font-size: 13px;
+  line-height: 18px;
 }
 
-.forbidden-panel {
-  padding: 18px;
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(16, 20, 32, 0.85);
-  box-shadow: var(--shadow);
+.forbidden-footer-strong {
+  color: #dee3e8;
+  font-weight: 600;
 }
 
-@media (max-width: 960px) {
-  .forbidden-grid {
-    grid-template-columns: minmax(0, 1fr);
+.forbidden-footer-icon {
+  width: 14px;
+  height: 14px;
+  display: block;
+  color: #87929a;
+  stroke-width: 2;
+}
+
+@media (max-height: 760px) {
+  .forbidden-shell {
+    justify-content: flex-start;
+    padding-top: 24px;
+  }
+
+  .forbidden-lock-wrap {
+    margin-bottom: 20px;
+  }
+
+  .forbidden-footer {
+    margin-top: 20px;
   }
 }
 
 @media (max-width: 640px) {
-  .forbidden-page {
-    padding: 56px 0 90px;
-  }
-
-  .forbidden-actions {
-    flex-direction: column;
-  }
-
-  .forbidden-actions .button {
-    width: 100%;
+  .forbidden-shell {
+    padding-left: 16px;
+    padding-right: 16px;
   }
 }
