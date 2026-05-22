@@ -204,9 +204,6 @@ export function initUploads() {
 
 	function setStatus(text) { status.textContent = text; }
 	function showUploadErrorToast(event) {
-		if (!window.ArkiveUI || typeof window.ArkiveUI.showAppError !== "function") {
-			return;
-		}
 		window.ArkiveUI.showAppError(event, {
 			code: "upload_failed",
 			message: "Upload failed",

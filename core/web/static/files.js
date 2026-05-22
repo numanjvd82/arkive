@@ -19,12 +19,10 @@ function filesActions() {
     try {
       await reader.download();
     } catch (error) {
-      if (window.ArkiveUI && typeof window.ArkiveUI.showAppError === "function") {
-        window.ArkiveUI.showAppError(error, {
-          code: "download_failed",
-          message: "Download failed.",
-        });
-      }
+      window.ArkiveUI.showAppError(error, {
+        code: "download_failed",
+        message: "Download failed.",
+      });
     } finally {
       if (trigger) {
         trigger.disabled = false;
@@ -322,12 +320,10 @@ function filesActions() {
           window.Toast.success(successMessage, { title: "Deleted" });
         }
       } catch (error) {
-        if (window.ArkiveUI && typeof window.ArkiveUI.showAppError === "function") {
-          window.ArkiveUI.showAppError(error, {
-            code: "conflict",
-            message: "Delete failed. Try again.",
-          });
-        }
+        window.ArkiveUI.showAppError(error, {
+          code: "conflict",
+          message: "Delete failed. Try again.",
+        });
         closeDialog();
       } finally {
         setButtonBusy(confirmButton, false);
@@ -505,11 +501,12 @@ function filesActions() {
   }
 
   function loadFileRecord(fileId) {
-    return fetch("/api/files/" + encodeURIComponent(fileId) + "/record", {
+    return window.ArkiveAPI.apiRequest("/api/files/" + encodeURIComponent(fileId) + "/record", {
       method: "GET",
       headers: { "Content-Type": "application/json" }
-    }).then(function(res) {
-      return window.ArkiveAPI.readJSON(res, "Failed to load file");
+    }, {
+      code: "not_found",
+      message: "Failed to load file",
     });
   }
 
@@ -596,15 +593,18 @@ function filesActions() {
     } else {
       backdrop.classList.remove("is-hidden");
     }
-    fetch("/api/files/" + encodeURIComponent(fileId) + "/share", {
+    window.ArkiveAPI.apiRequest("/api/files/" + encodeURIComponent(fileId) + "/share", {
       method: "GET",
       headers: { "Content-Type": "application/json" }
+    }, {
+      code: "not_found",
+      message: "Failed to load share settings.",
     })
-      .then(function(res) {
-        if (res.status === 404) {
+      .catch(function(error) {
+        if (error && error.status === 404) {
           return null;
         }
-        return window.ArkiveAPI.readJSON(res, "Failed to load share settings.");
+        throw error;
       })
       .then(function(data) {
         if (!data) {
@@ -673,9 +673,10 @@ function filesActions() {
           window.Toast.success("Share link copied.", { title: "Copied" });
         }
       } catch (_) {
-        if (window.Toast) {
-          window.Toast.error("Copy failed.");
-        }
+        window.ArkiveUI.showAppError(null, {
+          code: "unknown_error",
+          message: "Copy failed.",
+        });
       }
     });
   }
@@ -758,16 +759,19 @@ function filesActions() {
       }
 
       const request = activeShareId
-        ? fetch("/api/shares/" + encodeURIComponent(activeShareId), {
+        ? window.ArkiveAPI.apiRequest("/api/shares/" + encodeURIComponent(activeShareId), {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
+          }, {
+            code: "validation_failed",
+            message: "Failed to save share settings.",
           })
         : (function() {
             const token = createRandomShareToken();
             return createSharePayload(activeFileId, token).then(function(cryptoPayload) {
             activeShareSecret = String((cryptoPayload && cryptoPayload.shareSecret) || "");
-            return fetch("/api/files/" + encodeURIComponent(activeFileId) + "/share", {
+            return window.ArkiveAPI.apiRequest("/api/files/" + encodeURIComponent(activeFileId) + "/share", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -777,14 +781,14 @@ function filesActions() {
                 encryptedShareKey: cryptoPayload.encryptedShareKey,
                 encryptedFileKeyForShare: cryptoPayload.encryptedFileKeyForShare,
               }),
+            }, {
+              code: "validation_failed",
+              message: "Failed to save share settings.",
             });
             });
           })();
 
       request
-        .then(function(res) {
-          return window.ArkiveAPI.readJSON(res, "Failed to save share settings.");
-        })
         .then(function(data) {
           activeShareId = String((data && data.id) || activeShareId || "");
           applyShareState(withAbsoluteURL(data));
@@ -811,16 +815,17 @@ function filesActions() {
       setButtonBusy(deleteButton, true, { busyText: "Deleting...", restoreDisabled: false });
       setShareError("");
       setSaveState("Deleting...", "saving");
-      fetch("/api/shares/" + encodeURIComponent(activeShareId), {
+      window.ArkiveAPI.apiRequest("/api/shares/" + encodeURIComponent(activeShareId), {
         method: "DELETE",
         headers: { "Content-Type": "application/json" }
+      }, {
+        code: "unknown_error",
+        message: "Failed to delete share",
       })
-        .then(function(res) {
-          return window.ArkiveAPI.readJSON(res, "Failed to delete share").then(function() {
+        .then(function() {
           applyShareState(null);
           activeShareSecret = "";
           setSaveState("Deleted", "");
-          });
         })
         .catch(function(error) {
           setSaveState("Delete failed", "error");

@@ -167,12 +167,10 @@ export function initFolders() {
         });
         window.location.reload();
       } catch (error) {
-        if (window.ArkiveUI && typeof window.ArkiveUI.showAppError === "function") {
-          window.ArkiveUI.showAppError(error, {
-            code: "validation_failed",
-            message: "Create folder failed"
-          });
-        }
+        window.ArkiveUI.showAppError(error, {
+          code: "validation_failed",
+          message: "Create folder failed"
+        });
       } finally {
         setButtonBusy(confirmButton, false);
       }

@@ -57,10 +57,11 @@ export function initCopyButtons(root = document) {
             window.Toast.success(successMessage, { title: successTitle });
           }
         })
-        .catch(function() {
-          if (window.Toast) {
-            window.Toast.error("Copy failed. Try again.");
-          }
+        .catch(function(error) {
+          window.ArkiveUI.showAppError(error, {
+            code: "unknown_error",
+            message: "Copy failed. Try again.",
+          });
         });
     });
   });

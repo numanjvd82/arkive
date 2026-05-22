@@ -18,19 +18,18 @@
       submit.disabled = true;
     }
 
-    fetch(action, {
+    window.ArkiveAPI.apiRequest(action, {
       method: "POST",
       body: body,
       headers: {
         "X-Requested-With": "XMLHttpRequest",
       },
+    }, {
+      code: "forbidden",
+      message: "Unlock failed",
     })
-      .then(async function(res) {
-        if (res.status === 204) {
-          window.location.assign(action + window.location.hash);
-          return null;
-        }
-        return window.ArkiveAPI.readJSON(res, "Unlock failed");
+      .then(function() {
+        window.location.assign(action + window.location.hash);
       })
       .catch(function(error) {
         if (errorEl) {

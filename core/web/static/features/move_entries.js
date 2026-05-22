@@ -249,27 +249,31 @@ async function submitMove(selected, targetFolderId) {
   if (!entries.length) {
     return;
   }
-  const response = await fetch("/api/entries/move", {
+  await window.ArkiveAPI.apiRequest("/api/entries/move", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
     body: JSON.stringify(movePayload(entries, targetFolderId))
+  }, {
+    code: "validation_failed",
+    message: "Move failed",
   });
-  await window.ArkiveAPI.readJSON(response, "Move failed");
 }
 
 async function pasteInto(targetFolderId) {
   const entries = clipboardEntries();
   if (!entries.length) {
-    if (window.Toast) {
-      window.Toast.error("Nothing to paste.");
-    }
+    window.ArkiveUI.showAppError(null, {
+      code: "unknown_error",
+      message: "Nothing to paste.",
+    });
     return false;
   }
   if (!canPasteTo(targetFolderId)) {
-    if (window.Toast) {
-      window.Toast.error("Nothing to move here.");
-    }
+    window.ArkiveUI.showAppError(null, {
+      code: "unknown_error",
+      message: "Nothing to move here.",
+    });
     return false;
   }
   await submitMove(entries, normalizeFolderID(targetFolderId) || null);
@@ -340,9 +344,10 @@ export function initMoveEntries() {
         }
         window.location.reload();
       } catch (error) {
-        if (window.Toast) {
-          window.Toast.error((error && error.message) || "Move failed.");
-        }
+        window.ArkiveUI.showAppError(error, {
+          code: "validation_failed",
+          message: "Move failed.",
+        });
       } finally {
         moveState().pendingEntries = [];
         setButtonBusy(confirmButton, false);
@@ -357,9 +362,10 @@ export function initMoveEntries() {
       try {
         await pasteInto(currentTargetFolderId());
       } catch (error) {
-        if (window.Toast) {
-          window.Toast.error((error && error.message) || "Paste failed.");
-        }
+        window.ArkiveUI.showAppError(error, {
+          code: "validation_failed",
+          message: "Paste failed.",
+        });
       }
     });
   }

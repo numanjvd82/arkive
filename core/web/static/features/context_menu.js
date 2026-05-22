@@ -109,9 +109,10 @@ async function pasteEntries(targetFolderId) {
   try {
     await window.ArkiveMoveEntries.pasteInto(targetFolderId);
   } catch (error) {
-    if (window.Toast) {
-      window.Toast.error((error && error.message) || "Paste failed.");
-    }
+    window.ArkiveUI.showAppError(error, {
+      code: "validation_failed",
+      message: "Paste failed.",
+    });
   }
 }
 
@@ -126,9 +127,10 @@ function renameEntries(entries, entry) {
     return;
   }
   if (entries.length > 1) {
-    if (window.Toast) {
-      window.Toast.error("Rename only supports one item at a time.");
-    }
+    window.ArkiveUI.showAppError(null, {
+      code: "unknown_error",
+      message: "Rename only supports one item at a time.",
+    });
     return;
   }
   document.dispatchEvent(new CustomEvent("arkive:rename-request", {

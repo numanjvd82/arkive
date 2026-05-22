@@ -278,15 +278,17 @@ function requestShareSelected() {
   const selected = selectedEntries();
   const selectedFiles = selected.filter(function(entry) { return entry.type === "file"; });
   if (!selectedFiles.length) {
-    if (window.Toast) {
-      window.Toast.error("Only files can be shared in this phase.");
-    }
+    window.ArkiveUI.showAppError(null, {
+      code: "unknown_error",
+      message: "Only files can be shared in this phase.",
+    });
     return;
   }
   if (selectedFiles.length > 1) {
-    if (window.Toast) {
-      window.Toast.error("Share currently opens one file at a time.");
-    }
+    window.ArkiveUI.showAppError(null, {
+      code: "unknown_error",
+      message: "Share currently opens one file at a time.",
+    });
     return;
   }
   if (window.ArkiveFilesActions && typeof window.ArkiveFilesActions.openShare === "function") {
@@ -320,9 +322,10 @@ function requestNewFolder() {
 function requestRenameSelected() {
   const selected = selectedEntries();
   if (selected.length > 1) {
-    if (window.Toast) {
-      window.Toast.error("Rename only supports one item at a time.");
-    }
+    window.ArkiveUI.showAppError(null, {
+      code: "unknown_error",
+      message: "Rename only supports one item at a time.",
+    });
     return;
   }
   document.dispatchEvent(new CustomEvent("arkive:rename-request", {
@@ -356,9 +359,10 @@ async function requestPasteHere() {
         : ""
     );
   } catch (error) {
-    if (window.Toast) {
-      window.Toast.error((error && error.message) || "Paste failed.");
-    }
+    window.ArkiveUI.showAppError(error, {
+      code: "validation_failed",
+      message: "Paste failed.",
+    });
   }
 }
 

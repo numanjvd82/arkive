@@ -64,14 +64,17 @@ export class ArkiveFileReader {
       throw new Error("Missing file ID");
     }
     await window.ArkiveVault.waitUntilReady();
-    const response = await fetch(
+    const data = await window.ArkiveAPI.apiRequest(
       this.apiBase + "/" + encodeURIComponent(this.fileId) + "/record",
       {
         method: "GET",
         headers: { "Content-Type": "application/json" },
       },
+      {
+        code: "not_found",
+        message: "Failed to load file",
+      },
     );
-    const data = await window.ArkiveAPI.readJSON(response, "Failed to load file");
     this.record = data;
     const opened = await window.ArkiveVault.openFileContext(this.contextId, data);
     this.metadata = JSON.parse(opened.metadata || "{}");

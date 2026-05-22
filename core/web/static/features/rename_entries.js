@@ -286,7 +286,7 @@ async function submitRename() {
       if (!encryptedNameB64 || !encryptedMetadataB64) {
         throw new Error("Rename failed.");
       }
-      const response = await fetch("/api/entries/rename", {
+      await window.ArkiveAPI.apiRequest("/api/entries/rename", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -295,8 +295,10 @@ async function submitRename() {
           encryptedName: encryptedNameB64,
           encryptedMetadata: encryptedMetadataB64,
         })
+      }, {
+        code: "validation_failed",
+        message: "Rename failed.",
       });
-      await window.ArkiveAPI.readJSON(response, "Rename failed.");
       updateFolderName(entry, nextName, metadata, encryptedNameB64, encryptedMetadataB64);
     } else {
       if (!window.ArkiveFileReader || !window.ArkiveVault.encryptFileMetadataInContext) {
@@ -321,7 +323,7 @@ async function submitRename() {
       } finally {
         await reader.dispose();
       }
-      const response = await fetch("/api/entries/rename", {
+      await window.ArkiveAPI.apiRequest("/api/entries/rename", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -330,8 +332,10 @@ async function submitRename() {
           encryptedName: "",
           encryptedMetadata: encryptedMetadataB64,
         })
+      }, {
+        code: "validation_failed",
+        message: "Rename failed.",
       });
-      await window.ArkiveAPI.readJSON(response, "Rename failed.");
       updateFileName(entry, nextName, metadata, encryptedMetadataB64);
     }
 
@@ -342,9 +346,10 @@ async function submitRename() {
   } catch (error) {
     entry.classList.remove("is-rename-saving");
     input.disabled = false;
-    if (window.Toast) {
-      window.Toast.error((error && error.message) || "Rename failed.");
-    }
+    window.ArkiveUI.showAppError(error, {
+      code: "validation_failed",
+      message: "Rename failed.",
+    });
     finishRename(true);
   }
 }
@@ -407,9 +412,10 @@ async function beginRename(entry) {
 
   const resolvedName = currentName(entry);
   if (!resolvedName) {
-    if (window.Toast) {
-      window.Toast.error("Rename unavailable until item metadata is ready.");
-    }
+    window.ArkiveUI.showAppError(null, {
+      code: "unknown_error",
+      message: "Rename unavailable until item metadata is ready.",
+    });
     return;
   }
 

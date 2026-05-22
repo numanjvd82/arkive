@@ -47,11 +47,13 @@ export class ArkiveShareReader {
       throw new Error("Share crypto is unavailable");
     }
 
-    const response = await fetch("/api/public/shares/" + encodeURIComponent(this.token), {
+    const data = await window.ArkiveAPI.apiRequest("/api/public/shares/" + encodeURIComponent(this.token), {
       method: "GET",
       headers: { "Content-Type": "application/json" },
+    }, {
+      code: "not_found",
+      message: "Failed to load share",
     });
-    const data = await window.ArkiveAPI.readJSON(response, "Failed to load share");
 
     this.record = data;
     const opened = await window.ArkiveVault.openPublicShareContext(

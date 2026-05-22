@@ -318,9 +318,10 @@
             (error && error.message) || "Download failed.",
           );
         }
-        if (window.Toast) {
-          window.Toast.error((error && error.message) || "Download failed.");
-        }
+        window.ArkiveUI.showAppError(error, {
+          code: "download_failed",
+          message: "Download failed.",
+        });
       } finally {
         activeDownloadController = null;
         if (!reader.record || reader.record.allowDownload !== false) {

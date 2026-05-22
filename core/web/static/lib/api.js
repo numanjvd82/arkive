@@ -62,14 +62,6 @@ export async function apiRequest(url, options, fallback) {
   return parsed.data;
 }
 
-export async function readJSON(response, fallback) {
-  const parsed = await parseJSONBody(response);
-  if (!response.ok) {
-    throw parseAPIErrorPayload(parsed.data, parsed.text || fallback, response.status);
-  }
-  return parsed.data;
-}
-
 export function installGlobalAPI() {
   window.ArkiveAPI = {
     APIError,
@@ -77,7 +69,6 @@ export function installGlobalAPI() {
     apiRequest,
     firstValidationMessage,
     parseAPIErrorPayload,
-    readJSON,
     toAppError,
   };
 }

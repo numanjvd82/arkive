@@ -358,26 +358,22 @@ import { setButtonBusy } from "./features/button_state.js";
   }
 
   function fetchExistingShare(fileID) {
-    return fetch("/api/files/" + encodeURIComponent(fileID) + "/share", {
+    return window.ArkiveAPI.apiRequest("/api/files/" + encodeURIComponent(fileID) + "/share", {
       method: "GET",
       headers: { "Content-Type": "application/json" }
-    }).then(function(res) {
-      if (res.status === 404) {
-        throw new window.ArkiveAPI.APIError("Share not found", {
-          code: "share_not_found",
-          status: 404,
-        });
-      }
-      return window.ArkiveAPI.readJSON(res, "Share failed");
+    }, {
+      code: "not_found",
+      message: "Share failed",
     });
   }
 
   function loadFileRecord(fileID) {
-    return fetch("/api/files/" + encodeURIComponent(fileID) + "/record", {
+    return window.ArkiveAPI.apiRequest("/api/files/" + encodeURIComponent(fileID) + "/record", {
       method: "GET",
       headers: { "Content-Type": "application/json" }
-    }).then(function(res) {
-      return window.ArkiveAPI.readJSON(res, "Failed to load file");
+    }, {
+      code: "not_found",
+      message: "Failed to load file",
     });
   }
 
@@ -414,7 +410,7 @@ import { setButtonBusy } from "./features/button_state.js";
   function createShare(fileID) {
     const token = createRandomShareToken();
     return createSharePayload(fileID, token).then(function(cryptoPayload) {
-      return fetch("/api/files/" + encodeURIComponent(fileID) + "/share", {
+      return window.ArkiveAPI.apiRequest("/api/files/" + encodeURIComponent(fileID) + "/share", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -424,13 +420,14 @@ import { setButtonBusy } from "./features/button_state.js";
           encryptedShareKey: cryptoPayload.encryptedShareKey,
           encryptedFileKeyForShare: cryptoPayload.encryptedFileKeyForShare,
         })
-      }).then(function(res) {
-        return window.ArkiveAPI.readJSON(res, "Share failed").then(function(data) {
-          return {
-            share: data,
-            shareSecret: cryptoPayload.shareSecret,
-          };
-        });
+      }, {
+        code: "unknown_error",
+        message: "Share failed",
+      }).then(function(data) {
+        return {
+          share: data,
+          shareSecret: cryptoPayload.shareSecret,
+        };
       });
     });
   }
@@ -534,9 +531,10 @@ import { setButtonBusy } from "./features/button_state.js";
             (error && error.message) || "Download failed.",
           );
         }
-        if (window.Toast) {
-          window.Toast.error((error && error.message) || "Download failed.");
-        }
+        window.ArkiveUI.showAppError(error, {
+          code: "download_failed",
+          message: "Download failed.",
+        });
       } finally {
         activeDownloadController = null;
         downloadButton.disabled = false;
@@ -578,9 +576,10 @@ import { setButtonBusy } from "./features/button_state.js";
           });
         })
         .catch(function(error) {
-          if (window.Toast) {
-            window.Toast.error((error && error.message) || "Share failed.");
-          }
+          window.ArkiveUI.showAppError(error, {
+            code: "unknown_error",
+            message: "Share failed.",
+          });
         })
         .finally(function() {
           setButtonBusy(shareButton, false);
@@ -595,33 +594,36 @@ import { setButtonBusy } from "./features/button_state.js";
         return;
       }
       setButtonBusy(deleteButton, true, { busyText: "Deleting..." });
-      fetch("/api/files/" + encodeURIComponent(fileId), {
+      window.ArkiveAPI.apiRequest("/api/files/" + encodeURIComponent(fileId), {
         method: "DELETE",
         headers: { "Content-Type": "application/json" }
+      }, {
+        code: "conflict",
+        message: "Delete failed",
       })
-        .then(function(res) {
-          return window.ArkiveAPI.readJSON(res, "Delete failed").then(function() {
+        .then(function() {
             return clearThumbnailCache(fileId)
             .catch(function() {})
             .then(function() {
               window.location.href = "/files";
             });
-          });
         })
-        .catch(function() {
+        .catch(function(error) {
           setButtonBusy(deleteButton, false);
-          if (window.Toast) {
-            window.Toast.error("Delete failed. Try again.");
-          }
+          window.ArkiveUI.showAppError(error, {
+            code: "conflict",
+            message: "Delete failed. Try again.",
+          });
         });
     });
   }
 
   renderPreview().catch(function(error) {
     previewUnavailable("Download is available while preview pipeline finishes loading.");
-    if (window.Toast) {
-      window.Toast.error((error && error.message) || "Preview failed.");
-    }
+    window.ArkiveUI.showAppError(error, {
+      code: "unknown_error",
+      message: "Preview failed.",
+    });
   });
 
   readerReady

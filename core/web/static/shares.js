@@ -87,13 +87,13 @@
       const token = button.getAttribute("data-share-token") || "";
       const baseURL = value.indexOf("http") === 0 ? value : window.location.origin + value;
       const linkPromise = (shareId && window.ArkiveVault && window.ArkiveVault.openShareKey)
-        ? fetch("/api/shares/" + encodeURIComponent(shareId) + "/crypto-record", {
+        ? window.ArkiveAPI.apiRequest("/api/shares/" + encodeURIComponent(shareId) + "/crypto-record", {
           method: "GET",
           headers: { "Content-Type": "application/json" }
+          }, {
+            code: "unknown_error",
+            message: "Failed to load share",
           })
-            .then(function(res) {
-              return window.ArkiveAPI.readJSON(res, "Failed to load share");
-            })
             .then(function(record) {
               return window.ArkiveVault.waitUntilReady().then(function() {
                 return record;
@@ -118,10 +118,11 @@
             window.Toast.success("Link copied.", { title: "Copied" });
           }
         })
-        .catch(function() {
-          if (window.Toast) {
-            window.Toast.error("Copy failed. Try again.");
-          }
+        .catch(function(error) {
+          window.ArkiveUI.showAppError(error, {
+            code: "unknown_error",
+            message: "Copy failed. Try again.",
+          });
         });
       });
   });
@@ -142,10 +143,10 @@
       const shareId = pendingAction.shareId;
       confirmButton.disabled = true;
       const endpoint = "/api/shares/" + encodeURIComponent(shareId);
-      fetch(endpoint, { method: "DELETE" })
-        .then(function(res) {
-          return window.ArkiveAPI.readJSON(res, "Action failed");
-        })
+      window.ArkiveAPI.apiRequest(endpoint, { method: "DELETE" }, {
+        code: "unknown_error",
+        message: "Action failed",
+      })
         .then(function() {
           removeRow(shareId);
           if (window.Toast) {
@@ -153,10 +154,11 @@
           }
           closeDialog();
         })
-        .catch(function() {
-          if (window.Toast) {
-            window.Toast.error("Action failed. Try again.");
-          }
+        .catch(function(error) {
+          window.ArkiveUI.showAppError(error, {
+            code: "unknown_error",
+            message: "Action failed. Try again.",
+          });
           closeDialog();
         })
         .finally(function() {

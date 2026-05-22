@@ -110,9 +110,10 @@ export function initEntryDragMove() {
         markSuccess(folder);
         window.location.reload();
       } catch (error) {
-        if (window.Toast) {
-          window.Toast.error((error && error.message) || "Move failed.");
-        }
+        window.ArkiveUI.showAppError(error, {
+          code: "validation_failed",
+          message: "Move failed.",
+        });
       } finally {
         clearDragging();
       }
