@@ -1,4 +1,11 @@
 import { setButtonBusy } from "./features/button_state.js";
+import { ArkiveFileReader } from "./features/file_reader.js";
+import { canDownloadInCurrentBrowser, isDownloadAbortError, maybeShowDownloadCapabilityWarning, showDownloadError, showServiceWorkerDownloadNotice } from "./features/reader/download_warning.js";
+import { mountStreamingMedia } from "./features/streaming/stream_player.js";
+import { initPlyr } from "./plyr.js";
+import { apiRequest } from "./lib/api.js";
+import { showAppError } from "./lib/toasts.js";
+import { thumbnailCache } from "./upload/thumbnail_cache.js";
 
 (function() {
   const actionsPanel = document.querySelector("[data-media-file-id]");
@@ -24,12 +31,12 @@ import { setButtonBusy } from "./features/button_state.js";
   const shareButton = document.getElementById("media-share-button");
   const deleteButton = document.getElementById("media-delete-button");
 
-  if (!actionsPanel || !stage || !window.ArkiveFileReader) {
+  if (!actionsPanel || !stage) {
     return;
   }
 
   const fileId = actionsPanel.getAttribute("data-media-file-id");
-  const reader = new window.ArkiveFileReader({ fileId: fileId });
+  const reader = new ArkiveFileReader({ fileId: fileId });
   const readerReady = reader.load();
   const SMALL_VIDEO_MAX_BYTES = 128 * 1024 * 1024;
   const TEXT_PREVIEW_MAX_BYTES = 2 * 1024 * 1024;
@@ -178,18 +185,13 @@ import { setButtonBusy } from "./features/button_state.js";
     });
     setStage(video);
     currentPreviewURL = objectURL;
-    if (window.ArkiveInitPlyr) {
-      window.ArkiveInitPlyr(video);
-    }
+    initPlyr(video);
   }
 
   async function streamingVideoPreview() {
-    if (!window.ArkiveStreaming || typeof window.ArkiveStreaming.mountStreamingMedia !== "function") {
-      throw new Error("Encrypted streaming preview is unavailable.");
-    }
     const metadata = reader.getMetadata();
     const record = reader.record;
-    const stream = await window.ArkiveStreaming.mountStreamingMedia({
+    const stream = await mountStreamingMedia({
       reader: reader,
       record: record,
       metadata: metadata,
@@ -204,9 +206,7 @@ import { setButtonBusy } from "./features/button_state.js";
     });
     setStage(stream.element);
     currentStream = stream;
-    if (window.ArkiveInitPlyr) {
-      window.ArkiveInitPlyr(stream.element);
-    }
+    initPlyr(stream.element);
   }
 
   function textPreview(text) {
@@ -358,7 +358,7 @@ import { setButtonBusy } from "./features/button_state.js";
   }
 
   function fetchExistingShare(fileID) {
-    return window.ArkiveAPI.apiRequest("/api/files/" + encodeURIComponent(fileID) + "/share", {
+    return apiRequest("/api/files/" + encodeURIComponent(fileID) + "/share", {
       method: "GET",
       headers: { "Content-Type": "application/json" }
     }, {
@@ -368,7 +368,7 @@ import { setButtonBusy } from "./features/button_state.js";
   }
 
   function loadFileRecord(fileID) {
-    return window.ArkiveAPI.apiRequest("/api/files/" + encodeURIComponent(fileID) + "/record", {
+    return apiRequest("/api/files/" + encodeURIComponent(fileID) + "/record", {
       method: "GET",
       headers: { "Content-Type": "application/json" }
     }, {
@@ -410,7 +410,7 @@ import { setButtonBusy } from "./features/button_state.js";
   function createShare(fileID) {
     const token = createRandomShareToken();
     return createSharePayload(fileID, token).then(function(cryptoPayload) {
-      return window.ArkiveAPI.apiRequest("/api/files/" + encodeURIComponent(fileID) + "/share", {
+      return apiRequest("/api/files/" + encodeURIComponent(fileID) + "/share", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -454,10 +454,10 @@ import { setButtonBusy } from "./features/button_state.js";
   }
 
   function clearThumbnailCache(fileID) {
-    if (!window.ArkiveThumbnailCache || typeof window.ArkiveThumbnailCache.deleteForFiles !== "function") {
+    if (!thumbnailCache || typeof thumbnailCache.deleteForFiles !== "function") {
       return Promise.resolve();
     }
-    return window.ArkiveThumbnailCache.deleteForFiles([fileID]);
+    return thumbnailCache.deleteForFiles([fileID]);
   }
 
   function resolveShareForCopy(fileID) {
@@ -510,13 +510,13 @@ import { setButtonBusy } from "./features/button_state.js";
           }
           return;
         }
-        if (result && result.mode === "service-worker" && downloadWarning && window.ArkiveDownloadWarning && typeof window.ArkiveDownloadWarning.showServiceWorkerDownloadNotice === "function") {
-          window.ArkiveDownloadWarning.showServiceWorkerDownloadNotice(downloadWarning);
+        if (result && result.mode === "service-worker" && downloadWarning) {
+          showServiceWorkerDownloadNotice(downloadWarning);
         }
         setDownloadState("complete", result && result.mode === "service-worker" ? "Browser download started" : "Saved");
         hideDownloadQueueSoon();
       } catch (error) {
-        if (window.ArkiveDownloadWarning && typeof window.ArkiveDownloadWarning.isDownloadAbortError === "function" && window.ArkiveDownloadWarning.isDownloadAbortError(error)) {
+        if (isDownloadAbortError(error)) {
           if (downloadCancelledByUser) {
             hideDownloadQueueSoon();
           } else if (downloadQueue) {
@@ -525,13 +525,13 @@ import { setButtonBusy } from "./features/button_state.js";
           return;
         }
         setDownloadState("error", "Download failed");
-        if (downloadWarning && window.ArkiveDownloadWarning && typeof window.ArkiveDownloadWarning.showDownloadError === "function") {
-          window.ArkiveDownloadWarning.showDownloadError(
+        if (downloadWarning) {
+          showDownloadError(
             downloadWarning,
             (error && error.message) || "Download failed.",
           );
         }
-        window.ArkiveUI.showAppError(error, {
+        showAppError(error, {
           code: "download_failed",
           message: "Download failed.",
         });
@@ -576,7 +576,7 @@ import { setButtonBusy } from "./features/button_state.js";
           });
         })
         .catch(function(error) {
-          window.ArkiveUI.showAppError(error, {
+          showAppError(error, {
             code: "unknown_error",
             message: "Share failed.",
           });
@@ -594,7 +594,7 @@ import { setButtonBusy } from "./features/button_state.js";
         return;
       }
       setButtonBusy(deleteButton, true, { busyText: "Deleting..." });
-      window.ArkiveAPI.apiRequest("/api/files/" + encodeURIComponent(fileId), {
+      apiRequest("/api/files/" + encodeURIComponent(fileId), {
         method: "DELETE",
         headers: { "Content-Type": "application/json" }
       }, {
@@ -610,7 +610,7 @@ import { setButtonBusy } from "./features/button_state.js";
         })
         .catch(function(error) {
           setButtonBusy(deleteButton, false);
-          window.ArkiveUI.showAppError(error, {
+          showAppError(error, {
             code: "conflict",
             message: "Delete failed. Try again.",
           });
@@ -620,7 +620,7 @@ import { setButtonBusy } from "./features/button_state.js";
 
   renderPreview().catch(function(error) {
     previewUnavailable("Download is available while preview pipeline finishes loading.");
-    window.ArkiveUI.showAppError(error, {
+    showAppError(error, {
       code: "unknown_error",
       message: "Preview failed.",
     });
@@ -629,16 +629,12 @@ import { setButtonBusy } from "./features/button_state.js";
   readerReady
     .then(function() {
       const downloadSupported =
-        !window.ArkiveDownloadWarning ||
-        typeof window.ArkiveDownloadWarning.canDownloadInCurrentBrowser !== "function" ||
-        window.ArkiveDownloadWarning.canDownloadInCurrentBrowser(reader.record);
+        canDownloadInCurrentBrowser(reader.record);
       if (downloadButton) {
         downloadButton.disabled = !downloadSupported;
       }
       setDownloadButtonVisibility(downloadSupported);
-      if (window.ArkiveDownloadWarning && typeof window.ArkiveDownloadWarning.maybeShowDownloadCapabilityWarning === "function") {
-        window.ArkiveDownloadWarning.maybeShowDownloadCapabilityWarning(document, reader.record);
-      }
+      maybeShowDownloadCapabilityWarning(document, reader.record);
     })
     .catch(function() {
       if (downloadButton) {

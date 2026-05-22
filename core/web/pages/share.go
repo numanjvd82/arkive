@@ -20,7 +20,7 @@ func PublicSharePassword(props PublicSharePasswordProps) web.Page {
 		Title:   "Arkive · Shared file",
 		Robots:  RobotsNoIndex,
 		CSS:     []string{"/web/pages/share.css"},
-		JS:      []string{"/static/share_password.js"},
+		ModuleJS: []string{"/static/share_password.js"},
 		HideNav: true,
 		Body: g.Group([]g.Node{
 			components.InlineStyle(components.InputCSS),

@@ -1,5 +1,4 @@
-(function() {
-  function getPlaybackContext() {
+function getPlaybackContext() {
     const nav = typeof navigator !== "undefined" ? navigator : null;
     const ua = nav && nav.userAgent ? nav.userAgent : "";
     const platform = nav && nav.platform ? nav.platform : "";
@@ -21,7 +20,7 @@
     };
   }
 
-  function enterNativeFullscreen(videoEl, player) {
+function enterNativeFullscreen(videoEl, player) {
     if (!videoEl) {
       return;
     }
@@ -60,7 +59,7 @@
     open();
   }
 
-  function initPlyr(videoEl) {
+export function initPlyr(videoEl) {
     if (!videoEl || !window.Plyr) {
       return null;
     }
@@ -138,10 +137,7 @@
     return player;
   }
 
-  window.ArkiveInitPlyr = initPlyr;
-
-  const videoEl = document.querySelector("[data-video-element='true']");
-  if (videoEl) {
-    initPlyr(videoEl);
-  }
-})();
+const videoEl = document.querySelector("[data-video-element='true']");
+if (videoEl) {
+  initPlyr(videoEl);
+}

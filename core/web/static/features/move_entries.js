@@ -1,4 +1,6 @@
 import { setButtonBusy } from "./button_state.js";
+import { apiRequest } from "../lib/api.js";
+import { showAppError } from "../lib/toasts.js";
 
 const CLIPBOARD_STORAGE_KEY = "arkive:entry-clipboard:v1";
 
@@ -249,7 +251,7 @@ async function submitMove(selected, targetFolderId) {
   if (!entries.length) {
     return;
   }
-  await window.ArkiveAPI.apiRequest("/api/entries/move", {
+  await apiRequest("/api/entries/move", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
@@ -263,14 +265,14 @@ async function submitMove(selected, targetFolderId) {
 async function pasteInto(targetFolderId) {
   const entries = clipboardEntries();
   if (!entries.length) {
-    window.ArkiveUI.showAppError(null, {
+    showAppError(null, {
       code: "unknown_error",
       message: "Nothing to paste.",
     });
     return false;
   }
   if (!canPasteTo(targetFolderId)) {
-    window.ArkiveUI.showAppError(null, {
+    showAppError(null, {
       code: "unknown_error",
       message: "Nothing to move here.",
     });
@@ -344,7 +346,7 @@ export function initMoveEntries() {
         }
         window.location.reload();
       } catch (error) {
-        window.ArkiveUI.showAppError(error, {
+        showAppError(error, {
           code: "validation_failed",
           message: "Move failed.",
         });
@@ -362,7 +364,7 @@ export function initMoveEntries() {
       try {
         await pasteInto(currentTargetFolderId());
       } catch (error) {
-        window.ArkiveUI.showAppError(error, {
+        showAppError(error, {
           code: "validation_failed",
           message: "Paste failed.",
         });

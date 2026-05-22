@@ -1,3 +1,5 @@
+import { showAppError } from "../lib/toasts.js";
+
 function menuState() {
   if (!window.__arkiveContextMenuState) {
     window.__arkiveContextMenuState = {
@@ -109,7 +111,7 @@ async function pasteEntries(targetFolderId) {
   try {
     await window.ArkiveMoveEntries.pasteInto(targetFolderId);
   } catch (error) {
-    window.ArkiveUI.showAppError(error, {
+    showAppError(error, {
       code: "validation_failed",
       message: "Paste failed.",
     });
@@ -127,7 +129,7 @@ function renameEntries(entries, entry) {
     return;
   }
   if (entries.length > 1) {
-    window.ArkiveUI.showAppError(null, {
+    showAppError(null, {
       code: "unknown_error",
       message: "Rename only supports one item at a time.",
     });

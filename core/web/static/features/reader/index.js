@@ -1,6 +1,7 @@
 import { fetchEncryptedChunk } from "./chunk_fetcher.js";
 import { buildChunkMap } from "./chunk_map.js";
 import { downloadFile } from "./download_controller.js";
+import { apiRequest, parseAPIErrorPayload } from "../../lib/api.js";
 import { thumbnailCache } from "../../upload/thumbnail_cache.js";
 
 function createContextId() {
@@ -33,7 +34,7 @@ async function throwAPIErrorFromResponse(response, fallback) {
   } catch (_) {
     data = null;
   }
-  throw window.ArkiveAPI.parseAPIErrorPayload(data, fallback, response.status);
+  throw parseAPIErrorPayload(data, fallback, response.status);
 }
 
 export class ArkiveFileReader {
@@ -64,7 +65,7 @@ export class ArkiveFileReader {
       throw new Error("Missing file ID");
     }
     await window.ArkiveVault.waitUntilReady();
-    const data = await window.ArkiveAPI.apiRequest(
+    const data = await apiRequest(
       this.apiBase + "/" + encodeURIComponent(this.fileId) + "/record",
       {
         method: "GET",

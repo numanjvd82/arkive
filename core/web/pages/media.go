@@ -207,12 +207,12 @@ func buildMediaCSS(props MediaViewPageProps) []string {
 func buildMediaJS(props MediaViewPageProps) []string {
 	return []string{
 		"/static/vendor/plyr/plyr.polyfilled.js",
-		"/static/plyr.js",
 	}
 }
 
 func buildMediaModuleJS(props MediaViewPageProps) []string {
 	return []string{
+		"/static/plyr.js",
 		"/static/media.js",
 	}
 }

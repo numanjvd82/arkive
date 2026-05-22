@@ -1,3 +1,5 @@
+import { showAppError } from "../lib/toasts.js";
+
 function selectedEntries() {
   return window.ArkiveEntrySelection && typeof window.ArkiveEntrySelection.getSelectedEntries === "function"
     ? window.ArkiveEntrySelection.getSelectedEntries()
@@ -110,7 +112,7 @@ export function initEntryDragMove() {
         markSuccess(folder);
         window.location.reload();
       } catch (error) {
-        window.ArkiveUI.showAppError(error, {
+        showAppError(error, {
           code: "validation_failed",
           message: "Move failed.",
         });

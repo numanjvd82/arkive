@@ -1,3 +1,5 @@
+import { apiRequest } from "../lib/api.js";
+
 export function initSearchPalette() {
   const trigger = document.getElementById("app-search-trigger");
   const panel = document.getElementById("search-panel");
@@ -143,7 +145,7 @@ export function initSearchPalette() {
       abortController.abort();
     }
     abortController = new AbortController();
-    window.ArkiveAPI.apiRequest("/api/search?q=" + encodeURIComponent(query), {
+    apiRequest("/api/search?q=" + encodeURIComponent(query), {
       method: "GET",
       signal: abortController.signal,
       headers: { "Accept": "application/json" }

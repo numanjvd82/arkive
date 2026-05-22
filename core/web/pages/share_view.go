@@ -33,6 +33,7 @@ func PublicShareViewPage(props PublicShareViewProps) web.Page {
 		Robots:  RobotsNoIndex,
 		CSS:     []string{"/static/vendor/plyr/plyr.css", "/web/pages/share.css"},
 		JS:      buildPublicShareJS(),
+		ModuleJS: buildPublicShareModuleJS(),
 		HideNav: true,
 		Body: g.Group([]g.Node{
 			components.InlineStyle(components.UploadUICSS),

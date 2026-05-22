@@ -1,4 +1,8 @@
 import { setButtonBusy } from "./features/button_state.js";
+import { ArkiveFileReader } from "./features/file_reader.js";
+import { apiRequest } from "./lib/api.js";
+import { showAppError } from "./lib/toasts.js";
+import { thumbnailCache } from "./upload/thumbnail_cache.js";
 
 function filesActions() {
   if (!window.ArkiveFilesActions) {
@@ -9,17 +13,17 @@ function filesActions() {
 
 (function() {
   async function downloadFile(fileId, trigger) {
-    if (!fileId || !window.ArkiveFileReader) {
+    if (!fileId) {
       return;
     }
     if (trigger) {
       trigger.disabled = true;
     }
-    const reader = new window.ArkiveFileReader({ fileId: fileId });
+    const reader = new ArkiveFileReader({ fileId: fileId });
     try {
       await reader.download();
     } catch (error) {
-      window.ArkiveUI.showAppError(error, {
+      showAppError(error, {
         code: "download_failed",
         message: "Download failed.",
       });
@@ -131,10 +135,10 @@ function filesActions() {
   }
 
   function clearThumbnailCache(fileIds) {
-    if (!window.ArkiveThumbnailCache || typeof window.ArkiveThumbnailCache.deleteForFiles !== "function") {
+    if (!thumbnailCache || typeof thumbnailCache.deleteForFiles !== "function") {
       return Promise.resolve();
     }
-    return window.ArkiveThumbnailCache.deleteForFiles(fileIds);
+    return thumbnailCache.deleteForFiles(fileIds);
   }
 
   function describeDeleteResult(result) {
@@ -299,7 +303,7 @@ function filesActions() {
       });
 
       try {
-        const result = await window.ArkiveAPI.apiRequest("/api/entries/delete", {
+        const result = await apiRequest("/api/entries/delete", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ fileIds: fileIds, folderIds: folderIds })
@@ -320,7 +324,7 @@ function filesActions() {
           window.Toast.success(successMessage, { title: "Deleted" });
         }
       } catch (error) {
-        window.ArkiveUI.showAppError(error, {
+        showAppError(error, {
           code: "conflict",
           message: "Delete failed. Try again.",
         });
@@ -501,7 +505,7 @@ function filesActions() {
   }
 
   function loadFileRecord(fileId) {
-    return window.ArkiveAPI.apiRequest("/api/files/" + encodeURIComponent(fileId) + "/record", {
+    return apiRequest("/api/files/" + encodeURIComponent(fileId) + "/record", {
       method: "GET",
       headers: { "Content-Type": "application/json" }
     }, {
@@ -593,7 +597,7 @@ function filesActions() {
     } else {
       backdrop.classList.remove("is-hidden");
     }
-    window.ArkiveAPI.apiRequest("/api/files/" + encodeURIComponent(fileId) + "/share", {
+    apiRequest("/api/files/" + encodeURIComponent(fileId) + "/share", {
       method: "GET",
       headers: { "Content-Type": "application/json" }
     }, {
@@ -673,7 +677,7 @@ function filesActions() {
           window.Toast.success("Share link copied.", { title: "Copied" });
         }
       } catch (_) {
-        window.ArkiveUI.showAppError(null, {
+        showAppError(null, {
           code: "unknown_error",
           message: "Copy failed.",
         });
@@ -759,7 +763,7 @@ function filesActions() {
       }
 
       const request = activeShareId
-        ? window.ArkiveAPI.apiRequest("/api/shares/" + encodeURIComponent(activeShareId), {
+        ? apiRequest("/api/shares/" + encodeURIComponent(activeShareId), {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
@@ -771,7 +775,7 @@ function filesActions() {
             const token = createRandomShareToken();
             return createSharePayload(activeFileId, token).then(function(cryptoPayload) {
             activeShareSecret = String((cryptoPayload && cryptoPayload.shareSecret) || "");
-            return window.ArkiveAPI.apiRequest("/api/files/" + encodeURIComponent(activeFileId) + "/share", {
+            return apiRequest("/api/files/" + encodeURIComponent(activeFileId) + "/share", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -815,7 +819,7 @@ function filesActions() {
       setButtonBusy(deleteButton, true, { busyText: "Deleting...", restoreDisabled: false });
       setShareError("");
       setSaveState("Deleting...", "saving");
-      window.ArkiveAPI.apiRequest("/api/shares/" + encodeURIComponent(activeShareId), {
+      apiRequest("/api/shares/" + encodeURIComponent(activeShareId), {
         method: "DELETE",
         headers: { "Content-Type": "application/json" }
       }, {

@@ -61,14 +61,3 @@ export async function apiRequest(url, options, fallback) {
   }
   return parsed.data;
 }
-
-export function installGlobalAPI() {
-  window.ArkiveAPI = {
-    APIError,
-    AppError,
-    apiRequest,
-    firstValidationMessage,
-    parseAPIErrorPayload,
-    toAppError,
-  };
-}

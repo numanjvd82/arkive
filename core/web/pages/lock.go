@@ -21,7 +21,7 @@ func LockPage(props LockPageProps) web.Page {
 		Title:              "Arkive · Lock",
 		Robots:             RobotsNoIndex,
 		CSS:                []string{"/web/pages/login.css"},
-		JS:                 []string{"/static/lock.js"},
+		ModuleJS:           []string{"/static/lock.js"},
 		Body:               lockBody(props),
 		HideNav:            true,
 		RequireVaultUnlock: false,

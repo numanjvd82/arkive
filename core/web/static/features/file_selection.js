@@ -1,3 +1,5 @@
+import { showAppError } from "../lib/toasts.js";
+
 function selectedMap() {
   if (!window.__arkiveSelectedEntries) {
     window.__arkiveSelectedEntries = new Map();
@@ -278,14 +280,14 @@ function requestShareSelected() {
   const selected = selectedEntries();
   const selectedFiles = selected.filter(function(entry) { return entry.type === "file"; });
   if (!selectedFiles.length) {
-    window.ArkiveUI.showAppError(null, {
+    showAppError(null, {
       code: "unknown_error",
       message: "Only files can be shared in this phase.",
     });
     return;
   }
   if (selectedFiles.length > 1) {
-    window.ArkiveUI.showAppError(null, {
+    showAppError(null, {
       code: "unknown_error",
       message: "Share currently opens one file at a time.",
     });
@@ -322,7 +324,7 @@ function requestNewFolder() {
 function requestRenameSelected() {
   const selected = selectedEntries();
   if (selected.length > 1) {
-    window.ArkiveUI.showAppError(null, {
+    showAppError(null, {
       code: "unknown_error",
       message: "Rename only supports one item at a time.",
     });
@@ -359,7 +361,7 @@ async function requestPasteHere() {
         : ""
     );
   } catch (error) {
-    window.ArkiveUI.showAppError(error, {
+    showAppError(error, {
       code: "validation_failed",
       message: "Paste failed.",
     });

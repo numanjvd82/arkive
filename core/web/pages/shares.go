@@ -48,7 +48,7 @@ func SharesPage(props SharesPageProps) web.Page {
 		Title:              "Arkive · Shares",
 		Robots:             RobotsNoIndex,
 		CSS:                []string{"/web/pages/shares.css"},
-		JS:                 []string{"/static/shares.js"},
+		ModuleJS:           []string{"/static/shares.js"},
 		AuthLayout:         true,
 		RequireVaultUnlock: true,
 		User:               props.Ctx.User,

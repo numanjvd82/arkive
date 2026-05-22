@@ -1,3 +1,5 @@
+import { apiRequest } from "./lib/api.js";
+
 (function() {
   const form = document.querySelector("[data-login-form='true']");
   if (!form) {
@@ -24,7 +26,7 @@
   }
 
   async function apiLogin(email, password) {
-    return window.ArkiveAPI.apiRequest("/api/auth/login", {
+    return apiRequest("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

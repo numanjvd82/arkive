@@ -1,3 +1,5 @@
+import { apiRequest } from "./lib/api.js";
+
 (function() {
   const form = document.querySelector("[data-lock-form='true']");
   if (!form) {
@@ -33,7 +35,7 @@
   }
 
   async function apiUnlock(password) {
-    return window.ArkiveAPI.apiRequest("/api/auth/unlock", {
+    return apiRequest("/api/auth/unlock", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ password: password })

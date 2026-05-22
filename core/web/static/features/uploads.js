@@ -1,4 +1,5 @@
 import { UploadRunner } from "./upload_runner.js";
+import { showAppError } from "../lib/toasts.js";
 
 function formatBytes(bytes) {
 	if (!bytes) return "0 B";
@@ -204,7 +205,7 @@ export function initUploads() {
 
 	function setStatus(text) { status.textContent = text; }
 	function showUploadErrorToast(event) {
-		window.ArkiveUI.showAppError(event, {
+		showAppError(event, {
 			code: "upload_failed",
 			message: "Upload failed",
 		});

@@ -1,6 +1,7 @@
 import { fetchEncryptedChunk } from "./reader/chunk_fetcher.js";
 import { buildChunkMap } from "./reader/chunk_map.js";
 import { downloadFile } from "./reader/download_controller.js";
+import { apiRequest } from "../lib/api.js";
 
 function createContextId() {
   if (window.crypto && window.crypto.randomUUID) {
@@ -47,7 +48,7 @@ export class ArkiveShareReader {
       throw new Error("Share crypto is unavailable");
     }
 
-    const data = await window.ArkiveAPI.apiRequest("/api/public/shares/" + encodeURIComponent(this.token), {
+    const data = await apiRequest("/api/public/shares/" + encodeURIComponent(this.token), {
       method: "GET",
       headers: { "Content-Type": "application/json" },
     }, {

@@ -1,3 +1,5 @@
+import { showAppError } from "../lib/toasts.js";
+
 export function initCopyButtons(root = document) {
   const buttons = root.querySelectorAll("[data-copy-button]");
   if (!buttons.length) {
@@ -58,7 +60,7 @@ export function initCopyButtons(root = document) {
           }
         })
         .catch(function(error) {
-          window.ArkiveUI.showAppError(error, {
+          showAppError(error, {
             code: "unknown_error",
             message: "Copy failed. Try again.",
           });

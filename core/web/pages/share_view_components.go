@@ -17,6 +17,11 @@ import (
 func buildPublicShareJS() []string {
 	return []string{
 		"/static/vendor/plyr/plyr.polyfilled.js",
+	}
+}
+
+func buildPublicShareModuleJS() []string {
+	return []string{
 		"/static/plyr.js",
 		"/static/public_share.js",
 	}

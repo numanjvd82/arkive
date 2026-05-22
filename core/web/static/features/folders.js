@@ -1,4 +1,6 @@
 import { setButtonBusy } from "./button_state.js";
+import { apiRequest } from "../lib/api.js";
+import { showAppError } from "../lib/toasts.js";
 
 async function decryptFolderItem(item) {
   if (!window.ArkiveVault || typeof window.ArkiveVault.decryptFolderMetadata !== "function") {
@@ -152,7 +154,7 @@ export function initFolders() {
         setButtonBusy(confirmButton, true, { busyText: "Creating..." });
         const encryptedName = await window.ArkiveVault.encryptFolderName({ name: name });
         const encryptedMetadata = await window.ArkiveVault.encryptFolderMetadata({ name: name });
-        await window.ArkiveAPI.apiRequest("/api/folders", {
+        await apiRequest("/api/folders", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
@@ -167,7 +169,7 @@ export function initFolders() {
         });
         window.location.reload();
       } catch (error) {
-        window.ArkiveUI.showAppError(error, {
+        showAppError(error, {
           code: "validation_failed",
           message: "Create folder failed"
         });

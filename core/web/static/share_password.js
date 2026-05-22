@@ -1,3 +1,5 @@
+import { apiRequest } from "./lib/api.js";
+
 (function() {
   const form = document.querySelector(".share-form");
   const errorEl = document.querySelector(".form-error");
@@ -18,7 +20,7 @@
       submit.disabled = true;
     }
 
-    window.ArkiveAPI.apiRequest(action, {
+    apiRequest(action, {
       method: "POST",
       body: body,
       headers: {

@@ -1,3 +1,5 @@
+import { ArkiveFileReader } from "./file_reader.js";
+
 function formatBytes(bytes) {
   const value = Number(bytes || 0);
   if (!value) {
@@ -124,7 +126,7 @@ async function hydrateItem(item) {
   if (!fileId) {
     return;
   }
-  const reader = new window.ArkiveFileReader({ fileId: fileId });
+  const reader = new ArkiveFileReader({ fileId: fileId });
   try {
     await reader.load();
     const metadata = reader.getMetadata();
@@ -140,7 +142,7 @@ async function hydrateItem(item) {
 
 export async function initFileListHydrator() {
   const items = document.querySelectorAll("[data-file-item]");
-  if (!items.length || !window.ArkiveFileReader || !window.ArkiveVault) {
+  if (!items.length || !window.ArkiveVault) {
     return;
   }
   if (typeof window.ArkiveVault.waitUntilReady === "function") {

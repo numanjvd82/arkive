@@ -3,10 +3,8 @@ import { setButtonBusy } from "./features/button_state.js";
 import { initCrypto } from "./features/crypto.js";
 import { initDialogs } from "./features/dialog.js";
 import { initDropdowns } from "./features/dropdown.js";
-import { ArkiveFileReader } from "./features/file_reader.js";
 import { initFileSelection } from "./features/file_selection.js";
 import { initDragSelect } from "./features/drag_select.js";
-import * as ArkiveDownloadWarning from "./features/reader/download_warning.js";
 import { initEntryDragMove } from "./features/entry_drag_move.js";
 import { initFileListHydrator } from "./features/file_list_hydrator.js";
 import { initFolders } from "./features/folders.js";
@@ -14,25 +12,12 @@ import { initLightbox } from "./features/lightbox.js";
 import { initMoveEntries } from "./features/move_entries.js";
 import { initSearchPalette } from "./features/search_palette.js";
 import { initRenameEntries } from "./features/rename_entries.js";
-import { ArkiveShareReader } from "./features/share_reader.js";
 import { initSidebar } from "./features/sidebar.js";
 import { initContextMenu } from "./features/context_menu.js";
-import { installGlobalAPI } from "./lib/api.js";
-import { installGlobalUI } from "./lib/toasts.js";
-import * as ArkiveStreaming from "./features/streaming/stream_player.js";
 import { initToast } from "./features/toast.js";
 import { initTooltips } from "./features/tooltip.js";
 import { initUploads } from "./features/uploads.js";
-import { thumbnailCache } from "./upload/thumbnail_cache.js";
 import { initVault } from "./features/vault.js";
-
-window.ArkiveFileReader = ArkiveFileReader;
-window.ArkiveShareReader = ArkiveShareReader;
-window.ArkiveDownloadWarning = ArkiveDownloadWarning;
-window.ArkiveStreaming = ArkiveStreaming;
-window.ArkiveThumbnailCache = thumbnailCache;
-installGlobalAPI();
-installGlobalUI();
 
 function initTheme() {
   const modes = ["dark", "system", "light"];

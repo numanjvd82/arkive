@@ -1,3 +1,6 @@
+import { apiRequest } from "./lib/api.js";
+import { showAppError } from "./lib/toasts.js";
+
 (function() {
   const actionButtons = document.querySelectorAll("[data-share-action]");
   const copyButtons = document.querySelectorAll("[data-share-copy]");
@@ -87,7 +90,7 @@
       const token = button.getAttribute("data-share-token") || "";
       const baseURL = value.indexOf("http") === 0 ? value : window.location.origin + value;
       const linkPromise = (shareId && window.ArkiveVault && window.ArkiveVault.openShareKey)
-        ? window.ArkiveAPI.apiRequest("/api/shares/" + encodeURIComponent(shareId) + "/crypto-record", {
+        ? apiRequest("/api/shares/" + encodeURIComponent(shareId) + "/crypto-record", {
           method: "GET",
           headers: { "Content-Type": "application/json" }
           }, {
@@ -119,7 +122,7 @@
           }
         })
         .catch(function(error) {
-          window.ArkiveUI.showAppError(error, {
+          showAppError(error, {
             code: "unknown_error",
             message: "Copy failed. Try again.",
           });
@@ -143,7 +146,7 @@
       const shareId = pendingAction.shareId;
       confirmButton.disabled = true;
       const endpoint = "/api/shares/" + encodeURIComponent(shareId);
-      window.ArkiveAPI.apiRequest(endpoint, { method: "DELETE" }, {
+      apiRequest(endpoint, { method: "DELETE" }, {
         code: "unknown_error",
         message: "Action failed",
       })
@@ -155,7 +158,7 @@
           closeDialog();
         })
         .catch(function(error) {
-          window.ArkiveUI.showAppError(error, {
+          showAppError(error, {
             code: "unknown_error",
             message: "Action failed. Try again.",
           });

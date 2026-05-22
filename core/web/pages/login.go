@@ -24,7 +24,7 @@ func LoginPage(props LoginPageProps) web.Page {
 		Title:   "Arkive · Admin Login",
 		Robots:  RobotsNoIndex,
 		CSS:     []string{"/web/pages/login.css"},
-		JS:      []string{"/static/login.js"},
+		ModuleJS: []string{"/static/login.js"},
 		Body:    loginBody(props),
 		HideNav: true,
 	}

@@ -27,9 +27,3 @@ export function showAppError(error, fallback) {
   }
   return appError;
 }
-
-export function installGlobalUI() {
-  window.ArkiveUI = {
-    showAppError,
-  };
-}

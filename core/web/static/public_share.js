@@ -1,3 +1,9 @@
+import { showAppError } from "./lib/toasts.js";
+import { ArkiveShareReader } from "./features/share_reader.js";
+import { canDownloadInCurrentBrowser, isDownloadAbortError, maybeShowDownloadCapabilityWarning, showDownloadError, showServiceWorkerDownloadNotice } from "./features/reader/download_warning.js";
+import { mountStreamingMedia } from "./features/streaming/stream_player.js";
+import { initPlyr } from "./plyr.js";
+
 (function() {
   const root = document.querySelector("[data-public-share-token]");
   const preview = document.getElementById("public-share-preview");
@@ -23,7 +29,7 @@
   let hideDownloadQueueTimer = 0;
   let downloadCancelledByUser = false;
 
-  if (!root || !window.ArkiveShareReader) {
+  if (!root) {
     return;
   }
 
@@ -117,17 +123,12 @@
     video.src = objectURL;
     setPreview(video);
     currentPreviewURL = objectURL;
-    if (window.ArkiveInitPlyr) {
-      window.ArkiveInitPlyr(video);
-    }
+    initPlyr(video);
   }
 
   async function streamingVideoPreview() {
-    if (!window.ArkiveStreaming || typeof window.ArkiveStreaming.mountStreamingMedia !== "function") {
-      throw new Error("Encrypted streaming preview is unavailable.");
-    }
     const metadata = reader.getMetadata();
-    const stream = await window.ArkiveStreaming.mountStreamingMedia({
+    const stream = await mountStreamingMedia({
       reader: reader,
       record: reader.record,
       metadata: metadata,
@@ -139,9 +140,7 @@
     });
     setPreview(stream.element);
     currentStream = stream;
-    if (window.ArkiveInitPlyr) {
-      window.ArkiveInitPlyr(stream.element);
-    }
+    initPlyr(stream.element);
   }
 
   function textPreview(text) {
@@ -163,7 +162,7 @@
     return;
   }
 
-  const reader = new window.ArkiveShareReader({
+  const reader = new ArkiveShareReader({
     token: token,
     shareSecret: shareSecret,
   });
@@ -297,13 +296,13 @@
           }
           return;
         }
-        if (result && result.mode === "service-worker" && downloadWarning && window.ArkiveDownloadWarning && typeof window.ArkiveDownloadWarning.showServiceWorkerDownloadNotice === "function") {
-          window.ArkiveDownloadWarning.showServiceWorkerDownloadNotice(downloadWarning);
+        if (result && result.mode === "service-worker" && downloadWarning) {
+          showServiceWorkerDownloadNotice(downloadWarning);
         }
         setDownloadState("complete", result && result.mode === "service-worker" ? "Browser download started" : "Saved");
         hideDownloadQueueSoon();
       } catch (error) {
-        if (window.ArkiveDownloadWarning && typeof window.ArkiveDownloadWarning.isDownloadAbortError === "function" && window.ArkiveDownloadWarning.isDownloadAbortError(error)) {
+        if (isDownloadAbortError(error)) {
           if (downloadCancelledByUser) {
             hideDownloadQueueSoon();
           } else if (downloadQueue) {
@@ -312,13 +311,13 @@
           return;
         }
         setDownloadState("error", "Download failed");
-        if (downloadWarning && window.ArkiveDownloadWarning && typeof window.ArkiveDownloadWarning.showDownloadError === "function") {
-          window.ArkiveDownloadWarning.showDownloadError(
+        if (downloadWarning) {
+          showDownloadError(
             downloadWarning,
             (error && error.message) || "Download failed.",
           );
         }
-        window.ArkiveUI.showAppError(error, {
+        showAppError(error, {
           code: "download_failed",
           message: "Download failed.",
         });
@@ -359,9 +358,7 @@
         plaintextSize: Number(metadata.size || reader.record.plaintextSize || 0),
       };
       const downloadSupported =
-        !window.ArkiveDownloadWarning ||
-        typeof window.ArkiveDownloadWarning.canDownloadInCurrentBrowser !== "function" ||
-        window.ArkiveDownloadWarning.canDownloadInCurrentBrowser(downloadRecord);
+        canDownloadInCurrentBrowser(downloadRecord);
       if (reader.record && reader.record.allowDownload === false && download) {
         download.setAttribute("aria-disabled", "true");
         setDownloadVisibility(true);
@@ -372,9 +369,7 @@
         download.setAttribute("aria-disabled", "false");
         setDownloadVisibility(true);
       }
-      if (window.ArkiveDownloadWarning && typeof window.ArkiveDownloadWarning.maybeShowDownloadCapabilityWarning === "function") {
-        window.ArkiveDownloadWarning.maybeShowDownloadCapabilityWarning(document, downloadRecord);
-      }
+      maybeShowDownloadCapabilityWarning(document, downloadRecord);
       if (reader.record && reader.record.allowPreview === false) {
         unavailable("Preview is disabled for this share.");
         return;
