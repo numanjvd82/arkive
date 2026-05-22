@@ -1,6 +1,6 @@
-import { UploadRunner } from "./upload_runner.js";
 import { showAppError } from "../lib/toasts.js";
 import { Toast } from "./toast.js";
+import { getUploadService, uploadService } from "./uploads/service.js";
 import { getSessionUnlock, onSessionUnlock } from "./vault.js";
 
 function formatBytes(bytes) {
@@ -45,8 +45,8 @@ export function initUploads() {
 	const uploadLimits = {
 		maxQueueItems: parseQueueLimit(dropzone && dropzone.getAttribute("data-upload-max-queue-items"), 300),
 	};
-	const runner = new UploadRunner({ limits: uploadLimits });
-	window.uploadRunner = runner;
+	const runner = getUploadService({ limits: uploadLimits });
+	window.uploadRunner = uploadService;
 	let selectedFiles = [];
 	let state = { jobs: [], activeJobId: null };
 	const completedBatches = new Set();
