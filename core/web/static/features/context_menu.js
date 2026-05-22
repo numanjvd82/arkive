@@ -2,6 +2,7 @@ import { showAppError } from "../lib/toasts.js";
 import { filesActions } from "../files.js";
 import { entrySelection } from "./file_selection.js";
 import { moveEntries } from "./move_entries.js";
+import { Toast } from "./toast.js";
 
 const state = {
   root: null,
@@ -99,11 +100,9 @@ function cutEntries(entries) {
     return;
   }
   moveEntries.cutEntries(entries);
-  if (window.Toast) {
-    window.Toast.success("Cut " + entries.length + (entries.length === 1 ? " item." : " items."), {
-      title: "Ready to move"
-    });
-  }
+  Toast.success("Cut " + entries.length + (entries.length === 1 ? " item." : " items."), {
+    title: "Ready to move"
+  });
 }
 
 async function pasteEntries(targetFolderId) {
@@ -188,9 +187,7 @@ function hasClipboard() {
 
 function clearCut() {
   moveEntries.clearClipboard();
-  if (window.Toast) {
-    window.Toast.success("Cut cancelled.", { title: "Clipboard cleared" });
-  }
+  Toast.success("Cut cancelled.", { title: "Clipboard cleared" });
 }
 
 function entryMenuItems(entry, selection) {

@@ -1,5 +1,7 @@
 import { toAppError } from "./errors.js";
 
+import { Toast } from "../features/toast.js";
+
 function titleForCode(code) {
   switch (String(code || "")) {
     case "storage_limit_exceeded":
@@ -22,8 +24,6 @@ export function showAppError(error, fallback) {
   if (appError.name === "AbortError") {
     return appError;
   }
-  if (window.Toast) {
-    window.Toast.error(appError.message, { title: titleForCode(appError.code) });
-  }
+  Toast.error(appError.message, { title: titleForCode(appError.code) });
   return appError;
 }

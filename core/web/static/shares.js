@@ -1,5 +1,7 @@
 import { apiRequest } from "./lib/api.js";
 import { showAppError } from "./lib/toasts.js";
+import { Dialog } from "./features/dialog.js";
+import { Toast } from "./features/toast.js";
 
 (function() {
   const actionButtons = document.querySelectorAll("[data-share-action]");
@@ -26,11 +28,7 @@ import { showAppError } from "./lib/toasts.js";
       const target = fileName ? "\"" + fileName + "\"" : "this share";
       meta.textContent = "Delete " + target + " and remove its link?";
     }
-    if (window.Dialog && window.Dialog.open) {
-      window.Dialog.open("share-action-backdrop");
-    } else {
-      backdrop.classList.remove("is-hidden");
-    }
+    Dialog.open("share-action-backdrop");
   }
 
   function closeDialog() {
@@ -38,11 +36,7 @@ import { showAppError } from "./lib/toasts.js";
       return;
     }
     pendingAction = null;
-    if (window.Dialog && window.Dialog.close) {
-      window.Dialog.close("share-action-backdrop");
-    } else {
-      backdrop.classList.add("is-hidden");
-    }
+    Dialog.close("share-action-backdrop");
   }
 
   function removeRow(shareId) {
@@ -117,9 +111,7 @@ import { showAppError } from "./lib/toasts.js";
         return writeToClipboard(fullValue);
       })
         .then(function() {
-          if (window.Toast) {
-            window.Toast.success("Link copied.", { title: "Copied" });
-          }
+          Toast.success("Link copied.", { title: "Copied" });
         })
         .catch(function(error) {
           showAppError(error, {
@@ -152,9 +144,7 @@ import { showAppError } from "./lib/toasts.js";
       })
         .then(function() {
           removeRow(shareId);
-          if (window.Toast) {
-            window.Toast.success("Share deleted.", { title: "Deleted" });
-          }
+          Toast.success("Share deleted.", { title: "Deleted" });
           closeDialog();
         })
         .catch(function(error) {

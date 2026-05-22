@@ -1,4 +1,5 @@
 import { showAppError } from "../lib/toasts.js";
+import { Toast } from "./toast.js";
 
 export function initCopyButtons(root = document) {
   const buttons = root.querySelectorAll("[data-copy-button]");
@@ -55,9 +56,7 @@ export function initCopyButtons(root = document) {
       const successMessage = button.getAttribute("data-copy-success-message") || "Link copied.";
       writeToClipboard(value)
         .then(function() {
-          if (window.Toast) {
-            window.Toast.success(successMessage, { title: successTitle });
-          }
+          Toast.success(successMessage, { title: successTitle });
         })
         .catch(function(error) {
           showAppError(error, {

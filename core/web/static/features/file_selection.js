@@ -1,7 +1,7 @@
 import { showAppError } from "../lib/toasts.js";
-
 import { filesActions } from "../files.js";
 import { moveEntries } from "./move_entries.js";
+import { Toast } from "./toast.js";
 
 const selectedEntriesMap = new Map();
 const state = {
@@ -364,11 +364,9 @@ function requestCutSelected() {
     return;
   }
   moveEntries.cutEntries(selected);
-  if (window.Toast) {
-    window.Toast.success("Cut " + selected.length + (selected.length === 1 ? " item." : " items."), {
-      title: "Ready to move"
-    });
-  }
+  Toast.success("Cut " + selected.length + (selected.length === 1 ? " item." : " items."), {
+    title: "Ready to move"
+  });
 }
 
 async function requestPasteHere() {
@@ -391,9 +389,7 @@ function clearCutClipboard() {
     return false;
   }
   moveEntries.clearClipboard();
-  if (window.Toast) {
-    window.Toast.success("Cut cancelled.", { title: "Clipboard cleared" });
-  }
+  Toast.success("Cut cancelled.", { title: "Clipboard cleared" });
   return true;
 }
 

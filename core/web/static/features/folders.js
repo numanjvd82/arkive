@@ -1,4 +1,5 @@
 import { setButtonBusy } from "./button_state.js";
+import { Dialog } from "./dialog.js";
 import { apiRequest } from "../lib/api.js";
 import { showAppError } from "../lib/toasts.js";
 
@@ -124,9 +125,7 @@ export function initFolders() {
   if (newFolderButton && !newFolderButton.hasAttribute("data-folder-create-bound")) {
     newFolderButton.setAttribute("data-folder-create-bound", "true");
     newFolderButton.addEventListener("click", function() {
-      if (window.Dialog && window.Dialog.open) {
-        window.Dialog.open("folder-create-backdrop");
-      }
+      Dialog.open("folder-create-backdrop");
       if (nameInput) {
         nameInput.value = "";
         nameInput.focus();
@@ -137,9 +136,7 @@ export function initFolders() {
   if (cancelButton && !cancelButton.hasAttribute("data-folder-cancel-bound")) {
     cancelButton.setAttribute("data-folder-cancel-bound", "true");
     cancelButton.addEventListener("click", function() {
-      if (window.Dialog && window.Dialog.close) {
-        window.Dialog.close("folder-create-backdrop");
-      }
+      Dialog.close("folder-create-backdrop");
     });
   }
 

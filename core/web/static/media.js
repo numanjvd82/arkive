@@ -2,6 +2,7 @@ import { setButtonBusy } from "./features/button_state.js";
 import { ArkiveFileReader } from "./features/file_reader.js";
 import { canDownloadInCurrentBrowser, isDownloadAbortError, maybeShowDownloadCapabilityWarning, showDownloadError, showServiceWorkerDownloadNotice } from "./features/reader/download_warning.js";
 import { mountStreamingMedia } from "./features/streaming/stream_player.js";
+import { Toast } from "./features/toast.js";
 import { initPlyr } from "./plyr.js";
 import { apiRequest } from "./lib/api.js";
 import { showAppError } from "./lib/toasts.js";
@@ -570,9 +571,7 @@ import { thumbnailCache } from "./upload/thumbnail_cache.js";
           }
           const url = shareURL(token, String((data && data.shareSecret) || ""));
           return copyText(url).then(function() {
-            if (window.Toast) {
-              window.Toast.success("Share link copied.", { title: "Shared" });
-            }
+            Toast.success("Share link copied.", { title: "Shared" });
           });
         })
         .catch(function(error) {

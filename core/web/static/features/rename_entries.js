@@ -2,6 +2,7 @@ import { apiRequest } from "../lib/api.js";
 import { showAppError } from "../lib/toasts.js";
 import { ArkiveFileReader } from "./file_reader.js";
 import { entrySelection } from "./file_selection.js";
+import { Toast } from "./toast.js";
 
 const state = {
   activeEntry: null,
@@ -345,9 +346,7 @@ async function submitRename() {
     }
 
     finishRename(false);
-    if (window.Toast) {
-      window.Toast.success("Name updated.", { title: "Renamed" });
-    }
+    Toast.success("Name updated.", { title: "Renamed" });
   } catch (error) {
     entry.classList.remove("is-rename-saving");
     input.disabled = false;

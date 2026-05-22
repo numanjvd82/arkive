@@ -1,5 +1,7 @@
 import { setButtonBusy } from "./button_state.js";
+import { Dialog } from "./dialog.js";
 import { entrySelection } from "./file_selection.js";
+import { Toast } from "./toast.js";
 import { apiRequest } from "../lib/api.js";
 import { showAppError } from "../lib/toasts.js";
 
@@ -248,9 +250,7 @@ function openMoveDialog(entries) {
   if (confirmButton) {
     setButtonBusy(confirmButton, false);
   }
-  if (window.Dialog && window.Dialog.open) {
-    window.Dialog.open("entries-move-backdrop");
-  }
+  Dialog.open("entries-move-backdrop");
 }
 
 async function submitMove(selected, targetFolderId) {
@@ -287,11 +287,9 @@ async function pasteInto(targetFolderId) {
   }
   await submitMove(entries, normalizeFolderID(targetFolderId) || null);
   clearClipboard();
-  if (window.Toast) {
-    window.Toast.success("Moved " + entries.length + (entries.length === 1 ? " item." : " items."), {
-      title: "Move complete"
-    });
-  }
+  Toast.success("Moved " + entries.length + (entries.length === 1 ? " item." : " items."), {
+    title: "Move complete"
+  });
   window.location.reload();
   return true;
 }
@@ -320,9 +318,7 @@ export function initMoveEntries() {
     cancelButton.setAttribute("data-move-cancel-bound", "true");
     cancelButton.addEventListener("click", function() {
       moveState().pendingEntries = [];
-      if (window.Dialog && window.Dialog.close) {
-        window.Dialog.close("entries-move-backdrop");
-      }
+      Dialog.close("entries-move-backdrop");
     });
   }
 

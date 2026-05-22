@@ -1,6 +1,8 @@
 import { setButtonBusy } from "./features/button_state.js";
+import { Dialog } from "./features/dialog.js";
 import { ArkiveFileReader } from "./features/file_reader.js";
 import { entrySelection } from "./features/file_selection.js";
+import { Toast } from "./features/toast.js";
 import { apiRequest } from "./lib/api.js";
 import { showAppError } from "./lib/toasts.js";
 import { thumbnailCache } from "./upload/thumbnail_cache.js";
@@ -164,8 +166,8 @@ export const filesActions = {};
         window.sessionStorage.removeItem(DELETE_TOAST_STORAGE_KEY);
       }
     } catch (_) {}
-    if (message && window.Toast) {
-      window.Toast.success(message, { title: "Deleted" });
+    if (message) {
+      Toast.success(message, { title: "Deleted" });
     }
   }
 
@@ -217,11 +219,7 @@ export const filesActions = {};
     }
     pendingDeleteEntries = entries.slice();
     describeDelete(pendingDeleteEntries);
-    if (window.Dialog && window.Dialog.open) {
-      window.Dialog.open("file-delete-backdrop");
-    } else {
-      backdrop.classList.remove("is-hidden");
-    }
+    Dialog.open("file-delete-backdrop");
     setButtonBusy(confirmButton, false);
   }
 
@@ -230,11 +228,7 @@ export const filesActions = {};
       return;
     }
     pendingDeleteEntries = [];
-    if (window.Dialog && window.Dialog.close) {
-      window.Dialog.close("file-delete-backdrop");
-    } else {
-      backdrop.classList.add("is-hidden");
-    }
+    Dialog.close("file-delete-backdrop");
   }
 
   flushStoredDeleteToast();
@@ -314,9 +308,7 @@ export const filesActions = {};
           window.location.reload();
           return;
         }
-        if (window.Toast) {
-          window.Toast.success(successMessage, { title: "Deleted" });
-        }
+        Toast.success(successMessage, { title: "Deleted" });
       } catch (error) {
         showAppError(error, {
           code: "conflict",
@@ -586,11 +578,7 @@ export const filesActions = {};
     }
     resetTransientFields();
     applyShareState(null);
-    if (window.Dialog && window.Dialog.open) {
-      window.Dialog.open("file-share-backdrop");
-    } else {
-      backdrop.classList.remove("is-hidden");
-    }
+    Dialog.open("file-share-backdrop");
     apiRequest("/api/files/" + encodeURIComponent(fileId) + "/share", {
       method: "GET",
       headers: { "Content-Type": "application/json" }
@@ -633,15 +621,11 @@ export const filesActions = {};
       });
   }
 
-  filesActions().openShare = openShareDialog;
+  filesActions.openShare = openShareDialog;
 
   function closeShareDialog() {
     activeFileId = null;
-    if (window.Dialog && window.Dialog.close) {
-      window.Dialog.close("file-share-backdrop");
-    } else {
-      backdrop.classList.add("is-hidden");
-    }
+    Dialog.close("file-share-backdrop");
   }
 
   document.addEventListener("click", function(event) {
@@ -667,9 +651,7 @@ export const filesActions = {};
       }
       try {
         await navigator.clipboard.writeText(value);
-        if (window.Toast) {
-          window.Toast.success("Share link copied.", { title: "Copied" });
-        }
+        Toast.success("Share link copied.", { title: "Copied" });
       } catch (_) {
         showAppError(null, {
           code: "unknown_error",

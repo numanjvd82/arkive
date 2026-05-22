@@ -1,5 +1,6 @@
 import { UploadRunner } from "./upload_runner.js";
 import { showAppError } from "../lib/toasts.js";
+import { Toast } from "./toast.js";
 
 function formatBytes(bytes) {
 	if (!bytes) return "0 B";
@@ -65,9 +66,7 @@ export function initUploads() {
 		if (event && event.type === "batch-complete") {
 			if (event.batchId && !completedBatches.has(event.batchId)) {
 				completedBatches.add(event.batchId);
-				if (window.Toast) {
-					window.Toast.success((event.total || 0) + " file(s) uploaded.", { title: "Upload complete" });
-				}
+				Toast.success((event.total || 0) + " file(s) uploaded.", { title: "Upload complete" });
 			}
 		}
 	});

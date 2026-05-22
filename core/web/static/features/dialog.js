@@ -1,38 +1,46 @@
-export function initDialogs() {
-  if (window.Dialog && window.Dialog.__arkiveReady) {
+let initialized = false;
+
+function getBackdrop(id) {
+  if (!id) {
+    return null;
+  }
+  return document.getElementById(id);
+}
+
+function open(id) {
+  const backdrop = getBackdrop(id);
+  if (!backdrop) {
     return;
   }
+  backdrop.classList.remove("is-hidden");
+}
 
-  function getBackdrop(id) {
-    if (!id) {
-      return null;
-    }
-    return document.getElementById(id);
+function close(id) {
+  const backdrop = getBackdrop(id);
+  if (!backdrop) {
+    return;
   }
+  backdrop.classList.add("is-hidden");
+}
 
-  function open(id) {
-    const backdrop = getBackdrop(id);
-    if (!backdrop) {
-      return;
-    }
-    backdrop.classList.remove("is-hidden");
+function closeTopmost() {
+  const openBackdrops = Array.from(document.querySelectorAll(".dialog-backdrop:not(.is-hidden)"));
+  if (!openBackdrops.length) {
+    return;
   }
+  openBackdrops[openBackdrops.length - 1].classList.add("is-hidden");
+}
 
-  function close(id) {
-    const backdrop = getBackdrop(id);
-    if (!backdrop) {
-      return;
-    }
-    backdrop.classList.add("is-hidden");
-  }
+export const Dialog = {
+  open: open,
+  close: close,
+};
 
-  function closeTopmost() {
-    const openBackdrops = Array.from(document.querySelectorAll(".dialog-backdrop:not(.is-hidden)"));
-    if (!openBackdrops.length) {
-      return;
-    }
-    openBackdrops[openBackdrops.length - 1].classList.add("is-hidden");
+export function initDialogs() {
+  if (initialized) {
+    return;
   }
+  initialized = true;
 
   document.addEventListener("click", function(event) {
     const backdrop = event.target && event.target.classList && event.target.classList.contains("dialog-backdrop")
@@ -48,10 +56,4 @@ export function initDialogs() {
       closeTopmost();
     }
   });
-
-  window.Dialog = {
-    __arkiveReady: true,
-    open: open,
-    close: close
-  };
 }
