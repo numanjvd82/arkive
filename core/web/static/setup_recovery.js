@@ -1,3 +1,5 @@
+import { getArkiveCrypto } from "./features/crypto.js";
+
 (function() {
   const checkbox = document.getElementById("confirm-backup");
   const submit = document.querySelector("[data-recovery-submit]");
@@ -173,12 +175,7 @@
   }
 
   function initializeRecoveryKey() {
-    if (!window.ArkiveCrypto || typeof window.ArkiveCrypto.ready !== "function") {
-      setRuntimeError("Recovery key generation is unavailable. Reload the page and try again.");
-      return Promise.resolve();
-    }
-
-    return window.ArkiveCrypto.ready()
+    return getArkiveCrypto()
       .then(function(crypto) {
         const formattedKey = createRecoveryKey(crypto);
         renderRecoveryKey(formattedKey);
@@ -187,7 +184,7 @@
       })
       .catch(function(error) {
         console.error(error);
-        setRuntimeError("Recovery key generation failed. Reload the page and try again.");
+        setRuntimeError("Recovery key generation is unavailable. Reload the page and try again.");
       });
   }
 

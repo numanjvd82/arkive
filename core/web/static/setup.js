@@ -1,3 +1,5 @@
+import { getArkiveCrypto } from "./features/crypto.js";
+
 (function() {
   const form = document.querySelector("[data-setup-vault-form='true']");
   const saltInput = document.querySelector("[data-vault-salt-input='true']");
@@ -39,10 +41,7 @@
   }
 
   async function provisionVaultMaterial(password) {
-    if (!window.ArkiveCrypto || typeof window.ArkiveCrypto.ready !== "function") {
-      throw new Error("Crypto runtime is unavailable");
-    }
-    const crypto = await window.ArkiveCrypto.ready();
+    const crypto = await getArkiveCrypto();
     const salt = crypto.generate_salt();
     const masterKey = crypto.generate_master_key();
     const kek = crypto.derive_password_kek(password, salt);

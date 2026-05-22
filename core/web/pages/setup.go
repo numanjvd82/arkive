@@ -44,7 +44,7 @@ func SetupPage(props SetupPageProps) web.Page {
 		Title:   "Arkive · Setup",
 		Robots:  RobotsNoIndex,
 		CSS:     []string{"/web/pages/setup.css"},
-		JS:      []string{"/static/setup.js"},
+		ModuleJS: []string{"/static/setup.js"},
 		Body:    setupBody(props),
 		HideNav: true,
 	}

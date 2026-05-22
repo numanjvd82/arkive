@@ -17,11 +17,5 @@ export function getArkiveCrypto() {
 }
 
 export function initCrypto() {
-  if (window.ArkiveCrypto && typeof window.ArkiveCrypto.ready === "function") {
-    return;
-  }
-
-  window.ArkiveCrypto = {
-    ready: getArkiveCrypto
-  };
+  return getArkiveCrypto();
 }

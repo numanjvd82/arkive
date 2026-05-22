@@ -22,7 +22,7 @@ func SetupRecoveryPage(props SetupRecoveryPageProps) web.Page {
 		Title:   "Arkive · Vault Recovery Key",
 		Robots:  RobotsNoIndex,
 		CSS:     []string{"/web/pages/setup_recovery.css"},
-		JS:      []string{"/static/setup_recovery.js"},
+		ModuleJS: []string{"/static/setup_recovery.js"},
 		Body:    setupRecoveryBody(props),
 		HideNav: true,
 	}
