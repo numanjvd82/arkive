@@ -17,6 +17,8 @@ type CreateShareLinkInput struct {
 	CryptoVersion     int16
 	PasswordHash      *string
 	ExpiresAt         *time.Time
+	BurnAfterRead     bool
+	MaxAccessCount    *int
 	Status            string
 }
 
@@ -42,14 +44,15 @@ func New() *Repository {
 func (r *Repository) CreateShareLink(ctx context.Context, db database.PgExecutor, input CreateShareLinkInput) (models.ShareLink, error) {
 	var created models.ShareLink
 	query := `INSERT INTO share_links
-		(owner_user_id, token, encrypted_share_key, crypto_version, password_hash, expires_at, status)
+		(owner_user_id, token, encrypted_share_key, crypto_version, password_hash, expires_at, burn_after_read, max_access_count, status)
 	VALUES
-		($1, $2, $3, $4, $5, $6, $7)
+		($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	RETURNING
 		id, owner_user_id, token, slug, status, title_encrypted, description_encrypted,
 		encrypted_share_key, crypto_version, password_hash, password_mode, expires_at,
 		revoked_at, allow_preview, allow_download, comments_enabled, reactions_enabled,
-		burn_after_read, show_exif, show_location, strip_exif_download, created_at, updated_at`
+		burn_after_read, access_count, max_access_count, consumed_at, show_exif, show_location,
+		strip_exif_download, created_at, updated_at`
 	if err := db.QueryRow(ctx, query,
 		input.OwnerUserID,
 		input.Token,
@@ -57,6 +60,8 @@ func (r *Repository) CreateShareLink(ctx context.Context, db database.PgExecutor
 		input.CryptoVersion,
 		input.PasswordHash,
 		input.ExpiresAt,
+		input.BurnAfterRead,
+		input.MaxAccessCount,
 		input.Status,
 	).Scan(
 		&created.ID,
@@ -77,6 +82,9 @@ func (r *Repository) CreateShareLink(ctx context.Context, db database.PgExecutor
 		&created.CommentsEnabled,
 		&created.ReactionsEnabled,
 		&created.BurnAfterRead,
+		&created.AccessCount,
+		&created.MaxAccessCount,
+		&created.ConsumedAt,
 		&created.ShowEXIF,
 		&created.ShowLocation,
 		&created.StripEXIFDownload,
@@ -145,8 +153,8 @@ func (r *Repository) CreateShareSnapshotFile(ctx context.Context, db database.Pg
 func (r *Repository) GetShareByToken(ctx context.Context, db database.PgExecutor, token string) (models.Share, error) {
 	var share models.Share
 	query := `SELECT
-		sl.id, ssf.file_id, sl.owner_user_id, sl.token, sl.encrypted_share_key, sl.allow_preview, sl.allow_download, sl.burn_after_read, sl.password_hash, sl.expires_at,
-		sl.status, sl.revoked_at, sl.created_at, sl.updated_at
+		sl.id, ssf.file_id, sl.owner_user_id, sl.token, sl.encrypted_share_key, sl.allow_preview, sl.allow_download, sl.burn_after_read,
+		sl.access_count, sl.max_access_count, sl.password_hash, sl.expires_at, sl.status, sl.revoked_at, sl.consumed_at, sl.created_at, sl.updated_at
 	FROM
 		share_links sl
 	JOIN
@@ -167,10 +175,13 @@ func (r *Repository) GetShareByToken(ctx context.Context, db database.PgExecutor
 		&share.AllowPreview,
 		&share.AllowDownload,
 		&share.BurnAfterRead,
+		&share.AccessCount,
+		&share.MaxAccessCount,
 		&share.PasswordHash,
 		&share.ExpiresAt,
 		&share.Status,
 		&share.RevokedAt,
+		&share.ConsumedAt,
 		&share.CreatedAt,
 		&share.UpdatedAt,
 	); err != nil {
@@ -182,8 +193,8 @@ func (r *Repository) GetShareByToken(ctx context.Context, db database.PgExecutor
 func (r *Repository) GetShareForFile(ctx context.Context, db database.PgExecutor, fileID string) (models.Share, error) {
 	var share models.Share
 	query := `SELECT
-		sl.id, ssf.file_id, sl.owner_user_id, sl.token, sl.encrypted_share_key, sl.allow_preview, sl.allow_download, sl.burn_after_read, sl.password_hash, sl.expires_at,
-		sl.status, sl.revoked_at, sl.created_at, sl.updated_at
+		sl.id, ssf.file_id, sl.owner_user_id, sl.token, sl.encrypted_share_key, sl.allow_preview, sl.allow_download, sl.burn_after_read,
+		sl.access_count, sl.max_access_count, sl.password_hash, sl.expires_at, sl.status, sl.revoked_at, sl.consumed_at, sl.created_at, sl.updated_at
 	FROM
 		share_links sl
 	JOIN
@@ -204,10 +215,13 @@ func (r *Repository) GetShareForFile(ctx context.Context, db database.PgExecutor
 		&share.AllowPreview,
 		&share.AllowDownload,
 		&share.BurnAfterRead,
+		&share.AccessCount,
+		&share.MaxAccessCount,
 		&share.PasswordHash,
 		&share.ExpiresAt,
 		&share.Status,
 		&share.RevokedAt,
+		&share.ConsumedAt,
 		&share.CreatedAt,
 		&share.UpdatedAt,
 	); err != nil {
@@ -219,8 +233,8 @@ func (r *Repository) GetShareForFile(ctx context.Context, db database.PgExecutor
 func (r *Repository) GetShareForFileForUser(ctx context.Context, db database.PgExecutor, fileID, ownerUserID string) (models.Share, error) {
 	var share models.Share
 	query := `SELECT
-		sl.id, ssf.file_id, sl.owner_user_id, sl.token, sl.encrypted_share_key, sl.allow_preview, sl.allow_download, sl.burn_after_read, sl.password_hash, sl.expires_at,
-		sl.status, sl.revoked_at, sl.created_at, sl.updated_at
+		sl.id, ssf.file_id, sl.owner_user_id, sl.token, sl.encrypted_share_key, sl.allow_preview, sl.allow_download, sl.burn_after_read,
+		sl.access_count, sl.max_access_count, sl.password_hash, sl.expires_at, sl.status, sl.revoked_at, sl.consumed_at, sl.created_at, sl.updated_at
 	FROM
 		share_links sl
 	JOIN
@@ -241,10 +255,13 @@ func (r *Repository) GetShareForFileForUser(ctx context.Context, db database.PgE
 		&share.AllowPreview,
 		&share.AllowDownload,
 		&share.BurnAfterRead,
+		&share.AccessCount,
+		&share.MaxAccessCount,
 		&share.PasswordHash,
 		&share.ExpiresAt,
 		&share.Status,
 		&share.RevokedAt,
+		&share.ConsumedAt,
 		&share.CreatedAt,
 		&share.UpdatedAt,
 	); err != nil {
@@ -256,8 +273,8 @@ func (r *Repository) GetShareForFileForUser(ctx context.Context, db database.PgE
 func (r *Repository) GetShareForUser(ctx context.Context, db database.PgExecutor, shareID, ownerUserID string) (models.Share, error) {
 	var share models.Share
 	query := `SELECT
-		sl.id, ssf.file_id, sl.owner_user_id, sl.token, sl.encrypted_share_key, sl.allow_preview, sl.allow_download, sl.burn_after_read, sl.password_hash, sl.expires_at,
-		sl.status, sl.revoked_at, sl.created_at, sl.updated_at
+		sl.id, ssf.file_id, sl.owner_user_id, sl.token, sl.encrypted_share_key, sl.allow_preview, sl.allow_download, sl.burn_after_read,
+		sl.access_count, sl.max_access_count, sl.password_hash, sl.expires_at, sl.status, sl.revoked_at, sl.consumed_at, sl.created_at, sl.updated_at
 	FROM
 		share_links sl
 	JOIN
@@ -278,10 +295,13 @@ func (r *Repository) GetShareForUser(ctx context.Context, db database.PgExecutor
 		&share.AllowPreview,
 		&share.AllowDownload,
 		&share.BurnAfterRead,
+		&share.AccessCount,
+		&share.MaxAccessCount,
 		&share.PasswordHash,
 		&share.ExpiresAt,
 		&share.Status,
 		&share.RevokedAt,
+		&share.ConsumedAt,
 		&share.CreatedAt,
 		&share.UpdatedAt,
 	); err != nil {
@@ -290,20 +310,23 @@ func (r *Repository) GetShareForUser(ctx context.Context, db database.PgExecutor
 	return share, nil
 }
 
-func (r *Repository) UpdateShareForUser(ctx context.Context, db database.PgExecutor, shareID, ownerUserID string, passwordHash *string, expiresAt *time.Time) (models.Share, error) {
+func (r *Repository) UpdateShareForUser(ctx context.Context, db database.PgExecutor, shareID, ownerUserID string, passwordHash *string, expiresAt *time.Time, burnAfterRead bool, maxAccessCount *int) (models.Share, error) {
 	var share models.Share
 	query := `UPDATE
 		share_links
 	SET
 		password_hash = $3,
 		expires_at = $4,
+		burn_after_read = $5,
+		max_access_count = $6,
 		updated_at = now()
 	WHERE
 		id = $1 AND owner_user_id = $2 AND status = 'active'
 	RETURNING
-		id, owner_user_id, token, encrypted_share_key, allow_preview, allow_download, burn_after_read, password_hash, expires_at, status, revoked_at, created_at, updated_at`
+		id, owner_user_id, token, encrypted_share_key, allow_preview, allow_download, burn_after_read,
+		access_count, max_access_count, password_hash, expires_at, status, revoked_at, consumed_at, created_at, updated_at`
 	var shareIDValue string
-	if err := db.QueryRow(ctx, query, shareID, ownerUserID, passwordHash, expiresAt).Scan(
+	if err := db.QueryRow(ctx, query, shareID, ownerUserID, passwordHash, expiresAt, burnAfterRead, maxAccessCount).Scan(
 		&shareIDValue,
 		&share.OwnerUserID,
 		&share.Token,
@@ -311,10 +334,13 @@ func (r *Repository) UpdateShareForUser(ctx context.Context, db database.PgExecu
 		&share.AllowPreview,
 		&share.AllowDownload,
 		&share.BurnAfterRead,
+		&share.AccessCount,
+		&share.MaxAccessCount,
 		&share.PasswordHash,
 		&share.ExpiresAt,
 		&share.Status,
 		&share.RevokedAt,
+		&share.ConsumedAt,
 		&share.CreatedAt,
 		&share.UpdatedAt,
 	); err != nil {
@@ -341,6 +367,139 @@ func (r *Repository) DeleteShareForUser(ctx context.Context, db database.PgExecu
 	return tag.RowsAffected() > 0, nil
 }
 
+func (r *Repository) RevokeShareForUser(ctx context.Context, db database.PgExecutor, shareID, ownerUserID string) (models.Share, error) {
+	var share models.Share
+	query := `UPDATE
+		share_links
+	SET
+		status = 'revoked',
+		revoked_at = now(),
+		updated_at = now()
+	WHERE
+		id = $1 AND owner_user_id = $2 AND status = 'active'
+	RETURNING
+		id, owner_user_id, token, encrypted_share_key, allow_preview, allow_download, burn_after_read,
+		access_count, max_access_count, password_hash, expires_at, status, revoked_at, consumed_at, created_at, updated_at`
+	var shareIDValue string
+	if err := db.QueryRow(ctx, query, shareID, ownerUserID).Scan(
+		&shareIDValue,
+		&share.OwnerUserID,
+		&share.Token,
+		&share.EncryptedShareKey,
+		&share.AllowPreview,
+		&share.AllowDownload,
+		&share.BurnAfterRead,
+		&share.AccessCount,
+		&share.MaxAccessCount,
+		&share.PasswordHash,
+		&share.ExpiresAt,
+		&share.Status,
+		&share.RevokedAt,
+		&share.ConsumedAt,
+		&share.CreatedAt,
+		&share.UpdatedAt,
+	); err != nil {
+		return models.Share{}, err
+	}
+	share.ID = shareIDValue
+	linked, err := r.GetShareForUser(ctx, db, shareIDValue, ownerUserID)
+	if err != nil {
+		return models.Share{}, err
+	}
+	share.FileID = linked.FileID
+	return share, nil
+}
+
+func (r *Repository) ActivateShareForUser(ctx context.Context, db database.PgExecutor, shareID, ownerUserID string) (models.Share, error) {
+	var share models.Share
+	query := `UPDATE
+		share_links
+	SET
+		status = 'active',
+		revoked_at = NULL,
+		updated_at = now()
+	WHERE
+		id = $1 AND owner_user_id = $2 AND status = 'revoked'
+	RETURNING
+		id, owner_user_id, token, encrypted_share_key, allow_preview, allow_download, burn_after_read,
+		access_count, max_access_count, password_hash, expires_at, status, revoked_at, consumed_at, created_at, updated_at`
+	var shareIDValue string
+	if err := db.QueryRow(ctx, query, shareID, ownerUserID).Scan(
+		&shareIDValue,
+		&share.OwnerUserID,
+		&share.Token,
+		&share.EncryptedShareKey,
+		&share.AllowPreview,
+		&share.AllowDownload,
+		&share.BurnAfterRead,
+		&share.AccessCount,
+		&share.MaxAccessCount,
+		&share.PasswordHash,
+		&share.ExpiresAt,
+		&share.Status,
+		&share.RevokedAt,
+		&share.ConsumedAt,
+		&share.CreatedAt,
+		&share.UpdatedAt,
+	); err != nil {
+		return models.Share{}, err
+	}
+	share.ID = shareIDValue
+	linked, err := r.GetShareForUser(ctx, db, shareIDValue, ownerUserID)
+	if err != nil {
+		return models.Share{}, err
+	}
+	share.FileID = linked.FileID
+	return share, nil
+}
+
+func (r *Repository) ConsumeShareByToken(ctx context.Context, db database.PgExecutor, token string) (models.Share, bool, error) {
+	var share models.Share
+	query := `UPDATE share_links
+	SET
+	  access_count = access_count + 1,
+	  consumed_at = CASE
+	    WHEN access_count + 1 >= max_access_count THEN now()
+	    ELSE consumed_at
+	  END,
+	  status = CASE
+	    WHEN access_count + 1 >= max_access_count THEN 'burned'
+	    ELSE status
+	  END,
+	  updated_at = now()
+	WHERE token = $1
+	  AND status = 'active'
+	  AND (expires_at IS NULL OR expires_at > now())
+	  AND burn_after_read = true
+	  AND max_access_count IS NOT NULL
+	  AND access_count < max_access_count
+	RETURNING
+	  id, owner_user_id, token, encrypted_share_key, allow_preview, allow_download, burn_after_read,
+	  access_count, max_access_count, password_hash, expires_at, status, revoked_at, consumed_at, created_at, updated_at`
+	err := db.QueryRow(ctx, query, token).Scan(
+		&share.ID,
+		&share.OwnerUserID,
+		&share.Token,
+		&share.EncryptedShareKey,
+		&share.AllowPreview,
+		&share.AllowDownload,
+		&share.BurnAfterRead,
+		&share.AccessCount,
+		&share.MaxAccessCount,
+		&share.PasswordHash,
+		&share.ExpiresAt,
+		&share.Status,
+		&share.RevokedAt,
+		&share.ConsumedAt,
+		&share.CreatedAt,
+		&share.UpdatedAt,
+	)
+	if err != nil {
+		return models.Share{}, false, err
+	}
+	return share, true, nil
+}
+
 func (r *Repository) ListSharesForUser(ctx context.Context, db database.PgExecutor, ownerUserID string) ([]models.ShareWithFile, error) {
 	rows, err := db.Query(ctx, `SELECT
 		sl.id,
@@ -351,10 +510,13 @@ func (r *Repository) ListSharesForUser(ctx context.Context, db database.PgExecut
 		sl.allow_preview,
 		sl.allow_download,
 		sl.burn_after_read,
+		sl.access_count,
+		sl.max_access_count,
 		sl.password_hash,
 		sl.expires_at,
 		sl.status,
 		sl.revoked_at,
+		sl.consumed_at,
 		sl.created_at,
 		sl.updated_at,
 		concat('file-', left(f.id::text, 8)),
@@ -390,10 +552,13 @@ func (r *Repository) ListSharesForUser(ctx context.Context, db database.PgExecut
 			&share.AllowPreview,
 			&share.AllowDownload,
 			&share.BurnAfterRead,
+			&share.AccessCount,
+			&share.MaxAccessCount,
 			&share.PasswordHash,
 			&share.ExpiresAt,
 			&share.Status,
 			&share.RevokedAt,
+			&share.ConsumedAt,
 			&share.CreatedAt,
 			&share.UpdatedAt,
 			&share.FileName,

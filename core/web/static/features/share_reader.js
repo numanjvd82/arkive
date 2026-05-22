@@ -19,6 +19,10 @@ export class ArkiveShareReader {
   constructor(options) {
     this.token = String((options && options.token) || "");
     this.shareSecret = String((options && options.shareSecret) || "");
+    this.initialRecord = options && options.initialRecord ? options.initialRecord : null;
+    this.recordLoader = options && typeof options.recordLoader === "function"
+      ? options.recordLoader
+      : null;
     this.contextId = createContextId();
     this.record = null;
     this.metadata = null;
@@ -45,13 +49,19 @@ export class ArkiveShareReader {
     if (!this.shareSecret) {
       throw new Error("Missing share secret");
     }
-    const data = await apiRequest("/api/public/shares/" + encodeURIComponent(this.token), {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-    }, {
-      code: "not_found",
-      message: "Failed to load share",
-    });
+    let data = this.initialRecord;
+    if (!data && this.recordLoader) {
+      data = await this.recordLoader();
+    }
+    if (!data) {
+      data = await apiRequest("/api/public/shares/" + encodeURIComponent(this.token), {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      }, {
+        code: "not_found",
+        message: "Failed to load share",
+      });
+    }
 
     this.record = data;
     const opened = await vault.openPublicShareContext(

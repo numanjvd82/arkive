@@ -42,6 +42,7 @@ func renderPublicShareCard(props PublicShareViewProps) g.Node {
 	return h.Section(
 		h.Class("public-share-card"),
 		g.Attr("data-public-share-token", props.Token),
+		g.Attr("data-public-share-one-time", boolString(props.BurnAfterRead)),
 		renderPublicSharePreview(props),
 		h.Div(
 			h.Class("public-share-meta"),
@@ -88,6 +89,16 @@ func renderPublicShareCard(props PublicShareViewProps) g.Node {
 			),
 			h.Div(
 				h.Class("public-share-actions"),
+				g.If(props.BurnAfterRead, h.Button(
+					h.Class("public-share-download"),
+					g.Attr("id", "public-share-view"),
+					g.Attr("type", "button"),
+					lucide.Eye(
+						h.Class("public-share-download-icon"),
+						g.Attr("aria-hidden", "true"),
+					),
+					h.Span(g.Text("View File")),
+				)),
 				h.A(
 					h.Class("public-share-download"),
 					g.Attr("id", "public-share-download"),
@@ -151,6 +162,16 @@ func renderPublicSharePreviewMedia(props PublicShareViewProps) g.Node {
 		return h.Pre(
 			h.Class("public-share-text"),
 			g.Text(props.PreviewText),
+		)
+	case props.BurnAfterRead:
+		return h.Div(
+			h.Class("public-share-empty public-share-empty-pending"),
+			lucide.Eye(
+				h.Class("public-share-empty-icon"),
+				g.Attr("aria-hidden", "true"),
+			),
+			h.Span(g.Text("One-time link")),
+			h.P(g.Text("Click View File or Download File to use this link.")),
 		)
 	default:
 		return h.Div(

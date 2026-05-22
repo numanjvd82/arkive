@@ -186,6 +186,12 @@
   background: rgba(147, 0, 10, 0.12);
 }
 
+.status-pill.burned {
+  color: var(--accent-warm);
+  border-color: rgba(241, 160, 43, 0.32);
+  background: rgba(97, 59, 0, 0.18);
+}
+
 .shares-expiry,
 .shares-link-text {
   font-family: var(--font-mono);
@@ -238,6 +244,25 @@
   justify-content: flex-end;
   gap: 12px;
   white-space: nowrap;
+}
+
+.shares-dropdown .dropdown-trigger {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  color: var(--muted);
+}
+
+.shares-dropdown .dropdown-trigger:hover {
+  color: var(--text);
+  background: var(--bg-soft);
+  border-color: var(--border);
+}
+
+.shares-lucide-menu {
+  width: 16px;
+  height: 16px;
 }
 
 .shares-action-link {

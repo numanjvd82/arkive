@@ -19,6 +19,7 @@ type shareCreateRequest struct {
 	Token                    string `json:"token"`
 	ExpiresAt                string `json:"expiresAt"`
 	Password                 string `json:"password"`
+	BurnAfterRead            bool   `json:"burnAfterRead"`
 	EncryptedShareKey        string `json:"encryptedShareKey"`
 	EncryptedFileKeyForShare string `json:"encryptedFileKeyForShare"`
 }
@@ -27,6 +28,7 @@ type shareUpdateRequest struct {
 	ExpiresAt       string `json:"expiresAt"`
 	Password        string `json:"password"`
 	RequirePassword bool   `json:"requirePassword"`
+	BurnAfterRead   bool   `json:"burnAfterRead"`
 }
 
 func APICreateShare(svc *shares.Service) gin.HandlerFunc {
@@ -79,6 +81,7 @@ func APICreateShare(svc *shares.Service) gin.HandlerFunc {
 			Token:                    req.Token,
 			Password:                 req.Password,
 			ExpiresAt:                expiresAt,
+			BurnAfterRead:            req.BurnAfterRead,
 			EncryptedShareKey:        req.EncryptedShareKey,
 			EncryptedFileKeyForShare: req.EncryptedFileKeyForShare,
 		})
@@ -112,6 +115,10 @@ func APICreateShare(svc *shares.Service) gin.HandlerFunc {
 			"fileId":            share.FileID,
 			"token":             share.Token,
 			"encryptedShareKey": base64.StdEncoding.EncodeToString(share.EncryptedShareKey),
+			"burnAfterRead":     share.BurnAfterRead,
+			"accessCount":       share.AccessCount,
+			"maxAccessCount":    share.MaxAccessCount,
+			"consumedAt":        share.ConsumedAt,
 			"expiresAt":         share.ExpiresAt,
 			"hasPassword":       share.PasswordHash != nil,
 			"status":            status,
@@ -153,7 +160,7 @@ func APIUpdateShare(svc *shares.Service) gin.HandlerFunc {
 			return
 		}
 
-		share, validationErrors, err := svc.UpdateShareForUser(c.Request.Context(), shareID, userID.(string), expiresAt, req.Password, req.RequirePassword)
+		share, validationErrors, err := svc.UpdateShareForUser(c.Request.Context(), shareID, userID.(string), expiresAt, req.Password, req.RequirePassword, req.BurnAfterRead)
 		if err != nil {
 			switch err {
 			case shares.ErrUnauthorized:
@@ -182,6 +189,10 @@ func APIUpdateShare(svc *shares.Service) gin.HandlerFunc {
 			"fileId":            share.FileID,
 			"token":             share.Token,
 			"encryptedShareKey": base64.StdEncoding.EncodeToString(share.EncryptedShareKey),
+			"burnAfterRead":     share.BurnAfterRead,
+			"accessCount":       share.AccessCount,
+			"maxAccessCount":    share.MaxAccessCount,
+			"consumedAt":        share.ConsumedAt,
 			"expiresAt":         share.ExpiresAt,
 			"hasPassword":       share.PasswordHash != nil,
 			"status":            status,
@@ -224,6 +235,10 @@ func APIGetShareForFile(svc *shares.Service) gin.HandlerFunc {
 			"fileId":            share.FileID,
 			"token":             share.Token,
 			"encryptedShareKey": base64.StdEncoding.EncodeToString(share.EncryptedShareKey),
+			"burnAfterRead":     share.BurnAfterRead,
+			"accessCount":       share.AccessCount,
+			"maxAccessCount":    share.MaxAccessCount,
+			"consumedAt":        share.ConsumedAt,
 			"expiresAt":         share.ExpiresAt,
 			"hasPassword":       share.PasswordHash != nil,
 			"status":            status,
@@ -267,7 +282,106 @@ func APIGetShareCryptoRecord(svc *shares.Service) gin.HandlerFunc {
 			"id":                share.ID,
 			"token":             share.Token,
 			"encryptedShareKey": base64.StdEncoding.EncodeToString(share.EncryptedShareKey),
+			"burnAfterRead":     share.BurnAfterRead,
 			"hasPassword":       share.PasswordHash != nil,
+		})
+	}
+}
+
+func APIRevokeShare(svc *shares.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		shareID := strings.TrimSpace(c.Param("id"))
+		if shareID == "" {
+			apierror.InvalidPayload(c)
+			return
+		}
+
+		userID, ok := c.Get("user_id")
+		if !ok {
+			apierror.Unauthorized(c)
+			return
+		}
+
+		share, err := svc.RevokeShareForUser(c.Request.Context(), shareID, userID.(string))
+		if err != nil {
+			switch err {
+			case shares.ErrUnauthorized:
+				apierror.Unauthorized(c)
+			case shares.ErrInvalidInput:
+				apierror.InvalidPayload(c)
+			case shares.ErrNotFound:
+				apierror.Write(c, http.StatusNotFound, "share_not_found", "Share not found", nil)
+			default:
+				_ = c.Error(errs.WithStack(err))
+				apierror.Internal(c, "Share revoke failed")
+			}
+			return
+		}
+
+		status, expired := shareStatus(share)
+		c.JSON(http.StatusOK, gin.H{
+			"id":                share.ID,
+			"fileId":            share.FileID,
+			"token":             share.Token,
+			"encryptedShareKey": base64.StdEncoding.EncodeToString(share.EncryptedShareKey),
+			"burnAfterRead":     share.BurnAfterRead,
+			"accessCount":       share.AccessCount,
+			"maxAccessCount":    share.MaxAccessCount,
+			"consumedAt":        share.ConsumedAt,
+			"expiresAt":         share.ExpiresAt,
+			"hasPassword":       share.PasswordHash != nil,
+			"status":            status,
+			"isExpired":         expired,
+			"revokedAt":         share.RevokedAt,
+		})
+	}
+}
+
+func APIActivateShare(svc *shares.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		shareID := strings.TrimSpace(c.Param("id"))
+		if shareID == "" {
+			apierror.InvalidPayload(c)
+			return
+		}
+
+		userID, ok := c.Get("user_id")
+		if !ok {
+			apierror.Unauthorized(c)
+			return
+		}
+
+		share, err := svc.ActivateShareForUser(c.Request.Context(), shareID, userID.(string))
+		if err != nil {
+			switch err {
+			case shares.ErrUnauthorized:
+				apierror.Unauthorized(c)
+			case shares.ErrInvalidInput:
+				apierror.InvalidPayload(c)
+			case shares.ErrNotFound:
+				apierror.Write(c, http.StatusNotFound, "share_not_found", "Share not found", nil)
+			default:
+				_ = c.Error(errs.WithStack(err))
+				apierror.Internal(c, "Share activate failed")
+			}
+			return
+		}
+
+		status, expired := shareStatus(share)
+		c.JSON(http.StatusOK, gin.H{
+			"id":                share.ID,
+			"fileId":            share.FileID,
+			"token":             share.Token,
+			"encryptedShareKey": base64.StdEncoding.EncodeToString(share.EncryptedShareKey),
+			"burnAfterRead":     share.BurnAfterRead,
+			"accessCount":       share.AccessCount,
+			"maxAccessCount":    share.MaxAccessCount,
+			"consumedAt":        share.ConsumedAt,
+			"expiresAt":         share.ExpiresAt,
+			"hasPassword":       share.PasswordHash != nil,
+			"status":            status,
+			"isExpired":         expired,
+			"revokedAt":         share.RevokedAt,
 		})
 	}
 }
@@ -309,6 +423,9 @@ func APIDeleteShare(svc *shares.Service) gin.HandlerFunc {
 }
 
 func shareStatus(share models.Share) (string, bool) {
+	if share.Status == "burned" {
+		return "burned", false
+	}
 	if share.Status == shares.ShareStatusRevoked {
 		return shares.ShareStatusRevoked, false
 	}

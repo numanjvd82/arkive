@@ -30,6 +30,8 @@ func SharesPage(props SharesPageProps) web.Page {
 	for _, item := range props.Shares {
 		status, expired := shareStatus(item, now)
 		switch status {
+		case "burned":
+			revokedCount++
 		case shares.ShareStatusRevoked:
 			revokedCount++
 		case shares.ShareStatusActive:
@@ -47,13 +49,15 @@ func SharesPage(props SharesPageProps) web.Page {
 	return web.Page{
 		Title:              "Arkive · Shares",
 		Robots:             RobotsNoIndex,
-		CSS:                []string{"/web/pages/shares.css"},
-		ModuleJS:           []string{"/static/shares.js"},
+		CSS:                []string{"/web/pages/files.css", "/web/pages/shares.css"},
+		ModuleJS:           []string{"/static/files.js", "/static/shares.js"},
 		AuthLayout:         true,
 		RequireVaultUnlock: true,
 		User:               props.Ctx.User,
 		ActiveNav:          "shares",
 		Body: g.Group([]g.Node{
+			components.InlineStyle(components.InputCSS),
+			components.InlineStyle(components.StorageSelectorCSS),
 			components.InlineStyle(components.DataTableCSS),
 			h.Main(
 				h.Class("shares-page"),
@@ -110,6 +114,7 @@ func SharesPage(props SharesPageProps) web.Page {
 					),
 				}),
 			}),
+			renderShareDialog(),
 		}),
 	}
 }
@@ -217,14 +222,7 @@ func renderShareList(items []models.ShareWithFile, total, expiringSoonCount, rev
 							g.Attr("aria-hidden", "true"),
 						),
 					),
-					h.Button(
-						h.Class("shares-action-link"),
-						h.Type("button"),
-						g.Attr("data-share-action", "delete"),
-						g.Attr("data-share-id", item.ID),
-						g.Attr("data-share-file", "Decrypting..."),
-						g.Text("Delete"),
-					),
+					renderShareActionsMenu(item, statusLabel),
 				),
 			),
 		))
@@ -248,9 +246,59 @@ func renderShareList(items []models.ShareWithFile, total, expiringSoonCount, rev
 	)
 }
 
+func renderShareActionsMenu(item models.ShareWithFile, statusLabel string) g.Node {
+	revokeDisabled := statusLabel == "burned" || statusLabel == "expired"
+	return components.Dropdown(components.DropdownProps{
+		ID:    "share-actions-" + item.ID,
+		Align: "right",
+		Label: "Share actions",
+		Class: "shares-dropdown",
+		Trigger: lucide.Ellipsis(
+			h.Class("shares-lucide shares-lucide-menu"),
+			g.Attr("aria-hidden", "true"),
+		),
+		Menu: h.Div(
+			h.Class("dropdown-content"),
+			h.Button(
+				h.Type("button"),
+				h.Class("dropdown-item"),
+				g.Attr("data-share-manage", item.FileID),
+				g.Attr("data-share-file", item.FileName),
+				g.Text("Manage link"),
+			),
+			h.Button(
+				h.Type("button"),
+				h.Class("dropdown-item"),
+				g.Attr("data-share-revoke", item.ID),
+				g.Attr("data-share-status-value", item.Status),
+				g.If(revokeDisabled, g.Attr("disabled", "disabled")),
+				g.Text(shareRevokeLabel(item.Status)),
+			),
+			h.Button(
+				h.Type("button"),
+				h.Class("dropdown-item is-danger"),
+				g.Attr("data-share-action", "delete"),
+				g.Attr("data-share-id", item.ID),
+				g.Attr("data-share-file", item.FileName),
+				g.Text("Delete link"),
+			),
+		),
+	})
+}
+
+func shareRevokeLabel(status string) string {
+	if strings.TrimSpace(status) == shares.ShareStatusRevoked {
+		return "Restore link"
+	}
+	return "Revoke link"
+}
+
 func shareStatus(item models.ShareWithFile, now time.Time) (string, bool) {
 	if item.Status == shares.ShareStatusRevoked {
 		return shares.ShareStatusRevoked, false
+	}
+	if item.Status == "burned" {
+		return "burned", false
 	}
 	if item.ExpiresAt != nil && !item.ExpiresAt.After(now) {
 		return shares.ShareStatusActive, true

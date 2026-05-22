@@ -22,7 +22,7 @@ func renderShareDialog() g.Node {
 					h.Class("share-modal-lucide share-modal-lucide-accent"),
 					g.Attr("aria-hidden", "true"),
 				),
-				h.Span(g.Text("Share Page Settings")),
+				h.Span(g.Text("Share Link")),
 			),
 			h.Button(
 				h.Class("share-dialog-close"),
@@ -43,7 +43,7 @@ func renderShareDialog() g.Node {
 					h.Class("share-hero-copy"),
 					h.P(
 						h.Class("share-eyebrow"),
-						g.Text("Secure share link"),
+						g.Text("Public share link"),
 					),
 					h.Div(
 						h.Class("share-file-pill"),
@@ -171,6 +171,32 @@ func renderShareDialog() g.Node {
 				Body: h.Div(
 					h.Class("share-advanced-body"),
 					h.Div(
+						h.Class("share-setting share-setting-stack"),
+						h.Div(
+							h.Class("share-setting-main"),
+							h.Div(
+								h.Class("share-setting-title-row"),
+								h.Label(
+									h.Class("share-setting-label"),
+									lucide.Link2(
+										h.Class("share-modal-lucide share-setting-icon"),
+										g.Attr("aria-hidden", "true"),
+									),
+									h.Span(g.Text("Link type")),
+								),
+							),
+							h.P(
+								h.Class("share-setting-copy"),
+								g.Text("Choose whether this link stays stable or is consumed after first access."),
+							),
+						),
+						h.Div(
+							h.Class("share-mode-selector"),
+							shareModeOption("stable", "Stable link", "Normal public link. It stays usable until revoked or expired.", true),
+							shareModeOption("once", "One-time link", "Expires after the first attempt to view or download.", false),
+						),
+					),
+					h.Div(
 						h.Class("share-setting"),
 						h.Div(
 							h.Class("share-setting-main"),
@@ -230,41 +256,6 @@ func renderShareDialog() g.Node {
 							),
 						),
 					),
-					h.Div(
-						h.Class("share-setting share-setting-disabled"),
-						h.Div(
-							h.Class("share-setting-main"),
-							h.Div(
-								h.Class("share-setting-title-row"),
-								h.Label(
-									h.Class("share-setting-label"),
-									g.Attr("for", "share-burn-toggle"),
-									lucide.Flame(
-										h.Class("share-modal-lucide share-setting-icon"),
-										g.Attr("aria-hidden", "true"),
-									),
-									h.Span(g.Text("Burn after full download")),
-								),
-								components.Tooltip(components.TooltipProps{
-									Class:   "share-setting-tooltip",
-									Tooltip: "This stays off for now. It will only be enabled once secure post-download burn tracking is ready.",
-								}),
-							),
-							h.P(
-								h.Class("share-setting-copy"),
-								g.Text("Reserved for a later chunk so previews do not accidentally destroy the share."),
-							),
-						),
-						h.Label(
-							h.Class("switch"),
-							h.Input(
-								h.Type("checkbox"),
-								g.Attr("id", "share-burn-toggle"),
-								g.Attr("disabled", "disabled"),
-							),
-							h.Span(h.Class("switch-track"), h.Span(h.Class("switch-thumb"))),
-						),
-					),
 				),
 			}),
 			h.Div(
@@ -276,10 +267,21 @@ func renderShareDialog() g.Node {
 				),
 				h.Span(h.Class("share-save-state"), g.Attr("id", "share-save-state"), g.Text("")),
 			),
+			h.P(h.Class("share-state-note"), g.Attr("id", "share-state-note"), g.Text("")),
 			h.P(h.Class("form-error share-error"), g.Attr("id", "share-error"), g.Text("")),
 		),
 		ActionsClass: "share-dialog-actions",
 		Actions: g.Group([]g.Node{
+			h.Button(
+				h.Class("button secondary"),
+				h.Type("button"),
+				g.Attr("id", "share-revoke-button"),
+				lucide.Ban(
+					h.Class("button-lucide"),
+					g.Attr("aria-hidden", "true"),
+				),
+				g.Text("Revoke Link"),
+			),
 			h.Button(
 				h.Class("button danger-outline"),
 				h.Type("button"),
@@ -298,8 +300,33 @@ func renderShareDialog() g.Node {
 					h.Class("button-lucide"),
 					g.Attr("aria-hidden", "true"),
 				),
-				g.Text("Save Share Settings"),
+				g.Text("Save Link"),
 			),
 		}),
 	})
+}
+
+func shareModeOption(value, title, description string, checked bool) g.Node {
+	id := "share-mode-" + value
+	return h.Label(
+		h.Class("share-mode-option"),
+		h.Input(
+			h.Type("radio"),
+			g.Attr("id", id),
+			g.Attr("name", "share-link-type"),
+			g.Attr("value", value),
+			g.If(checked, g.Attr("checked", "checked")),
+		),
+		h.Span(
+			h.Class("share-mode-copy"),
+			h.Span(
+				h.Class("share-mode-title"),
+				g.Text(title),
+			),
+			h.Span(
+				h.Class("share-mode-description"),
+				g.Text(description),
+			),
+		),
+	)
 }

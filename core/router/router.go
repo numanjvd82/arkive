@@ -96,6 +96,7 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 		api.GET("/me", middleware.RequireSessionJSON(authService), handlers.APIMe(authService))
 		api.GET("/health", handlers.Health(db))
 		api.GET("/public/shares/:token", handlers.APIPublicShareRecord(shareService, filesService, cfg.CookieSecret))
+		api.POST("/public/shares/:token/consume", handlers.APIPublicShareConsume(shareService, filesService, cfg.CookieSecret))
 		api.GET("/search", middleware.RequireSessionJSON(authService), handlers.APISearch(filesService, shareService))
 	}
 
@@ -127,6 +128,8 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 	apiShares.Use(middleware.RequireSessionJSON(authService))
 	{
 		apiShares.PATCH("/:id", handlers.APIUpdateShare(shareService))
+		apiShares.POST("/:id/revoke", handlers.APIRevokeShare(shareService))
+		apiShares.POST("/:id/activate", handlers.APIActivateShare(shareService))
 		apiShares.GET("/:id/crypto-record", handlers.APIGetShareCryptoRecord(shareService))
 		apiShares.DELETE("/:id", handlers.APIDeleteShare(shareService))
 	}

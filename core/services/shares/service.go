@@ -35,6 +35,7 @@ type CreateInput struct {
 	Token                    string
 	Password                 string
 	ExpiresAt                *time.Time
+	BurnAfterRead            bool
 	EncryptedShareKey        string
 	EncryptedFileKeyForShare string
 }
@@ -146,6 +147,8 @@ func (s *Service) CreateShare(ctx context.Context, input CreateInput) (models.Sh
 		CryptoVersion:     1,
 		PasswordHash:      passwordHash,
 		ExpiresAt:         input.ExpiresAt,
+		BurnAfterRead:     input.BurnAfterRead,
+		MaxAccessCount:    shareMaxAccessCount(input.BurnAfterRead),
 		Status:            ShareStatusActive,
 	})
 	if err != nil {
@@ -220,7 +223,7 @@ func (s *Service) GetShareForUser(ctx context.Context, shareID, ownerUserID stri
 	return share, nil
 }
 
-func (s *Service) UpdateShareForUser(ctx context.Context, shareID, ownerUserID string, expiresAt *time.Time, password string, requirePassword bool) (models.Share, validation.Errors, error) {
+func (s *Service) UpdateShareForUser(ctx context.Context, shareID, ownerUserID string, expiresAt *time.Time, password string, requirePassword bool, burnAfterRead bool) (models.Share, validation.Errors, error) {
 	shareID = strings.TrimSpace(shareID)
 	ownerUserID = strings.TrimSpace(ownerUserID)
 	password = strings.TrimSpace(password)
@@ -271,7 +274,7 @@ func (s *Service) UpdateShareForUser(ctx context.Context, shareID, ownerUserID s
 		}
 	}
 
-	updated, err := s.shareRepo.UpdateShareForUser(ctx, s.db, shareID, ownerUserID, passwordHash, expiresAt)
+	updated, err := s.shareRepo.UpdateShareForUser(ctx, s.db, shareID, ownerUserID, passwordHash, expiresAt, burnAfterRead, shareMaxAccessCount(burnAfterRead))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return models.Share{}, nil, ErrNotFound
@@ -306,6 +309,90 @@ func (s *Service) DeleteShareForUser(ctx context.Context, shareID, ownerUserID s
 		return false, ErrInvalidInput
 	}
 	return s.shareRepo.DeleteShareForUser(ctx, s.db, shareID, ownerUserID)
+}
+
+func (s *Service) RevokeShareForUser(ctx context.Context, shareID, ownerUserID string) (models.Share, error) {
+	shareID = strings.TrimSpace(shareID)
+	ownerUserID = strings.TrimSpace(ownerUserID)
+	if ownerUserID == "" {
+		return models.Share{}, ErrUnauthorized
+	}
+	if shareID == "" {
+		return models.Share{}, ErrInvalidInput
+	}
+	share, err := s.shareRepo.RevokeShareForUser(ctx, s.db, shareID, ownerUserID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.Share{}, ErrNotFound
+		}
+		return models.Share{}, err
+	}
+	return share, nil
+}
+
+func (s *Service) ActivateShareForUser(ctx context.Context, shareID, ownerUserID string) (models.Share, error) {
+	shareID = strings.TrimSpace(shareID)
+	ownerUserID = strings.TrimSpace(ownerUserID)
+	if ownerUserID == "" {
+		return models.Share{}, ErrUnauthorized
+	}
+	if shareID == "" {
+		return models.Share{}, ErrInvalidInput
+	}
+	share, err := s.shareRepo.ActivateShareForUser(ctx, s.db, shareID, ownerUserID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.Share{}, ErrNotFound
+		}
+		return models.Share{}, err
+	}
+	return share, nil
+}
+
+func (s *Service) ConsumeShareByToken(ctx context.Context, token string) (models.Share, bool, error) {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return models.Share{}, false, ErrInvalidInput
+	}
+
+	share, err := s.shareRepo.GetShareByToken(ctx, s.db, token)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.Share{}, false, ErrNotFound
+		}
+		return models.Share{}, false, err
+	}
+	if share.Status != ShareStatusActive {
+		if share.Status == "burned" {
+			return models.Share{}, false, ErrAlreadyConsumed
+		}
+		return models.Share{}, false, ErrNotFound
+	}
+	if share.ExpiresAt != nil && !share.ExpiresAt.After(time.Now()) {
+		return models.Share{}, false, ErrNotFound
+	}
+	if !share.BurnAfterRead || share.MaxAccessCount == nil {
+		return share, false, nil
+	}
+
+	consumed, changed, err := s.shareRepo.ConsumeShareByToken(ctx, s.db, token)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			latest, latestErr := s.shareRepo.GetShareByToken(ctx, s.db, token)
+			if latestErr == nil && latest.Status == "burned" {
+				return models.Share{}, false, ErrAlreadyConsumed
+			}
+			if latestErr != nil && errors.Is(latestErr, pgx.ErrNoRows) {
+				return models.Share{}, false, ErrNotFound
+			}
+			if latestErr != nil {
+				return models.Share{}, false, latestErr
+			}
+			return models.Share{}, false, ErrNotFound
+		}
+		return models.Share{}, false, err
+	}
+	return consumed, changed, nil
 }
 
 func (s *Service) ListSharesForUser(ctx context.Context, ownerUserID string) ([]models.ShareWithFile, error) {
@@ -343,4 +430,12 @@ func isTokenValid(token string) bool {
 		}
 	}
 	return true
+}
+
+func shareMaxAccessCount(burnAfterRead bool) *int {
+	if !burnAfterRead {
+		return nil
+	}
+	value := 1
+	return &value
 }

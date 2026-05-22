@@ -13,6 +13,7 @@ import (
 
 type PublicShareViewProps struct {
 	Token         string
+	BurnAfterRead bool
 	File          models.File
 	ViewURL       string
 	DownloadURL   string
@@ -29,12 +30,12 @@ type PublicShareViewProps struct {
 
 func PublicShareViewPage(props PublicShareViewProps) web.Page {
 	return web.Page{
-		Title:   "Arkive · Shared file",
-		Robots:  RobotsNoIndex,
-		CSS:     []string{"/static/vendor/plyr/plyr.css", "/web/pages/share.css"},
-		JS:      buildPublicShareJS(),
+		Title:    "Arkive · Shared file",
+		Robots:   RobotsNoIndex,
+		CSS:      []string{"/static/vendor/plyr/plyr.css", "/web/pages/share.css"},
+		JS:       buildPublicShareJS(),
 		ModuleJS: buildPublicShareModuleJS(),
-		HideNav: true,
+		HideNav:  true,
 		Body: g.Group([]g.Node{
 			components.InlineStyle(components.UploadUICSS),
 			h.Main(

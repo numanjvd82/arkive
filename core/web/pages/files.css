@@ -1125,6 +1125,52 @@
   gap: 12px;
 }
 
+.share-mode-selector {
+  display: grid;
+  gap: 10px;
+}
+
+.share-mode-option {
+  position: relative;
+  display: grid;
+  cursor: pointer;
+}
+
+.share-mode-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.share-mode-copy {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(135, 146, 154, 0.24);
+  background: rgba(27, 32, 36, 0.78);
+  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+}
+
+.share-mode-option:has(input:checked) .share-mode-copy {
+  border-color: rgba(56, 189, 248, 0.55);
+  background: rgba(15, 23, 30, 0.96);
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.2);
+}
+
+.share-mode-title {
+  color: var(--text);
+  font-size: var(--text-body-lg-size);
+  line-height: var(--text-body-lg-lh);
+  font-weight: 600;
+}
+
+.share-mode-description {
+  color: var(--muted);
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
+}
+
 .share-link-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -1197,6 +1243,10 @@
   gap: 12px;
   padding-bottom: 12px;
   border-bottom: 1px solid rgba(62, 72, 79, 0.7);
+}
+
+.share-setting-stack {
+  grid-template-columns: 1fr;
 }
 
 .share-setting:last-of-type {
@@ -1457,8 +1507,50 @@
   display: block;
 }
 
+.share-state-note {
+  display: none;
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(135, 146, 154, 0.24);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--muted);
+  font-size: var(--text-body-sm-size);
+  line-height: var(--text-body-sm-lh);
+}
+
+.share-state-note.is-visible {
+  display: block;
+}
+
 .share-dialog-actions {
-  justify-content: space-between;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.share-dialog-actions .button {
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  flex: 0 0 auto;
+}
+
+.share-dialog-actions .button .button-label {
+  justify-content: center;
+  text-align: center;
+}
+
+.share-dialog-actions .button.primary {
+  min-width: 136px;
+}
+
+.share-dialog-actions .button.secondary,
+.share-dialog-actions .button.danger-outline {
+  background: rgba(255, 255, 255, 0.02);
 }
 
 @media (max-width: 960px) {

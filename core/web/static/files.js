@@ -339,6 +339,7 @@ export const filesActions = {};
   const fileNameEl = document.getElementById("share-file-name");
   const statusEl = document.getElementById("share-status");
   const saveStateEl = document.getElementById("share-save-state");
+  const stateNoteEl = document.getElementById("share-state-note");
   const saveButton = document.getElementById("share-save-button");
   const expirySelect = document.getElementById("share-expiry-select");
   const expiryToggle = document.getElementById("share-expiry-toggle");
@@ -346,18 +347,21 @@ export const filesActions = {};
   const expiryCustomInput = document.getElementById("share-expiry-custom");
   const expiryTimeInput = document.getElementById("share-expiry-time");
   const passwordToggle = document.getElementById("share-password-toggle");
+  const shareModeStable = document.getElementById("share-mode-stable");
+  const shareModeOnce = document.getElementById("share-mode-once");
   const passwordField = document.querySelector(".share-password-field");
   const passwordInput = document.getElementById("share-password");
   const passwordHelper = document.getElementById("share-password-helper");
   const passwordStrength = document.getElementById("share-password-strength");
+  const revokeButton = document.getElementById("share-revoke-button");
   const deleteButton = document.getElementById("share-delete-button");
-  const burnToggle = document.getElementById("share-burn-toggle");
   const closeButton = document.getElementById("share-close-button");
   const errorEl = document.getElementById("share-error");
 
   let activeFileId = null;
   let activeShareId = "";
   let activeShareSecret = "";
+  let activeShareStatus = "";
 
   if (!backdrop || !saveButton || !statusEl) {
     return;
@@ -381,6 +385,49 @@ export const filesActions = {};
     saveStateEl.classList.toggle("is-error", state === "error");
   }
 
+  function setButtonLabel(button, text) {
+    if (!button) {
+      return;
+    }
+    const label = button.querySelector(".button-label");
+    if (label) {
+      label.textContent = text;
+      return;
+    }
+    button.textContent = text;
+  }
+
+  function setStateNote(message) {
+    if (!stateNoteEl) {
+      return;
+    }
+    const text = String(message || "");
+    stateNoteEl.textContent = text;
+    stateNoteEl.classList.toggle("is-visible", !!text);
+  }
+
+  function setDisabled(node, disabled) {
+    if (!node) {
+      return;
+    }
+    node.disabled = !!disabled;
+  }
+
+  function setShareEditable(editable) {
+    setDisabled(passwordToggle, !editable);
+    setDisabled(passwordInput, !editable || !(passwordToggle && passwordToggle.checked));
+    setDisabled(expiryToggle, !editable);
+    setDisabled(expirySelect, !editable || !(expiryToggle && expiryToggle.checked));
+    setDisabled(expiryCustomInput, !editable || !(expiryToggle && expiryToggle.checked));
+    setDisabled(expiryTimeInput, !editable || !(expiryToggle && expiryToggle.checked));
+    setDisabled(shareModeStable, !editable);
+    setDisabled(shareModeOnce, !editable);
+    if (saveButton) {
+      saveButton.hidden = !editable;
+      saveButton.disabled = !editable;
+    }
+  }
+
   function setPasswordVisible(visible) {
     if (passwordField) {
       passwordField.classList.toggle("is-visible", !!visible);
@@ -393,12 +440,16 @@ export const filesActions = {};
       passwordStrength.classList.remove("is-error");
       passwordStrength.classList.remove("is-success");
     }
+    setDisabled(passwordInput, !visible || !passwordToggle || passwordToggle.disabled || !passwordToggle.checked);
   }
 
   function setExpiryVisible(visible) {
     if (expiryCustomWrap) {
       expiryCustomWrap.classList.toggle("is-visible", !!visible);
     }
+    setDisabled(expirySelect, !visible || !expiryToggle || expiryToggle.disabled || !expiryToggle.checked);
+    setDisabled(expiryCustomInput, !visible || !expiryToggle || expiryToggle.disabled || !expiryToggle.checked);
+    setDisabled(expiryTimeInput, !visible || !expiryToggle || expiryToggle.disabled || !expiryToggle.checked);
   }
 
   function normalizeShareLink(link) {
@@ -417,14 +468,25 @@ export const filesActions = {};
   function applyShareState(data) {
     const link = normalizeShareLink(data && data.url);
     const hasPassword = !!(data && data.hasPassword);
+    const burnAfterRead = !!(data && data.burnAfterRead);
     const expiresAt = data && data.expiresAt ? String(data.expiresAt) : "";
+    const shareStatus = data && data.status ? String(data.status) : "";
     activeShareId = String((data && data.id) || "");
+    activeShareStatus = shareStatus;
 
     if (linkInput) {
       linkInput.value = link;
     }
     if (statusEl) {
-      statusEl.textContent = link ? "Live" : "Ready to create";
+      if (shareStatus === "revoked") {
+        statusEl.textContent = "Revoked";
+      } else if (shareStatus === "expired") {
+        statusEl.textContent = "Expired";
+      } else if (shareStatus === "burned") {
+        statusEl.textContent = "Burned";
+      } else {
+        statusEl.textContent = link ? "Live" : "Ready to create";
+      }
     }
     if (copyButton) {
       copyButton.disabled = !link;
@@ -432,12 +494,19 @@ export const filesActions = {};
     if (deleteButton) {
       deleteButton.disabled = !activeShareId;
     }
+    if (revokeButton) {
+      revokeButton.hidden = !activeShareId || shareStatus === "burned";
+      revokeButton.disabled = !activeShareId || shareStatus === "expired";
+      setButtonLabel(revokeButton, shareStatus === "revoked" ? "Restore Link" : "Revoke Link");
+    }
     if (passwordToggle) {
       passwordToggle.checked = hasPassword;
     }
-    if (burnToggle) {
-      burnToggle.checked = false;
-      burnToggle.disabled = true;
+    if (shareModeStable) {
+      shareModeStable.checked = !burnAfterRead;
+    }
+    if (shareModeOnce) {
+      shareModeOnce.checked = burnAfterRead;
     }
     if (expiryToggle) {
       expiryToggle.checked = !!expiresAt;
@@ -446,6 +515,23 @@ export const filesActions = {};
     setExpiryVisible(!!expiresAt);
     updatePasswordHelper(hasPassword);
     updatePasswordStrength("");
+
+    if (!activeShareId) {
+      setShareEditable(true);
+      setStateNote("");
+    } else if (shareStatus === "revoked") {
+      setShareEditable(false);
+      setStateNote("This link is revoked. Restore it before editing settings or using it again.");
+    } else if (shareStatus === "burned") {
+      setShareEditable(false);
+      setStateNote("This one-time link has already been used and cannot be reused.");
+    } else if (shareStatus === "expired") {
+      setShareEditable(false);
+      setStateNote("This link has expired. Delete it and create a new one if you still need to share the file.");
+    } else {
+      setShareEditable(true);
+      setStateNote(burnAfterRead ? "This one-time link stays editable until it is used once." : "");
+    }
 
     if (expiresAt && expiryCustomInput) {
       const parts = expiresAt.split("T");
@@ -475,13 +561,15 @@ export const filesActions = {};
     }
     activeShareId = "";
     activeShareSecret = "";
+    activeShareStatus = "";
     setShareError("");
+    setStateNote("");
     setSaveState("", "");
     updatePasswordStrength("");
   }
 
   function withAbsoluteURL(data) {
-    if (!data || !data.token) {
+    if (!data || !data.token || (data.status && data.status !== "active")) {
       return data;
     }
     const shareSecret = String((data && data.shareSecret) || activeShareSecret || "");
@@ -723,6 +811,7 @@ export const filesActions = {};
         password: passwordToggle && passwordToggle.checked ? String((passwordInput && passwordInput.value) || "") : "",
         expiresAt: expiryToggle && expiryToggle.checked ? currentExpiryISO() : "",
         requirePassword: !!(passwordToggle && passwordToggle.checked),
+        burnAfterRead: !!(shareModeOnce && shareModeOnce.checked),
       };
 
       if (payload.requirePassword && (!activeShareId || payload.password)) {
@@ -756,6 +845,7 @@ export const filesActions = {};
                 token: token,
                 password: payload.password,
                 expiresAt: payload.expiresAt,
+                burnAfterRead: payload.burnAfterRead,
                 encryptedShareKey: cryptoPayload.encryptedShareKey,
                 encryptedFileKeyForShare: cryptoPayload.encryptedFileKeyForShare,
               }),
@@ -811,6 +901,35 @@ export const filesActions = {};
         })
         .finally(function() {
           setButtonBusy(deleteButton, false, { restoreDisabled: false });
+        });
+    });
+  }
+
+  if (revokeButton) {
+    revokeButton.addEventListener("click", function() {
+      if (!activeShareId) {
+        return;
+      }
+      setButtonBusy(revokeButton, true, { busyText: "Revoking...", restoreDisabled: false });
+      setShareError("");
+      setSaveState("Revoking...", "saving");
+      const isRevoked = activeShareStatus === "revoked";
+      apiRequest("/api/shares/" + encodeURIComponent(activeShareId) + (isRevoked ? "/activate" : "/revoke"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      }, {
+        code: "unknown_error",
+        message: isRevoked ? "Failed to restore share" : "Failed to revoke share",
+      })
+        .then(function(data) {
+          setButtonBusy(revokeButton, false, { restoreDisabled: false });
+          applyShareState(withAbsoluteURL(data));
+          setSaveState(isRevoked ? "Restored" : "Revoked", "");
+        })
+        .catch(function(error) {
+          setButtonBusy(revokeButton, false, { restoreDisabled: false });
+          setSaveState(isRevoked ? "Restore failed" : "Revoke failed", "error");
+          setShareError((error && error.message) || (isRevoked ? "Failed to restore share." : "Failed to revoke share."));
         });
     });
   }

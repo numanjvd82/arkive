@@ -11,10 +11,13 @@ type Share struct {
 	AllowPreview      bool
 	AllowDownload     bool
 	BurnAfterRead     bool
+	AccessCount       int
+	MaxAccessCount    *int
 	PasswordHash      *string
 	ExpiresAt         *time.Time
 	Status            string
 	RevokedAt         *time.Time
+	ConsumedAt        *time.Time
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
 }
@@ -46,6 +49,9 @@ type ShareLink struct {
 	CommentsEnabled      bool
 	ReactionsEnabled     bool
 	BurnAfterRead        bool
+	AccessCount          int
+	MaxAccessCount       *int
+	ConsumedAt           *time.Time
 	ShowEXIF             bool
 	ShowLocation         bool
 	StripEXIFDownload    bool

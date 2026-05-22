@@ -2,8 +2,7 @@ import { setButtonBusy } from "./features/button_state.js";
 import { ArkiveFileReader } from "./features/file_reader.js";
 import { canDownloadInCurrentBrowser, isDownloadAbortError, maybeShowDownloadCapabilityWarning, showDownloadError, showServiceWorkerDownloadNotice } from "./features/reader/download_warning.js";
 import { mountStreamingMedia } from "./features/streaming/stream_player.js";
-import { Toast } from "./features/toast.js";
-import { vault, waitUntilReady } from "./features/vault.js";
+import { filesActions } from "./files.js";
 import { initPlyr } from "./plyr.js";
 import { apiRequest } from "./lib/api.js";
 import { showAppError } from "./lib/toasts.js";
@@ -116,13 +115,6 @@ import { thumbnailCache } from "./upload/thumbnail_cache.js";
     } catch (_) {
       return normalized;
     }
-  }
-
-  function copyText(value) {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      return navigator.clipboard.writeText(value);
-    }
-    return Promise.reject(new Error("Clipboard unavailable"));
   }
 
   function previewUnavailable(message) {
@@ -359,125 +351,11 @@ import { thumbnailCache } from "./upload/thumbnail_cache.js";
     previewUnavailable("This file type does not have an in-browser preview yet.");
   }
 
-  function fetchExistingShare(fileID) {
-    return apiRequest("/api/files/" + encodeURIComponent(fileID) + "/share", {
-      method: "GET",
-      headers: { "Content-Type": "application/json" }
-    }, {
-      code: "not_found",
-      message: "Share failed",
-    });
-  }
-
-  function loadFileRecord(fileID) {
-    return apiRequest("/api/files/" + encodeURIComponent(fileID) + "/record", {
-      method: "GET",
-      headers: { "Content-Type": "application/json" }
-    }, {
-      code: "not_found",
-      message: "Failed to load file",
-    });
-  }
-
-  function createRandomShareToken() {
-    const bytes = new Uint8Array(24);
-    window.crypto.getRandomValues(bytes);
-    let binary = "";
-    for (let i = 0; i < bytes.length; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-  }
-
-  function createSharePayload(fileID, token) {
-    return waitUntilReady()
-      .then(function() {
-        return loadFileRecord(fileID);
-      })
-      .then(function(record) {
-        return vault.prepareShare(record, token);
-      })
-      .then(function(prepared) {
-        return {
-          encryptedShareKey: String((prepared && prepared.encryptedShareKey) || ""),
-          encryptedFileKeyForShare: String((prepared && prepared.encryptedFileKeyForShare) || ""),
-          shareSecret: String((prepared && prepared.shareSecret) || ""),
-        };
-      });
-  }
-
-  function createShare(fileID) {
-    const token = createRandomShareToken();
-    return createSharePayload(fileID, token).then(function(cryptoPayload) {
-      return apiRequest("/api/files/" + encodeURIComponent(fileID) + "/share", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token: token,
-          password: "",
-          expiresAt: "",
-          encryptedShareKey: cryptoPayload.encryptedShareKey,
-          encryptedFileKeyForShare: cryptoPayload.encryptedFileKeyForShare,
-        })
-      }, {
-        code: "unknown_error",
-        message: "Share failed",
-      }).then(function(data) {
-        return {
-          share: data,
-          shareSecret: cryptoPayload.shareSecret,
-        };
-      });
-    });
-  }
-
-  function openShareSecret(share) {
-    if (!share || !share.encryptedShareKey) {
-      return Promise.resolve("");
-    }
-    return waitUntilReady()
-      .then(function() {
-        return vault.openShareKey(share.encryptedShareKey, share.token || "");
-      })
-      .then(function(result) {
-        return String((result && result.shareSecret) || "");
-      });
-  }
-
-  function shareURL(token, shareSecret) {
-    const hash = shareSecret ? "#s=" + encodeURIComponent(shareSecret) : "";
-    return window.location.origin + "/s/" + token + hash;
-  }
-
   function clearThumbnailCache(fileID) {
     if (!thumbnailCache || typeof thumbnailCache.deleteForFiles !== "function") {
       return Promise.resolve();
     }
     return thumbnailCache.deleteForFiles([fileID]);
-  }
-
-  function resolveShareForCopy(fileID) {
-    return fetchExistingShare(fileID)
-      .then(function(share) {
-        return openShareSecret(share).then(function(secret) {
-          return {
-            token: String((share && share.token) || ""),
-            shareSecret: secret,
-          };
-        });
-      })
-      .catch(function(error) {
-        if (error && error.status === 404) {
-          return createShare(fileID).then(function(created) {
-            const share = created && created.share ? created.share : null;
-            return {
-              token: String((share && share.token) || ""),
-              shareSecret: String((created && created.shareSecret) || ""),
-            };
-          });
-        }
-        throw error;
-      });
   }
 
   if (downloadButton) {
@@ -557,27 +435,9 @@ import { thumbnailCache } from "./upload/thumbnail_cache.js";
 
   if (shareButton) {
     shareButton.addEventListener("click", function() {
-      setButtonBusy(shareButton, true, { busyText: "Sharing..." });
-      resolveShareForCopy(fileId)
-        .then(function(data) {
-          const token = data && data.token;
-          if (!token) {
-            throw new Error("Share failed");
-          }
-          const url = shareURL(token, String((data && data.shareSecret) || ""));
-          return copyText(url).then(function() {
-            Toast.success("Share link copied.", { title: "Shared" });
-          });
-        })
-        .catch(function(error) {
-          showAppError(error, {
-            code: "unknown_error",
-            message: "Share failed.",
-          });
-        })
-        .finally(function() {
-          setButtonBusy(shareButton, false);
-        });
+      if (filesActions && typeof filesActions.openShare === "function") {
+        filesActions.openShare(fileId, actionsPanel.getAttribute("data-media-file-name") || "Encrypted file");
+      }
     });
   }
 

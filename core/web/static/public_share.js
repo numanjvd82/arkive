@@ -2,11 +2,13 @@ import { showAppError } from "./lib/toasts.js";
 import { ArkiveShareReader } from "./features/share_reader.js";
 import { canDownloadInCurrentBrowser, isDownloadAbortError, maybeShowDownloadCapabilityWarning, showDownloadError, showServiceWorkerDownloadNotice } from "./features/reader/download_warning.js";
 import { mountStreamingMedia } from "./features/streaming/stream_player.js";
+import { apiRequest } from "./lib/api.js";
 import { initPlyr } from "./plyr.js";
 
 (function() {
   const root = document.querySelector("[data-public-share-token]");
   const preview = document.getElementById("public-share-preview");
+  const viewButton = document.getElementById("public-share-view");
   const download = document.getElementById("public-share-download");
   const downloadWarning = document.getElementById("download-warning");
   const downloadQueue = document.getElementById("download-queue");
@@ -28,6 +30,8 @@ import { initPlyr } from "./plyr.js";
   let activeDownloadController = null;
   let hideDownloadQueueTimer = 0;
   let downloadCancelledByUser = false;
+  let consumedRecordPromise = null;
+  let activated = false;
 
   if (!root) {
     return;
@@ -151,6 +155,7 @@ import { initPlyr } from "./plyr.js";
   }
 
   const token = String(root.getAttribute("data-public-share-token") || "");
+  const oneTimeLink = String(root.getAttribute("data-public-share-one-time") || "") === "true";
   const shareSecret = shareSecretFromHash();
   if (!shareSecret) {
     unavailable("This link is missing its secret fragment.");
@@ -162,11 +167,34 @@ import { initPlyr } from "./plyr.js";
     return;
   }
 
+  function consumeShare() {
+    if (!oneTimeLink) {
+      return apiRequest("/api/public/shares/" + encodeURIComponent(token), {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      }, {
+        code: "not_found",
+        message: "Failed to load share",
+      });
+    }
+    if (!consumedRecordPromise) {
+      consumedRecordPromise = apiRequest("/api/public/shares/" + encodeURIComponent(token) + "/consume", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      }, {
+        code: "not_found",
+        message: "Failed to use one-time link",
+      });
+    }
+    return consumedRecordPromise;
+  }
+
   const reader = new ArkiveShareReader({
     token: token,
     shareSecret: shareSecret,
+    recordLoader: consumeShare,
   });
-  const readerReady = reader.load();
+  const readerReady = oneTimeLink ? Promise.resolve(reader) : reader.load();
 
   if (download) {
     download.setAttribute("aria-disabled", "true");
@@ -264,6 +292,96 @@ import { initPlyr } from "./plyr.js";
     setDownloadState("queued", "queued");
   }
 
+  async function activateView() {
+    if (activated) {
+      return reader;
+    }
+    await reader.load();
+    activated = true;
+    if (viewButton) {
+      viewButton.hidden = true;
+    }
+    return reader;
+  }
+
+  function loadPreview() {
+    return readerReady
+      .then(function() {
+        return activateView();
+      })
+      .then(function() {
+        const metadata = reader.getMetadata();
+        updateMetadata(metadata, Number(metadata.size || reader.record.plaintextSize || 0));
+        const mime = String((metadata && metadata.mime) || "").toLowerCase();
+        const downloadRecord = {
+          plaintextSize: Number(metadata.size || reader.record.plaintextSize || 0),
+        };
+        const downloadSupported =
+          canDownloadInCurrentBrowser(downloadRecord);
+        if (reader.record && reader.record.allowDownload === false && download) {
+          download.setAttribute("aria-disabled", "true");
+          setDownloadVisibility(true);
+        } else if (download && !downloadSupported) {
+          download.setAttribute("aria-disabled", "true");
+          setDownloadVisibility(false);
+        } else if (download) {
+          download.setAttribute("aria-disabled", "false");
+          setDownloadVisibility(true);
+        }
+        maybeShowDownloadCapabilityWarning(document, downloadRecord);
+        if (reader.record && reader.record.allowPreview === false) {
+          unavailable("Preview is disabled for this share.");
+          return;
+        }
+        if (mime.indexOf("image/") === 0) {
+          if (Number(metadata.size || reader.record.plaintextSize || 0) > IMAGE_PREVIEW_MAX_BYTES) {
+            unavailable("Large image preview is disabled. Download is available.");
+            return;
+          }
+          return reader.createBlob().then(function(blob) {
+            imagePreview(blob, metadata.name || "Shared image");
+          });
+        }
+        if (mime.indexOf("video/") === 0) {
+          return streamingVideoPreview().catch(function() {
+            if (Number(metadata.size || reader.record.plaintextSize || 0) > SMALL_VIDEO_MAX_BYTES) {
+              unavailable("Preview unsupported in this browser. Download original file.");
+              return;
+            }
+            return reader.createBlob().then(function(blob) {
+              videoPreview(blob);
+            });
+          });
+        }
+        if (mime.indexOf("text/") === 0 || mime === "application/json") {
+          return reader.textPreview(TEXT_PREVIEW_MAX_BYTES).then(function(text) {
+            textPreview(text);
+          });
+        }
+        unavailable("Download the file to view it locally.");
+      })
+      .catch(function(error) {
+        if (download) {
+          download.setAttribute("aria-disabled", "true");
+        }
+        unavailable((error && error.message) || "Failed to load encrypted share.");
+      });
+  }
+
+  if (viewButton) {
+    viewButton.addEventListener("click", function() {
+      if (viewButton.disabled) {
+        return;
+      }
+      viewButton.disabled = true;
+      loadPreview()
+        .catch(function() {})
+        .finally(function() {
+          viewButton.disabled = false;
+        });
+    });
+  }
+
   if (download) {
     download.addEventListener("click", async function(event) {
       event.preventDefault();
@@ -283,6 +401,7 @@ import { initPlyr } from "./plyr.js";
       setDownloadState("running", "Preparing");
       download.setAttribute("aria-disabled", "true");
       try {
+        await activateView();
         const result = await reader.download({
           warningContainer: downloadWarning,
           onProgress: function(progress) {
@@ -349,64 +468,13 @@ import { initPlyr } from "./plyr.js";
     });
   }
 
-  readerReady
-    .then(function() {
-      const metadata = reader.getMetadata();
-      updateMetadata(metadata, Number(metadata.size || reader.record.plaintextSize || 0));
-      const mime = String((metadata && metadata.mime) || "").toLowerCase();
-      const downloadRecord = {
-        plaintextSize: Number(metadata.size || reader.record.plaintextSize || 0),
-      };
-      const downloadSupported =
-        canDownloadInCurrentBrowser(downloadRecord);
-      if (reader.record && reader.record.allowDownload === false && download) {
-        download.setAttribute("aria-disabled", "true");
-        setDownloadVisibility(true);
-      } else if (download && !downloadSupported) {
-        download.setAttribute("aria-disabled", "true");
-        setDownloadVisibility(false);
-      } else if (download) {
-        download.setAttribute("aria-disabled", "false");
-        setDownloadVisibility(true);
-      }
-      maybeShowDownloadCapabilityWarning(document, downloadRecord);
-      if (reader.record && reader.record.allowPreview === false) {
-        unavailable("Preview is disabled for this share.");
-        return;
-      }
-      if (mime.indexOf("image/") === 0) {
-        if (Number(metadata.size || reader.record.plaintextSize || 0) > IMAGE_PREVIEW_MAX_BYTES) {
-          unavailable("Large image preview is disabled. Download is available.");
-          return;
-        }
-        return reader.createBlob().then(function(blob) {
-          imagePreview(blob, metadata.name || "Shared image");
-        });
-      }
-      if (mime.indexOf("video/") === 0) {
-        return streamingVideoPreview().catch(function() {
-          if (Number(metadata.size || reader.record.plaintextSize || 0) > SMALL_VIDEO_MAX_BYTES) {
-            unavailable("Preview unsupported in this browser. Download original file.");
-            return;
-          }
-          return reader.createBlob().then(function(blob) {
-            videoPreview(blob);
-          });
-        });
-      }
-      if (mime.indexOf("text/") === 0 || mime === "application/json") {
-        return reader.textPreview(TEXT_PREVIEW_MAX_BYTES).then(function(text) {
-          textPreview(text);
-        });
-      }
-      unavailable("Download the file to view it locally.");
-    })
-    .catch(function(error) {
-      if (download) {
-        download.setAttribute("aria-disabled", "true");
-      }
-      unavailable((error && error.message) || "Failed to load encrypted share.");
-    });
+  if (!oneTimeLink) {
+    loadPreview();
+  } else {
+    if (download) {
+      download.setAttribute("aria-disabled", "false");
+    }
+  }
 
   window.addEventListener("pagehide", function() {
     disposeStream();

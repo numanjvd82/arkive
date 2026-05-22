@@ -1,4 +1,5 @@
 import { apiRequest } from "./lib/api.js";
+import { filesActions } from "./files.js";
 import { showAppError } from "./lib/toasts.js";
 import { Dialog } from "./features/dialog.js";
 import { Toast } from "./features/toast.js";
@@ -7,13 +8,15 @@ import { vault, waitUntilReady } from "./features/vault.js";
 (function() {
   const actionButtons = document.querySelectorAll("[data-share-action]");
   const copyButtons = document.querySelectorAll("[data-share-copy]");
+  const manageButtons = document.querySelectorAll("[data-share-manage]");
+  const revokeButtons = document.querySelectorAll("[data-share-revoke]");
   const backdrop = document.getElementById("share-action-backdrop");
   const meta = document.getElementById("share-action-meta");
   const cancelButton = document.getElementById("share-action-cancel");
   const confirmButton = document.getElementById("share-action-confirm");
   let pendingAction = null;
 
-  if (!actionButtons.length && !copyButtons.length) {
+  if (!actionButtons.length && !copyButtons.length && !manageButtons.length && !revokeButtons.length) {
     return;
   }
 
@@ -56,6 +59,50 @@ import { vault, waitUntilReady } from "./features/vault.js";
       }
       const fileName = button.getAttribute("data-share-file") || "";
       openDialog(action, shareId, fileName);
+    });
+  });
+
+  manageButtons.forEach(function(button) {
+    button.addEventListener("click", function() {
+      if (!filesActions || typeof filesActions.openShare !== "function") {
+        return;
+      }
+      const row = button.closest("[data-share-row]");
+      const fileNameNode = row ? row.querySelector("[data-file-field='name']") : null;
+      const fileName = fileNameNode && fileNameNode.textContent
+        ? fileNameNode.textContent
+        : (button.getAttribute("data-share-file") || "");
+      filesActions.openShare(
+        button.getAttribute("data-share-manage") || "",
+        fileName,
+      );
+    });
+  });
+
+  revokeButtons.forEach(function(button) {
+    button.addEventListener("click", function() {
+      const shareId = button.getAttribute("data-share-revoke") || "";
+      const currentStatus = String(button.getAttribute("data-share-status-value") || "");
+      if (!shareId || currentStatus === "burned") {
+        return;
+      }
+      const endpoint = "/api/shares/" + encodeURIComponent(shareId) + (currentStatus === "revoked" ? "/activate" : "/revoke");
+      apiRequest(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      }, {
+        code: "unknown_error",
+        message: currentStatus === "revoked" ? "Restore failed" : "Revoke failed",
+      })
+        .then(function() {
+          window.location.reload();
+        })
+        .catch(function(error) {
+          showAppError(error, {
+            code: "unknown_error",
+            message: currentStatus === "revoked" ? "Restore failed. Try again." : "Revoke failed. Try again.",
+          });
+        });
     });
   });
 

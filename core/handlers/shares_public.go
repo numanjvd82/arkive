@@ -173,6 +173,10 @@ func APIPublicShareRecord(shareService *shares.Service, filesService *filessvc.S
 			return
 		}
 		if share.Status != shares.ShareStatusActive {
+			if share.Status == "burned" {
+				apierror.Write(c, http.StatusGone, "share_consumed", "Share has already been used", nil)
+				return
+			}
 			apierror.Write(c, http.StatusNotFound, "share_not_found", "Share not found", nil)
 			return
 		}
@@ -237,6 +241,125 @@ func APIPublicShareRecord(shareService *shares.Service, filesService *filessvc.S
 			"sourceUrl":                sourceURL,
 			"allowPreview":             share.AllowPreview,
 			"allowDownload":            share.AllowDownload,
+			"burnAfterRead":            share.BurnAfterRead,
+			"shareFileKeyAad":          "arkive:share-file-key:v1:" + record.FileID + ":" + record.Token,
+			"metadataAad":              "arkive:file-metadata:v1:" + record.VaultID + ":" + record.FileID,
+			"manifestAad":              "arkive:file-manifest:v1:" + record.VaultID + ":" + record.FileID,
+		})
+	}
+}
+
+func APIPublicShareConsume(shareService *shares.Service, filesService *filessvc.Service, cookieSecret string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token := strings.TrimSpace(c.Param("token"))
+		if token == "" {
+			apierror.Write(c, http.StatusNotFound, "share_not_found", "Share not found", nil)
+			return
+		}
+
+		share, err := shareService.GetShareByToken(c.Request.Context(), token)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				apierror.Write(c, http.StatusNotFound, "share_not_found", "Share not found", nil)
+				return
+			}
+			_ = c.Error(errs.WithStack(err))
+			apierror.Internal(c, "Share lookup failed")
+			return
+		}
+		if share.PasswordHash != nil && !hasShareAccess(c, share, cookieSecret) {
+			apierror.Write(c, http.StatusForbidden, "forbidden", "Share access denied", nil)
+			return
+		}
+		if share.Status == "burned" {
+			apierror.Write(c, http.StatusGone, "share_consumed", "Share has already been used", nil)
+			return
+		}
+		if share.Status != shares.ShareStatusActive {
+			apierror.Write(c, http.StatusNotFound, "share_not_found", "Share not found", nil)
+			return
+		}
+		if share.ExpiresAt != nil && !share.ExpiresAt.After(time.Now()) {
+			apierror.Write(c, http.StatusNotFound, "share_not_found", "Share not found", nil)
+			return
+		}
+		if !share.AllowPreview && !share.AllowDownload {
+			apierror.Write(c, http.StatusForbidden, "forbidden", "Share access denied", nil)
+			return
+		}
+
+		file, err := filesService.GetFileForShare(c.Request.Context(), share.FileID)
+		if err != nil {
+			switch err {
+			case filessvc.ErrNotFound, filessvc.ErrUploadCancelled:
+				apierror.Write(c, http.StatusNotFound, "share_not_found", "Share not found", nil)
+			case filessvc.ErrInvalidInput:
+				apierror.InvalidPayload(c)
+			default:
+				_ = c.Error(errs.WithStack(err))
+				apierror.Internal(c, "Share lookup failed")
+			}
+			return
+		}
+
+		sourceURL, err := filesService.PresignShareSourceForFile(c.Request.Context(), file)
+		if err != nil {
+			_ = c.Error(errs.WithStack(err))
+			apierror.Internal(c, "Share source failed")
+			return
+		}
+
+		record, err := shareService.GetPublicShareRecord(c.Request.Context(), token)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				apierror.Write(c, http.StatusNotFound, "share_not_found", "Share not found", nil)
+				return
+			}
+			_ = c.Error(errs.WithStack(err))
+			apierror.Internal(c, "Share record failed")
+			return
+		}
+
+		consumedShare, consumed, err := shareService.ConsumeShareByToken(c.Request.Context(), token)
+		if err != nil {
+			switch err {
+			case shares.ErrAlreadyConsumed:
+				apierror.Write(c, http.StatusGone, "share_consumed", "Share has already been used", nil)
+			case shares.ErrNotFound:
+				apierror.Write(c, http.StatusNotFound, "share_not_found", "Share not found", nil)
+			case shares.ErrInvalidInput:
+				apierror.InvalidPayload(c)
+			default:
+				_ = c.Error(errs.WithStack(err))
+				apierror.Internal(c, "Share consume failed")
+			}
+			return
+		}
+		if consumed {
+			share = consumedShare
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"shareId":                  record.ShareID,
+			"token":                    record.Token,
+			"fileId":                   record.FileID,
+			"vaultId":                  record.VaultID,
+			"encryptionVersion":        record.EncryptionVersion,
+			"chunkSize":                record.ChunkSize,
+			"totalChunks":              record.TotalChunks,
+			"plaintextSize":            record.PlaintextSize,
+			"encryptedHash":            base64.StdEncoding.EncodeToString(record.EncryptedHash),
+			"encryptedMetadata":        base64.StdEncoding.EncodeToString(record.EncryptedMetadata),
+			"encryptedManifest":        base64.StdEncoding.EncodeToString(record.EncryptedManifest),
+			"encryptedFileKeyForShare": base64.StdEncoding.EncodeToString(record.EncryptedFileKeyForShare),
+			"sourceUrl":                sourceURL,
+			"allowPreview":             share.AllowPreview,
+			"allowDownload":            share.AllowDownload,
+			"burnAfterRead":            share.BurnAfterRead,
+			"accessCount":              share.AccessCount,
+			"maxAccessCount":           share.MaxAccessCount,
+			"consumedAt":               share.ConsumedAt,
+			"status":                   share.Status,
 			"shareFileKeyAad":          "arkive:share-file-key:v1:" + record.FileID + ":" + record.Token,
 			"metadataAad":              "arkive:file-metadata:v1:" + record.VaultID + ":" + record.FileID,
 			"manifestAad":              "arkive:file-manifest:v1:" + record.VaultID + ":" + record.FileID,
@@ -261,15 +384,16 @@ func renderShareLanding(c *gin.Context, filesService *filessvc.Service, token st
 
 	shareURL := buildShareURL(c, token)
 	web.Render(c, pages.PublicShareViewPage(pages.PublicShareViewProps{
-		Token:       token,
-		File:        file,
-		ViewURL:     viewURL,
-		DownloadURL: downloadURL,
-		IsImage:     isImage,
-		IsVideo:     isVideo,
-		Viewable:    viewable && viewURL != "",
-		ShareURL:    shareURL,
-		SharedAt:    share.CreatedAt,
+		Token:         token,
+		BurnAfterRead: share.BurnAfterRead,
+		File:          file,
+		ViewURL:       viewURL,
+		DownloadURL:   downloadURL,
+		IsImage:       isImage,
+		IsVideo:       isVideo,
+		Viewable:      viewable && viewURL != "",
+		ShareURL:      shareURL,
+		SharedAt:      share.CreatedAt,
 	}))
 }
 

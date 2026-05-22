@@ -37,6 +37,7 @@ func MediaViewPage(props MediaViewPageProps) web.Page {
 		ActiveNav:          "files",
 		Body: g.Group([]g.Node{
 			components.InlineStyle(components.InputCSS),
+			components.InlineStyle(components.StorageSelectorCSS),
 			components.InlineStyle(components.UploadUICSS),
 			h.Main(
 				h.Class("media-view"),
@@ -160,6 +161,7 @@ func MediaViewPage(props MediaViewPageProps) web.Page {
 					),
 				),
 			),
+			renderShareDialog(),
 			components.Lightbox(),
 		}),
 	}
@@ -200,6 +202,7 @@ func mediaFrameClass(props MediaViewPageProps) string {
 func buildMediaCSS(props MediaViewPageProps) []string {
 	return []string{
 		"/static/vendor/plyr/plyr.css",
+		"/web/pages/files.css",
 		"/web/pages/media.css",
 	}
 }
@@ -212,6 +215,7 @@ func buildMediaJS(props MediaViewPageProps) []string {
 
 func buildMediaModuleJS(props MediaViewPageProps) []string {
 	return []string{
+		"/static/files.js",
 		"/static/plyr.js",
 		"/static/media.js",
 	}
