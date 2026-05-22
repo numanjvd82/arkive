@@ -88,16 +88,11 @@
       const baseURL = value.indexOf("http") === 0 ? value : window.location.origin + value;
       const linkPromise = (shareId && window.ArkiveVault && window.ArkiveVault.openShareKey)
         ? fetch("/api/shares/" + encodeURIComponent(shareId) + "/crypto-record", {
-            method: "GET",
-            headers: { "Content-Type": "application/json" }
+          method: "GET",
+          headers: { "Content-Type": "application/json" }
           })
             .then(function(res) {
-              return res.json().then(function(data) {
-                if (!res.ok) {
-                  throw new Error((data && data.error) || "Failed to load share");
-                }
-                return data;
-              });
+              return window.ArkiveAPI.readJSON(res, "Failed to load share");
             })
             .then(function(record) {
               return window.ArkiveVault.waitUntilReady().then(function() {
@@ -149,9 +144,9 @@
       const endpoint = "/api/shares/" + encodeURIComponent(shareId);
       fetch(endpoint, { method: "DELETE" })
         .then(function(res) {
-          if (!res.ok) {
-            throw new Error("request failed");
-          }
+          return window.ArkiveAPI.readJSON(res, "Action failed");
+        })
+        .then(function() {
           removeRow(shareId);
           if (window.Toast) {
             window.Toast.success("Share deleted.", { title: "Deleted" });

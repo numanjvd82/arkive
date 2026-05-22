@@ -11,6 +11,7 @@ import (
 	"arkive/core/models"
 	filessvc "arkive/core/services/files"
 	"arkive/core/services/shares"
+	"arkive/pkg/apierror"
 	appcontext "arkive/pkg/context"
 )
 
@@ -28,7 +29,7 @@ func APISearch(filesService *filessvc.Service, shareService *shares.Service) gin
 	return func(c *gin.Context) {
 		user, ok := appcontext.UserFromContext(c)
 		if !ok || user.ID == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			apierror.Unauthorized(c)
 			return
 		}
 
@@ -40,13 +41,13 @@ func APISearch(filesService *filessvc.Service, shareService *shares.Service) gin
 
 		files, err := filesService.SearchCompletedUploads(c.Request.Context(), user.ID, query, 5)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "search failed"})
+			apierror.Internal(c, "Search failed")
 			return
 		}
 
 		shareItems, err := shareService.SearchSharesForUser(c.Request.Context(), user.ID, query, 5)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "search failed"})
+			apierror.Internal(c, "Search failed")
 			return
 		}
 

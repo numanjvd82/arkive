@@ -22,3 +22,13 @@ var (
 )
 
 var ErrSizeRequired = errors.New("file size is required")
+
+type StorageLimitExceededError struct {
+	MaxBytes       int64
+	UsedBytes      int64
+	RequestedBytes int64
+}
+
+func (e *StorageLimitExceededError) Error() string {
+	return ErrStorageLimitExceeded.Error()
+}

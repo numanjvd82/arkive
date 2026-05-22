@@ -8,6 +8,7 @@ import (
 	"arkive/core/services/auth"
 	"arkive/core/web"
 	"arkive/core/web/pages"
+	"arkive/pkg/apierror"
 	appcontext "arkive/pkg/context"
 	"arkive/pkg/errs"
 )
@@ -37,11 +38,13 @@ func RequireSessionJSON(svc *auth.Service) gin.HandlerFunc {
 		user, ok, err := appcontext.LoadUser(c, svc)
 		if err != nil {
 			_ = c.Error(errs.WithStack(err))
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "session lookup failed"})
+			apierror.Internal(c, "Session lookup failed")
+			c.Abort()
 			return
 		}
 		if !ok {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			apierror.Unauthorized(c)
+			c.Abort()
 			return
 		}
 		c.Set("user_id", user.ID)

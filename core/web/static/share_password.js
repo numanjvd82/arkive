@@ -25,14 +25,12 @@
         "X-Requested-With": "XMLHttpRequest",
       },
     })
-      .then(function(res) {
+      .then(async function(res) {
         if (res.status === 204) {
           window.location.assign(action + window.location.hash);
           return null;
         }
-        return res.json().then(function(data) {
-          throw new Error((data && data.error) || "Unlock failed");
-        });
+        return window.ArkiveAPI.readJSON(res, "Unlock failed");
       })
       .catch(function(error) {
         if (errorEl) {

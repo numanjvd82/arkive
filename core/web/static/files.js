@@ -19,8 +19,11 @@ function filesActions() {
     try {
       await reader.download();
     } catch (error) {
-      if (window.Toast) {
-        window.Toast.error((error && error.message) || "Download failed.");
+      if (window.ArkiveUI && typeof window.ArkiveUI.showAppError === "function") {
+        window.ArkiveUI.showAppError(error, {
+          code: "download_failed",
+          message: "Download failed.",
+        });
       }
     } finally {
       if (trigger) {
@@ -298,15 +301,14 @@ function filesActions() {
       });
 
       try {
-        const res = await fetch("/api/entries/delete", {
+        const result = await window.ArkiveAPI.apiRequest("/api/entries/delete", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ fileIds: fileIds, folderIds: folderIds })
+        }, {
+          code: "conflict",
+          message: "Delete failed",
         });
-        if (!res.ok) {
-          throw new Error("Delete failed");
-        }
-        const result = await res.json();
         const successMessage = describeDeleteResult(result);
         await clearThumbnailCache(fileIds).catch(function() {});
         removeEntries(entries);
@@ -319,9 +321,12 @@ function filesActions() {
         if (window.Toast) {
           window.Toast.success(successMessage, { title: "Deleted" });
         }
-      } catch (_) {
-        if (window.Toast) {
-          window.Toast.error("Delete failed. Try again.");
+      } catch (error) {
+        if (window.ArkiveUI && typeof window.ArkiveUI.showAppError === "function") {
+          window.ArkiveUI.showAppError(error, {
+            code: "conflict",
+            message: "Delete failed. Try again.",
+          });
         }
         closeDialog();
       } finally {
@@ -504,45 +509,8 @@ function filesActions() {
       method: "GET",
       headers: { "Content-Type": "application/json" }
     }).then(function(res) {
-      return res.json().then(function(data) {
-        if (!res.ok) {
-          throw new Error((data && data.error) || "Failed to load file");
-        }
-        return data;
-      });
+      return window.ArkiveAPI.readJSON(res, "Failed to load file");
     });
-  }
-
-  function parseJSON(res) {
-    return res.text().then(function(text) {
-      if (!text) {
-        return null;
-      }
-      try {
-        return JSON.parse(text);
-      } catch (_) {
-        return null;
-      }
-    });
-  }
-
-  function normalizeAPIError(data, fallback) {
-    if (data && data.errors) {
-      if (data.errors.password) {
-        return String(data.errors.password);
-      }
-      if (data.errors.expiresAt) {
-        return String(data.errors.expiresAt);
-      }
-      const keys = Object.keys(data.errors);
-      if (keys.length) {
-        return String(data.errors[keys[0]] || fallback || "Request failed.");
-      }
-    }
-    if (data && data.error) {
-      return String(data.error);
-    }
-    return fallback || "Request failed.";
   }
 
   function passwordValidationMessage(password) {
@@ -633,15 +601,10 @@ function filesActions() {
       headers: { "Content-Type": "application/json" }
     })
       .then(function(res) {
-        return parseJSON(res).then(function(data) {
-          if (res.status === 404) {
-            return null;
-          }
-          if (!res.ok) {
-            throw new Error(normalizeAPIError(data, "Failed to load share settings."));
-          }
-          return data;
-        });
+        if (res.status === 404) {
+          return null;
+        }
+        return window.ArkiveAPI.readJSON(res, "Failed to load share settings.");
       })
       .then(function(data) {
         if (!data) {
@@ -820,12 +783,7 @@ function filesActions() {
 
       request
         .then(function(res) {
-          return parseJSON(res).then(function(data) {
-            if (!res.ok) {
-              throw new Error(normalizeAPIError(data, "Failed to save share settings."));
-            }
-            return data;
-          });
+          return window.ArkiveAPI.readJSON(res, "Failed to save share settings.");
         })
         .then(function(data) {
           activeShareId = String((data && data.id) || activeShareId || "");
@@ -858,12 +816,11 @@ function filesActions() {
         headers: { "Content-Type": "application/json" }
       })
         .then(function(res) {
-          if (!res.ok) {
-            throw new Error("Failed to delete share");
-          }
+          return window.ArkiveAPI.readJSON(res, "Failed to delete share").then(function() {
           applyShareState(null);
           activeShareSecret = "";
           setSaveState("Deleted", "");
+          });
         })
         .catch(function(error) {
           setSaveState("Delete failed", "error");

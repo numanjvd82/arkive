@@ -4,6 +4,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
+	"arkive/pkg/apierror"
 )
 
 func LimitBody(maxBytes int64) gin.HandlerFunc {
@@ -13,7 +15,8 @@ func LimitBody(maxBytes int64) gin.HandlerFunc {
 			return
 		}
 		if c.Request.ContentLength > maxBytes {
-			c.AbortWithStatusJSON(http.StatusRequestEntityTooLarge, gin.H{"error": "request too large"})
+			apierror.RequestTooLarge(c)
+			c.Abort()
 			return
 		}
 		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxBytes)

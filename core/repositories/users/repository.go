@@ -22,6 +22,16 @@ func (r *Repository) CountUsers(ctx context.Context, db database.PgExecutor) (in
 	return count, nil
 }
 
+func (r *Repository) GetStorageUsage(ctx context.Context, db database.PgExecutor, userID string) (int64, int64, error) {
+	query := `SELECT used_bytes, reserved_bytes FROM users WHERE id = $1`
+	var usedBytes int64
+	var reservedBytes int64
+	if err := db.QueryRow(ctx, query, userID).Scan(&usedBytes, &reservedBytes); err != nil {
+		return 0, 0, err
+	}
+	return usedBytes, reservedBytes, nil
+}
+
 func (r *Repository) UpdateLoginActivity(ctx context.Context, db database.PgExecutor, userID string, loginAt time.Time) error {
 	query := `UPDATE
 		users

@@ -58,7 +58,7 @@ export function initUploads() {
 		if (event && event.type === "error") {
 			const message = event.error || "Upload failed.";
 			setStatus(message);
-			showUploadErrorToast(message);
+			showUploadErrorToast(event);
 			return;
 		}
 		if (event && event.type === "batch-complete") {
@@ -203,14 +203,14 @@ export function initUploads() {
 	});
 
 	function setStatus(text) { status.textContent = text; }
-	function showUploadErrorToast(message) {
-		if (!window.Toast || !message) return;
-		const normalized = String(message).toLowerCase();
-		if (normalized.indexOf("storage limit exceeded") >= 0) {
-			window.Toast.error(message, { title: "Storage limit reached" });
+	function showUploadErrorToast(event) {
+		if (!window.ArkiveUI || typeof window.ArkiveUI.showAppError !== "function") {
 			return;
 		}
-		window.Toast.error(message, { title: "Upload failed" });
+		window.ArkiveUI.showAppError(event, {
+			code: "upload_failed",
+			message: "Upload failed",
+		});
 	}
 	function hideDialog() { confirmBackdrop && confirmBackdrop.classList.add("is-hidden"); }
 	function showDialog() { confirmBackdrop && confirmBackdrop.classList.remove("is-hidden"); }

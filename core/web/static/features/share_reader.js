@@ -51,10 +51,7 @@ export class ArkiveShareReader {
       method: "GET",
       headers: { "Content-Type": "application/json" },
     });
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error((data && data.error) || "Failed to load share");
-    }
+    const data = await window.ArkiveAPI.readJSON(response, "Failed to load share");
 
     this.record = data;
     const opened = await window.ArkiveVault.openPublicShareContext(

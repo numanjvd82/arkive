@@ -10,6 +10,7 @@ import (
 
 	"arkive/core/models"
 	"arkive/core/services/shares"
+	"arkive/pkg/apierror"
 	"arkive/pkg/errs"
 	"arkive/pkg/validation"
 )
@@ -32,13 +33,13 @@ func APICreateShare(svc *shares.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		fileID := strings.TrimSpace(c.Param("id"))
 		if fileID == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			apierror.InvalidPayload(c)
 			return
 		}
 
 		var req shareCreateRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			apierror.InvalidPayload(c)
 			return
 		}
 
@@ -48,7 +49,7 @@ func APICreateShare(svc *shares.Service) gin.HandlerFunc {
 			if err != nil {
 				errors := validation.New()
 				errors.Add("expiresAt", "expiry must be RFC3339")
-				c.JSON(http.StatusBadRequest, gin.H{"errors": errors})
+				apierror.Validation(c, errors)
 				return
 			}
 			expiresAt = &parsed
@@ -56,18 +57,18 @@ func APICreateShare(svc *shares.Service) gin.HandlerFunc {
 
 		userID, ok := c.Get("user_id")
 		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			apierror.Unauthorized(c)
 			return
 		}
 		if strings.TrimSpace(req.EncryptedShareKey) != "" {
 			if _, err := base64.StdEncoding.DecodeString(strings.TrimSpace(req.EncryptedShareKey)); err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+				apierror.InvalidPayload(c)
 				return
 			}
 		}
 		if strings.TrimSpace(req.EncryptedFileKeyForShare) != "" {
 			if _, err := base64.StdEncoding.DecodeString(strings.TrimSpace(req.EncryptedFileKeyForShare)); err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+				apierror.InvalidPayload(c)
 				return
 			}
 		}
@@ -84,24 +85,24 @@ func APICreateShare(svc *shares.Service) gin.HandlerFunc {
 		if err != nil {
 			switch err {
 			case shares.ErrUnauthorized:
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+				apierror.Unauthorized(c)
 			case shares.ErrNotFound:
-				c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+				apierror.Write(c, http.StatusNotFound, "file_not_found", "File not found", nil)
 			case shares.ErrShareExists:
-				c.JSON(http.StatusConflict, gin.H{"error": "share already exists"})
+				apierror.Write(c, http.StatusConflict, "share_already_exists", "Share already exists", nil)
 			case shares.ErrInvalidInput:
-				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+				apierror.InvalidPayload(c)
 			case shares.ErrPasswordHashFailed:
 				_ = c.Error(errs.WithStack(err))
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "password hashing failed"})
+				apierror.Internal(c, "Password hashing failed")
 			default:
 				_ = c.Error(errs.WithStack(err))
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "share create failed"})
+				apierror.Internal(c, "Share create failed")
 			}
 			return
 		}
 		if validationErrors != nil && validationErrors.HasAny() {
-			c.JSON(http.StatusBadRequest, gin.H{"errors": validationErrors})
+			apierror.Validation(c, validationErrors)
 			return
 		}
 
@@ -124,13 +125,13 @@ func APIUpdateShare(svc *shares.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		shareID := strings.TrimSpace(c.Param("id"))
 		if shareID == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			apierror.InvalidPayload(c)
 			return
 		}
 
 		var req shareUpdateRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			apierror.InvalidPayload(c)
 			return
 		}
 
@@ -140,7 +141,7 @@ func APIUpdateShare(svc *shares.Service) gin.HandlerFunc {
 			if err != nil {
 				errors := validation.New()
 				errors.Add("expiresAt", "expiry must be RFC3339")
-				c.JSON(http.StatusBadRequest, gin.H{"errors": errors})
+				apierror.Validation(c, errors)
 				return
 			}
 			expiresAt = &parsed
@@ -148,7 +149,7 @@ func APIUpdateShare(svc *shares.Service) gin.HandlerFunc {
 
 		userID, ok := c.Get("user_id")
 		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			apierror.Unauthorized(c)
 			return
 		}
 
@@ -156,22 +157,22 @@ func APIUpdateShare(svc *shares.Service) gin.HandlerFunc {
 		if err != nil {
 			switch err {
 			case shares.ErrUnauthorized:
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+				apierror.Unauthorized(c)
 			case shares.ErrNotFound:
-				c.JSON(http.StatusNotFound, gin.H{"error": "share not found"})
+				apierror.Write(c, http.StatusNotFound, "share_not_found", "Share not found", nil)
 			case shares.ErrInvalidInput:
-				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+				apierror.InvalidPayload(c)
 			case shares.ErrPasswordHashFailed:
 				_ = c.Error(errs.WithStack(err))
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "password hashing failed"})
+				apierror.Internal(c, "Password hashing failed")
 			default:
 				_ = c.Error(errs.WithStack(err))
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "share update failed"})
+				apierror.Internal(c, "Share update failed")
 			}
 			return
 		}
 		if validationErrors != nil && validationErrors.HasAny() {
-			c.JSON(http.StatusBadRequest, gin.H{"errors": validationErrors})
+			apierror.Validation(c, validationErrors)
 			return
 		}
 
@@ -194,13 +195,13 @@ func APIGetShareForFile(svc *shares.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		fileID := strings.TrimSpace(c.Param("id"))
 		if fileID == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			apierror.InvalidPayload(c)
 			return
 		}
 
 		userID, ok := c.Get("user_id")
 		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			apierror.Unauthorized(c)
 			return
 		}
 
@@ -208,11 +209,11 @@ func APIGetShareForFile(svc *shares.Service) gin.HandlerFunc {
 		if err != nil {
 			switch err {
 			case shares.ErrUnauthorized:
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+				apierror.Unauthorized(c)
 			case shares.ErrInvalidInput:
-				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+				apierror.InvalidPayload(c)
 			default:
-				c.JSON(http.StatusNotFound, gin.H{"error": "share not found"})
+				apierror.Write(c, http.StatusNotFound, "share_not_found", "Share not found", nil)
 			}
 			return
 		}
@@ -236,13 +237,13 @@ func APIGetShareCryptoRecord(svc *shares.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		shareID := strings.TrimSpace(c.Param("id"))
 		if shareID == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			apierror.InvalidPayload(c)
 			return
 		}
 
 		userID, ok := c.Get("user_id")
 		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			apierror.Unauthorized(c)
 			return
 		}
 
@@ -250,14 +251,14 @@ func APIGetShareCryptoRecord(svc *shares.Service) gin.HandlerFunc {
 		if err != nil {
 			switch err {
 			case shares.ErrUnauthorized:
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+				apierror.Unauthorized(c)
 			case shares.ErrNotFound:
-				c.JSON(http.StatusNotFound, gin.H{"error": "share not found"})
+				apierror.Write(c, http.StatusNotFound, "share_not_found", "Share not found", nil)
 			case shares.ErrInvalidInput:
-				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+				apierror.InvalidPayload(c)
 			default:
 				_ = c.Error(errs.WithStack(err))
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "share lookup failed"})
+				apierror.Internal(c, "Share lookup failed")
 			}
 			return
 		}
@@ -275,13 +276,13 @@ func APIDeleteShare(svc *shares.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		shareID := strings.TrimSpace(c.Param("id"))
 		if shareID == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			apierror.InvalidPayload(c)
 			return
 		}
 
 		userID, ok := c.Get("user_id")
 		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			apierror.Unauthorized(c)
 			return
 		}
 
@@ -289,17 +290,17 @@ func APIDeleteShare(svc *shares.Service) gin.HandlerFunc {
 		if err != nil {
 			switch err {
 			case shares.ErrUnauthorized:
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+				apierror.Unauthorized(c)
 			case shares.ErrInvalidInput:
-				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+				apierror.InvalidPayload(c)
 			default:
 				_ = c.Error(errs.WithStack(err))
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "share delete failed"})
+				apierror.Internal(c, "Share delete failed")
 			}
 			return
 		}
 		if !deleted {
-			c.JSON(http.StatusNotFound, gin.H{"error": "share not found"})
+			apierror.Write(c, http.StatusNotFound, "share_not_found", "Share not found", nil)
 			return
 		}
 

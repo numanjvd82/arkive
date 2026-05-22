@@ -255,9 +255,7 @@ async function submitMove(selected, targetFolderId) {
     credentials: "include",
     body: JSON.stringify(movePayload(entries, targetFolderId))
   });
-  if (!response.ok) {
-    throw new Error("Move failed");
-  }
+  await window.ArkiveAPI.readJSON(response, "Move failed");
 }
 
 async function pasteInto(targetFolderId) {

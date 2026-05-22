@@ -143,15 +143,14 @@ export function initSearchPalette() {
       abortController.abort();
     }
     abortController = new AbortController();
-    fetch("/api/search?q=" + encodeURIComponent(query), {
+    window.ArkiveAPI.apiRequest("/api/search?q=" + encodeURIComponent(query), {
       method: "GET",
       signal: abortController.signal,
       headers: { "Accept": "application/json" }
+    }, {
+      code: "unknown_error",
+      message: "Search failed"
     })
-      .then(function(res) {
-        if (!res.ok) throw new Error("search failed");
-        return res.json();
-      })
       .then(function(data) {
         renderResults(data.results || {});
       })

@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"arkive/core/services/auth"
+	"arkive/pkg/apierror"
 	"arkive/pkg/cookies"
 	"arkive/pkg/errs"
 )
@@ -24,22 +25,22 @@ func APILogin(svc *auth.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req apiLoginRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			apierror.InvalidPayload(c)
 			return
 		}
 
 		result, validationErrors, err := svc.LoginAndLoadVault(c.Request.Context(), req.Email, req.Password, c.ClientIP())
 		if validationErrors != nil && validationErrors.HasAny() {
-			c.JSON(http.StatusBadRequest, gin.H{"errors": validationErrors})
+			apierror.Validation(c, validationErrors)
 			return
 		}
 		if err != nil {
 			switch err {
 			case auth.ErrVaultNotConfigured:
-				c.JSON(http.StatusConflict, gin.H{"error": "vault is not configured"})
+				apierror.Write(c, http.StatusConflict, "vault_not_configured", "Vault is not configured", nil)
 			default:
 				_ = c.Error(errs.WithStack(err))
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "login failed"})
+				apierror.Internal(c, "Login failed")
 			}
 			return
 		}
@@ -57,35 +58,35 @@ func APIUnlockVault(svc *auth.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req apiUnlockRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			apierror.InvalidPayload(c)
 			return
 		}
 
 		userID, ok := c.Get("user_id")
 		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			apierror.Unauthorized(c)
 			return
 		}
 		userIDStr, ok := userID.(string)
 		if !ok || userIDStr == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			apierror.Unauthorized(c)
 			return
 		}
 
 		result, validationErrors, err := svc.UnlockVaultWithSession(c.Request.Context(), userIDStr, req.Password)
 		if validationErrors != nil && validationErrors.HasAny() {
-			c.JSON(http.StatusBadRequest, gin.H{"errors": validationErrors})
+			apierror.Validation(c, validationErrors)
 			return
 		}
 		if err != nil {
 			switch err {
 			case auth.ErrUnauthorized:
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+				apierror.Unauthorized(c)
 			case auth.ErrVaultNotConfigured:
-				c.JSON(http.StatusConflict, gin.H{"error": "vault is not configured"})
+				apierror.Write(c, http.StatusConflict, "vault_not_configured", "Vault is not configured", nil)
 			default:
 				_ = c.Error(errs.WithStack(err))
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "unlock failed"})
+				apierror.Internal(c, "Unlock failed")
 			}
 			return
 		}

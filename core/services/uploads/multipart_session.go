@@ -200,7 +200,15 @@ func (s *Service) StartMultipartUploadSession(ctx context.Context, userID string
 	}
 	if !reserved {
 		_ = tx.Rollback(ctx)
-		return models.UploadStartResponse{}, nil, ErrStorageLimitExceeded
+		usedBytes, reservedBytes, usageErr := s.userRepo.GetStorageUsage(ctx, s.db, userID)
+		if usageErr != nil {
+			return models.UploadStartResponse{}, nil, ErrStorageLimitExceeded
+		}
+		return models.UploadStartResponse{}, nil, &StorageLimitExceededError{
+			MaxBytes:       storageSettings.MaxStorageBytes,
+			UsedBytes:      usedBytes + reservedBytes,
+			RequestedBytes: declaredEncryptedSize,
+		}
 	}
 
 	session, err := s.uploadRepo.CreateUploadSession(ctx, tx, models.UploadSession{
@@ -551,7 +559,15 @@ func (s *Service) CompleteMultipartUploadSession(ctx context.Context, userID, up
 		if err := failTx.Commit(ctx); err != nil {
 			return err
 		}
-		return ErrStorageLimitExceeded
+		usedBytes, reservedBytes, usageErr := s.userRepo.GetStorageUsage(ctx, s.db, userID)
+		if usageErr != nil {
+			return ErrStorageLimitExceeded
+		}
+		return &StorageLimitExceededError{
+			MaxBytes:       storageSettings.MaxStorageBytes,
+			UsedBytes:      usedBytes + reservedBytes,
+			RequestedBytes: actualStoredSize,
+		}
 	}
 	if err := s.uploadRepo.UpdateUploadSessionStatus(ctx, tx, uploadSessionID, UploadStatusCompleted); err != nil {
 		_ = tx.Rollback(ctx)

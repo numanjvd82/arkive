@@ -17,6 +17,8 @@ import { initRenameEntries } from "./features/rename_entries.js";
 import { ArkiveShareReader } from "./features/share_reader.js";
 import { initSidebar } from "./features/sidebar.js";
 import { initContextMenu } from "./features/context_menu.js";
+import { installGlobalAPI } from "./lib/api.js";
+import { installGlobalUI } from "./lib/toasts.js";
 import * as ArkiveStreaming from "./features/streaming/stream_player.js";
 import { initToast } from "./features/toast.js";
 import { initTooltips } from "./features/tooltip.js";
@@ -29,6 +31,8 @@ window.ArkiveShareReader = ArkiveShareReader;
 window.ArkiveDownloadWarning = ArkiveDownloadWarning;
 window.ArkiveStreaming = ArkiveStreaming;
 window.ArkiveThumbnailCache = thumbnailCache;
+installGlobalAPI();
+installGlobalUI();
 
 function initTheme() {
   const modes = ["dark", "system", "light"];

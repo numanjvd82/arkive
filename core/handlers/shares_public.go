@@ -19,6 +19,7 @@ import (
 	"arkive/core/services/shares"
 	"arkive/core/web"
 	"arkive/core/web/pages"
+	"arkive/pkg/apierror"
 	"arkive/pkg/cookies"
 	"arkive/pkg/errs"
 )
@@ -132,7 +133,7 @@ func PublicShareUnlock(shareService *shares.Service, filesService *filessvc.Serv
 		password := strings.TrimSpace(c.PostForm("password"))
 		if password == "" || bcrypt.CompareHashAndPassword([]byte(*share.PasswordHash), []byte(password)) != nil {
 			if isJSONShareRequest(c) {
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "Password is incorrect."})
+				apierror.Write(c, http.StatusUnauthorized, "invalid_share_password", "Password is incorrect.", nil)
 				return
 			}
 			c.Status(http.StatusUnauthorized)
@@ -157,34 +158,34 @@ func APIPublicShareRecord(shareService *shares.Service, filesService *filessvc.S
 	return func(c *gin.Context) {
 		token := strings.TrimSpace(c.Param("token"))
 		if token == "" {
-			c.JSON(http.StatusNotFound, gin.H{"error": "share not found"})
+			apierror.Write(c, http.StatusNotFound, "share_not_found", "Share not found", nil)
 			return
 		}
 
 		share, err := shareService.GetShareByToken(c.Request.Context(), token)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
-				c.JSON(http.StatusNotFound, gin.H{"error": "share not found"})
+				apierror.Write(c, http.StatusNotFound, "share_not_found", "Share not found", nil)
 				return
 			}
 			_ = c.Error(errs.WithStack(err))
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "share lookup failed"})
+			apierror.Internal(c, "Share lookup failed")
 			return
 		}
 		if share.Status != shares.ShareStatusActive {
-			c.JSON(http.StatusNotFound, gin.H{"error": "share not found"})
+			apierror.Write(c, http.StatusNotFound, "share_not_found", "Share not found", nil)
 			return
 		}
 		if share.PasswordHash != nil && !hasShareAccess(c, share, cookieSecret) {
-			c.JSON(http.StatusForbidden, gin.H{"error": "share access denied"})
+			apierror.Write(c, http.StatusForbidden, "forbidden", "Share access denied", nil)
 			return
 		}
 		if !share.AllowPreview && !share.AllowDownload {
-			c.JSON(http.StatusForbidden, gin.H{"error": "share access denied"})
+			apierror.Write(c, http.StatusForbidden, "forbidden", "Share access denied", nil)
 			return
 		}
 		if share.ExpiresAt != nil && !share.ExpiresAt.After(time.Now()) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "share not found"})
+			apierror.Write(c, http.StatusNotFound, "share_not_found", "Share not found", nil)
 			return
 		}
 
@@ -192,12 +193,12 @@ func APIPublicShareRecord(shareService *shares.Service, filesService *filessvc.S
 		if err != nil {
 			switch err {
 			case filessvc.ErrNotFound, filessvc.ErrUploadCancelled:
-				c.JSON(http.StatusNotFound, gin.H{"error": "share not found"})
+				apierror.Write(c, http.StatusNotFound, "share_not_found", "Share not found", nil)
 			case filessvc.ErrInvalidInput:
-				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+				apierror.InvalidPayload(c)
 			default:
 				_ = c.Error(errs.WithStack(err))
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "share lookup failed"})
+				apierror.Internal(c, "Share lookup failed")
 			}
 			return
 		}
@@ -205,18 +206,18 @@ func APIPublicShareRecord(shareService *shares.Service, filesService *filessvc.S
 		sourceURL, err := filesService.PresignShareSourceForFile(c.Request.Context(), file)
 		if err != nil {
 			_ = c.Error(errs.WithStack(err))
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "share source failed"})
+			apierror.Internal(c, "Share source failed")
 			return
 		}
 
 		record, err := shareService.GetPublicShareRecord(c.Request.Context(), token)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
-				c.JSON(http.StatusNotFound, gin.H{"error": "share not found"})
+				apierror.Write(c, http.StatusNotFound, "share_not_found", "Share not found", nil)
 				return
 			}
 			_ = c.Error(errs.WithStack(err))
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "share record failed"})
+			apierror.Internal(c, "Share record failed")
 			return
 		}
 

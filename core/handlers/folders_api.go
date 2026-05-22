@@ -10,6 +10,7 @@ import (
 
 	filessvc "arkive/core/services/files"
 	folderssvc "arkive/core/services/folders"
+	"arkive/pkg/apierror"
 	"arkive/pkg/errs"
 	"arkive/pkg/pagination"
 )
@@ -54,19 +55,19 @@ func APICreateFolder(folderService *folderssvc.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID, ok := c.Get("user_id")
 		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			apierror.Unauthorized(c)
 			return
 		}
 
 		var req createFolderRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			apierror.InvalidPayload(c)
 			return
 		}
 
 		encryptedName, err := base64.StdEncoding.DecodeString(strings.TrimSpace(req.EncryptedName))
 		if err != nil || len(encryptedName) == 0 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			apierror.InvalidPayload(c)
 			return
 		}
 
@@ -74,7 +75,7 @@ func APICreateFolder(folderService *folderssvc.Service) gin.HandlerFunc {
 		if strings.TrimSpace(req.EncryptedMetadata) != "" {
 			encryptedMetadata, err = base64.StdEncoding.DecodeString(strings.TrimSpace(req.EncryptedMetadata))
 			if err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+				apierror.InvalidPayload(c)
 				return
 			}
 		}
@@ -89,12 +90,12 @@ func APICreateFolder(folderService *folderssvc.Service) gin.HandlerFunc {
 		if err != nil {
 			switch err {
 			case folderssvc.ErrInvalidInput:
-				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+				apierror.InvalidPayload(c)
 			case folderssvc.ErrNotFound:
-				c.JSON(http.StatusNotFound, gin.H{"error": "parent folder not found"})
+				apierror.Write(c, http.StatusNotFound, "parent_folder_not_found", "Parent folder not found", nil)
 			default:
 				_ = c.Error(errs.WithStack(err))
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "create folder failed"})
+				apierror.Internal(c, "Create folder failed")
 			}
 			return
 		}
@@ -121,7 +122,7 @@ func APIListFolderEntries(folderService *folderssvc.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		folderID := strings.TrimSpace(c.Param("id"))
 		if folderID == "" {
-			c.JSON(http.StatusNotFound, gin.H{"error": "folder not found"})
+			apierror.Write(c, http.StatusNotFound, "folder_not_found", "Folder not found", nil)
 			return
 		}
 		apiListFolderEntries(c, folderService, &folderID)
@@ -131,7 +132,7 @@ func APIListFolderEntries(folderService *folderssvc.Service) gin.HandlerFunc {
 func apiListFolderEntries(c *gin.Context, folderService *folderssvc.Service, folderID *string) {
 	userID, ok := c.Get("user_id")
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		apierror.Unauthorized(c)
 		return
 	}
 
@@ -144,12 +145,12 @@ func apiListFolderEntries(c *gin.Context, folderService *folderssvc.Service, fol
 	if err != nil {
 		switch err {
 		case folderssvc.ErrInvalidInput:
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			apierror.InvalidPayload(c)
 		case folderssvc.ErrNotFound:
-			c.JSON(http.StatusNotFound, gin.H{"error": "folder not found"})
+			apierror.Write(c, http.StatusNotFound, "folder_not_found", "Folder not found", nil)
 		default:
 			_ = c.Error(errs.WithStack(err))
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "list entries failed"})
+			apierror.Internal(c, "List entries failed")
 		}
 		return
 	}
@@ -161,13 +162,13 @@ func APIMoveEntries(folderService *folderssvc.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID, ok := c.Get("user_id")
 		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			apierror.Unauthorized(c)
 			return
 		}
 
 		var req moveEntriesRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			apierror.InvalidPayload(c)
 			return
 		}
 
@@ -179,14 +180,14 @@ func APIMoveEntries(folderService *folderssvc.Service) gin.HandlerFunc {
 		}); err != nil {
 			switch err {
 			case folderssvc.ErrInvalidInput:
-				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+				apierror.InvalidPayload(c)
 			case folderssvc.ErrInvalidMove:
-				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid move"})
+				apierror.Write(c, http.StatusBadRequest, "invalid_move", "Invalid move", nil)
 			case folderssvc.ErrNotFound:
-				c.JSON(http.StatusNotFound, gin.H{"error": "entry not found"})
+				apierror.Write(c, http.StatusNotFound, "entry_not_found", "Entry not found", nil)
 			default:
 				_ = c.Error(errs.WithStack(err))
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "move failed"})
+				apierror.Internal(c, "Move failed")
 			}
 			return
 		}
@@ -199,13 +200,13 @@ func APIDeleteEntries(folderService *folderssvc.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID, ok := c.Get("user_id")
 		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			apierror.Unauthorized(c)
 			return
 		}
 
 		var req deleteEntriesRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			apierror.InvalidPayload(c)
 			return
 		}
 
@@ -217,14 +218,14 @@ func APIDeleteEntries(folderService *folderssvc.Service) gin.HandlerFunc {
 		if err != nil {
 			switch {
 			case errors.Is(err, folderssvc.ErrInvalidInput):
-				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+				apierror.InvalidPayload(c)
 			case errors.Is(err, folderssvc.ErrNotFound):
-				c.JSON(http.StatusNotFound, gin.H{"error": "entry not found"})
+				apierror.Write(c, http.StatusNotFound, "entry_not_found", "Entry not found", nil)
 			case errors.Is(err, filessvc.ErrUploadCancelled):
-				c.JSON(http.StatusConflict, gin.H{"error": "upload in progress"})
+				apierror.Write(c, http.StatusConflict, "upload_in_progress", "Upload in progress", nil)
 			default:
 				_ = c.Error(errs.WithStack(err))
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "delete failed"})
+				apierror.Internal(c, "Delete failed")
 			}
 			return
 		}
@@ -240,19 +241,19 @@ func APIRenameEntry(folderService *folderssvc.Service, filesService *filessvc.Se
 	return func(c *gin.Context) {
 		userID, ok := c.Get("user_id")
 		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			apierror.Unauthorized(c)
 			return
 		}
 
 		var req renameEntryRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			apierror.InvalidPayload(c)
 			return
 		}
 
 		encryptedMetadata, err := base64.StdEncoding.DecodeString(strings.TrimSpace(req.EncryptedMetadata))
 		if err != nil || len(encryptedMetadata) == 0 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			apierror.InvalidPayload(c)
 			return
 		}
 
@@ -265,21 +266,21 @@ func APIRenameEntry(folderService *folderssvc.Service, filesService *filessvc.Se
 			}); err != nil {
 				switch {
 				case errors.Is(err, filessvc.ErrInvalidInput):
-					c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+					apierror.InvalidPayload(c)
 				case errors.Is(err, filessvc.ErrNotFound):
-					c.JSON(http.StatusNotFound, gin.H{"error": "entry not found"})
+					apierror.Write(c, http.StatusNotFound, "entry_not_found", "Entry not found", nil)
 				case errors.Is(err, filessvc.ErrUploadCancelled):
-					c.JSON(http.StatusConflict, gin.H{"error": "upload in progress"})
+					apierror.Write(c, http.StatusConflict, "upload_in_progress", "Upload in progress", nil)
 				default:
 					_ = c.Error(errs.WithStack(err))
-					c.JSON(http.StatusInternalServerError, gin.H{"error": "rename failed"})
+					apierror.Internal(c, "Rename failed")
 				}
 				return
 			}
 		case "folder":
 			encryptedName, decodeErr := base64.StdEncoding.DecodeString(strings.TrimSpace(req.EncryptedName))
 			if decodeErr != nil || len(encryptedName) == 0 {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+				apierror.InvalidPayload(c)
 				return
 			}
 			if err := folderService.RenameFolder(c.Request.Context(), folderssvc.RenameFolderInput{
@@ -290,17 +291,17 @@ func APIRenameEntry(folderService *folderssvc.Service, filesService *filessvc.Se
 			}); err != nil {
 				switch {
 				case errors.Is(err, folderssvc.ErrInvalidInput):
-					c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+					apierror.InvalidPayload(c)
 				case errors.Is(err, folderssvc.ErrNotFound):
-					c.JSON(http.StatusNotFound, gin.H{"error": "entry not found"})
+					apierror.Write(c, http.StatusNotFound, "entry_not_found", "Entry not found", nil)
 				default:
 					_ = c.Error(errs.WithStack(err))
-					c.JSON(http.StatusInternalServerError, gin.H{"error": "rename failed"})
+					apierror.Internal(c, "Rename failed")
 				}
 				return
 			}
 		default:
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+			apierror.InvalidPayload(c)
 			return
 		}
 

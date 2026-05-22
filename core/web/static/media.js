@@ -362,44 +362,14 @@ import { setButtonBusy } from "./features/button_state.js";
       method: "GET",
       headers: { "Content-Type": "application/json" }
     }).then(function(res) {
-      return parseJSON(res).then(function(data) {
-        if (!res.ok) {
-          if (res.status === 404) {
-            const missing = new Error("Share not found");
-            missing.status = 404;
-            throw missing;
-          }
-          throw new Error(normalizeAPIError(data, "Share failed"));
-        }
-        return data;
-      });
+      if (res.status === 404) {
+        throw new window.ArkiveAPI.APIError("Share not found", {
+          code: "share_not_found",
+          status: 404,
+        });
+      }
+      return window.ArkiveAPI.readJSON(res, "Share failed");
     });
-  }
-
-  function parseJSON(res) {
-    return res.text().then(function(text) {
-      if (!text) {
-        return null;
-      }
-      try {
-        return JSON.parse(text);
-      } catch (_) {
-        return null;
-      }
-    });
-  }
-
-  function normalizeAPIError(data, fallback) {
-    if (data && data.errors) {
-      const keys = Object.keys(data.errors);
-      if (keys.length) {
-        return String(data.errors[keys[0]] || fallback || "Request failed.");
-      }
-    }
-    if (data && data.error) {
-      return String(data.error);
-    }
-    return fallback || "Request failed.";
   }
 
   function loadFileRecord(fileID) {
@@ -407,12 +377,7 @@ import { setButtonBusy } from "./features/button_state.js";
       method: "GET",
       headers: { "Content-Type": "application/json" }
     }).then(function(res) {
-      return parseJSON(res).then(function(data) {
-        if (!res.ok) {
-          throw new Error(normalizeAPIError(data, "Failed to load file"));
-        }
-        return data;
-      });
+      return window.ArkiveAPI.readJSON(res, "Failed to load file");
     });
   }
 
@@ -460,10 +425,7 @@ import { setButtonBusy } from "./features/button_state.js";
           encryptedFileKeyForShare: cryptoPayload.encryptedFileKeyForShare,
         })
       }).then(function(res) {
-        return parseJSON(res).then(function(data) {
-          if (!res.ok) {
-            throw new Error(normalizeAPIError(data, "Share failed"));
-          }
+        return window.ArkiveAPI.readJSON(res, "Share failed").then(function(data) {
           return {
             share: data,
             shareSecret: cryptoPayload.shareSecret,
@@ -638,14 +600,13 @@ import { setButtonBusy } from "./features/button_state.js";
         headers: { "Content-Type": "application/json" }
       })
         .then(function(res) {
-          if (!res.ok) {
-            throw new Error("Delete failed");
-          }
-          return clearThumbnailCache(fileId)
+          return window.ArkiveAPI.readJSON(res, "Delete failed").then(function() {
+            return clearThumbnailCache(fileId)
             .catch(function() {})
             .then(function() {
               window.location.href = "/files";
             });
+          });
         })
         .catch(function() {
           setButtonBusy(deleteButton, false);

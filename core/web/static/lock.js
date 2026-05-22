@@ -32,39 +32,15 @@
     error.textContent = message;
   }
 
-  function firstError(errors) {
-    if (!errors) {
-      return "";
-    }
-    if (typeof errors.general === "string" && errors.general) {
-      return errors.general;
-    }
-    if (typeof errors._general === "string" && errors._general) {
-      return errors._general;
-    }
-    const keys = Object.keys(errors);
-    for (let i = 0; i < keys.length; i++) {
-      const value = errors[keys[i]];
-      if (typeof value === "string" && value) {
-        return value;
-      }
-    }
-    return "";
-  }
-
   async function apiUnlock(password) {
-    const response = await fetch("/api/auth/unlock", {
+    return window.ArkiveAPI.apiRequest("/api/auth/unlock", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ password: password })
+    }, {
+      code: "unauthorized",
+      message: "Unlock failed. Try again."
     });
-    const data = await response.json().catch(function() {
-      return {};
-    });
-    if (!response.ok) {
-      throw new Error(firstError(data.errors) || data.error || "Unlock failed. Try again.");
-    }
-    return data;
   }
 
   let submitting = false;

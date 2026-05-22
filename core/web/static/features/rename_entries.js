@@ -296,9 +296,7 @@ async function submitRename() {
           encryptedMetadata: encryptedMetadataB64,
         })
       });
-      if (!response.ok) {
-        throw new Error("Rename failed.");
-      }
+      await window.ArkiveAPI.readJSON(response, "Rename failed.");
       updateFolderName(entry, nextName, metadata, encryptedNameB64, encryptedMetadataB64);
     } else {
       if (!window.ArkiveFileReader || !window.ArkiveVault.encryptFileMetadataInContext) {
@@ -333,9 +331,7 @@ async function submitRename() {
           encryptedMetadata: encryptedMetadataB64,
         })
       });
-      if (!response.ok) {
-        throw new Error("Rename failed.");
-      }
+      await window.ArkiveAPI.readJSON(response, "Rename failed.");
       updateFileName(entry, nextName, metadata, encryptedMetadataB64);
     }
 

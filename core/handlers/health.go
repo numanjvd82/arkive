@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"arkive/core/database"
+	"arkive/pkg/apierror"
 )
 
 func Health(db database.PgExecutor) gin.HandlerFunc {
@@ -16,7 +17,7 @@ func Health(db database.PgExecutor) gin.HandlerFunc {
 		defer cancel()
 
 		if err := db.QueryRow(ctx, "select 1").Scan(new(int)); err != nil {
-			c.JSON(http.StatusServiceUnavailable, gin.H{
+			apierror.Write(c, http.StatusServiceUnavailable, "db_unavailable", "Database unavailable", gin.H{
 				"status": "db_unavailable",
 			})
 			return

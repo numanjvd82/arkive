@@ -14,6 +14,28 @@ function bytesToText(bytes) {
   return new TextDecoder().decode(bytes);
 }
 
+async function throwAPIErrorFromResponse(response, fallback) {
+  let data = null;
+  try {
+    const contentType = String(response.headers.get("content-type") || "").toLowerCase();
+    if (contentType.indexOf("application/json") >= 0) {
+      data = await response.json();
+    } else {
+      const text = await response.text();
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch (_) {
+          data = null;
+        }
+      }
+    }
+  } catch (_) {
+    data = null;
+  }
+  throw window.ArkiveAPI.parseAPIErrorPayload(data, fallback, response.status);
+}
+
 export class ArkiveFileReader {
   constructor(options) {
     this.fileId = String((options && options.fileId) || "");
@@ -49,10 +71,7 @@ export class ArkiveFileReader {
         headers: { "Content-Type": "application/json" },
       },
     );
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error((data && data.error) || "Failed to load file");
-    }
+    const data = await window.ArkiveAPI.readJSON(response, "Failed to load file");
     this.record = data;
     const opened = await window.ArkiveVault.openFileContext(this.contextId, data);
     this.metadata = JSON.parse(opened.metadata || "{}");
@@ -230,7 +249,7 @@ export class ArkiveFileReader {
         },
       );
       if (!response.ok) {
-        throw new Error("Failed to load thumbnail");
+        await throwAPIErrorFromResponse(response, "Failed to load thumbnail");
       }
       encryptedBytes = new Uint8Array(await response.arrayBuffer());
       thumbnailCache.put(

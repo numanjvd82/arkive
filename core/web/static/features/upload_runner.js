@@ -3,6 +3,7 @@ import { STATUS, isTerminal } from "../upload/upload_state.js";
 import { startUpload, presignUploadPart, presignUploadParts, presignThumbnailUpload, recordUploadPart, completeUpload, cancelUpload, cancelUploadBestEffort } from "../upload/upload_api.js";
 import { setVaultSession, restoreVaultSession, prepareUpload, encryptUploadMetadata, encryptUploadThumbnail, encryptUploadPart, hashUploadPayload, finalizeUpload, clearUploadContext } from "../upload/upload_crypto.js";
 import { generateUploadThumbnail } from "../upload/upload_thumbnail.js";
+import { toAppError } from "../lib/errors.js";
 
 const STOPPED_UPLOAD = new Error("Upload stopped");
 const THUMBNAIL_TIMEOUT_MS = 15000;
@@ -31,7 +32,7 @@ class PresignCache {
 		const promise = this.fetchBatch(key)
 			.then(() => {
 				if (!this.cache.has(key)) {
-					throw new Error("Part presign failed");
+					throw toAppError(null, { code: "upload_failed", message: "Part presign failed" });
 				}
 				const url = this.cache.get(key);
 				this.cache.delete(key);
@@ -47,7 +48,7 @@ class PresignCache {
 
 	async fetchBatch(partNumber) {
 		if (!this.fetcher) {
-			throw new Error("Part presign failed");
+			throw toAppError(null, { code: "upload_failed", message: "Part presign failed" });
 		}
 
 		const parts = [];
@@ -496,7 +497,7 @@ export class UploadRunner {
 					});
 				});
 				if (!response.ok) {
-					throw new Error("Thumbnail upload failed");
+					throw toAppError(null, { code: "thumbnail_failed", message: "Thumbnail upload failed" });
 				}
 				return {
 					mime: thumbnail.mime,
@@ -625,7 +626,7 @@ export class UploadRunner {
 			throw STOPPED_UPLOAD;
 		}
 		if (!response.ok) {
-			throw new Error("Part upload failed");
+			throw toAppError(null, { code: "upload_failed", message: "Part upload failed" });
 		}
 		const etag = response.headers.get("etag") || response.headers.get("ETag") || "";
 		await this.runWithController(async (signal) => {
@@ -665,7 +666,14 @@ export class UploadRunner {
 		job.public.updatedAt = nowISO();
 		this.emitState();
 		this.scheduleTerminalCleanup(job);
-		this.emitEvent({ type: "error", jobId: job.public.jobId, error: String(error && error.message ? error.message : error || "Upload failed") });
+		this.emitEvent({
+			type: "error",
+			jobId: job.public.jobId,
+			error: String(error && error.message ? error.message : error || "Upload failed"),
+			code: error && error.code ? String(error.code) : "upload_failed",
+			details: error && error.details ? error.details : null,
+			status: error && Number.isFinite(error.status) ? error.status : 0
+		});
 	}
 
 	async cancelJob(jobId) {
