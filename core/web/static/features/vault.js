@@ -53,7 +53,6 @@ function transferList(values) {
   return transfers;
 }
 
-let bridgeInstalled = false;
 let logoutBound = false;
 let worker = null;
 let requestID = 0;
@@ -602,9 +601,4 @@ export function onVaultLock(callback) {
 export function initVault() {
   bindLogoutHandler();
   ensureRestored();
-  if (!bridgeInstalled) {
-    bridgeInstalled = true;
-    // Temporary compatibility bridge while callers migrate to imports.
-    window.ArkiveVault = vault;
-  }
 }
