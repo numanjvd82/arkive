@@ -19,11 +19,11 @@ type PublicSharePasswordProps struct {
 
 func PublicSharePassword(props PublicSharePasswordProps) web.Page {
 	return web.Page{
-		Title:    "Arkive · Shared file",
-		Robots:   RobotsNoIndex,
-		CSS:      []string{"/web/pages/share.css"},
-		ModuleJS: []string{"/static/share_password.js"},
-		HideNav:  true,
+		Title:   "Arkive · Shared file",
+		Robots:  RobotsNoIndex,
+		CSS:     []string{"/web/pages/share.css"},
+		JS:      []string{"/static/share_password_hash.js"},
+		HideNav: true,
 		Body: g.Group([]g.Node{
 			components.InlineStyle(components.InputCSS),
 			h.Main(
@@ -111,10 +111,11 @@ func PublicSharePassword(props PublicSharePasswordProps) web.Page {
 								g.Attr("aria-hidden", "true"),
 							),
 						),
-						g.If(props.Message != "", h.P(
+						h.P(
 							h.Class("form-error share-gate-error"),
+							g.If(props.Message == "", g.Attr("hidden", "hidden")),
 							g.Text(props.Message),
-						)),
+						),
 						h.Div(
 							h.Class("share-gate-footnote"),
 							lucide.Info(
