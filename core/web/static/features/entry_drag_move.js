@@ -1,9 +1,9 @@
 import { showAppError } from "../lib/toasts.js";
+import { entrySelection } from "./file_selection.js";
+import { moveEntries } from "./move_entries.js";
 
 function selectedEntries() {
-  return window.ArkiveEntrySelection && typeof window.ArkiveEntrySelection.getSelectedEntries === "function"
-    ? window.ArkiveEntrySelection.getSelectedEntries()
-    : [];
+  return entrySelection.getSelectedEntries();
 }
 
 function clearDragging() {
@@ -55,14 +55,12 @@ export function initEntryDragMove() {
       const alreadySelected = selection.some(function(item) {
         return item && item.id === id;
       });
-      if (!alreadySelected && window.ArkiveEntrySelection && typeof window.ArkiveEntrySelection.selectOnly === "function") {
-        window.ArkiveEntrySelection.selectOnly(entry);
+      if (!alreadySelected) {
+        entrySelection.selectOnly(entry);
         selection = selectedEntries();
       }
       selection.forEach(function(item) {
-        const node = window.ArkiveEntrySelection && typeof window.ArkiveEntrySelection.findEntryByID === "function"
-          ? window.ArkiveEntrySelection.findEntryByID(item.id)
-          : null;
+        const node = entrySelection.findEntryByID(item.id);
         if (node) {
           node.classList.add("is-dragging");
         }
@@ -105,10 +103,7 @@ export function initEntryDragMove() {
         return;
       }
       try {
-        if (!window.ArkiveMoveEntries || typeof window.ArkiveMoveEntries.submitMove !== "function") {
-          throw new Error("Move unavailable");
-        }
-        await window.ArkiveMoveEntries.submitMove(selection, targetID);
+        await moveEntries.submitMove(selection, targetID);
         markSuccess(folder);
         window.location.reload();
       } catch (error) {

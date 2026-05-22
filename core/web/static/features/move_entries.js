@@ -1,22 +1,36 @@
 import { setButtonBusy } from "./button_state.js";
+import { entrySelection } from "./file_selection.js";
 import { apiRequest } from "../lib/api.js";
 import { showAppError } from "../lib/toasts.js";
 
 const CLIPBOARD_STORAGE_KEY = "arkive:entry-clipboard:v1";
+const state = {
+  pendingEntries: [],
+};
+const clipboard = {
+  mode: "",
+  entries: [],
+  sourceFolderId: "",
+};
+
+export const moveEntries = {
+  canPasteTo: canPasteTo,
+  clearClipboard: clearClipboard,
+  cutEntries: setClipboardCut,
+  currentTargetFolderId: currentTargetFolderId,
+  hasClipboard: hasClipboard,
+  getClipboardEntries: clipboardEntries,
+  openDialog: openMoveDialog,
+  pasteInto: pasteInto,
+  submitMove: submitMove,
+};
 
 function moveState() {
-  if (!window.__arkiveMoveEntriesState) {
-    window.__arkiveMoveEntriesState = {
-      pendingEntries: [],
-    };
-  }
-  return window.__arkiveMoveEntriesState;
+  return state;
 }
 
 function selection() {
-  return window.ArkiveEntrySelection && typeof window.ArkiveEntrySelection.getSelectedEntries === "function"
-    ? window.ArkiveEntrySelection.getSelectedEntries()
-    : [];
+  return entrySelection.getSelectedEntries();
 }
 
 function normalizeFolderID(value) {
@@ -32,14 +46,7 @@ function currentFolderID() {
 }
 
 function clipboardState() {
-  if (!window.ArkiveEntryClipboard) {
-    window.ArkiveEntryClipboard = {
-      mode: "",
-      entries: [],
-      sourceFolderId: "",
-    };
-  }
-  return window.ArkiveEntryClipboard;
+  return clipboard;
 }
 
 function persistClipboard() {
@@ -298,18 +305,6 @@ export function initMoveEntries() {
   restoreClipboard();
   syncClipboardVisuals();
   syncPasteAffordances();
-
-  window.ArkiveMoveEntries = {
-    canPasteTo: canPasteTo,
-    clearClipboard: clearClipboard,
-    cutEntries: setClipboardCut,
-    currentTargetFolderId: currentTargetFolderId,
-    hasClipboard: hasClipboard,
-    getClipboardEntries: clipboardEntries,
-    openDialog: openMoveDialog,
-    pasteInto: pasteInto,
-    submitMove: submitMove,
-  };
 
   openButtons.forEach(function(button) {
     if (button.hasAttribute("data-move-bound")) {

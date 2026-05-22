@@ -1,15 +1,11 @@
 import { setButtonBusy } from "./features/button_state.js";
 import { ArkiveFileReader } from "./features/file_reader.js";
+import { entrySelection } from "./features/file_selection.js";
 import { apiRequest } from "./lib/api.js";
 import { showAppError } from "./lib/toasts.js";
 import { thumbnailCache } from "./upload/thumbnail_cache.js";
 
-function filesActions() {
-  if (!window.ArkiveFilesActions) {
-    window.ArkiveFilesActions = {};
-  }
-  return window.ArkiveFilesActions;
-}
+export const filesActions = {};
 
 (function() {
   async function downloadFile(fileId, trigger) {
@@ -35,7 +31,7 @@ function filesActions() {
     }
   }
 
-  filesActions().downloadFile = downloadFile;
+  filesActions.downloadFile = downloadFile;
 
   document.addEventListener("click", async function(event) {
     const target = event.target.closest("[data-file-action='download']");
@@ -80,7 +76,7 @@ function filesActions() {
     });
   }
 
-  filesActions().openEntry = openEntry;
+  filesActions.openEntry = openEntry;
   fileRows.forEach(bindOpen);
   fileCards.forEach(bindOpen);
 })();
@@ -125,9 +121,7 @@ function filesActions() {
         }
       });
     });
-    if (window.ArkiveEntrySelection && typeof window.ArkiveEntrySelection.clear === "function") {
-      window.ArkiveEntrySelection.clear();
-    }
+    entrySelection.clear();
   }
 
   function pageHasRows() {
@@ -245,7 +239,7 @@ function filesActions() {
 
   flushStoredDeleteToast();
 
-  filesActions().requestDeleteFiles = function(fileIds) {
+  filesActions.requestDeleteFiles = function(fileIds) {
     const ids = Array.isArray(fileIds) ? fileIds.filter(Boolean) : [];
     if (!ids.length) {
       return;
@@ -255,7 +249,7 @@ function filesActions() {
     }));
   };
 
-  filesActions().requestDeleteEntries = function(entries) {
+  filesActions.requestDeleteEntries = function(entries) {
     const normalized = Array.isArray(entries) ? entries.filter(function(entry) {
       return entry && entry.id && (entry.type === "file" || entry.type === "folder");
     }) : [];

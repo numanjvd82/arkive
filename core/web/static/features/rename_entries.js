@@ -1,37 +1,41 @@
 import { apiRequest } from "../lib/api.js";
 import { showAppError } from "../lib/toasts.js";
 import { ArkiveFileReader } from "./file_reader.js";
+import { entrySelection } from "./file_selection.js";
+
+const state = {
+  activeEntry: null,
+  activeInput: null,
+  originalName: "",
+  originalEditableName: "",
+  lockedSuffix: "",
+  submitting: false,
+};
+
+export const renameEntries = {
+  requestRename: requestRename,
+  finishRename: finishRename,
+  activeEntry: function() {
+    return renameState().activeEntry;
+  },
+};
 
 function renameState() {
-  if (!window.__arkiveRenameState) {
-    window.__arkiveRenameState = {
-      activeEntry: null,
-      activeInput: null,
-      originalName: "",
-      originalEditableName: "",
-      lockedSuffix: "",
-      submitting: false,
-    };
-  }
-  return window.__arkiveRenameState;
+  return state;
 }
 
 function selectedEntries() {
-  return window.ArkiveEntrySelection && typeof window.ArkiveEntrySelection.getSelectedEntries === "function"
-    ? window.ArkiveEntrySelection.getSelectedEntries()
-    : [];
+  return entrySelection.getSelectedEntries();
 }
 
 function focusedEntry() {
-  return window.ArkiveEntrySelection && typeof window.ArkiveEntrySelection.getFocusedEntry === "function"
-    ? window.ArkiveEntrySelection.getFocusedEntry()
-    : null;
+  return entrySelection.getFocusedEntry();
 }
 
 function resolveRenameTarget() {
   const selected = selectedEntries();
-  if (selected.length === 1 && window.ArkiveEntrySelection && typeof window.ArkiveEntrySelection.findEntryByID === "function") {
-    return window.ArkiveEntrySelection.findEntryByID(selected[0].id);
+  if (selected.length === 1) {
+    return entrySelection.findEntryByID(selected[0].id);
   }
   return focusedEntry();
 }
@@ -458,14 +462,6 @@ function requestRename(entry) {
 }
 
 export function initRenameEntries() {
-  window.ArkiveRenameEntries = {
-    requestRename: requestRename,
-    finishRename: finishRename,
-    activeEntry: function() {
-      return renameState().activeEntry;
-    },
-  };
-
   document.addEventListener("arkive:rename-request", function(event) {
     const detail = event && event.detail ? event.detail : {};
     requestRename(detail.entry || null);

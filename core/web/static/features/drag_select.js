@@ -1,3 +1,5 @@
+import { entrySelection } from "./file_selection.js";
+
 function rectsIntersect(a, b) {
   return !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
 }
@@ -27,7 +29,7 @@ export function initDragSelect() {
   }
 
   function updateSelection(currentX, currentY) {
-    if (!dragBox || !window.ArkiveEntrySelection || typeof window.ArkiveEntrySelection.replaceSelection !== "function") {
+    if (!dragBox) {
       return;
     }
     const left = Math.min(startX, currentX);
@@ -49,7 +51,7 @@ export function initDragSelect() {
     const matches = Array.from(grid.querySelectorAll("[data-selectable-entry]")).filter(function(entry) {
       return rectsIntersect(selectionRect, entry.getBoundingClientRect());
     });
-    window.ArkiveEntrySelection.replaceSelection(matches);
+    entrySelection.replaceSelection(matches);
   }
 
   function onPointerMove(event) {

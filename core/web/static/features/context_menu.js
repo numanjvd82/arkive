@@ -1,18 +1,20 @@
 import { showAppError } from "../lib/toasts.js";
+import { filesActions } from "../files.js";
+import { entrySelection } from "./file_selection.js";
+import { moveEntries } from "./move_entries.js";
+
+const state = {
+  root: null,
+  currentEntry: null,
+  currentSelection: [],
+};
 
 function menuState() {
-  if (!window.__arkiveContextMenuState) {
-    window.__arkiveContextMenuState = {
-      root: null,
-      currentEntry: null,
-      currentSelection: [],
-    };
-  }
-  return window.__arkiveContextMenuState;
+  return state;
 }
 
 function selectionAPI() {
-  return window.ArkiveEntrySelection || null;
+  return entrySelection;
 }
 
 function selectedEntries() {
@@ -68,8 +70,8 @@ function menuDivider() {
 }
 
 function openEntry(entry) {
-  if (window.ArkiveFilesActions && typeof window.ArkiveFilesActions.openEntry === "function") {
-    window.ArkiveFilesActions.openEntry(entry);
+  if (typeof filesActions.openEntry === "function") {
+    filesActions.openEntry(entry);
   }
 }
 
@@ -77,8 +79,8 @@ function openShareForEntry(entry) {
   if (!entry || entry.getAttribute("data-entry-type") !== "file") {
     return;
   }
-  if (window.ArkiveFilesActions && typeof window.ArkiveFilesActions.openShare === "function") {
-    window.ArkiveFilesActions.openShare(
+  if (typeof filesActions.openShare === "function") {
+    filesActions.openShare(
       String(entry.getAttribute("data-entry-id") || ""),
       String(entry.getAttribute("data-file-name") || ""),
     );
@@ -86,17 +88,17 @@ function openShareForEntry(entry) {
 }
 
 function openMove(entries) {
-  if (!entries.length || !window.ArkiveMoveEntries || typeof window.ArkiveMoveEntries.openDialog !== "function") {
+  if (!entries.length) {
     return;
   }
-  window.ArkiveMoveEntries.openDialog(entries);
+  moveEntries.openDialog(entries);
 }
 
 function cutEntries(entries) {
-  if (!entries.length || !window.ArkiveMoveEntries || typeof window.ArkiveMoveEntries.cutEntries !== "function") {
+  if (!entries.length) {
     return;
   }
-  window.ArkiveMoveEntries.cutEntries(entries);
+  moveEntries.cutEntries(entries);
   if (window.Toast) {
     window.Toast.success("Cut " + entries.length + (entries.length === 1 ? " item." : " items."), {
       title: "Ready to move"
@@ -105,11 +107,8 @@ function cutEntries(entries) {
 }
 
 async function pasteEntries(targetFolderId) {
-  if (!window.ArkiveMoveEntries || typeof window.ArkiveMoveEntries.pasteInto !== "function") {
-    return;
-  }
   try {
-    await window.ArkiveMoveEntries.pasteInto(targetFolderId);
+    await moveEntries.pasteInto(targetFolderId);
   } catch (error) {
     showAppError(error, {
       code: "validation_failed",
@@ -176,32 +175,19 @@ function selectAll() {
 }
 
 function currentFolderTargetId() {
-  return window.ArkiveMoveEntries && typeof window.ArkiveMoveEntries.currentTargetFolderId === "function"
-    ? window.ArkiveMoveEntries.currentTargetFolderId()
-    : (document.querySelector("[data-current-folder-id]") ? document.querySelector("[data-current-folder-id]").getAttribute("data-current-folder-id") || "" : "");
+  return moveEntries.currentTargetFolderId();
 }
 
 function canPasteTo(targetFolderId) {
-  return !!(
-    window.ArkiveMoveEntries &&
-    typeof window.ArkiveMoveEntries.canPasteTo === "function" &&
-    window.ArkiveMoveEntries.canPasteTo(targetFolderId)
-  );
+  return moveEntries.canPasteTo(targetFolderId);
 }
 
 function hasClipboard() {
-  return !!(
-    window.ArkiveMoveEntries &&
-    typeof window.ArkiveMoveEntries.hasClipboard === "function" &&
-    window.ArkiveMoveEntries.hasClipboard()
-  );
+  return moveEntries.hasClipboard();
 }
 
 function clearCut() {
-  if (!window.ArkiveMoveEntries || typeof window.ArkiveMoveEntries.clearClipboard !== "function") {
-    return;
-  }
-  window.ArkiveMoveEntries.clearClipboard();
+  moveEntries.clearClipboard();
   if (window.Toast) {
     window.Toast.success("Cut cancelled.", { title: "Clipboard cleared" });
   }

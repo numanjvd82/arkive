@@ -1,21 +1,42 @@
 import { showAppError } from "../lib/toasts.js";
 
+import { filesActions } from "../files.js";
+import { moveEntries } from "./move_entries.js";
+
+const selectedEntriesMap = new Map();
+const state = {
+  lastIndex: -1,
+  touchTimer: null,
+  touchSelectionTriggered: false,
+};
+
+export const entrySelection = {
+  clear: clearSelection,
+  focusEntry: focusEntry,
+  getFocusedEntry: focusedEntry,
+  getSelectedEntries: selectedEntries,
+  findEntryByID: findEntryByID,
+  selectOnly: selectOnly,
+  setSelected: setSelected,
+  replaceSelection: function(entriesToSelect) {
+    clearSelection({ silent: true });
+    entriesToSelect.forEach(function(entry) {
+      setSelected(entry, true, { silent: true });
+    });
+    updateSelectionUI();
+  },
+  requestDeleteSelected: requestDeleteSelected,
+  requestMoveSelected: requestMoveSelected,
+  requestRenameSelected: requestRenameSelected,
+  requestShareSelected: requestShareSelected,
+};
+
 function selectedMap() {
-  if (!window.__arkiveSelectedEntries) {
-    window.__arkiveSelectedEntries = new Map();
-  }
-  return window.__arkiveSelectedEntries;
+  return selectedEntriesMap;
 }
 
 function selectionState() {
-  if (!window.__arkiveSelectionState) {
-    window.__arkiveSelectionState = {
-      lastIndex: -1,
-      touchTimer: null,
-      touchSelectionTriggered: false,
-    };
-  }
-  return window.__arkiveSelectionState;
+  return state;
 }
 
 function selectableEntries() {
@@ -293,9 +314,9 @@ function requestShareSelected() {
     });
     return;
   }
-  if (window.ArkiveFilesActions && typeof window.ArkiveFilesActions.openShare === "function") {
+  if (typeof filesActions.openShare === "function") {
     const node = findEntryByID(selectedFiles[0].id);
-    window.ArkiveFilesActions.openShare(selectedFiles[0].id, node ? String(node.getAttribute("data-file-name") || "") : "");
+    filesActions.openShare(selectedFiles[0].id, node ? String(node.getAttribute("data-file-name") || "") : "");
   }
 }
 
@@ -304,8 +325,8 @@ function requestMoveSelected() {
   if (!selected.length) {
     return;
   }
-  if (window.ArkiveMoveEntries && typeof window.ArkiveMoveEntries.openDialog === "function") {
-    window.ArkiveMoveEntries.openDialog(selected);
+  if (typeof moveEntries.openDialog === "function") {
+    moveEntries.openDialog(selected);
     return;
   }
   const button = document.getElementById("move-entries-selected");
@@ -339,10 +360,10 @@ function requestRenameSelected() {
 
 function requestCutSelected() {
   const selected = selectedEntries();
-  if (!selected.length || !window.ArkiveMoveEntries || typeof window.ArkiveMoveEntries.cutEntries !== "function") {
+  if (!selected.length) {
     return;
   }
-  window.ArkiveMoveEntries.cutEntries(selected);
+  moveEntries.cutEntries(selected);
   if (window.Toast) {
     window.Toast.success("Cut " + selected.length + (selected.length === 1 ? " item." : " items."), {
       title: "Ready to move"
@@ -351,11 +372,8 @@ function requestCutSelected() {
 }
 
 async function requestPasteHere() {
-  if (!window.ArkiveMoveEntries || typeof window.ArkiveMoveEntries.pasteInto !== "function") {
-    return;
-  }
   try {
-    await window.ArkiveMoveEntries.pasteInto(
+    await moveEntries.pasteInto(
       document.querySelector("[data-current-folder-id]")
         ? document.querySelector("[data-current-folder-id]").getAttribute("data-current-folder-id") || ""
         : ""
@@ -369,13 +387,10 @@ async function requestPasteHere() {
 }
 
 function clearCutClipboard() {
-  if (!window.ArkiveMoveEntries || typeof window.ArkiveMoveEntries.clearClipboard !== "function") {
+  if (!moveEntries.hasClipboard()) {
     return false;
   }
-  if (!window.ArkiveMoveEntries.hasClipboard || !window.ArkiveMoveEntries.hasClipboard()) {
-    return false;
-  }
-  window.ArkiveMoveEntries.clearClipboard();
+  moveEntries.clearClipboard();
   if (window.Toast) {
     window.Toast.success("Cut cancelled.", { title: "Clipboard cleared" });
   }
@@ -388,14 +403,14 @@ function openSelectedOrFocused() {
 
   if (selected.length === 1) {
     const node = findEntryByID(selected[0].id);
-    if (window.ArkiveFilesActions && typeof window.ArkiveFilesActions.openEntry === "function" && node) {
-      window.ArkiveFilesActions.openEntry(node);
+    if (typeof filesActions.openEntry === "function" && node) {
+      filesActions.openEntry(node);
     }
     return;
   }
 
-  if (focusNode && window.ArkiveFilesActions && typeof window.ArkiveFilesActions.openEntry === "function") {
-    window.ArkiveFilesActions.openEntry(focusNode);
+  if (focusNode && typeof filesActions.openEntry === "function") {
+    filesActions.openEntry(focusNode);
   }
 }
 
@@ -458,8 +473,8 @@ function bindEntry(entry) {
       return;
     }
     focusEntry(entry);
-    if (window.ArkiveFilesActions && typeof window.ArkiveFilesActions.openEntry === "function") {
-      window.ArkiveFilesActions.openEntry(entry);
+    if (typeof filesActions.openEntry === "function") {
+      filesActions.openEntry(entry);
     }
   });
 
@@ -520,10 +535,8 @@ function bindShortcuts() {
       return;
     }
     if ((event.metaKey || event.ctrlKey) && lower === "v") {
-      const targetFolderId = window.ArkiveMoveEntries && typeof window.ArkiveMoveEntries.currentTargetFolderId === "function"
-        ? window.ArkiveMoveEntries.currentTargetFolderId()
-        : (document.querySelector("[data-current-folder-id]") ? document.querySelector("[data-current-folder-id]").getAttribute("data-current-folder-id") || "" : "");
-      if (!window.ArkiveMoveEntries || typeof window.ArkiveMoveEntries.canPasteTo !== "function" || !window.ArkiveMoveEntries.canPasteTo(targetFolderId)) {
+      const targetFolderId = moveEntries.currentTargetFolderId();
+      if (!moveEntries.canPasteTo(targetFolderId)) {
         return;
       }
       event.preventDefault();
@@ -608,27 +621,6 @@ export function initFileSelection() {
       clearSelection();
     });
   }
-
-  window.ArkiveEntrySelection = {
-    clear: clearSelection,
-    focusEntry: focusEntry,
-    getFocusedEntry: focusedEntry,
-    getSelectedEntries: selectedEntries,
-    findEntryByID: findEntryByID,
-    selectOnly: selectOnly,
-    setSelected: setSelected,
-    replaceSelection: function(entriesToSelect) {
-      clearSelection({ silent: true });
-      entriesToSelect.forEach(function(entry) {
-        setSelected(entry, true, { silent: true });
-      });
-      updateSelectionUI();
-    },
-    requestDeleteSelected: requestDeleteSelected,
-    requestMoveSelected: requestMoveSelected,
-    requestRenameSelected: requestRenameSelected,
-    requestShareSelected: requestShareSelected,
-  };
 
   updateSelectionUI();
 }
