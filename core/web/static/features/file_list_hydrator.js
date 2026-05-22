@@ -1,4 +1,5 @@
 import { ArkiveFileReader } from "./file_reader.js";
+import { waitUntilReady } from "./vault.js";
 
 function formatBytes(bytes) {
   const value = Number(bytes || 0);
@@ -142,12 +143,10 @@ async function hydrateItem(item) {
 
 export async function initFileListHydrator() {
   const items = document.querySelectorAll("[data-file-item]");
-  if (!items.length || !window.ArkiveVault) {
+  if (!items.length) {
     return;
   }
-  if (typeof window.ArkiveVault.waitUntilReady === "function") {
-    await window.ArkiveVault.waitUntilReady();
-  }
+  await waitUntilReady();
 
   let nextIndex = 0;
 

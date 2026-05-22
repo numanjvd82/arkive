@@ -3,6 +3,7 @@ import { showAppError } from "../lib/toasts.js";
 import { ArkiveFileReader } from "./file_reader.js";
 import { entrySelection } from "./file_selection.js";
 import { Toast } from "./toast.js";
+import { vault } from "./vault.js";
 
 const state = {
   activeEntry: null,
@@ -121,19 +122,16 @@ async function loadFolderMetadata(entry) {
   if (cached) {
     return cached;
   }
-  if (!window.ArkiveVault) {
-    return null;
-  }
   const encryptedMetadata = String(entry.getAttribute("data-folder-meta-b64") || "");
   const encryptedName = String(entry.getAttribute("data-folder-name-b64") || "");
   try {
     let metadata = null;
-    if (encryptedMetadata && typeof window.ArkiveVault.decryptFolderMetadata === "function") {
-      const result = await window.ArkiveVault.decryptFolderMetadata(encryptedMetadata);
+    if (encryptedMetadata) {
+      const result = await vault.decryptFolderMetadata(encryptedMetadata);
       metadata = result && result.metadata ? result.metadata : null;
     }
-    if ((!metadata || !metadata.name) && encryptedName && typeof window.ArkiveVault.decryptFolderName === "function") {
-      const result = await window.ArkiveVault.decryptFolderName(encryptedName);
+    if ((!metadata || !metadata.name) && encryptedName) {
+      const result = await vault.decryptFolderName(encryptedName);
       metadata = result && result.metadata ? result.metadata : metadata;
     }
     if (!metadata) {
@@ -277,16 +275,12 @@ async function submitRename() {
   entry.classList.add("is-rename-saving");
 
   try {
-    if (!window.ArkiveVault) {
-      throw new Error("Vault is unavailable.");
-    }
-
     const type = entryType(entry);
     if (type === "folder") {
       const current = await loadFolderMetadata(entry);
       const metadata = Object.assign({}, current || {}, { name: nextName });
-      const encryptedName = await window.ArkiveVault.encryptFolderName({ name: nextName });
-      const encryptedMetadata = await window.ArkiveVault.encryptFolderMetadata(metadata);
+      const encryptedName = await vault.encryptFolderName({ name: nextName });
+      const encryptedMetadata = await vault.encryptFolderMetadata(metadata);
       const encryptedNameB64 = encryptedName && encryptedName.encryptedMetadata ? encryptedName.encryptedMetadata : "";
       const encryptedMetadataB64 = encryptedMetadata && encryptedMetadata.encryptedMetadata ? encryptedMetadata.encryptedMetadata : "";
       if (!encryptedNameB64 || !encryptedMetadataB64) {
@@ -307,9 +301,6 @@ async function submitRename() {
       });
       updateFolderName(entry, nextName, metadata, encryptedNameB64, encryptedMetadataB64);
     } else {
-      if (!window.ArkiveVault.encryptFileMetadataInContext) {
-        throw new Error("Rename failed.");
-      }
       const reader = new ArkiveFileReader({ fileId: entryID(entry) });
       let metadata = null;
       let encryptedMetadataB64 = "";
@@ -321,7 +312,7 @@ async function submitRename() {
         if (!vaultId || !fileId) {
           throw new Error("Rename failed.");
         }
-        const encryptedMetadata = await window.ArkiveVault.encryptFileMetadataInContext(reader.contextId, metadata, vaultId, fileId);
+        const encryptedMetadata = await vault.encryptFileMetadataInContext(reader.contextId, metadata, vaultId, fileId);
         encryptedMetadataB64 = encryptedMetadata && encryptedMetadata.encryptedMetadata ? encryptedMetadata.encryptedMetadata : "";
         if (!encryptedMetadataB64) {
           throw new Error("Rename failed.");

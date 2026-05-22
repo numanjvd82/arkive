@@ -3,6 +3,7 @@ import { Dialog } from "./features/dialog.js";
 import { ArkiveFileReader } from "./features/file_reader.js";
 import { entrySelection } from "./features/file_selection.js";
 import { Toast } from "./features/toast.js";
+import { vault, waitUntilReady } from "./features/vault.js";
 import { apiRequest } from "./lib/api.js";
 import { showAppError } from "./lib/toasts.js";
 import { thumbnailCache } from "./upload/thumbnail_cache.js";
@@ -553,15 +554,12 @@ export const filesActions = {};
   }
 
   function createSharePayload(fileId, token) {
-    if (!window.ArkiveVault || !window.ArkiveVault.prepareShare) {
-      return Promise.reject(new Error("Share encryption is unavailable."));
-    }
-    return window.ArkiveVault.waitUntilReady()
+    return waitUntilReady()
       .then(function() {
         return loadFileRecord(fileId);
       })
       .then(function(record) {
-        return window.ArkiveVault.prepareShare(record, token).then(function(prepared) {
+        return vault.prepareShare(record, token).then(function(prepared) {
           return {
             encryptedShareKey: String((prepared && prepared.encryptedShareKey) || ""),
             encryptedFileKeyForShare: String((prepared && prepared.encryptedFileKeyForShare) || ""),
@@ -596,10 +594,10 @@ export const filesActions = {};
         if (!data) {
           return;
         }
-        if (data && data.encryptedShareKey && window.ArkiveVault && window.ArkiveVault.openShareKey) {
-          return window.ArkiveVault.waitUntilReady()
+        if (data && data.encryptedShareKey) {
+          return waitUntilReady()
             .then(function() {
-              return window.ArkiveVault.openShareKey(data.encryptedShareKey, data.token || "");
+              return vault.openShareKey(data.encryptedShareKey, data.token || "");
             })
             .then(function(result) {
               activeShareSecret = String((result && result.shareSecret) || "");

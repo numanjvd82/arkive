@@ -3,6 +3,7 @@ import { buildChunkMap } from "./chunk_map.js";
 import { downloadFile } from "./download_controller.js";
 import { apiRequest, parseAPIErrorPayload } from "../../lib/api.js";
 import { thumbnailCache } from "../../upload/thumbnail_cache.js";
+import { vault, waitUntilReady } from "../vault.js";
 
 function createContextId() {
   if (window.crypto && window.crypto.randomUUID) {
@@ -64,7 +65,7 @@ export class ArkiveFileReader {
     if (!this.fileId) {
       throw new Error("Missing file ID");
     }
-    await window.ArkiveVault.waitUntilReady();
+    await waitUntilReady();
     const data = await apiRequest(
       this.apiBase + "/" + encodeURIComponent(this.fileId) + "/record",
       {
@@ -77,7 +78,7 @@ export class ArkiveFileReader {
       },
     );
     this.record = data;
-    const opened = await window.ArkiveVault.openFileContext(this.contextId, data);
+    const opened = await vault.openFileContext(this.contextId, data);
     this.metadata = JSON.parse(opened.metadata || "{}");
     this.manifest = JSON.parse(opened.manifest || "{}");
     this.chunkMap = buildChunkMap(
@@ -90,7 +91,7 @@ export class ArkiveFileReader {
 
   async dispose() {
     this.clearChunkCache();
-    await window.ArkiveVault.closeFileContext(this.contextId).catch(function() {});
+    await vault.closeFileContext(this.contextId).catch(function() {});
   }
 
   getMetadata() {
@@ -130,7 +131,7 @@ export class ArkiveFileReader {
   }
 
   async decryptChunk(mappedChunk, encryptedBytes) {
-    const result = await window.ArkiveVault.decryptFileChunk(
+    const result = await vault.decryptFileChunk(
       this.contextId,
       encryptedBytes,
       mappedChunk.aad || this.chunkAAD(mappedChunk.index),
@@ -263,7 +264,7 @@ export class ArkiveFileReader {
         encryptedBytes,
       ).catch(function() {});
     }
-    const result = await window.ArkiveVault.decryptFileChunk(
+    const result = await vault.decryptFileChunk(
       this.contextId,
       encryptedBytes,
       this.thumbnailAAD(),

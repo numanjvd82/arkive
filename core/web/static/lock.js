@@ -1,4 +1,5 @@
 import { apiRequest } from "./lib/api.js";
+import { getVaultState, persistSessionUnlock, unlockVault, waitUntilReady } from "./features/vault.js";
 
 (function() {
   const form = document.querySelector("[data-lock-form='true']");
@@ -47,13 +48,11 @@ import { apiRequest } from "./lib/api.js";
 
   let submitting = false;
 
-  if (window.ArkiveVault && typeof window.ArkiveVault.waitUntilReady === "function") {
-    window.ArkiveVault.waitUntilReady().then(function() {
-      if (typeof window.ArkiveVault.isUnlocked === "function" && window.ArkiveVault.isUnlocked()) {
-        window.location.replace(lockRedirectTarget());
-      }
-    }).catch(function() {});
-  }
+  waitUntilReady().then(function() {
+    if (getVaultState().unlocked) {
+      window.location.replace(lockRedirectTarget());
+    }
+  }).catch(function() {});
 
   form.addEventListener("submit", function(event) {
     event.preventDefault();
@@ -65,11 +64,6 @@ import { apiRequest } from "./lib/api.js";
     const submitButton = form.querySelector("button[type='submit']");
     const password = passwordInput ? String(passwordInput.value || "") : "";
 
-    if (!window.ArkiveVault || typeof window.ArkiveVault.unlockVault !== "function") {
-      setGeneralError("Vault runtime is unavailable. Reload the page and try again.");
-      return;
-    }
-
     submitting = true;
     setGeneralError("");
     if (submitButton) {
@@ -78,11 +72,9 @@ import { apiRequest } from "./lib/api.js";
 
     apiUnlock(password)
       .then(function(data) {
-        return window.ArkiveVault.unlockVault(password, data.salt, data.encryptedMasterKey)
+        return unlockVault(password, data.salt, data.encryptedMasterKey)
           .then(async function() {
-            if (typeof window.ArkiveVault.persistSessionUnlock === "function") {
-              await window.ArkiveVault.persistSessionUnlock();
-            }
+            await persistSessionUnlock();
             if (passwordInput) {
               passwordInput.value = "";
             }

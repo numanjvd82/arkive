@@ -2,6 +2,7 @@ import { apiRequest } from "./lib/api.js";
 import { showAppError } from "./lib/toasts.js";
 import { Dialog } from "./features/dialog.js";
 import { Toast } from "./features/toast.js";
+import { vault, waitUntilReady } from "./features/vault.js";
 
 (function() {
   const actionButtons = document.querySelectorAll("[data-share-action]");
@@ -83,7 +84,7 @@ import { Toast } from "./features/toast.js";
       const value = button.getAttribute("data-share-copy") || "";
       const token = button.getAttribute("data-share-token") || "";
       const baseURL = value.indexOf("http") === 0 ? value : window.location.origin + value;
-      const linkPromise = (shareId && window.ArkiveVault && window.ArkiveVault.openShareKey)
+      const linkPromise = shareId
         ? apiRequest("/api/shares/" + encodeURIComponent(shareId) + "/crypto-record", {
           method: "GET",
           headers: { "Content-Type": "application/json" }
@@ -92,12 +93,12 @@ import { Toast } from "./features/toast.js";
             message: "Failed to load share",
           })
             .then(function(record) {
-              return window.ArkiveVault.waitUntilReady().then(function() {
+              return waitUntilReady().then(function() {
                 return record;
               });
             })
             .then(function(record) {
-              return window.ArkiveVault.openShareKey(record.encryptedShareKey || "", record.token || token);
+              return vault.openShareKey(record.encryptedShareKey || "", record.token || token);
             })
             .then(function(result) {
               const shareSecret = String((result && result.shareSecret) || "");

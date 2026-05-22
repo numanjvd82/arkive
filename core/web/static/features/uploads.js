@@ -1,6 +1,7 @@
 import { UploadRunner } from "./upload_runner.js";
 import { showAppError } from "../lib/toasts.js";
 import { Toast } from "./toast.js";
+import { getSessionUnlock, onSessionUnlock } from "./vault.js";
 
 function formatBytes(bytes) {
 	if (!bytes) return "0 B";
@@ -73,14 +74,10 @@ export function initUploads() {
 	state = runner.getState();
 	scheduleRender();
 
-	if (window.ArkiveVault && typeof window.ArkiveVault.onSessionUnlock === "function") {
-		window.ArkiveVault.onSessionUnlock(function (session) {
-			runner.setVaultSession(session);
-		});
-	}
-	if (window.ArkiveVault && typeof window.ArkiveVault.getSessionUnlock === "function") {
-		runner.setVaultSession(window.ArkiveVault.getSessionUnlock());
-	}
+	onSessionUnlock(function (session) {
+		runner.setVaultSession(session);
+	});
+	runner.setVaultSession(getSessionUnlock());
 
 	browseFilesButton && browseFilesButton.addEventListener("click", function () { input.click(); });
 	input.addEventListener("change", function () {

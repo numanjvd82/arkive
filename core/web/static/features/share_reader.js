@@ -2,6 +2,7 @@ import { fetchEncryptedChunk } from "./reader/chunk_fetcher.js";
 import { buildChunkMap } from "./reader/chunk_map.js";
 import { downloadFile } from "./reader/download_controller.js";
 import { apiRequest } from "../lib/api.js";
+import { vault } from "./vault.js";
 
 function createContextId() {
   if (window.crypto && window.crypto.randomUUID) {
@@ -44,10 +45,6 @@ export class ArkiveShareReader {
     if (!this.shareSecret) {
       throw new Error("Missing share secret");
     }
-    if (!window.ArkiveVault || typeof window.ArkiveVault.openPublicShareContext !== "function") {
-      throw new Error("Share crypto is unavailable");
-    }
-
     const data = await apiRequest("/api/public/shares/" + encodeURIComponent(this.token), {
       method: "GET",
       headers: { "Content-Type": "application/json" },
@@ -57,7 +54,7 @@ export class ArkiveShareReader {
     });
 
     this.record = data;
-    const opened = await window.ArkiveVault.openPublicShareContext(
+    const opened = await vault.openPublicShareContext(
       this.contextId,
       data,
       this.shareSecret,
@@ -75,10 +72,7 @@ export class ArkiveShareReader {
 
   async dispose() {
     this.clearChunkCache();
-    if (!window.ArkiveVault || typeof window.ArkiveVault.closePublicShareContext !== "function") {
-      return;
-    }
-    await window.ArkiveVault.closePublicShareContext(this.contextId).catch(function() {});
+    await vault.closePublicShareContext(this.contextId).catch(function() {});
   }
 
   getMetadata() {
@@ -109,7 +103,7 @@ export class ArkiveShareReader {
   }
 
   async decryptChunk(mappedChunk, encryptedBytes) {
-    const result = await window.ArkiveVault.decryptPublicShareChunk(
+    const result = await vault.decryptPublicShareChunk(
       this.contextId,
       encryptedBytes,
       mappedChunk.aad || this.chunkAAD(mappedChunk.index),

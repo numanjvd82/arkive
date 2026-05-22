@@ -1,4 +1,5 @@
 import { apiRequest } from "./lib/api.js";
+import { clearSessionUnlock, persistSessionUnlock, unlockVault } from "./features/vault.js";
 
 (function() {
   const form = document.querySelector("[data-login-form='true']");
@@ -59,11 +60,6 @@ import { apiRequest } from "./lib/api.js";
     const email = emailInput ? String(emailInput.value || "").trim() : "";
     const password = passwordInput ? String(passwordInput.value || "") : "";
 
-    if (!window.ArkiveVault || typeof window.ArkiveVault.unlockVault !== "function") {
-      setGeneralError("Vault runtime is unavailable. Reload the page and try again.");
-      return;
-    }
-
     submitting = true;
     setGeneralError("");
     if (submitButton) {
@@ -72,20 +68,16 @@ import { apiRequest } from "./lib/api.js";
 
     apiLogin(email, password)
       .then(function(data) {
-        return window.ArkiveVault.unlockVault(password, data.salt, data.encryptedMasterKey)
+        return unlockVault(password, data.salt, data.encryptedMasterKey)
           .then(async function() {
-            if (typeof window.ArkiveVault.persistSessionUnlock === "function") {
-              await window.ArkiveVault.persistSessionUnlock();
-            }
+            await persistSessionUnlock();
             if (passwordInput) {
               passwordInput.value = "";
             }
             window.location.href = data.redirectTo || "/dashboard";
           })
           .catch(function(error) {
-            if (typeof window.ArkiveVault.clearSessionUnlock === "function") {
-              window.ArkiveVault.clearSessionUnlock();
-            }
+            clearSessionUnlock();
             return rollbackSession().then(function() {
               throw error;
             });

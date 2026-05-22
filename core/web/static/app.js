@@ -17,7 +17,7 @@ import { initContextMenu } from "./features/context_menu.js";
 import { initToast } from "./features/toast.js";
 import { initTooltips } from "./features/tooltip.js";
 import { initUploads } from "./features/uploads.js";
-import { initVault } from "./features/vault.js";
+import { getVaultState, initVault, lockVault, onVaultLock, waitUntilReady } from "./features/vault.js";
 
 function initTheme() {
   const modes = ["dark", "system", "light"];
@@ -141,11 +141,7 @@ function initVaultAccessGuard() {
   if (lockButton && !lockButton.hasAttribute("data-lock-bound")) {
     lockButton.setAttribute("data-lock-bound", "true");
     lockButton.addEventListener("click", function() {
-      if (!window.ArkiveVault || typeof window.ArkiveVault.lock !== "function") {
-        redirectToLock();
-        return;
-      }
-      window.ArkiveVault.lock()
+      lockVault()
         .catch(function() {})
         .finally(function() {
           redirectToLock();
@@ -153,25 +149,20 @@ function initVaultAccessGuard() {
     });
   }
 
-  if (!requiresUnlock || !window.ArkiveVault) {
+  if (!requiresUnlock) {
     return;
   }
 
-  if (typeof window.ArkiveVault.waitUntilReady === "function") {
-    window.ArkiveVault.waitUntilReady().then(function() {
-      if (typeof window.ArkiveVault.isUnlocked === "function" && !window.ArkiveVault.isUnlocked()) {
-        redirectToLock();
-      }
-    }).catch(function() {
-      redirectToLock();
-    });
-  }
-
-  window.addEventListener("arkive:vault-state", function(event) {
-    const detail = event && event.detail ? event.detail : {};
-    if (!detail.unlocked) {
+  waitUntilReady().then(function() {
+    if (!getVaultState().unlocked) {
       redirectToLock();
     }
+  }).catch(function() {
+    redirectToLock();
+  });
+
+  onVaultLock(function() {
+    redirectToLock();
   });
 }
 

@@ -3,6 +3,7 @@ import { ArkiveFileReader } from "./features/file_reader.js";
 import { canDownloadInCurrentBrowser, isDownloadAbortError, maybeShowDownloadCapabilityWarning, showDownloadError, showServiceWorkerDownloadNotice } from "./features/reader/download_warning.js";
 import { mountStreamingMedia } from "./features/streaming/stream_player.js";
 import { Toast } from "./features/toast.js";
+import { vault, waitUntilReady } from "./features/vault.js";
 import { initPlyr } from "./plyr.js";
 import { apiRequest } from "./lib/api.js";
 import { showAppError } from "./lib/toasts.js";
@@ -389,15 +390,12 @@ import { thumbnailCache } from "./upload/thumbnail_cache.js";
   }
 
   function createSharePayload(fileID, token) {
-    if (!window.ArkiveVault || !window.ArkiveVault.prepareShare) {
-      return Promise.reject(new Error("Share encryption is unavailable."));
-    }
-    return window.ArkiveVault.waitUntilReady()
+    return waitUntilReady()
       .then(function() {
         return loadFileRecord(fileID);
       })
       .then(function(record) {
-        return window.ArkiveVault.prepareShare(record, token);
+        return vault.prepareShare(record, token);
       })
       .then(function(prepared) {
         return {
@@ -437,12 +435,9 @@ import { thumbnailCache } from "./upload/thumbnail_cache.js";
     if (!share || !share.encryptedShareKey) {
       return Promise.resolve("");
     }
-    if (!window.ArkiveVault || !window.ArkiveVault.openShareKey) {
-      return Promise.reject(new Error("Share encryption is unavailable."));
-    }
-    return window.ArkiveVault.waitUntilReady()
+    return waitUntilReady()
       .then(function() {
-        return window.ArkiveVault.openShareKey(share.encryptedShareKey, share.token || "");
+        return vault.openShareKey(share.encryptedShareKey, share.token || "");
       })
       .then(function(result) {
         return String((result && result.shareSecret) || "");

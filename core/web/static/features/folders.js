@@ -1,12 +1,10 @@
 import { setButtonBusy } from "./button_state.js";
 import { Dialog } from "./dialog.js";
+import { vault, waitUntilReady } from "./vault.js";
 import { apiRequest } from "../lib/api.js";
 import { showAppError } from "../lib/toasts.js";
 
 async function decryptFolderItem(item) {
-  if (!window.ArkiveVault || typeof window.ArkiveVault.decryptFolderMetadata !== "function") {
-    return;
-  }
   const metaValue = String(item.getAttribute("data-folder-meta-b64") || "");
   const nameValue = String(item.getAttribute("data-folder-name-b64") || "");
   if (!metaValue && !nameValue) {
@@ -16,12 +14,12 @@ async function decryptFolderItem(item) {
     let name = "";
     let metadata = null;
     if (metaValue) {
-      const result = await window.ArkiveVault.decryptFolderMetadata(metaValue);
+      const result = await vault.decryptFolderMetadata(metaValue);
       metadata = result && result.metadata ? result.metadata : null;
       name = typeof metadata === "string" ? metadata : String((metadata && metadata.name) || "");
     }
-    if (!name && nameValue && typeof window.ArkiveVault.decryptFolderName === "function") {
-      const result = await window.ArkiveVault.decryptFolderName(nameValue);
+    if (!name && nameValue) {
+      const result = await vault.decryptFolderName(nameValue);
       const fallback = result && result.metadata ? result.metadata : null;
       if (!metadata && fallback && typeof fallback === "object") {
         metadata = fallback;
@@ -99,8 +97,7 @@ export function initFolders() {
     }
   });
 
-  if (window.ArkiveVault && typeof window.ArkiveVault.waitUntilReady === "function") {
-    window.ArkiveVault.waitUntilReady().then(function() {
+  waitUntilReady().then(function() {
       const itemJobs = folderItems.map(function(item) {
         return decryptFolderItem(item);
       });
@@ -118,9 +115,6 @@ export function initFolders() {
         }
       });
     }).catch(function() {});
-  } else {
-    updateUploadLabel("");
-  }
 
   if (newFolderButton && !newFolderButton.hasAttribute("data-folder-create-bound")) {
     newFolderButton.setAttribute("data-folder-create-bound", "true");
@@ -144,13 +138,13 @@ export function initFolders() {
     confirmButton.setAttribute("data-folder-confirm-bound", "true");
     confirmButton.addEventListener("click", async function() {
       const name = String(nameInput && nameInput.value || "").trim();
-      if (!name || !window.ArkiveVault || typeof window.ArkiveVault.encryptFolderName !== "function" || typeof window.ArkiveVault.encryptFolderMetadata !== "function") {
+      if (!name) {
         return;
       }
       try {
         setButtonBusy(confirmButton, true, { busyText: "Creating..." });
-        const encryptedName = await window.ArkiveVault.encryptFolderName({ name: name });
-        const encryptedMetadata = await window.ArkiveVault.encryptFolderMetadata({ name: name });
+        const encryptedName = await vault.encryptFolderName({ name: name });
+        const encryptedMetadata = await vault.encryptFolderMetadata({ name: name });
         await apiRequest("/api/folders", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
