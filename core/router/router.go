@@ -1,15 +1,12 @@
 package router
 
 import (
-	"context"
-
 	"github.com/gin-gonic/gin"
 
 	"arkive/core/config"
 	"arkive/core/database"
 	"arkive/core/handlers"
 	"arkive/core/middleware"
-	"arkive/core/models"
 	authrepo "arkive/core/repositories/auth"
 	filerepo "arkive/core/repositories/files"
 	sessionrepo "arkive/core/repositories/session"
@@ -24,7 +21,6 @@ import (
 	"arkive/core/services/shares"
 	"arkive/core/services/uploads"
 	"arkive/core/web"
-	"arkive/pkg/mailer"
 	"arkive/pkg/storage/localclient"
 )
 
@@ -41,22 +37,6 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 	settingsRepo := settingsrepo.New()
 	settingsService := settingssvc.NewService(db, settingsRepo)
 	setupService := setup.NewService(db, authRepo, usersRepo, settingsRepo)
-	emailSettings, err := settingsService.EmailSettings(context.Background())
-	if err != nil {
-		emailSettings = models.EmailSettings{Provider: "noop"}
-	}
-	mailerProvider, err := mailer.NewMailerFromConfig(mailer.Config{
-		Provider: emailSettings.Provider,
-		From:     emailSettings.From,
-		SMTPHost: emailSettings.SMTPHost,
-		SMTPPort: emailSettings.SMTPPort,
-		SMTPUser: emailSettings.SMTPUser,
-		SMTPPass: emailSettings.SMTPPass,
-	})
-	if err != nil {
-		panic("mailer setup failed: " + err.Error())
-	}
-	authService.SetMailer(mailerProvider, emailSettings.PublicBaseURL)
 	shareService := shares.NewService(db, filerepo.New(), sharerepo.New())
 
 	r.StaticFS("/static", web.StaticFS("static"))
@@ -85,7 +65,6 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 	protected.GET("/shares", handlers.WebShares(shareService, filesService))
 	protected.GET("/settings", handlers.WebSettings(filesService, settingsService))
 	protected.POST("/settings/storage", handlers.WebSettingsStoragePost(settingsService))
-	protected.POST("/settings/email", handlers.WebSettingsEmailPost(settingsService))
 	protected.POST("/settings/uploads", handlers.WebSettingsUploadPost(settingsService))
 	protected.POST("/logout", handlers.WebLogout(authService))
 

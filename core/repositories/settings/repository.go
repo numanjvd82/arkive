@@ -59,67 +59,6 @@ func (r *Repository) GetStorageSettings(ctx context.Context, db database.PgExecu
 	return settings, nil
 }
 
-func (r *Repository) GetEmailSettings(ctx context.Context, db database.PgExecutor) (models.EmailSettings, error) {
-	rows, err := db.Query(ctx, `SELECT key, value FROM instance_settings WHERE key LIKE 'email.%'`)
-	if err != nil {
-		return models.EmailSettings{}, err
-	}
-	defer rows.Close()
-
-	values := map[string]string{}
-	for rows.Next() {
-		var key, value string
-		if err := rows.Scan(&key, &value); err != nil {
-			return models.EmailSettings{}, err
-		}
-		values[key] = value
-	}
-	if rows.Err() != nil {
-		return models.EmailSettings{}, rows.Err()
-	}
-	if len(values) == 0 {
-		return models.EmailSettings{}, ErrStorageSettingsNotFound
-	}
-
-	smtpPort, _ := strconv.Atoi(values["email.smtp_port"])
-	if smtpPort <= 0 {
-		smtpPort = 587
-	}
-	settings := models.EmailSettings{
-		Provider:      strings.TrimSpace(values["email.provider"]),
-		From:          strings.TrimSpace(values["email.from"]),
-		PublicBaseURL: strings.TrimSpace(values["email.public_base_url"]),
-		SMTPHost:      strings.TrimSpace(values["email.smtp_host"]),
-		SMTPPort:      smtpPort,
-		SMTPUser:      strings.TrimSpace(values["email.smtp_user"]),
-		SMTPPass:      values["email.smtp_pass"],
-	}
-	return settings, nil
-}
-
-func (r *Repository) SaveEmailSettings(ctx context.Context, db database.PgExecutor, settings models.EmailSettings) error {
-	values := map[string]string{
-		"email.provider":        settings.Provider,
-		"email.from":            settings.From,
-		"email.public_base_url": settings.PublicBaseURL,
-		"email.smtp_host":       settings.SMTPHost,
-		"email.smtp_port":       strconv.Itoa(settings.SMTPPort),
-		"email.smtp_user":       settings.SMTPUser,
-		"email.smtp_pass":       settings.SMTPPass,
-	}
-	for key, value := range values {
-		if _, err := db.Exec(ctx, `
-			INSERT INTO instance_settings (key, value, updated_at)
-			VALUES ($1, $2, now())
-			ON CONFLICT (key)
-			DO UPDATE SET value = EXCLUDED.value, updated_at = now()
-		`, key, value); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func (r *Repository) GetUploadSettings(ctx context.Context, db database.PgExecutor) (models.UploadSettings, error) {
 	rows, err := db.Query(ctx, `SELECT key, value FROM instance_settings WHERE key LIKE 'upload.%'`)
 	if err != nil {

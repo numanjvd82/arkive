@@ -18,7 +18,6 @@ import (
 type SettingsPageProps struct {
 	Ctx             PageContext
 	StorageSettings models.StorageSettings
-	EmailSettings   models.EmailSettings
 	UploadSettings  models.UploadSettings
 	StorageGB       string
 	Errors          validation.Errors
@@ -36,19 +35,14 @@ func SettingsPage(props SettingsPageProps) web.Page {
 	quotaStorage := "Unlimited"
 	usagePercent := 0
 	storageSettings := props.StorageSettings
-	emailSettings := props.EmailSettings
 	uploadSettings := props.UploadSettings
 	if storageSettings.Provider == "" {
 		storageSettings.Provider = "local"
-	}
-	if emailSettings.Provider == "" {
-		emailSettings.Provider = "noop"
 	}
 	if uploadSettings.MaxQueueItems == 0 {
 		uploadSettings.MaxQueueItems = 300
 	}
 	storageProviderLabel := strings.ToUpper(storageSettings.Provider)
-	emailProviderLabel := strings.ToUpper(emailSettings.Provider)
 	storageGB := props.StorageGB
 	if storageGB == "" {
 		storageGB = settingsStorageGB(storageSettings.MaxStorageBytes)
@@ -100,7 +94,6 @@ func SettingsPage(props SettingsPageProps) web.Page {
 						h.Class("settings-tabs"),
 						settingsTabLink("settings-account", "Instance"),
 						settingsTabLink("settings-provider", "Storage Provider"),
-						settingsTabLink("settings-email", "Email"),
 						settingsTabLink("settings-upload", "Uploads"),
 						settingsTabLink("settings-security", "Security"),
 					),
@@ -218,42 +211,6 @@ func SettingsPage(props SettingsPageProps) web.Page {
 									Class:    "settings-card",
 									Body: []g.Node{
 										storageSettingsForm(storageSettings, storageGB, props.Errors),
-									},
-								}),
-							),
-						),
-						h.Section(
-							h.Class("settings-panel"),
-							g.Attr("id", "settings-email"),
-							h.Div(
-								h.Class("settings-panel-header"),
-								h.Div(
-									h.Class("settings-panel-title"),
-									h.H2(g.Text("Email")),
-									h.P(g.Text("Configure mail delivery for this instance from settings.")),
-								),
-							),
-							h.Div(
-								h.Class("settings-stack"),
-								components.Card(components.CardProps{
-									Title:    "Mailer status",
-									Subtitle: "Active email provider for auth and recovery flows.",
-									Class:    "settings-card",
-									Body: []g.Node{
-										h.Div(
-											h.Class("settings-provider-status"),
-											h.Span(h.Class("settings-badge"), g.Text(emailProviderLabel)),
-											h.H4(g.Text("Mailer configured from settings")),
-											h.P(g.Text("Mailer provider, sender, host, and credentials are stored in instance settings.")),
-										),
-									},
-								}),
-								components.Card(components.CardProps{
-									Title:    "Configuration",
-									Subtitle: "Update email delivery settings for this Core instance.",
-									Class:    "settings-card",
-									Body: []g.Node{
-										emailSettingsForm(emailSettings, props.Errors),
 									},
 								}),
 							),

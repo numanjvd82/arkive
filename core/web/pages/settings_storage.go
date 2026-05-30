@@ -102,22 +102,6 @@ func storageSettingsForm(settings models.StorageSettings, storageGB string, erro
 	)
 }
 
-func emailSettingsForm(settings models.EmailSettings, errors validation.Errors) g.Node {
-	return h.Form(
-		h.Class("settings-form"),
-		g.Attr("method", "POST"),
-		g.Attr("action", "/settings/email"),
-		components.InputField(components.InputProps{Label: "Provider", Name: "email_provider", Type: components.InputTypeText, Value: settings.Provider}),
-		components.InputField(components.InputProps{Label: "From address", Name: "email_from", Type: components.InputTypeText, Value: settings.From, HelperText: validation.FieldError(errors, "email_from"), HasError: validation.FieldError(errors, "email_from") != ""}),
-		components.InputField(components.InputProps{Label: "Public base URL", Name: "public_base_url", Type: components.InputTypeText, Value: settings.PublicBaseURL}),
-		components.InputField(components.InputProps{Label: "SMTP host", Name: "smtp_host", Type: components.InputTypeText, Value: settings.SMTPHost, HelperText: validation.FieldError(errors, "smtp_host"), HasError: validation.FieldError(errors, "smtp_host") != ""}),
-		components.InputField(components.InputProps{Label: "SMTP port", Name: "smtp_port", Type: components.InputTypeNumber, Value: strconv.Itoa(settings.SMTPPort), HelperText: validation.FieldError(errors, "smtp_port"), HasError: validation.FieldError(errors, "smtp_port") != ""}),
-		components.InputField(components.InputProps{Label: "SMTP user", Name: "smtp_user", Type: components.InputTypeText, Value: settings.SMTPUser}),
-		components.InputField(components.InputProps{Label: "SMTP pass", Name: "smtp_pass", Type: components.InputTypePassword, Value: settings.SMTPPass}),
-		components.Button(components.ButtonProps{Text: "Save email settings", Type: "submit", Variant: "primary", Class: "auth-submit", BusyText: "Saving..."}),
-	)
-}
-
 func uploadSettingsForm(settings models.UploadSettings, errors validation.Errors) g.Node {
 	return h.Form(
 		h.Class("settings-form"),

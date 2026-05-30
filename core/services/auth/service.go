@@ -14,7 +14,6 @@ import (
 	authrepo "arkive/core/repositories/auth"
 	sessionrepo "arkive/core/repositories/session"
 	usersrepo "arkive/core/repositories/users"
-	"arkive/pkg/mailer"
 	"arkive/pkg/validation"
 )
 
@@ -24,9 +23,7 @@ type Service struct {
 	sessionRepo *sessionrepo.Repository
 	userRepo    *usersrepo.Repository
 
-	mailer        mailer.Mailer
-	publicBaseURL string
-	sessionTTL    time.Duration
+	sessionTTL time.Duration
 }
 
 type Config struct {
@@ -59,11 +56,6 @@ func NewService(
 		userRepo:    userRepo,
 		sessionTTL:  cfg.SessionTTL,
 	}
-}
-
-func (s *Service) SetMailer(m mailer.Mailer, publicBaseURL string) {
-	s.mailer = m
-	s.publicBaseURL = strings.TrimRight(strings.TrimSpace(publicBaseURL), "/")
 }
 
 func (s *Service) LoginAndLoadVault(ctx context.Context, email, password, lastIP string) (LoginUnlockResult, validation.Errors, error) {

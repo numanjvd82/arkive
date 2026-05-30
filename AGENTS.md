@@ -123,23 +123,6 @@ Rules:
 
 ---
 
-## Mailer (Abstracted)
-
-```go id="mailer_core"
-type Mailer interface {
-    Send(msg Message) error
-}
-```
-
-Implementations:
-
-* SMTP (default)
-* Noop (dev)
-
-Cloud-only:
-
-* Postmark adapter
-
 ---
 
 ## Web UI (Core)
