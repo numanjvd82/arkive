@@ -138,6 +138,38 @@ func (s *Service) ClearRecoverySetupToken(ctx context.Context, token string) err
 	return s.userRepo.ClearRecoverySetupToken(ctx, s.db, token)
 }
 
+func (s *Service) GetRecoverySetupUser(ctx context.Context, token string) (models.User, error) {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return models.User{}, pgx.ErrNoRows
+	}
+	return s.userRepo.GetByRecoverySetupToken(ctx, s.db, token, time.Now())
+}
+
+func (s *Service) SaveRecoveryWrappedMasterKey(ctx context.Context, token string, encryptedMasterKeyRecovery []byte) error {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return pgx.ErrNoRows
+	}
+
+	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
+
+	user, err := s.userRepo.GetByRecoverySetupToken(ctx, tx, token, time.Now())
+	if err != nil {
+		return err
+	}
+	if err := s.userRepo.SetRecoveryWrappedMasterKey(ctx, tx, user.ID, encryptedMasterKeyRecovery); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
 func validateAdminInput(brandName, email, password, confirmPassword string) validation.Errors {
 	validationErrors := validation.New()
 	if brandName == "" {

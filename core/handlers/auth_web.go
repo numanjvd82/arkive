@@ -43,12 +43,52 @@ func WebLoginGet(svc *auth.Service, setupSvc *setup.Service) gin.HandlerFunc {
 		switch strings.TrimSpace(c.Query("msg")) {
 		case "instance-ready":
 			msg = "Setup complete. Sign in to continue."
+		case "password-reset-complete":
+			msg = "Password reset complete. Sign in with new password."
 		}
 		webPage := pages.LoginPage(pages.LoginPageProps{
 			Ctx:     pages.PageContext{},
 			Message: msg,
 		})
 		web.Render(c, webPage)
+	}
+}
+
+func WebForgotPasswordGet(svc *auth.Service, setupSvc *setup.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if redirectIfUninitialized(c, setupSvc) {
+			return
+		}
+		if _, ok, err := appcontext.LoadUser(c, svc); err != nil {
+			_ = c.Error(errs.WithStack(err))
+			c.Status(http.StatusInternalServerError)
+			return
+		} else if ok {
+			c.Redirect(http.StatusSeeOther, "/dashboard")
+			return
+		}
+		web.Render(c, pages.ForgotPasswordPage(pages.ForgotPasswordPageProps{
+			Ctx: pages.PageContext{},
+		}))
+	}
+}
+
+func WebResetPasswordGet(svc *auth.Service, setupSvc *setup.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if redirectIfUninitialized(c, setupSvc) {
+			return
+		}
+		if _, ok, err := appcontext.LoadUser(c, svc); err != nil {
+			_ = c.Error(errs.WithStack(err))
+			c.Status(http.StatusInternalServerError)
+			return
+		} else if ok {
+			c.Redirect(http.StatusSeeOther, "/dashboard")
+			return
+		}
+		web.Render(c, pages.ResetPasswordPage(pages.ResetPasswordPageProps{
+			Ctx: pages.PageContext{},
+		}))
 	}
 }
 

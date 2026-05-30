@@ -1,6 +1,7 @@
 import { getArkiveCrypto } from "./features/crypto.js";
 
 (function() {
+  const SETUP_MASTER_KEY_STORAGE = "arkive:setup-master-key:v1";
   const form = document.querySelector("[data-setup-vault-form='true']");
   const saltInput = document.querySelector("[data-vault-salt-input='true']");
   const encryptedMasterKeyInput = document.querySelector("[data-encrypted-master-key-input='true']");
@@ -17,6 +18,10 @@ import { getArkiveCrypto } from "./features/crypto.js";
       binary += String.fromCharCode(bytes[i]);
     }
     return btoa(binary);
+  }
+
+  function storeSetupMasterKey(masterKey) {
+    sessionStorage.setItem(SETUP_MASTER_KEY_STORAGE, bytesToBase64(masterKey));
   }
 
   function setFormError(message) {
@@ -49,6 +54,7 @@ import { getArkiveCrypto } from "./features/crypto.js";
     const encryptedMasterKey = crypto.wrap_master_key(masterKey, kek, aad);
 
     try {
+      storeSetupMasterKey(masterKey);
       saltInput.value = bytesToBase64(salt);
       encryptedMasterKeyInput.value = bytesToBase64(encryptedMasterKey);
     } finally {

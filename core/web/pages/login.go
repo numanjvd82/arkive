@@ -112,6 +112,13 @@ func loginBody(props LoginPageProps) g.Node {
 								Icon:     "key",
 								BusyText: "Unlocking...",
 							}),
+							h.P(
+								h.Class("auth-message"),
+								h.A(
+									h.Href("/forgot-password"),
+									g.Text("Forgot password?"),
+								),
+							),
 						),
 					},
 				}),

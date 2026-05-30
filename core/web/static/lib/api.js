@@ -7,6 +7,21 @@ export function parseAPIErrorPayload(data, fallback, status) {
   if (data && typeof data === "object") {
     const payloadError = data.error;
     if (payloadError && typeof payloadError === "object" && !Array.isArray(payloadError)) {
+      // Our API encodes validation failures as `{ error: { code, message, details: { fields }}}`.
+      // Prefer a concrete field message over the generic "Validation failed".
+      if (
+        payloadError.code === "validation_failed" &&
+        payloadError.details &&
+        typeof payloadError.details === "object" &&
+        payloadError.details.fields &&
+        typeof payloadError.details.fields === "object"
+      ) {
+        return new AppError(firstValidationMessage(payloadError.details.fields) || payloadError.message || baseFallback, {
+          code: payloadError.code || defaultCodeForStatus(status),
+          details: { fields: payloadError.details.fields },
+          status: status
+        });
+      }
       return new AppError(payloadError.message || baseFallback, {
         code: payloadError.code || defaultCodeForStatus(status),
         details: payloadError.details || null,

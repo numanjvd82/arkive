@@ -555,6 +555,28 @@ export function unwrap_master_key(encrypted_master_key, kek, aad) {
 }
 
 /**
+ * @param {Uint8Array} encrypted_master_key
+ * @param {Uint8Array} recovery_key
+ * @param {string} user_id
+ * @returns {Uint8Array}
+ */
+export function unwrap_master_key_with_recovery_key(encrypted_master_key, recovery_key, user_id) {
+    const ptr0 = passArray8ToWasm0(encrypted_master_key, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(recovery_key, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passStringToWasm0(user_id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ret = wasm.unwrap_master_key_with_recovery_key(ptr0, len0, ptr1, len1, ptr2, len2);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v4 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v4;
+}
+
+/**
  * @param {Uint8Array} file_key
  * @param {Uint8Array} master_key
  * @param {Uint8Array} aad
@@ -615,6 +637,53 @@ export function wrap_master_key_for_recovery(master_key, recovery_key) {
     var v3 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
     return v3;
+}
+
+/**
+ * @param {Uint8Array} master_key
+ * @param {string} password
+ * @param {Uint8Array} salt
+ * @param {string} user_id
+ * @returns {Uint8Array}
+ */
+export function wrap_master_key_with_password(master_key, password, salt, user_id) {
+    const ptr0 = passArray8ToWasm0(master_key, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(password, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(salt, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passStringToWasm0(user_id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.wrap_master_key_with_password(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v5 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v5;
+}
+
+/**
+ * @param {Uint8Array} master_key
+ * @param {Uint8Array} recovery_key
+ * @param {string} user_id
+ * @returns {Uint8Array}
+ */
+export function wrap_master_key_with_recovery_key(master_key, recovery_key, user_id) {
+    const ptr0 = passArray8ToWasm0(master_key, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(recovery_key, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passStringToWasm0(user_id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ret = wasm.wrap_master_key_with_recovery_key(ptr0, len0, ptr1, len1, ptr2, len2);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v4 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v4;
 }
 
 /**

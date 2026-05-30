@@ -44,6 +44,11 @@ type setupForm struct {
 	S3UsePathStyle     string `form:"s3_use_path_style"`
 }
 
+type setupRecoveryForm struct {
+	ConfirmBackup              string `form:"confirm_backup"`
+	EncryptedMasterKeyRecovery string `form:"encrypted_master_key_recovery"`
+}
+
 func WebRoot(authSvc *auth.Service, setupSvc *setup.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		initialized, err := setupSvc.IsInitialized(c.Request.Context())
@@ -204,7 +209,8 @@ func WebSetupRecoveryGet(svc *setup.Service) gin.HandlerFunc {
 		}
 
 		web.Render(c, pages.SetupRecoveryPage(pages.SetupRecoveryPageProps{
-			Ctx: pages.PageContext{},
+			Ctx:    pages.PageContext{},
+			UserID: recoveryUserID(c, svc),
 		}))
 	}
 }
@@ -232,13 +238,42 @@ func WebSetupRecoveryPost(svc *setup.Service) gin.HandlerFunc {
 			return
 		}
 
-		acknowledged := strings.TrimSpace(c.PostForm("confirm_backup")) == "true"
+		var form setupRecoveryForm
+		if err := c.ShouldBind(&form); err != nil {
+			web.Render(c, pages.SetupRecoveryPage(pages.SetupRecoveryPageProps{
+				Ctx:    pages.PageContext{},
+				UserID: recoveryUserID(c, svc),
+				Error:  "Recovery key setup failed. Reload the page and try again.",
+			}))
+			return
+		}
+
+		acknowledged := strings.TrimSpace(form.ConfirmBackup) == "true"
 		if !acknowledged {
 			web.Render(c, pages.SetupRecoveryPage(pages.SetupRecoveryPageProps{
 				Ctx:          pages.PageContext{},
+				UserID:       recoveryUserID(c, svc),
 				Error:        "You must confirm that the recovery key has been securely backed up.",
 				Acknowledged: false,
 			}))
+			return
+		}
+
+		encryptedMasterKeyRecovery, err := decodeBase64Field(strings.TrimSpace(form.EncryptedMasterKeyRecovery))
+		if err != nil || len(encryptedMasterKeyRecovery) == 0 {
+			web.Render(c, pages.SetupRecoveryPage(pages.SetupRecoveryPageProps{
+				Ctx:          pages.PageContext{},
+				UserID:       recoveryUserID(c, svc),
+				Error:        "Recovery key setup failed. Reload the page and try again.",
+				Acknowledged: true,
+			}))
+			return
+		}
+
+		token := recoveryPendingToken(c)
+		if err := svc.SaveRecoveryWrappedMasterKey(c.Request.Context(), token, encryptedMasterKeyRecovery); err != nil {
+			_ = c.Error(errs.WithStack(err))
+			c.Status(http.StatusInternalServerError)
 			return
 		}
 
@@ -249,6 +284,22 @@ func WebSetupRecoveryPost(svc *setup.Service) gin.HandlerFunc {
 		}
 		c.Redirect(http.StatusSeeOther, "/login?msg=instance-ready")
 	}
+}
+
+func recoveryPendingToken(c *gin.Context) string {
+	cookie, err := c.Request.Cookie(recoveryPendingCookie)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(cookie.Value)
+}
+
+func recoveryUserID(c *gin.Context, svc *setup.Service) string {
+	user, err := svc.GetRecoverySetupUser(c.Request.Context(), recoveryPendingToken(c))
+	if err != nil {
+		return ""
+	}
+	return user.ID
 }
 
 func renderSetupForm(c *gin.Context, form setupForm, validationErrors validation.Errors) {

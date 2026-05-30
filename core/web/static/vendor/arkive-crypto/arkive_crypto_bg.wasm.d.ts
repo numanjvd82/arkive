@@ -1,6 +1,14 @@
 /* tslint:disable */
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
+export const format_recovery_key: (a: number, b: number) => [number, number, number, number];
+export const generate_recovery_key: () => [number, number];
+export const parse_recovery_key: (a: number, b: number) => [number, number, number, number];
+export const recover_master_key: (a: number, b: number, c: number, d: number) => [number, number, number, number];
+export const unwrap_master_key_with_recovery_key: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
+export const wrap_master_key_for_recovery: (a: number, b: number, c: number, d: number) => [number, number, number, number];
+export const wrap_master_key_with_password: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number, number, number];
+export const wrap_master_key_with_recovery_key: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
 export const __wbg_blake3hasher_free: (a: number, b: number) => void;
 export const __wbg_sha256hasher_free: (a: number, b: number) => void;
 export const blake3hasher_digest: (a: number) => [number, number, number, number];
@@ -19,11 +27,6 @@ export const sha256hasher_finalize: (a: number) => [number, number, number, numb
 export const sha256hasher_finalize_hex: (a: number) => [number, number, number, number];
 export const sha256hasher_new: () => number;
 export const sha256hasher_update: (a: number, b: number, c: number) => [number, number];
-export const format_recovery_key: (a: number, b: number) => [number, number, number, number];
-export const generate_recovery_key: () => [number, number];
-export const parse_recovery_key: (a: number, b: number) => [number, number, number, number];
-export const recover_master_key: (a: number, b: number, c: number, d: number) => [number, number, number, number];
-export const wrap_master_key_for_recovery: (a: number, b: number, c: number, d: number) => [number, number, number, number];
 export const decrypt_chunk: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
 export const encrypt_chunk: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
 export const unwrap_file_key: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];

@@ -37,6 +37,15 @@ func (r *Repository) DeleteSession(ctx context.Context, db database.PgExecutor, 
 	return err
 }
 
+func (r *Repository) DeleteSessionsByUserID(ctx context.Context, db database.PgExecutor, userID string) error {
+	query := `DELETE FROM
+		sessions
+	WHERE
+		user_id = $1`
+	_, err := db.Exec(ctx, query, userID)
+	return err
+}
+
 func (r *Repository) GetSessionByID(ctx context.Context, db database.PgExecutor, sessionID string) (string, time.Time, error) {
 	var userID string
 	var expiresAt time.Time

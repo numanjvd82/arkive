@@ -174,6 +174,58 @@ async function handleMessage(message) {
         crypto.zeroize(wrappedMasterKey);
       }
     }
+    case "preparePasswordReset": {
+      const encryptedMasterKeyRecovery = decodeBase64(
+        message.params.encryptedMasterKeyRecovery,
+      );
+      try {
+        const recoveryKey = crypto.parse_recovery_key(
+          String(message.params.recoveryKey || ""),
+        );
+        try {
+          const salt = crypto.generate_salt();
+          try {
+            const masterKey = crypto.unwrap_master_key_with_recovery_key(
+              encryptedMasterKeyRecovery,
+              recoveryKey,
+              String(message.params.userID || ""),
+            );
+            try {
+              // Keep vault wrapping consistent with setup/login: password-derived KEK + AAD.
+              const kek = crypto.derive_password_kek(
+                String(message.params.newPassword || ""),
+                salt,
+              );
+              try {
+                const wrappedMasterKey = crypto.wrap_master_key(
+                  masterKey,
+                  kek,
+                  aadBytes("arkive:master-key:v1"),
+                );
+                try {
+                  return {
+                    vaultSalt: encodeBase64(salt),
+                    encryptedMasterKey: encodeBase64(wrappedMasterKey),
+                  };
+                } finally {
+                  crypto.zeroize(wrappedMasterKey);
+                }
+              } finally {
+                crypto.zeroize(kek);
+              }
+            } finally {
+              crypto.zeroize(masterKey);
+            }
+          } finally {
+            crypto.zeroize(salt);
+          }
+        } finally {
+          crypto.zeroize(recoveryKey);
+        }
+      } finally {
+        crypto.zeroize(encryptedMasterKeyRecovery);
+      }
+    }
     case "generateFileKey": {
       const fileKey = crypto.generate_file_key();
       try {

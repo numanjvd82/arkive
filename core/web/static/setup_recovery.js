@@ -1,14 +1,17 @@
 import { getArkiveCrypto } from "./features/crypto.js";
 
 (function() {
+  const SETUP_MASTER_KEY_STORAGE = "arkive:setup-master-key:v1";
   const checkbox = document.getElementById("confirm-backup");
   const submit = document.querySelector("[data-recovery-submit]");
   const downloadButtons = document.querySelectorAll("[data-recovery-download]");
   const printButtons = document.querySelectorAll("[data-recovery-print]");
   const grid = document.querySelector("[data-recovery-grid]");
   const valueInput = document.querySelector("[data-recovery-value]");
+  const wrappedMasterKeyInput = document.querySelector("[data-recovery-master-key-input]");
   const runtimeError = document.querySelector("[data-recovery-runtime-error]");
   const form = document.querySelector(".recovery-form");
+  const userID = form ? String(form.getAttribute("data-recovery-user-id") || "").trim() : "";
 
   function setRuntimeError(message) {
     if (runtimeError) {
@@ -32,6 +35,23 @@ import { getArkiveCrypto } from "./features/crypto.js";
       return "";
     }
     return String(valueInput.value || "").trim();
+  }
+
+  function decodeBase64(value) {
+    const binary = atob(String(value || "").trim());
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+  }
+
+  function bytesToBase64(bytes) {
+    let binary = "";
+    for (let i = 0; i < bytes.length; i += 1) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
   }
 
   function renderRecoveryKey(formattedKey) {
@@ -188,13 +208,60 @@ import { getArkiveCrypto } from "./features/crypto.js";
       });
   }
 
+  async function prepareRecoveryWrapper() {
+    if (!wrappedMasterKeyInput) {
+      throw new Error("Recovery wrapper field is missing");
+    }
+    const storedMasterKey = sessionStorage.getItem(SETUP_MASTER_KEY_STORAGE);
+    if (!storedMasterKey) {
+      throw new Error("Setup master key is unavailable");
+    }
+    const recoveryKey = getRecoveryKey();
+    if (!recoveryKey || !userID) {
+      throw new Error("Recovery setup context is unavailable");
+    }
+
+    const crypto = await getArkiveCrypto();
+    const masterKey = decodeBase64(storedMasterKey);
+    try {
+      const recoveryKeyBytes = crypto.parse_recovery_key(recoveryKey);
+      try {
+        const wrapped = crypto.wrap_master_key_with_recovery_key(masterKey, recoveryKeyBytes, userID);
+        try {
+          wrappedMasterKeyInput.value = bytesToBase64(wrapped);
+        } finally {
+          crypto.zeroize(wrapped);
+        }
+      } finally {
+        crypto.zeroize(recoveryKeyBytes);
+      }
+    } finally {
+      crypto.zeroize(masterKey);
+    }
+  }
+
   if (checkbox) {
     checkbox.addEventListener("change", syncSubmitState);
     syncSubmitState();
   }
 
   if (form) {
-    form.addEventListener("submit", syncSubmitState);
+    form.addEventListener("submit", function(event) {
+      event.preventDefault();
+      syncSubmitState();
+      if (!checkbox || !checkbox.checked) {
+        return;
+      }
+      prepareRecoveryWrapper()
+        .then(function() {
+          sessionStorage.removeItem(SETUP_MASTER_KEY_STORAGE);
+          HTMLFormElement.prototype.submit.call(form);
+        })
+        .catch(function(error) {
+          console.error(error);
+          setRuntimeError("Recovery key setup failed. Reload the page and try again.");
+        });
+    });
   }
 
   downloadButtons.forEach(function(button) {

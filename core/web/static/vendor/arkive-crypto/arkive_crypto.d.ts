@@ -65,11 +65,17 @@ export function unwrap_file_key(encrypted_file_key: Uint8Array, master_key: Uint
 
 export function unwrap_master_key(encrypted_master_key: Uint8Array, kek: Uint8Array, aad: Uint8Array): Uint8Array;
 
+export function unwrap_master_key_with_recovery_key(encrypted_master_key: Uint8Array, recovery_key: Uint8Array, user_id: string): Uint8Array;
+
 export function wrap_file_key(file_key: Uint8Array, master_key: Uint8Array, aad: Uint8Array): Uint8Array;
 
 export function wrap_master_key(master_key: Uint8Array, kek: Uint8Array, aad: Uint8Array): Uint8Array;
 
 export function wrap_master_key_for_recovery(master_key: Uint8Array, recovery_key: Uint8Array): Uint8Array;
+
+export function wrap_master_key_with_password(master_key: Uint8Array, password: string, salt: Uint8Array, user_id: string): Uint8Array;
+
+export function wrap_master_key_with_recovery_key(master_key: Uint8Array, recovery_key: Uint8Array, user_id: string): Uint8Array;
 
 export function zeroize(bytes: Uint8Array): void;
 
@@ -77,6 +83,14 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
+    readonly format_recovery_key: (a: number, b: number) => [number, number, number, number];
+    readonly generate_recovery_key: () => [number, number];
+    readonly parse_recovery_key: (a: number, b: number) => [number, number, number, number];
+    readonly recover_master_key: (a: number, b: number, c: number, d: number) => [number, number, number, number];
+    readonly unwrap_master_key_with_recovery_key: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
+    readonly wrap_master_key_for_recovery: (a: number, b: number, c: number, d: number) => [number, number, number, number];
+    readonly wrap_master_key_with_password: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number, number, number];
+    readonly wrap_master_key_with_recovery_key: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
     readonly __wbg_blake3hasher_free: (a: number, b: number) => void;
     readonly __wbg_sha256hasher_free: (a: number, b: number) => void;
     readonly blake3hasher_digest: (a: number) => [number, number, number, number];
@@ -95,11 +109,6 @@ export interface InitOutput {
     readonly sha256hasher_finalize_hex: (a: number) => [number, number, number, number];
     readonly sha256hasher_new: () => number;
     readonly sha256hasher_update: (a: number, b: number, c: number) => [number, number];
-    readonly format_recovery_key: (a: number, b: number) => [number, number, number, number];
-    readonly generate_recovery_key: () => [number, number];
-    readonly parse_recovery_key: (a: number, b: number) => [number, number, number, number];
-    readonly recover_master_key: (a: number, b: number, c: number, d: number) => [number, number, number, number];
-    readonly wrap_master_key_for_recovery: (a: number, b: number, c: number, d: number) => [number, number, number, number];
     readonly decrypt_chunk: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
     readonly encrypt_chunk: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
     readonly unwrap_file_key: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];

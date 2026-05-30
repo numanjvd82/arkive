@@ -13,18 +13,19 @@ import (
 
 type SetupRecoveryPageProps struct {
 	Ctx          PageContext
+	UserID       string
 	Error        string
 	Acknowledged bool
 }
 
 func SetupRecoveryPage(props SetupRecoveryPageProps) web.Page {
 	return web.Page{
-		Title:   "Arkive · Vault Recovery Key",
-		Robots:  RobotsNoIndex,
-		CSS:     []string{"/web/pages/setup_recovery.css"},
+		Title:    "Arkive · Vault Recovery Key",
+		Robots:   RobotsNoIndex,
+		CSS:      []string{"/web/pages/setup_recovery.css"},
 		ModuleJS: []string{"/static/setup_recovery.js"},
-		Body:    setupRecoveryBody(props),
-		HideNav: true,
+		Body:     setupRecoveryBody(props),
+		HideNav:  true,
 	}
 }
 
@@ -65,6 +66,7 @@ func setupRecoveryBody(props SetupRecoveryPageProps) g.Node {
 						h.Class("recovery-form"),
 						g.Attr("method", "POST"),
 						g.Attr("action", "/setup/recovery-key"),
+						g.Attr("data-recovery-user-id", strings.TrimSpace(props.UserID)),
 						h.Section(
 							h.Class("recovery-key-shell"),
 							h.Div(
@@ -110,6 +112,11 @@ func setupRecoveryBody(props SetupRecoveryPageProps) g.Node {
 								h.ID("recovery-key-value"),
 								g.Attr("data-recovery-value", "true"),
 								h.Name("recovery_key"),
+							),
+							h.Input(
+								h.Type("hidden"),
+								h.Name("encrypted_master_key_recovery"),
+								g.Attr("data-recovery-master-key-input", "true"),
 							),
 							h.P(
 								h.Class("form-error recovery-form-error"),

@@ -14,17 +14,26 @@ CREATE TABLE users (
   last_active_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   recovery_setup_token TEXT UNIQUE,
   recovery_setup_token_expires_at TIMESTAMPTZ,
+  encrypted_master_key_recovery BYTEA,
+  password_reset_token_hash TEXT UNIQUE,
+  password_reset_token_expires_at TIMESTAMPTZ,
+  password_reset_consumed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT users_bytes_nonnegative_chk
     CHECK (used_bytes >= 0 AND reserved_bytes >= 0)
 );
 
+
+
 CREATE INDEX users_created_at_idx ON users (created_at);
 CREATE INDEX users_last_active_at_idx ON users (last_active_at);
 CREATE INDEX users_vault_ready_idx
   ON users (id)
   WHERE vault_salt IS NOT NULL AND encrypted_master_key IS NOT NULL;
+CREATE INDEX users_password_reset_token_hash_idx
+  ON users (password_reset_token_hash)
+  WHERE password_reset_token_hash IS NOT NULL;
 
 CREATE TABLE sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -3,15 +3,18 @@ package config
 import (
 	"errors"
 	"os"
+	"strings"
 	"time"
 )
 
 type Config struct {
-	DatabaseURL  string
-	Port         string
-	SessionTTL   time.Duration
-	CookieSecret string
-	Env          string
+	DatabaseURL           string
+	Port                  string
+	SessionTTL            time.Duration
+	PasswordResetTokenTTL time.Duration
+	BaseURL               string
+	CookieSecret          string
+	Env                   string
 }
 
 func Load() (Config, error) {
@@ -21,6 +24,10 @@ func Load() (Config, error) {
 	}
 
 	sessionTTL, err := parseDurationEnv("SESSION_TTL")
+	if err != nil {
+		return Config{}, err
+	}
+	passwordResetTTL, err := parseDurationEnvDefault("PASSWORD_RESET_TOKEN_TTL", "30m")
 	if err != nil {
 		return Config{}, err
 	}
@@ -38,19 +45,37 @@ func Load() (Config, error) {
 	if env == "" {
 		env = "prod"
 	}
+	baseURL := strings.TrimRight(strings.TrimSpace(os.Getenv("BASE_URL")), "/")
+	if baseURL == "" {
+		if env == "dev" {
+			baseURL = "http://localhost" + addr
+		} else {
+			return Config{}, errors.New("BASE_URL is required")
+		}
+	}
 
 	return Config{
-		DatabaseURL:  dsn,
-		Port:         addr,
-		SessionTTL:   sessionTTL,
-		CookieSecret: cookieSecret,
-		Env:          env,
+		DatabaseURL:           dsn,
+		Port:                  addr,
+		SessionTTL:            sessionTTL,
+		PasswordResetTokenTTL: passwordResetTTL,
+		BaseURL:               baseURL,
+		CookieSecret:          cookieSecret,
+		Env:                   env,
 	}, nil
 }
 func parseDurationEnv(key string) (time.Duration, error) {
 	value := os.Getenv(key)
 	if value == "" {
 		return 0, errors.New(key + " is required")
+	}
+	return time.ParseDuration(value)
+}
+
+func parseDurationEnvDefault(key, fallback string) (time.Duration, error) {
+	value := os.Getenv(key)
+	if value == "" {
+		value = fallback
 	}
 	return time.ParseDuration(value)
 }

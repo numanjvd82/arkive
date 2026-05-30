@@ -37,12 +37,12 @@ func (r *Repository) CreateVerifiedUser(ctx context.Context, db database.PgExecu
 func (r *Repository) GetUserByEmail(ctx context.Context, db database.PgExecutor, email string) (models.User, error) {
 	var user models.User
 	query := `SELECT
-		id, brand_name, email, vault_salt, encrypted_master_key
+		id, brand_name, email, vault_salt, encrypted_master_key, encrypted_master_key_recovery
 	FROM
 		users
 	WHERE
 		email = $1`
-	if err := db.QueryRow(ctx, query, email).Scan(&user.ID, &user.BrandName, &user.Email, &user.VaultSalt, &user.EncryptedMasterKey); err != nil {
+	if err := db.QueryRow(ctx, query, email).Scan(&user.ID, &user.BrandName, &user.Email, &user.VaultSalt, &user.EncryptedMasterKey, &user.EncryptedMasterKeyRecovery); err != nil {
 		return models.User{}, err
 	}
 	return user, nil
@@ -60,8 +60,10 @@ func (r *Repository) GetPasswordHashByEmail(ctx context.Context, db database.PgE
 func (r *Repository) GetUserByID(ctx context.Context, db database.PgExecutor, userID string) (models.User, error) {
 	var user models.User
 	query := `SELECT
-		id, brand_name, email, vault_salt, encrypted_master_key, used_bytes, reserved_bytes,
-		last_login_at, recovery_setup_token, recovery_setup_token_expires_at, updated_at, created_at
+		id, brand_name, email, vault_salt, encrypted_master_key, encrypted_master_key_recovery,
+		used_bytes, reserved_bytes, last_login_at, recovery_setup_token, recovery_setup_token_expires_at,
+		password_reset_token_hash, password_reset_token_expires_at, password_reset_consumed_at,
+		updated_at, created_at
 	FROM
 		users
 	WHERE
@@ -72,11 +74,15 @@ func (r *Repository) GetUserByID(ctx context.Context, db database.PgExecutor, us
 		&user.Email,
 		&user.VaultSalt,
 		&user.EncryptedMasterKey,
+		&user.EncryptedMasterKeyRecovery,
 		&user.UsedBytes,
 		&user.ReservedBytes,
 		&user.LastLoginAt,
 		&user.RecoverySetupToken,
 		&user.RecoverySetupTokenExpiresAt,
+		&user.PasswordResetTokenHash,
+		&user.PasswordResetTokenExpiresAt,
+		&user.PasswordResetConsumedAt,
 		&user.UpdatedAt,
 		&user.CreatedAt,
 	); err != nil {

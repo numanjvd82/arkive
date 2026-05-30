@@ -32,7 +32,9 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 	authRepo := authrepo.New()
 	usersRepo := usersrepo.New()
 	authService := auth.NewService(db, authRepo, sessionrepo.New(), usersRepo, auth.Config{
-		SessionTTL: cfg.SessionTTL,
+		SessionTTL:            cfg.SessionTTL,
+		PasswordResetTokenTTL: cfg.PasswordResetTokenTTL,
+		BaseURL:               cfg.BaseURL,
 	})
 	settingsRepo := settingsrepo.New()
 	settingsService := settingssvc.NewService(db, settingsRepo)
@@ -55,6 +57,8 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 	r.GET("/s/:token", handlers.PublicShareView(shareService, filesService, settingsService, cfg.CookieSecret))
 	r.POST("/s/:token", handlers.PublicShareUnlock(shareService, filesService, settingsService, cfg.CookieSecret))
 	r.GET("/login", handlers.WebLoginGet(authService, setupService))
+	r.GET("/forgot-password", handlers.WebForgotPasswordGet(authService, setupService))
+	r.GET("/reset-password", handlers.WebResetPasswordGet(authService, setupService))
 	protected := r.Group("/")
 	protected.Use(middleware.RequireSessionRedirect(authService))
 	protected.GET("/lock", handlers.WebLockGet())
@@ -72,6 +76,9 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 	api := r.Group("/api")
 	{
 		api.POST("/auth/login", handlers.APILogin(authService))
+		api.POST("/auth/forgot-password", handlers.APIForgotPassword(authService))
+		api.GET("/auth/password-reset/vault", handlers.APIPasswordResetVault(authService))
+		api.POST("/auth/password-reset/complete", handlers.APICompletePasswordReset(authService))
 		api.POST("/auth/unlock", middleware.RequireSessionJSON(authService), handlers.APIUnlockVault(authService))
 		api.GET("/me", middleware.RequireSessionJSON(authService), handlers.APIMe(authService))
 		api.GET("/health", handlers.Health(db))
