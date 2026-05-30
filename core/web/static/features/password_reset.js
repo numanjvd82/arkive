@@ -52,14 +52,24 @@ import { clearSessionUnlock } from "./vault.js";
       event.preventDefault();
       const email = forgotForm.querySelector("input[name='email']");
       const submit = forgotForm.querySelector("button[type='submit']");
+      const emailValue = email ? String(email.value || "").trim() : "";
       if (submit) {
         submit.disabled = true;
       }
       setMessage(resultNode, "", false);
+
+      if (!emailValue || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue)) {
+        setMessage(resultNode, "Enter a valid email address.", true);
+        if (submit) {
+          submit.disabled = false;
+        }
+        return;
+      }
+
       apiRequest("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email ? email.value : "" }),
+        body: JSON.stringify({ email: emailValue }),
       }, {
         message: "Password reset failed.",
       })
@@ -75,7 +85,7 @@ import { clearSessionUnlock } from "./vault.js";
               // Fall back to showing the URL if parsing fails.
             }
           }
-          setMessage(resultNode, url ? "Reset link: " + url : "Reset link created.", false);
+          throw new Error("No reset link generated. Check the email address.");
         })
         .catch(function(error) {
           console.error(error);
