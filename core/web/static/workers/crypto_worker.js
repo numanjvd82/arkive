@@ -179,17 +179,27 @@ async function handleMessage(message) {
         message.params.encryptedMasterKeyRecovery,
       );
       try {
-        const recoveryKey = crypto.parse_recovery_key(
-          String(message.params.recoveryKey || ""),
-        );
+        let recoveryKey;
+        try {
+          recoveryKey = crypto.parse_recovery_key(
+            String(message.params.recoveryKey || "").trim(),
+          );
+        } catch (_) {
+          throw new Error("Invalid recovery key");
+        }
         try {
           const salt = crypto.generate_salt();
           try {
-            const masterKey = crypto.unwrap_master_key_with_recovery_key(
-              encryptedMasterKeyRecovery,
-              recoveryKey,
-              String(message.params.userID || ""),
-            );
+            let masterKey;
+            try {
+              masterKey = crypto.unwrap_master_key_with_recovery_key(
+                encryptedMasterKeyRecovery,
+                recoveryKey,
+                String(message.params.userID || ""),
+              );
+            } catch (_) {
+              throw new Error("Invalid recovery key");
+            }
             try {
               // Keep vault wrapping consistent with setup/login: password-derived KEK + AAD.
               const kek = crypto.derive_password_kek(
