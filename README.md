@@ -184,7 +184,7 @@ docker compose up -d db
 ### Start app
 
 ```bash
-go run ./
+make dev
 ```
 
 Open:
