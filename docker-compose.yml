@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:latest
+    container_name: arkive_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PG_USER:-devuser}
+      POSTGRES_PASSWORD: ${PG_PASSWORD:-devpassword123!}
+      POSTGRES_DB: ${PG_DATABASE:-arkive_dev}
+    ports:
+      - "5132:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql
+volumes:
+  postgres_data: {} 

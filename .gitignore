@@ -10,7 +10,8 @@ playwright-report/
 test-results/
 
 # Docker files
-docker-compose.yml
+docker-compose.override.yml
+Dockerfile
 
 # Dumps
 *.dump
