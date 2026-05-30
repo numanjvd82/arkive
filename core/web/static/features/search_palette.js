@@ -1,4 +1,60 @@
 import { apiRequest } from "../lib/api.js";
+import { vault } from "./vault.js";
+
+const SETTINGS = [
+  { id: "settings-0", title: "Instance Overview", terms: ["instance overview", "instance", "admin", "email", "storage", "usage"], url: "/settings#settings-account", meta: "Settings" },
+  { id: "settings-1", title: "Storage Provider", terms: ["storage provider", "storage configuration", "provider", "local", "s3"], url: "/settings#settings-provider", meta: "Settings" },
+  { id: "settings-2", title: "Security", terms: ["security", "authentication", "session", "hardening"], url: "/settings#settings-security", meta: "Settings" },
+];
+
+function normalizeQuery(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^\p{L}\p{N}.]+/gu, " ")
+    .trim();
+}
+
+function searchSettingsResults(query) {
+  const normalized = normalizeQuery(query);
+  if (!normalized) {
+    return [];
+  }
+  return SETTINGS.filter(function(item) {
+    return item.terms.some(function(term) {
+      return normalizeQuery(term).includes(normalized);
+    });
+  }).map(function(item) {
+    return {
+      id: item.id,
+      kind: "setting",
+      title: item.title,
+      meta: item.meta,
+      url: item.url,
+      category: "Settings",
+    };
+  });
+}
+
+async function decryptSearchFiles(files) {
+  const results = [];
+  for (let i = 0; i < files.length; i += 1) {
+    const file = files[i];
+    try {
+      const opened = await vault.decryptSearchFile(file);
+      const metadata = opened && opened.metadata ? opened.metadata : {};
+      results.push({
+        id: file.id,
+        kind: "file",
+        title: String(metadata.name || "Encrypted file"),
+        meta: String(metadata.mime || "Encrypted"),
+        url: file.url,
+        category: "Files",
+      });
+    } catch (_) {}
+  }
+  return results;
+}
 
 export function initSearchPalette() {
   const trigger = document.getElementById("app-search-trigger");
@@ -140,26 +196,40 @@ export function initSearchPalette() {
     flatten();
   }
 
-  function runSearch(query) {
+  async function runSearch(query) {
+    const settings = searchSettingsResults(query);
     if (abortController) {
       abortController.abort();
     }
     abortController = new AbortController();
-    apiRequest("/api/search?q=" + encodeURIComponent(query), {
-      method: "GET",
-      signal: abortController.signal,
-      headers: { "Accept": "application/json" }
-    }, {
-      code: "unknown_error",
-      message: "Search failed"
-    })
-      .then(function(data) {
-        renderResults(data.results || {});
-      })
-      .catch(function(err) {
-        if (err && err.name === "AbortError") return;
-        renderResults({});
+    try {
+      const tokens = await vault.createSearchTokens(query);
+      if (!tokens.length) {
+        renderResults({ files: [], shares: [], settings: settings });
+        return;
+      }
+      const data = await apiRequest("/api/search", {
+        method: "POST",
+        signal: abortController.signal,
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ tokens: tokens, limit: 20 })
+      }, {
+        code: "unknown_error",
+        message: "Search failed"
       });
+      const files = await decryptSearchFiles((data && data.results && data.results.files) || []);
+      renderResults({
+        files: files,
+        shares: [],
+        settings: settings
+      });
+    } catch (err) {
+      if (err && err.name === "AbortError") return;
+      renderResults({ files: [], shares: [], settings: settings });
+    }
   }
 
   function scheduleSearch() {
@@ -259,7 +329,4 @@ export function initSearchPalette() {
       scheduleSearch();
     }
   });
-
-  window.addEventListener("hashchange", closePanel);
-  window.addEventListener("popstate", closePanel);
 }

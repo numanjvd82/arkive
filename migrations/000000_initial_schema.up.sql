@@ -105,6 +105,20 @@ CREATE INDEX idx_files_user_folder_complete_created
   WHERE upload_status = 'complete'
     AND expires_at IS NULL;
 
+CREATE TABLE file_search_tokens (
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  vault_id UUID NOT NULL,
+  file_id UUID NOT NULL REFERENCES files(id) ON DELETE CASCADE,
+  token_hash BYTEA NOT NULL,
+  field TEXT NOT NULL,
+  weight INT NOT NULL DEFAULT 1,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, vault_id, token_hash, file_id, field)
+);
+
+CREATE INDEX idx_file_search_tokens_lookup
+  ON file_search_tokens (user_id, vault_id, token_hash, weight DESC);
+
 CREATE TABLE upload_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   file_id UUID NOT NULL REFERENCES files(id) ON DELETE CASCADE,
@@ -169,6 +183,9 @@ CREATE TABLE share_links (
   crypto_version SMALLINT NOT NULL DEFAULT 1,
   password_hash TEXT,
   password_mode TEXT NOT NULL DEFAULT 'access_gate',
+  access_count INTEGER NOT NULL DEFAULT 0,
+  max_access_count INTEGER,
+  consumed_at TIMESTAMPTZ,
   expires_at TIMESTAMPTZ,
   revoked_at TIMESTAMPTZ,
   allow_preview BOOLEAN NOT NULL DEFAULT true,

@@ -74,17 +74,23 @@ func (s *Service) ListCompletedUploads(ctx context.Context, userID string, page,
 	}, nil
 }
 
-func (s *Service) SearchCompletedUploads(ctx context.Context, userID, query string, limit int) ([]models.File, error) {
+func (s *Service) SearchCompletedUploadsByTokens(ctx context.Context, userID, vaultID string, tokenHashes [][]byte, limit int) ([]models.File, error) {
 	var err error
 	userID, err = validateUserID(userID)
 	if err != nil {
 		return nil, err
 	}
-	query = strings.TrimSpace(query)
-	if query == "" {
+	vaultID, err = validateUserID(vaultID)
+	if err != nil {
+		return nil, err
+	}
+	if len(tokenHashes) == 0 {
 		return []models.File{}, nil
 	}
-	return s.fileRepo.SearchCompletedForUser(ctx, s.db, userID, query, limit)
+	if len(tokenHashes) > MaxSearchQueryTokens {
+		return nil, ErrInvalidInput
+	}
+	return s.fileRepo.SearchCompletedForTokens(ctx, s.db, userID, vaultID, tokenHashes, limit)
 }
 
 func (s *Service) GetFileForDisplay(ctx context.Context, userID, fileID string) (models.File, error) {

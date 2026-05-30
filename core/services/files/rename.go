@@ -5,12 +5,15 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5"
+
+	"arkive/core/models"
 )
 
 type RenameFileInput struct {
 	UserID            string
 	FileID            string
 	EncryptedMetadata []byte
+	SearchTokens      []models.FileSearchToken
 }
 
 func (s *Service) RenameFile(ctx context.Context, input RenameFileInput) error {
@@ -24,6 +27,10 @@ func (s *Service) RenameFile(ctx context.Context, input RenameFileInput) error {
 	}
 	if len(input.EncryptedMetadata) == 0 {
 		return ErrInvalidInput
+	}
+	searchTokens, err := NormalizeSearchTokens(input.SearchTokens, MaxSearchTokensPerFile)
+	if err != nil {
+		return err
 	}
 
 	file, err := s.fileRepo.GetFileForUser(ctx, s.db, fileID, userID)
@@ -43,12 +50,24 @@ func (s *Service) RenameFile(ctx context.Context, input RenameFileInput) error {
 		return ErrNotFound
 	}
 
-	renamed, err := s.fileRepo.RenameFileForUser(ctx, s.db, fileID, userID, input.EncryptedMetadata)
+	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	renamed, err := s.fileRepo.RenameFileForUser(ctx, tx, fileID, userID, input.EncryptedMetadata)
 	if err != nil {
 		return err
 	}
 	if !renamed {
 		return ErrNotFound
+	}
+	if err := s.fileRepo.ReplaceSearchTokensForFile(ctx, tx, userID, file.UserID, fileID, searchTokens); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return err
 	}
 	return nil
 }

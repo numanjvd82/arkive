@@ -248,6 +248,53 @@ function touchSessionUnlock() {
   storeSessionUnlock(stored.sessionUnwrapKey, stored.wrappedMasterKey);
 }
 
+function normalizeText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^\p{L}\p{N}.]+/gu, " ")
+    .trim();
+}
+
+function termsForFile(metadata) {
+  const name = normalizeText(metadata && metadata.name);
+  const mime = normalizeText(metadata && metadata.mime);
+  const ext = name.includes(".") ? name.split(".").pop() : "";
+  const words = name.replace(/\./g, " ").split(/\s+/).filter(Boolean);
+  const terms = [];
+
+  words.forEach(function(word) {
+    terms.push({ term: word, field: "name", weight: 10 });
+    if (word.length >= 3) {
+      for (let i = 3; i <= Math.min(word.length, 32); i += 1) {
+        terms.push({ term: word.slice(0, i), field: "prefix", weight: 1 });
+      }
+    }
+  });
+  if (ext) {
+    terms.push({ term: ext, field: "ext", weight: 4 });
+  }
+  if (mime) {
+    terms.push({ term: mime, field: "mime", weight: 2 });
+  }
+  return terms;
+}
+
+function termsForQuery(query) {
+  const normalized = normalizeText(query).replace(/\./g, " ");
+  const words = normalized.split(/\s+/).filter(Boolean);
+  const terms = [];
+  words.forEach(function(word) {
+    terms.push(word);
+    if (word.length >= 3) {
+      for (let i = 3; i <= Math.min(word.length, 32); i += 1) {
+        terms.push(word.slice(0, i));
+      }
+    }
+  });
+  return Array.from(new Set(terms)).slice(0, 32);
+}
+
 export function getSessionUnlock() {
   return loadSessionUnlock();
 }
@@ -531,6 +578,48 @@ export const vault = {
       aad: aad || ""
     });
   },
+  createSearchTokens: async function(query, vaultId) {
+    touchSessionUnlock();
+    const terms = termsForQuery(query);
+    if (!terms.length) {
+      return [];
+    }
+    const result = await callWorker("createSearchTokens", {
+      vaultId: String(vaultId || document.body.getAttribute("data-vault-id") || ""),
+      terms: terms,
+    });
+    return Array.isArray(result && result.tokens) ? result.tokens : [];
+  },
+  createSearchTokenEntries: async function(vaultId, metadata) {
+    touchSessionUnlock();
+    const items = termsForFile(metadata).slice(0, 128);
+    if (!items.length) {
+      return [];
+    }
+    const result = await callWorker("createSearchTokens", {
+      vaultId: String(vaultId || document.body.getAttribute("data-vault-id") || ""),
+      terms: items.map(function(item) { return item.term; }),
+    });
+    const tokens = Array.isArray(result && result.tokens) ? result.tokens : [];
+    return items.slice(0, tokens.length).map(function(item, index) {
+      return {
+        token: tokens[index],
+        field: item.field,
+        weight: item.weight,
+      };
+    });
+  },
+  decryptSearchFile: function(file) {
+    touchSessionUnlock();
+    return callWorker("decryptSearchFile", {
+      fileId: String((file && file.id) || ""),
+      vaultId: String((file && file.vaultId) || ""),
+      encryptedMetadata: String((file && file.encryptedMetadata) || ""),
+      encryptedFileKey: String((file && file.encryptedFileKey) || ""),
+      fileKeyAad: "arkive:file-key:v1:" + String((file && file.vaultId) || "") + ":" + String((file && file.id) || ""),
+      metadataAad: "arkive:file-metadata:v1:" + String((file && file.vaultId) || "") + ":" + String((file && file.id) || ""),
+    });
+  },
   getSessionUnlock: getSessionUnlock,
   onSessionUnlock: onSessionUnlock,
 };
@@ -601,4 +690,5 @@ export function onVaultLock(callback) {
 export function initVault() {
   bindLogoutHandler();
   ensureRestored();
+  window.ArkiveVault = vault;
 }

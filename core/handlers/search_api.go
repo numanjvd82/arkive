@@ -1,16 +1,14 @@
 package handlers
 
 import (
-	"fmt"
+	"encoding/base64"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 
 	"arkive/core/models"
 	filessvc "arkive/core/services/files"
-	"arkive/core/services/shares"
 	"arkive/pkg/apierror"
 	appcontext "arkive/pkg/context"
 )
@@ -25,7 +23,21 @@ type searchResult struct {
 	Category string `json:"category"`
 }
 
-func APISearch(filesService *filessvc.Service, shareService *shares.Service) gin.HandlerFunc {
+type encryptedSearchFileResult struct {
+	ID                string `json:"id"`
+	Kind              string `json:"kind"`
+	VaultID           string `json:"vaultId"`
+	EncryptedMetadata string `json:"encryptedMetadata"`
+	EncryptedFileKey  string `json:"encryptedFileKey"`
+	URL               string `json:"url"`
+}
+
+type searchRequest struct {
+	Tokens []string `json:"tokens"`
+	Limit  int      `json:"limit"`
+}
+
+func APISearch(filesService *filessvc.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user, ok := appcontext.UserFromContext(c)
 		if !ok || user.ID == "" {
@@ -33,109 +45,65 @@ func APISearch(filesService *filessvc.Service, shareService *shares.Service) gin
 			return
 		}
 
-		query := strings.TrimSpace(c.Query("q"))
-		if query == "" {
+		var req searchRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			apierror.InvalidPayload(c)
+			return
+		}
+		if len(req.Tokens) == 0 {
 			c.JSON(http.StatusOK, gin.H{"results": gin.H{}})
 			return
 		}
 
-		files, err := filesService.SearchCompletedUploads(c.Request.Context(), user.ID, query, 5)
-		if err != nil {
-			apierror.Internal(c, "Search failed")
-			return
+		tokenHashes := make([][]byte, 0, len(req.Tokens))
+		for _, token := range req.Tokens {
+			decoded, err := filessvc.DecodeSearchTokenString(token)
+			if err != nil {
+				apierror.InvalidPayload(c)
+				return
+			}
+			tokenHashes = append(tokenHashes, decoded)
 		}
 
-		shareItems, err := shareService.SearchSharesForUser(c.Request.Context(), user.ID, query, 5)
+		limit := req.Limit
+		if limit <= 0 || limit > 20 {
+			limit = 20
+		}
+
+		files, err := filesService.SearchCompletedUploadsByTokens(c.Request.Context(), user.ID, user.ID, tokenHashes, limit)
 		if err != nil {
+			if err == filessvc.ErrInvalidInput {
+				apierror.InvalidPayload(c)
+				return
+			}
 			apierror.Internal(c, "Search failed")
 			return
 		}
 
 		c.JSON(http.StatusOK, gin.H{
 			"results": gin.H{
-				"files":    mapFileResults(files),
-				"shares":   mapShareResults(shareItems),
-				"settings": searchSettingsResults(query),
+				"files":    mapEncryptedFileResults(files),
+				"shares":   []searchResult{},
+				"settings": []searchResult{},
 			},
 		})
 	}
 }
 
-func mapFileResults(files []models.File) []searchResult {
-	results := make([]searchResult, 0, len(files))
+func mapEncryptedFileResults(files []models.File) []encryptedSearchFileResult {
+	results := make([]encryptedSearchFileResult, 0, len(files))
 	for _, file := range files {
 		url := "/api/files/" + file.ID + "/download"
 		if isSearchPreviewable(file.UploadStatus) {
 			url = "/files/" + file.ID + "/view"
 		}
-		results = append(results, searchResult{
-			ID:       file.ID,
-			Kind:     "file",
-			Title:    "Encrypted file",
-			Meta:     "Encrypted",
-			URL:      url,
-			Category: "Files",
-		})
-	}
-	return results
-}
-
-func mapShareResults(items []models.ShareWithFile) []searchResult {
-	now := time.Now()
-	results := make([]searchResult, 0, len(items))
-	for _, item := range items {
-		status := "Active"
-		if item.ExpiresAt != nil && !item.ExpiresAt.After(now) {
-			status = "Expired"
-		}
-		if item.PasswordHash != nil && status == "Active" {
-			status = "Restricted"
-		}
-		results = append(results, searchResult{
-			ID:       item.ID,
-			Kind:     "share",
-			Title:    item.FileName,
-			Status:   status,
-			Meta:     "/s/" + item.Token,
-			URL:      "/shares",
-			Category: "Shares",
-		})
-	}
-	return results
-}
-
-func searchSettingsResults(query string) []searchResult {
-	type item struct {
-		title []string
-		url   string
-		meta  string
-	}
-	settings := []item{
-		{title: []string{"Instance Overview", "Instance", "Admin", "Email", "Storage", "Usage"}, url: "/settings#settings-account", meta: "Settings"},
-		{title: []string{"Storage Provider", "Storage Configuration", "Provider", "Local", "S3"}, url: "/settings#settings-provider", meta: "Settings"},
-		{title: []string{"Security", "Authentication", "Session", "Hardening"}, url: "/settings#settings-security", meta: "Settings"},
-	}
-
-	lower := strings.ToLower(query)
-	results := []searchResult{}
-	for idx, setting := range settings {
-		match := false
-		for _, token := range setting.title {
-			if strings.Contains(strings.ToLower(token), lower) {
-				match = true
-				break
-			}
-		}
-		if !match {
-			continue
-		}
-		results = append(results, searchResult{
-			ID:       fmt.Sprintf("settings-%d", idx),
-			Kind:     "setting",
-			Title:    setting.title[0],
-			Meta:     setting.meta,
-			URL:      setting.url,
-			Category: "Settings",
+		results = append(results, encryptedSearchFileResult{
+			ID:                file.ID,
+			Kind:              "file",
+			VaultID:           file.UserID,
+			EncryptedMetadata: base64.StdEncoding.EncodeToString(file.EncryptedMetadata),
+			EncryptedFileKey:  base64.StdEncoding.EncodeToString(file.EncryptedFileKey),
+			URL:               url,
 		})
 	}
 	return results

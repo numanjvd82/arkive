@@ -4,9 +4,11 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
+	"arkive/core/models"
 	filessvc "arkive/core/services/files"
 	"arkive/core/services/uploads"
 	"arkive/pkg/apierror"
@@ -34,14 +36,40 @@ type uploadPartPresignBatchRequest struct {
 }
 
 type uploadCompleteRequest struct {
-	EncryptedMetadata string `json:"encryptedMetadata"`
-	EncryptedFileKey  string `json:"encryptedFileKey"`
-	EncryptedManifest string `json:"encryptedManifest"`
-	EncryptedHash     string `json:"encryptedHash"`
-	HasThumbnail      bool   `json:"hasThumbnail"`
-	ThumbnailMime     string `json:"thumbnailMime"`
-	ThumbnailWidth    int    `json:"thumbnailWidth"`
-	ThumbnailHeight   int    `json:"thumbnailHeight"`
+	EncryptedMetadata string               `json:"encryptedMetadata"`
+	EncryptedFileKey  string               `json:"encryptedFileKey"`
+	EncryptedManifest string               `json:"encryptedManifest"`
+	EncryptedHash     string               `json:"encryptedHash"`
+	SearchTokens      []searchTokenRequest `json:"searchTokens"`
+	HasThumbnail      bool                 `json:"hasThumbnail"`
+	ThumbnailMime     string               `json:"thumbnailMime"`
+	ThumbnailWidth    int                  `json:"thumbnailWidth"`
+	ThumbnailHeight   int                  `json:"thumbnailHeight"`
+}
+
+type searchTokenRequest struct {
+	Token  string `json:"token"`
+	Field  string `json:"field"`
+	Weight int    `json:"weight"`
+}
+
+func decodeSearchTokens(input []searchTokenRequest) ([]models.FileSearchToken, error) {
+	if len(input) == 0 {
+		return nil, filessvc.ErrInvalidInput
+	}
+	tokens := make([]models.FileSearchToken, 0, len(input))
+	for _, item := range input {
+		tokenHash, err := filessvc.DecodeSearchTokenString(item.Token)
+		if err != nil {
+			return nil, err
+		}
+		tokens = append(tokens, models.FileSearchToken{
+			TokenHash: tokenHash,
+			Field:     strings.TrimSpace(item.Field),
+			Weight:    item.Weight,
+		})
+	}
+	return tokens, nil
 }
 
 type thumbnailPresignRequest struct {
@@ -257,12 +285,18 @@ func APIUploadComplete(svc *uploads.Service) gin.HandlerFunc {
 			apierror.Unauthorized(c)
 			return
 		}
+		searchTokens, err := decodeSearchTokens(req.SearchTokens)
+		if err != nil {
+			apierror.InvalidPayload(c)
+			return
+		}
 
 		if err := svc.CompleteMultipartUploadSession(c.Request.Context(), userID.(string), uploadSessionID, uploads.MultipartUploadCompleteInput{
 			EncryptedMetadata: req.EncryptedMetadata,
 			EncryptedFileKey:  req.EncryptedFileKey,
 			EncryptedManifest: req.EncryptedManifest,
 			EncryptedHash:     req.EncryptedHash,
+			SearchTokens:      searchTokens,
 			HasThumbnail:      req.HasThumbnail,
 			ThumbnailMime:     req.ThumbnailMime,
 			ThumbnailWidth:    req.ThumbnailWidth,

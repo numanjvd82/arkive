@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"arkive/core/models"
+	files "arkive/core/services/files"
 	"arkive/pkg/storage"
 	"arkive/pkg/validation"
 )
@@ -51,6 +52,7 @@ type MultipartUploadCompleteInput struct {
 	EncryptedFileKey  string
 	EncryptedManifest string
 	EncryptedHash     string
+	SearchTokens      []models.FileSearchToken
 	HasThumbnail      bool
 	ThumbnailMime     string
 	ThumbnailWidth    int
@@ -444,6 +446,10 @@ func (s *Service) CompleteMultipartUploadSession(ctx context.Context, userID, up
 			return ErrInvalidInput
 		}
 	}
+	searchTokens, err := files.NormalizeSearchTokens(input.SearchTokens, files.MaxSearchTokensPerFile)
+	if err != nil {
+		return err
+	}
 	thumbnailObjectKey := ""
 	if input.HasThumbnail {
 		thumbnailObjectKey, err = storage.BuildThumbnailObjectKey(userID, uploadSession.FileID)
@@ -594,6 +600,10 @@ func (s *Service) CompleteMultipartUploadSession(ctx context.Context, userID, up
 		return err
 	}
 	if err := s.fileRepo.MarkEncryptedFileComplete(ctx, tx, file.ID, actualEncryptedSize, encryptedHash); err != nil {
+		_ = tx.Rollback(ctx)
+		return err
+	}
+	if err := s.fileRepo.InsertSearchTokensForFile(ctx, tx, userID, file.UserID, file.ID, searchTokens); err != nil {
 		_ = tx.Rollback(ctx)
 		return err
 	}

@@ -4,6 +4,7 @@ import { startUpload, presignUploadPart, presignUploadParts, presignThumbnailUpl
 import { setVaultSession, restoreVaultSession, prepareUpload, encryptUploadMetadata, encryptUploadThumbnail, encryptUploadPart, hashUploadPayload, finalizeUpload, clearUploadContext } from "../upload/upload_crypto.js";
 import { generateUploadThumbnail } from "../upload/upload_thumbnail.js";
 import { toAppError } from "../lib/errors.js";
+import { vault } from "./vault.js";
 
 const STOPPED_UPLOAD = new Error("Upload stopped");
 const THUMBNAIL_TIMEOUT_MS = 15000;
@@ -421,11 +422,16 @@ export class UploadRunner {
 			}
 
 			await this.runWithController(async (signal) => {
+				const searchTokens = await vault.createSearchTokenEntries(started.vaultId, {
+					name: job.file.name,
+					mime: job.file.type || "application/octet-stream",
+				});
 				return completeUpload(started.uploadSessionId, {
 					encryptedMetadata: preparedMetadata.encryptedMetadata,
 					encryptedFileKey: prepared.encryptedFileKey,
 					encryptedManifest: finalized.encryptedManifest,
 					encryptedHash: finalized.encryptedHash,
+					searchTokens: searchTokens,
 					hasThumbnail: !!uploadedThumbnail,
 					thumbnailMime: uploadedThumbnail ? uploadedThumbnail.mime : "",
 					thumbnailWidth: uploadedThumbnail ? uploadedThumbnail.width : 0,

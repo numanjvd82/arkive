@@ -303,12 +303,14 @@ async function submitRename() {
     } else {
       const reader = new ArkiveFileReader({ fileId: entryID(entry) });
       let metadata = null;
+      let vaultId = "";
+      let fileId = "";
       let encryptedMetadataB64 = "";
       try {
         await reader.load();
         metadata = Object.assign({}, reader.getMetadata() || {}, { name: nextName });
-        const vaultId = String((reader.record && reader.record.vaultId) || "");
-        const fileId = String((reader.record && reader.record.fileId) || entryID(entry));
+        vaultId = String((reader.record && reader.record.vaultId) || "");
+        fileId = String((reader.record && reader.record.fileId) || entryID(entry));
         if (!vaultId || !fileId) {
           throw new Error("Rename failed.");
         }
@@ -328,6 +330,7 @@ async function submitRename() {
           id: entryID(entry),
           encryptedName: "",
           encryptedMetadata: encryptedMetadataB64,
+          searchTokens: await vault.createSearchTokenEntries(vaultId, metadata),
         })
       }, {
         code: "validation_failed",

@@ -26,6 +26,10 @@ function encodeBase64(bytes) {
   return btoa(binary);
 }
 
+function encodeBase64URL(bytes) {
+  return encodeBase64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
 function decodeBase64(value) {
   const normalized = String(value || "").trim();
   if (!normalized) {
@@ -97,6 +101,27 @@ function activeMasterKey(supplied) {
     bytes: unlockedMasterKey,
     temporary: false,
   };
+}
+
+async function deriveSearchKey(masterKey) {
+  const hkdfKey = await globalThis.crypto.subtle.importKey(
+    "raw",
+    masterKey,
+    "HKDF",
+    false,
+    ["deriveBits"],
+  );
+  const bits = await globalThis.crypto.subtle.deriveBits(
+    {
+      name: "HKDF",
+      hash: "SHA-256",
+      salt: new Uint8Array(),
+      info: new TextEncoder().encode("arkive-search-v1"),
+    },
+    hkdfKey,
+    256,
+  );
+  return new Uint8Array(bits);
 }
 
 async function handleMessage(message) {
@@ -695,6 +720,66 @@ async function handleMessage(message) {
       } finally {
         crypto.zeroize(fileKey);
         crypto.zeroize(encryptedChunk);
+      }
+    }
+    case "createSearchTokens": {
+      if (!unlockedMasterKey) {
+        throw new Error("Vault is locked");
+      }
+      const vaultId = String(message.params.vaultId || "");
+      const terms = Array.isArray(message.params.terms) ? message.params.terms : [];
+      if (!vaultId || !terms.length) {
+        return { tokens: [] };
+      }
+      const searchKey = await deriveSearchKey(unlockedMasterKey);
+      try {
+        const hmacKey = await globalThis.crypto.subtle.importKey(
+          "raw",
+          searchKey,
+          { name: "HMAC", hash: "SHA-256" },
+          false,
+          ["sign"],
+        );
+        const tokens = [];
+        for (let i = 0; i < terms.length; i += 1) {
+          const payload = new TextEncoder().encode(vaultId + ":" + String(terms[i] || ""));
+          const digest = new Uint8Array(await globalThis.crypto.subtle.sign("HMAC", hmacKey, payload));
+          tokens.push(encodeBase64URL(digest));
+        }
+        return { tokens: tokens };
+      } finally {
+        searchKey.fill(0);
+      }
+    }
+    case "decryptSearchFile": {
+      if (!unlockedMasterKey) {
+        throw new Error("Vault is locked");
+      }
+      const encryptedFileKey = decodeBase64(message.params.encryptedFileKey);
+      const encryptedMetadata = decodeBase64(message.params.encryptedMetadata);
+      try {
+        const fileKey = crypto.unwrap_file_key(
+          encryptedFileKey,
+          unlockedMasterKey,
+          aadBytes(message.params.fileKeyAad),
+        );
+        try {
+          const metadata = crypto.decrypt_chunk(
+            encryptedMetadata,
+            fileKey,
+            aadBytes(message.params.metadataAad),
+          );
+          try {
+            return { metadata: JSON.parse(new TextDecoder().decode(metadata)) };
+          } finally {
+            crypto.zeroize(metadata);
+          }
+        } finally {
+          crypto.zeroize(fileKey);
+        }
+      } finally {
+        crypto.zeroize(encryptedFileKey);
+        crypto.zeroize(encryptedMetadata);
       }
     }
     default:

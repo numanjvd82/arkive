@@ -33,10 +33,11 @@ type deleteEntriesRequest struct {
 }
 
 type renameEntryRequest struct {
-	Type              string `json:"type"`
-	ID                string `json:"id"`
-	EncryptedName     string `json:"encryptedName"`
-	EncryptedMetadata string `json:"encryptedMetadata"`
+	Type              string               `json:"type"`
+	ID                string               `json:"id"`
+	EncryptedName     string               `json:"encryptedName"`
+	EncryptedMetadata string               `json:"encryptedMetadata"`
+	SearchTokens      []searchTokenRequest `json:"searchTokens"`
 }
 
 type createFolderResponse struct {
@@ -259,10 +260,16 @@ func APIRenameEntry(folderService *folderssvc.Service, filesService *filessvc.Se
 
 		switch strings.TrimSpace(req.Type) {
 		case "file":
+			searchTokens, err := decodeSearchTokens(req.SearchTokens)
+			if err != nil {
+				apierror.InvalidPayload(c)
+				return
+			}
 			if err := filesService.RenameFile(c.Request.Context(), filessvc.RenameFileInput{
 				UserID:            userID.(string),
 				FileID:            strings.TrimSpace(req.ID),
 				EncryptedMetadata: encryptedMetadata,
+				SearchTokens:      searchTokens,
 			}); err != nil {
 				switch {
 				case errors.Is(err, filessvc.ErrInvalidInput):
