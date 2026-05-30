@@ -44,7 +44,7 @@ func ResetPasswordPage(props ResetPasswordPageProps) web.Page {
 func forgotPasswordBody(props ForgotPasswordPageProps) g.Node {
 	return authResetShell(
 		"Request password reset",
-		"Create password reset token. Temporary until Arkive mail delivery returns.",
+		"Create a password reset token.",
 		h.Form(
 			h.Class("auth-form"),
 			g.Attr("data-forgot-password-form", "true"),
