@@ -404,7 +404,7 @@
 .public-share-preview {
   position: relative;
   min-width: 0;
-  min-height: clamp(320px, 62vh, 760px);
+  height: clamp(320px, 62vh, 760px);
   background:
     radial-gradient(circle at top, rgba(78, 140, 173, 0.12), transparent 46%),
     #0d1217;
@@ -867,7 +867,6 @@
   }
 
   .public-share-preview {
-    min-height: 0;
     height: clamp(240px, 42vw, 420px);
     border-right: 0;
     border-bottom: 1px solid #30363d;
@@ -895,9 +894,9 @@
   }
 
   .public-share-preview {
-    min-height: 240px;
     aspect-ratio: 4 / 3;
     height: auto;
+    min-height: 240px;
   }
 
   .public-share-badge {
