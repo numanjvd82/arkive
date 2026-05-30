@@ -159,6 +159,7 @@ export class UploadRunner {
 	constructor(options) {
 		options = options || {};
 		this.limits = options.limits || { maxQueueItems: 300 };
+		this.policy = options.policy || {};
 		this.jobs = new Map();
 		this.jobCleanupTimers = new Map();
 		this.activeJobId = null;
@@ -361,7 +362,7 @@ export class UploadRunner {
 			const thumbnailPromise = this.createAndUploadThumbnail(job, started);
 
 			const chunks = await this.uploadPartsPooled(job, started, {
-				concurrency: getUploadPartConcurrency(UPLOAD_POLICY.partConcurrency),
+				concurrency: getUploadPartConcurrency(this.policy.partConcurrency || UPLOAD_POLICY.partConcurrency),
 				presignBatchSize: UPLOAD_POLICY.presignBatchSize,
 			});
 			if (this.shouldStopJob(job)) {

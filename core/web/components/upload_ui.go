@@ -9,13 +9,14 @@ import (
 )
 
 type UploadControlsProps struct {
-	InputID       string
-	InputName     string
-	InputLabel    string
-	InputHelper   string
-	StatusText    string
-	InputRequired bool
-	MaxQueueItems int
+	InputID         string
+	InputName       string
+	InputLabel      string
+	InputHelper     string
+	StatusText      string
+	InputRequired   bool
+	MaxQueueItems   int
+	PartConcurrency int
 }
 
 const UploadUICSS = "/web/components/upload_ui.css"
@@ -58,6 +59,7 @@ func UploadControls(props UploadControlsProps) g.Node {
 			g.Attr("role", "button"),
 			g.Attr("tabindex", "0"),
 			g.Attr("data-upload-max-queue-items", strconv.Itoa(props.MaxQueueItems)),
+			g.Attr("data-upload-part-concurrency", strconv.Itoa(props.PartConcurrency)),
 			h.Div(
 				h.Class("dropzone-icon"),
 				lucide.CloudUpload(

@@ -16,6 +16,7 @@ import (
 
 	"arkive/core/models"
 	filessvc "arkive/core/services/files"
+	settingssvc "arkive/core/services/settings"
 	"arkive/core/services/shares"
 	"arkive/core/web"
 	"arkive/core/web/pages"
@@ -29,7 +30,7 @@ const (
 	shareAccessTTL        = 15 * time.Minute
 )
 
-func PublicShareView(shareService *shares.Service, filesService *filessvc.Service, cookieSecret string) gin.HandlerFunc {
+func PublicShareView(shareService *shares.Service, filesService *filessvc.Service, settingsService *settingssvc.Service, cookieSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := strings.TrimSpace(c.Param("token"))
 		if token == "" {
@@ -79,11 +80,11 @@ func PublicShareView(shareService *shares.Service, filesService *filessvc.Servic
 			return
 		}
 
-		renderShareLanding(c, filesService, token, share, file)
+		renderShareLanding(c, filesService, settingsService, token, share, file)
 	}
 }
 
-func PublicShareUnlock(shareService *shares.Service, filesService *filessvc.Service, cookieSecret string) gin.HandlerFunc {
+func PublicShareUnlock(shareService *shares.Service, filesService *filessvc.Service, settingsService *settingssvc.Service, cookieSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := strings.TrimSpace(c.Param("token"))
 		if token == "" {
@@ -126,7 +127,7 @@ func PublicShareUnlock(shareService *shares.Service, filesService *filessvc.Serv
 		}
 
 		if share.PasswordHash == nil || hasShareAccess(c, share, cookieSecret) {
-			renderShareLanding(c, filesService, token, share, file)
+			renderShareLanding(c, filesService, settingsService, token, share, file)
 			return
 		}
 
@@ -150,7 +151,7 @@ func PublicShareUnlock(shareService *shares.Service, filesService *filessvc.Serv
 			c.Status(http.StatusNoContent)
 			return
 		}
-		renderShareLanding(c, filesService, token, share, file)
+		renderShareLanding(c, filesService, settingsService, token, share, file)
 	}
 }
 
@@ -367,7 +368,7 @@ func APIPublicShareConsume(shareService *shares.Service, filesService *filessvc.
 	}
 }
 
-func renderShareLanding(c *gin.Context, filesService *filessvc.Service, token string, share models.Share, file models.File) {
+func renderShareLanding(c *gin.Context, filesService *filessvc.Service, settingsService *settingssvc.Service, token string, share models.Share, file models.File) {
 	viewURL := ""
 	isImage := false
 	isVideo := false
@@ -383,17 +384,22 @@ func renderShareLanding(c *gin.Context, filesService *filessvc.Service, token st
 	}
 
 	shareURL := buildShareURL(c, token)
+	previewSettings, settingsErr := settingsService.PreviewSettings(c.Request.Context())
+	if settingsErr != nil {
+		previewSettings = settingssvc.DefaultPreviewSettings()
+	}
 	web.Render(c, pages.PublicShareViewPage(pages.PublicShareViewProps{
-		Token:         token,
-		BurnAfterRead: share.BurnAfterRead,
-		File:          file,
-		ViewURL:       viewURL,
-		DownloadURL:   downloadURL,
-		IsImage:       isImage,
-		IsVideo:       isVideo,
-		Viewable:      viewable && viewURL != "",
-		ShareURL:      shareURL,
-		SharedAt:      share.CreatedAt,
+		Token:           token,
+		BurnAfterRead:   share.BurnAfterRead,
+		File:            file,
+		ViewURL:         viewURL,
+		DownloadURL:     downloadURL,
+		IsImage:         isImage,
+		IsVideo:         isVideo,
+		Viewable:        viewable && viewURL != "",
+		ShareURL:        shareURL,
+		SharedAt:        share.CreatedAt,
+		PreviewSettings: previewSettings,
 	}))
 }
 

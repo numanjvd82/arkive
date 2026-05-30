@@ -142,6 +142,7 @@ func (s *Service) StartMultipartUploadSession(ctx context.Context, userID string
 		return models.UploadStartResponse{}, validationErrors, nil
 	}
 	declaredEncryptedSize := reservedUploadSize(input.OriginalSize, input.TotalChunks)
+	uploadExpiry := s.uploadExpiry(ctx)
 	storageSettings, err := s.settingsRepo.GetStorageSettings(ctx, s.db)
 	if err != nil {
 		return models.UploadStartResponse{}, nil, err
@@ -178,7 +179,7 @@ func (s *Service) StartMultipartUploadSession(ctx context.Context, userID string
 		PlaintextSize:       input.OriginalSize,
 		ActualEncryptedSize: 0,
 		UploadStatus:        FileUploadUploading,
-		ExpiresAt:           expiresAtPtr(time.Now().Add(s.uploadExpires)),
+		ExpiresAt:           expiresAtPtr(time.Now().Add(uploadExpiry)),
 	})
 	if err != nil {
 		_ = tx.Rollback(ctx)
@@ -218,7 +219,7 @@ func (s *Service) StartMultipartUploadSession(ctx context.Context, userID string
 		ProviderUploadID: providerUploadID,
 		UploadPartCount:  input.UploadPartCount,
 		Status:           UploadStatusActive,
-		ExpiresAt:        time.Now().Add(s.uploadExpires),
+		ExpiresAt:        time.Now().Add(uploadExpiry),
 	})
 	if err != nil {
 		_ = tx.Rollback(ctx)
@@ -277,7 +278,7 @@ func (s *Service) PresignMultipartUploadPart(ctx context.Context, userID, upload
 	if err != nil {
 		return "", err
 	}
-	return s.storage.PresignUploadPart(ctx, objectKey, uploadSession.ProviderUploadID, int32(partNumber), s.uploadExpires)
+	return s.storage.PresignUploadPart(ctx, objectKey, uploadSession.ProviderUploadID, int32(partNumber), s.uploadExpiry(ctx))
 }
 
 func (s *Service) PresignMultipartUploadParts(ctx context.Context, userID, uploadSessionID string, partNumbers []int) (map[string]string, error) {
@@ -330,7 +331,7 @@ func (s *Service) PresignMultipartUploadParts(ctx context.Context, userID, uploa
 		}
 		seen[partNumber] = struct{}{}
 
-		url, presignErr := s.storage.PresignUploadPart(ctx, objectKey, uploadSession.ProviderUploadID, int32(partNumber), s.uploadExpires)
+		url, presignErr := s.storage.PresignUploadPart(ctx, objectKey, uploadSession.ProviderUploadID, int32(partNumber), s.uploadExpiry(ctx))
 		if presignErr != nil {
 			return nil, presignErr
 		}
@@ -721,5 +722,5 @@ func (s *Service) PresignThumbnailUpload(ctx context.Context, userID, uploadSess
 	if err != nil {
 		return "", err
 	}
-	return s.storage.PresignUpload(ctx, objectKey, "application/octet-stream", s.uploadExpires)
+	return s.storage.PresignUpload(ctx, objectKey, "application/octet-stream", s.uploadExpiry(ctx))
 }

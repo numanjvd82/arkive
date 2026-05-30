@@ -108,7 +108,21 @@ func uploadSettingsForm(settings models.UploadSettings, errors validation.Errors
 		g.Attr("method", "POST"),
 		g.Attr("action", "/settings/uploads"),
 		components.InputField(components.InputProps{Label: "Max queue items", Name: "max_queue_items", Type: components.InputTypeNumber, Value: strconv.Itoa(settings.MaxQueueItems), HelperText: validation.FieldError(errors, "max_queue_items"), HasError: validation.FieldError(errors, "max_queue_items") != ""}),
+		components.InputField(components.InputProps{Label: "Part concurrency", Name: "part_concurrency", Type: components.InputTypeNumber, Value: strconv.Itoa(settings.PartConcurrency), Description: "Parallel upload parts per file. Mobile browsers are still capped lower.", HelperText: validation.FieldError(errors, "part_concurrency"), HasError: validation.FieldError(errors, "part_concurrency") != ""}),
+		components.InputField(components.InputProps{Label: "Stale upload hours", Name: "stale_upload_hours", Type: components.InputTypeNumber, Value: strconv.Itoa(settings.StaleUploadHours), Description: "How long incomplete uploads and presigned upload URLs stay valid.", HelperText: validation.FieldError(errors, "stale_upload_hours"), HasError: validation.FieldError(errors, "stale_upload_hours") != ""}),
 		components.Button(components.ButtonProps{Text: "Save upload settings", Type: "submit", Variant: "primary", Class: "auth-submit", BusyText: "Saving..."}),
+	)
+}
+
+func previewSettingsForm(settings models.PreviewSettings, errors validation.Errors) g.Node {
+	return h.Form(
+		h.Class("settings-form"),
+		g.Attr("method", "POST"),
+		g.Attr("action", "/settings/previews"),
+		components.InputField(components.InputProps{Label: "Image preview max MB", Name: "image_max_mb", Type: components.InputTypeNumber, Value: strconv.FormatInt(settings.ImageMaxBytes/(1024*1024), 10), HelperText: validation.FieldError(errors, "image_max_mb"), HasError: validation.FieldError(errors, "image_max_mb") != ""}),
+		components.InputField(components.InputProps{Label: "Video preview max MB", Name: "video_max_mb", Type: components.InputTypeNumber, Value: strconv.FormatInt(settings.VideoMaxBytes/(1024*1024), 10), Description: "Used only for non-streaming fallback preview. Streaming playback is not capped by this value.", HelperText: validation.FieldError(errors, "video_max_mb"), HasError: validation.FieldError(errors, "video_max_mb") != ""}),
+		components.InputField(components.InputProps{Label: "Text preview max MB", Name: "text_max_mb", Type: components.InputTypeNumber, Value: strconv.FormatInt(settings.TextMaxBytes/(1024*1024), 10), HelperText: validation.FieldError(errors, "text_max_mb"), HasError: validation.FieldError(errors, "text_max_mb") != ""}),
+		components.Button(components.ButtonProps{Text: "Save preview settings", Type: "submit", Variant: "primary", Class: "auth-submit", BusyText: "Saving..."}),
 	)
 }
 

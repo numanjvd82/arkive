@@ -31,7 +31,15 @@ type storageSettingsForm struct {
 }
 
 type uploadSettingsForm struct {
-	MaxQueueItems string `form:"max_queue_items"`
+	MaxQueueItems    string `form:"max_queue_items"`
+	PartConcurrency  string `form:"part_concurrency"`
+	StaleUploadHours string `form:"stale_upload_hours"`
+}
+
+type previewSettingsForm struct {
+	ImageMaxMB string `form:"image_max_mb"`
+	VideoMaxMB string `form:"video_max_mb"`
+	TextMaxMB  string `form:"text_max_mb"`
 }
 
 func WebSettings(filesService *filessvc.Service, settingsService *settingssvc.Service) gin.HandlerFunc {
@@ -48,10 +56,12 @@ func WebSettings(filesService *filessvc.Service, settingsService *settingssvc.Se
 
 		storageSettings, _ := settingsService.StorageSettings(c.Request.Context())
 		uploadSettings, _ := settingsService.UploadSettings(c.Request.Context())
+		previewSettings, _ := settingsService.PreviewSettings(c.Request.Context())
 		web.Render(c, pages.SettingsPage(pages.SettingsPageProps{
 			Ctx:             pages.ContextWithUser(user),
 			StorageSettings: storageSettings,
 			UploadSettings:  uploadSettings,
+			PreviewSettings: previewSettings,
 		}))
 	}
 }
@@ -114,6 +124,35 @@ func WebSettingsUploadPost(settingsService *settingssvc.Service) gin.HandlerFunc
 	}
 }
 
+func WebSettingsPreviewPost(settingsService *settingssvc.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		user, ok := appcontext.UserFromContext(c)
+		if !ok || user.ID == "" {
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
+		var form previewSettingsForm
+		if err := c.ShouldBind(&form); err != nil {
+			renderSettingsPreview(c, user, models.PreviewSettings{}, validation.Errors{validation.GeneralKey: "Please fill out the form."})
+			return
+		}
+
+		settings, validationErrors, err := settingsService.UpdatePreviewSettings(c.Request.Context(), user.ID, previewSettingsFromForm(form))
+		if validationErrors != nil && validationErrors.HasAny() {
+			renderSettingsPreview(c, user, settings, validationErrors)
+			return
+		}
+		if err != nil {
+			_ = c.Error(errs.WithStack(err))
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+
+		c.Redirect(http.StatusSeeOther, "/settings?msg=preview-updated")
+	}
+}
+
 func settingsInputFromForm(form storageSettingsForm) settingssvc.StorageInput {
 	return settingssvc.StorageInput{
 		Provider:          form.StorageProvider,
@@ -131,7 +170,17 @@ func settingsInputFromForm(form storageSettingsForm) settingssvc.StorageInput {
 
 func uploadSettingsFromForm(form uploadSettingsForm) settingssvc.UploadInput {
 	return settingssvc.UploadInput{
-		MaxQueueItems: form.MaxQueueItems,
+		MaxQueueItems:    form.MaxQueueItems,
+		PartConcurrency:  form.PartConcurrency,
+		StaleUploadHours: form.StaleUploadHours,
+	}
+}
+
+func previewSettingsFromForm(form previewSettingsForm) settingssvc.PreviewInput {
+	return settingssvc.PreviewInput{
+		ImageMaxMB: form.ImageMaxMB,
+		VideoMaxMB: form.VideoMaxMB,
+		TextMaxMB:  form.TextMaxMB,
 	}
 }
 
@@ -149,6 +198,14 @@ func renderSettingsUpload(c *gin.Context, user models.User, settings models.Uplo
 		Ctx:            pages.ContextWithUser(user),
 		UploadSettings: settings,
 		Errors:         validationErrors,
+	}))
+}
+
+func renderSettingsPreview(c *gin.Context, user models.User, settings models.PreviewSettings, validationErrors validation.Errors) {
+	web.Render(c, pages.SettingsPage(pages.SettingsPageProps{
+		Ctx:             pages.ContextWithUser(user),
+		PreviewSettings: settings,
+		Errors:          validationErrors,
 	}))
 }
 

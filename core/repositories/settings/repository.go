@@ -85,14 +85,87 @@ func (r *Repository) GetUploadSettings(ctx context.Context, db database.PgExecut
 	if maxQueueItems <= 0 {
 		maxQueueItems = 300
 	}
+	partConcurrency, _ := strconv.Atoi(values["upload.part_concurrency"])
+	if partConcurrency <= 0 {
+		partConcurrency = 3
+	}
+	staleUploadHours, _ := strconv.Atoi(values["upload.stale_hours"])
+	if staleUploadHours <= 0 {
+		staleUploadHours = 1
+	}
 	return models.UploadSettings{
-		MaxQueueItems: maxQueueItems,
+		MaxQueueItems:    maxQueueItems,
+		PartConcurrency:  partConcurrency,
+		StaleUploadHours: staleUploadHours,
 	}, nil
 }
 
 func (r *Repository) SaveUploadSettings(ctx context.Context, db database.PgExecutor, settings models.UploadSettings) error {
 	values := map[string]string{
-		"upload.max_queue_items": strconv.Itoa(settings.MaxQueueItems),
+		"upload.max_queue_items":  strconv.Itoa(settings.MaxQueueItems),
+		"upload.part_concurrency": strconv.Itoa(settings.PartConcurrency),
+		"upload.stale_hours":      strconv.Itoa(settings.StaleUploadHours),
+	}
+	for key, value := range values {
+		if _, err := db.Exec(ctx, `
+			INSERT INTO instance_settings (key, value, updated_at)
+			VALUES ($1, $2, now())
+			ON CONFLICT (key)
+			DO UPDATE SET value = EXCLUDED.value, updated_at = now()
+		`, key, value); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *Repository) GetPreviewSettings(ctx context.Context, db database.PgExecutor) (models.PreviewSettings, error) {
+	rows, err := db.Query(ctx, `SELECT key, value FROM instance_settings WHERE key LIKE 'preview.%'`)
+	if err != nil {
+		return models.PreviewSettings{}, err
+	}
+	defer rows.Close()
+
+	values := map[string]string{}
+	for rows.Next() {
+		var key, value string
+		if err := rows.Scan(&key, &value); err != nil {
+			return models.PreviewSettings{}, err
+		}
+		values[key] = value
+	}
+	if rows.Err() != nil {
+		return models.PreviewSettings{}, rows.Err()
+	}
+	if len(values) == 0 {
+		return models.PreviewSettings{}, ErrStorageSettingsNotFound
+	}
+
+	imageMaxBytes, _ := strconv.ParseInt(values["preview.image_max_bytes"], 10, 64)
+	if imageMaxBytes <= 0 {
+		imageMaxBytes = 50 * 1024 * 1024
+	}
+	videoMaxBytes, _ := strconv.ParseInt(values["preview.video_max_bytes"], 10, 64)
+	if videoMaxBytes <= 0 {
+		videoMaxBytes = 128 * 1024 * 1024
+	}
+	textMaxBytes, _ := strconv.ParseInt(values["preview.text_max_bytes"], 10, 64)
+	if textMaxBytes <= 0 {
+		textMaxBytes = 2 * 1024 * 1024
+	}
+
+	return models.PreviewSettings{
+		ImageMaxBytes: imageMaxBytes,
+		VideoMaxBytes: videoMaxBytes,
+		TextMaxBytes:  textMaxBytes,
+	}, nil
+}
+
+func (r *Repository) SavePreviewSettings(ctx context.Context, db database.PgExecutor, settings models.PreviewSettings) error {
+	values := map[string]string{
+		"preview.image_max_bytes": strconv.FormatInt(settings.ImageMaxBytes, 10),
+		"preview.video_max_bytes": strconv.FormatInt(settings.VideoMaxBytes, 10),
+		"preview.text_max_bytes":  strconv.FormatInt(settings.TextMaxBytes, 10),
 	}
 	for key, value := range values {
 		if _, err := db.Exec(ctx, `

@@ -24,7 +24,9 @@ type DashboardPageProps struct {
 
 func DefaultUploadSettings() models.UploadSettings {
 	return models.UploadSettings{
-		MaxQueueItems: 300,
+		MaxQueueItems:    300,
+		PartConcurrency:  3,
+		StaleUploadHours: 1,
 	}
 }
 
@@ -38,6 +40,12 @@ func DashboardPage(props DashboardPageProps) web.Page {
 	defaultUploadSettings := DefaultUploadSettings()
 	if uploadSettings.MaxQueueItems <= 0 {
 		uploadSettings.MaxQueueItems = defaultUploadSettings.MaxQueueItems
+	}
+	if uploadSettings.PartConcurrency <= 0 {
+		uploadSettings.PartConcurrency = defaultUploadSettings.PartConcurrency
+	}
+	if uploadSettings.StaleUploadHours <= 0 {
+		uploadSettings.StaleUploadHours = defaultUploadSettings.StaleUploadHours
 	}
 	usedBytes := int64(0)
 	maxStorageBytes := props.StorageSettings.MaxStorageBytes
@@ -106,11 +114,12 @@ func DashboardPage(props DashboardPageProps) web.Page {
 					h.Class("dashboard-upload"),
 					h.ID("upload-panel"),
 					components.UploadControls(components.UploadControlsProps{
-						InputRequired: true,
-						InputLabel:    "Secure Upload",
-						InputHelper:   "Drag and drop files here to begin encrypted upload. Data is encrypted in browser before transfer.",
-						StatusText:    "Select files manually to start a secure upload.",
-						MaxQueueItems: uploadSettings.MaxQueueItems,
+						InputRequired:   true,
+						InputLabel:      "Secure Upload",
+						InputHelper:     "Drag and drop files here to begin encrypted upload. Data is encrypted in browser before transfer.",
+						StatusText:      "Select files manually to start a secure upload.",
+						MaxQueueItems:   uploadSettings.MaxQueueItems,
+						PartConcurrency: uploadSettings.PartConcurrency,
 					}),
 				),
 				h.Section(

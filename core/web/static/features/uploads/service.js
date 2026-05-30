@@ -11,6 +11,9 @@ export function getUploadService(options) {
   if (options && options.limits) {
     service.limits = options.limits;
   }
+  if (options && options.policy) {
+    service.policy = options.policy;
+  }
 
   return service;
 }

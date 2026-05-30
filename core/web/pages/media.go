@@ -2,6 +2,7 @@ package pages
 
 import (
 	"encoding/hex"
+	"strconv"
 	"strings"
 
 	lucide "github.com/eduardolat/gomponents-lucide"
@@ -14,8 +15,9 @@ import (
 )
 
 type MediaViewPageProps struct {
-	Ctx  PageContext
-	File models.File
+	Ctx             PageContext
+	File            models.File
+	PreviewSettings models.PreviewSettings
 }
 
 func MediaViewPage(props MediaViewPageProps) web.Page {
@@ -41,6 +43,9 @@ func MediaViewPage(props MediaViewPageProps) web.Page {
 			components.InlineStyle(components.UploadUICSS),
 			h.Main(
 				h.Class("media-view"),
+				g.Attr("data-preview-image-max-bytes", int64String(props.PreviewSettings.ImageMaxBytes)),
+				g.Attr("data-preview-video-max-bytes", int64String(props.PreviewSettings.VideoMaxBytes)),
+				g.Attr("data-preview-text-max-bytes", int64String(props.PreviewSettings.TextMaxBytes)),
 				h.Div(
 					h.Class("container"),
 					h.Section(
@@ -165,6 +170,10 @@ func MediaViewPage(props MediaViewPageProps) web.Page {
 			components.Lightbox(),
 		}),
 	}
+}
+
+func int64String(value int64) string {
+	return strconv.FormatInt(value, 10)
 }
 
 func renderMedia(props MediaViewPageProps) g.Node {

@@ -74,12 +74,14 @@
 
 .settings-content:has(#settings-provider:target) .settings-panel-default,
 .settings-content:has(#settings-upload:target) .settings-panel-default,
+.settings-content:has(#settings-preview:target) .settings-panel-default,
 .settings-content:has(#settings-security:target) .settings-panel-default {
   display: none;
 }
 
 .settings-content:has(#settings-provider:target) #settings-provider,
 .settings-content:has(#settings-upload:target) #settings-upload,
+.settings-content:has(#settings-preview:target) #settings-preview,
 .settings-content:has(#settings-security:target) #settings-security {
   display: grid;
 }
@@ -88,6 +90,7 @@
 .settings-grid:not(:has(.settings-panel:target)) .settings-tab[href="#settings-account"],
 .settings-grid:has(#settings-provider:target) .settings-tab[href="#settings-provider"],
 .settings-grid:has(#settings-upload:target) .settings-tab[href="#settings-upload"],
+.settings-grid:has(#settings-preview:target) .settings-tab[href="#settings-preview"],
 .settings-grid:has(#settings-security:target) .settings-tab[href="#settings-security"] {
   color: var(--text);
   background: var(--surface-raised);

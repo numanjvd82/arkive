@@ -6,6 +6,14 @@ import { apiRequest } from "./lib/api.js";
 import { initPlyr } from "./plyr.js";
 
 (function() {
+  function parsePreviewLimit(value, fallback) {
+    const parsed = Number.parseInt(String(value || ""), 10);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      return fallback;
+    }
+    return parsed;
+  }
+
   const root = document.querySelector("[data-public-share-token]");
   const preview = document.getElementById("public-share-preview");
   const viewButton = document.getElementById("public-share-view");
@@ -22,9 +30,9 @@ import { initPlyr } from "./plyr.js";
   const cancelDownloadButton = document.getElementById("download-cancel");
   const nameEl = document.querySelector("[data-public-share-name='true']");
   const sizeEl = document.querySelector("[data-public-share-size='true']");
-  const SMALL_VIDEO_MAX_BYTES = 128 * 1024 * 1024;
-  const IMAGE_PREVIEW_MAX_BYTES = 50 * 1024 * 1024;
-  const TEXT_PREVIEW_MAX_BYTES = 2 * 1024 * 1024;
+  const SMALL_VIDEO_MAX_BYTES = parsePreviewLimit(document.querySelector(".public-share-page") && document.querySelector(".public-share-page").getAttribute("data-preview-video-max-bytes"), 128 * 1024 * 1024);
+  const IMAGE_PREVIEW_MAX_BYTES = parsePreviewLimit(document.querySelector(".public-share-page") && document.querySelector(".public-share-page").getAttribute("data-preview-image-max-bytes"), 50 * 1024 * 1024);
+  const TEXT_PREVIEW_MAX_BYTES = parsePreviewLimit(document.querySelector(".public-share-page") && document.querySelector(".public-share-page").getAttribute("data-preview-text-max-bytes"), 2 * 1024 * 1024);
   let currentPreviewURL = "";
   let currentStream = null;
   let activeDownloadController = null;

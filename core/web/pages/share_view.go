@@ -12,20 +12,21 @@ import (
 )
 
 type PublicShareViewProps struct {
-	Token         string
-	BurnAfterRead bool
-	File          models.File
-	ViewURL       string
-	DownloadURL   string
-	IsImage       bool
-	IsVideo       bool
-	Viewable      bool
-	ShareURL      string
-	SharedAt      time.Time
-	FileName      string
-	MimeType      string
-	PlaintextSize int64
-	PreviewText   string
+	Token           string
+	BurnAfterRead   bool
+	File            models.File
+	ViewURL         string
+	DownloadURL     string
+	IsImage         bool
+	IsVideo         bool
+	Viewable        bool
+	ShareURL        string
+	SharedAt        time.Time
+	FileName        string
+	MimeType        string
+	PlaintextSize   int64
+	PreviewText     string
+	PreviewSettings models.PreviewSettings
 }
 
 func PublicShareViewPage(props PublicShareViewProps) web.Page {
@@ -40,6 +41,9 @@ func PublicShareViewPage(props PublicShareViewProps) web.Page {
 			components.InlineStyle(components.UploadUICSS),
 			h.Main(
 				h.Class("public-share-page"),
+				g.Attr("data-preview-image-max-bytes", int64String(props.PreviewSettings.ImageMaxBytes)),
+				g.Attr("data-preview-video-max-bytes", int64String(props.PreviewSettings.VideoMaxBytes)),
+				g.Attr("data-preview-text-max-bytes", int64String(props.PreviewSettings.TextMaxBytes)),
 				h.Div(
 					h.Class("public-share-shell"),
 					renderPublicShareHeader(),

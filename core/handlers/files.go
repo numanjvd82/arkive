@@ -9,6 +9,7 @@ import (
 
 	filessvc "arkive/core/services/files"
 	folderssvc "arkive/core/services/folders"
+	settingssvc "arkive/core/services/settings"
 	"arkive/core/web"
 	"arkive/core/web/pages"
 	appcontext "arkive/pkg/context"
@@ -153,7 +154,7 @@ func WebFolder(filesService *filessvc.Service, folderService *folderssvc.Service
 	}
 }
 
-func WebFileView(filesService *filessvc.Service) gin.HandlerFunc {
+func WebFileView(filesService *filessvc.Service, settingsService *settingssvc.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user, ok := appcontext.UserFromContext(c)
 		if !ok || user.ID == "" {
@@ -186,9 +187,15 @@ func WebFileView(filesService *filessvc.Service) gin.HandlerFunc {
 			return
 		}
 
+		previewSettings, err := settingsService.PreviewSettings(c.Request.Context())
+		if err != nil {
+			previewSettings = settingssvc.DefaultPreviewSettings()
+		}
+
 		web.Render(c, pages.MediaViewPage(pages.MediaViewPageProps{
-			Ctx:  pages.ContextWithUser(user),
-			File: file,
+			Ctx:             pages.ContextWithUser(user),
+			File:            file,
+			PreviewSettings: previewSettings,
 		}))
 	}
 }

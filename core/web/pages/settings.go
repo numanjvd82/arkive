@@ -19,6 +19,7 @@ type SettingsPageProps struct {
 	Ctx             PageContext
 	StorageSettings models.StorageSettings
 	UploadSettings  models.UploadSettings
+	PreviewSettings models.PreviewSettings
 	StorageGB       string
 	Errors          validation.Errors
 	Message         string
@@ -36,11 +37,27 @@ func SettingsPage(props SettingsPageProps) web.Page {
 	usagePercent := 0
 	storageSettings := props.StorageSettings
 	uploadSettings := props.UploadSettings
+	previewSettings := props.PreviewSettings
 	if storageSettings.Provider == "" {
 		storageSettings.Provider = "local"
 	}
 	if uploadSettings.MaxQueueItems == 0 {
 		uploadSettings.MaxQueueItems = 300
+	}
+	if uploadSettings.PartConcurrency == 0 {
+		uploadSettings.PartConcurrency = 3
+	}
+	if uploadSettings.StaleUploadHours == 0 {
+		uploadSettings.StaleUploadHours = 1
+	}
+	if previewSettings.ImageMaxBytes == 0 {
+		previewSettings.ImageMaxBytes = 50 * 1024 * 1024
+	}
+	if previewSettings.VideoMaxBytes == 0 {
+		previewSettings.VideoMaxBytes = 128 * 1024 * 1024
+	}
+	if previewSettings.TextMaxBytes == 0 {
+		previewSettings.TextMaxBytes = 2 * 1024 * 1024
 	}
 	storageProviderLabel := strings.ToUpper(storageSettings.Provider)
 	storageGB := props.StorageGB
@@ -95,6 +112,7 @@ func SettingsPage(props SettingsPageProps) web.Page {
 						settingsTabLink("settings-account", "Instance"),
 						settingsTabLink("settings-provider", "Storage Provider"),
 						settingsTabLink("settings-upload", "Uploads"),
+						settingsTabLink("settings-preview", "Previews"),
 						settingsTabLink("settings-security", "Security"),
 					),
 					h.Div(
@@ -236,6 +254,8 @@ func SettingsPage(props SettingsPageProps) web.Page {
 										h.Div(
 											h.Class("settings-meta"),
 											h.Div(h.Class("settings-meta-row"), h.Span(g.Text("Queue items")), h.Span(g.Text(strconv.Itoa(uploadSettings.MaxQueueItems)))),
+											h.Div(h.Class("settings-meta-row"), h.Span(g.Text("Part concurrency")), h.Span(g.Text(strconv.Itoa(uploadSettings.PartConcurrency)))),
+											h.Div(h.Class("settings-meta-row"), h.Span(g.Text("Stale upload window")), h.Span(g.Text(strconv.Itoa(uploadSettings.StaleUploadHours)+" hour(s)"))),
 										),
 									},
 								}),
@@ -245,6 +265,42 @@ func SettingsPage(props SettingsPageProps) web.Page {
 									Class:    "settings-card",
 									Body: []g.Node{
 										uploadSettingsForm(uploadSettings, props.Errors),
+									},
+								}),
+							),
+						),
+						h.Section(
+							h.Class("settings-panel"),
+							g.Attr("id", "settings-preview"),
+							h.Div(
+								h.Class("settings-panel-header"),
+								h.Div(
+									h.Class("settings-panel-title"),
+									h.H2(g.Text("Previews")),
+									h.P(g.Text("Configure browser preview limits for image, video, and text files.")),
+								),
+							),
+							h.Div(
+								h.Class("settings-stack"),
+								components.Card(components.CardProps{
+									Title:    "Current limits",
+									Subtitle: "Preview caps applied in the browser before rendering file content. Streaming video playback is controlled separately.",
+									Class:    "settings-card",
+									Body: []g.Node{
+										h.Div(
+											h.Class("settings-meta"),
+											h.Div(h.Class("settings-meta-row"), h.Span(g.Text("Image preview")), h.Span(g.Text(strconv.FormatInt(previewSettings.ImageMaxBytes/(1024*1024), 10)+" MB"))),
+											h.Div(h.Class("settings-meta-row"), h.Span(g.Text("Video preview")), h.Span(g.Text(strconv.FormatInt(previewSettings.VideoMaxBytes/(1024*1024), 10)+" MB"))),
+											h.Div(h.Class("settings-meta-row"), h.Span(g.Text("Text preview")), h.Span(g.Text(strconv.FormatInt(previewSettings.TextMaxBytes/(1024*1024), 10)+" MB"))),
+										),
+									},
+								}),
+								components.Card(components.CardProps{
+									Title:    "Configuration",
+									Subtitle: "Update preview-size limits without changing encrypted file formats. Video limit applies only when browser streaming preview falls back to full-file playback.",
+									Class:    "settings-card",
+									Body: []g.Node{
+										previewSettingsForm(previewSettings, props.Errors),
 									},
 								}),
 							),
@@ -268,7 +324,7 @@ func SettingsPage(props SettingsPageProps) web.Page {
 									h.Ul(
 										h.Class("settings-list"),
 										h.Li(g.Text("Password and session controls")),
-										h.Li(g.Text("Email verification and recovery options")),
+										h.Li(g.Text("Vault recovery and access controls")),
 										h.Li(g.Text("Instance access and audit details")),
 									),
 								},

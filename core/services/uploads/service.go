@@ -1,6 +1,7 @@
 package uploads
 
 import (
+	"context"
 	"time"
 
 	"arkive/core/database"
@@ -68,4 +69,12 @@ func isExpired(expiresAt *time.Time) bool {
 		return false
 	}
 	return time.Now().After(*expiresAt)
+}
+
+func (s *Service) uploadExpiry(ctx context.Context) time.Duration {
+	settings, err := s.settingsRepo.GetUploadSettings(ctx, s.db)
+	if err != nil || settings.StaleUploadHours <= 0 {
+		return s.uploadExpires
+	}
+	return time.Duration(settings.StaleUploadHours) * time.Hour
 }

@@ -16,6 +16,12 @@ function parseQueueLimit(value, fallback) {
 	return parsed <= 0 ? 0 : parsed;
 }
 
+function parsePositiveInt(value, fallback) {
+	const parsed = Number.parseInt(String(value || ""), 10);
+	if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+	return parsed;
+}
+
 export function initUploads() {
 	if (document.body.hasAttribute("data-uploads-ready")) return;
 	document.body.setAttribute("data-uploads-ready", "true");
@@ -45,7 +51,10 @@ export function initUploads() {
 	const uploadLimits = {
 		maxQueueItems: parseQueueLimit(dropzone && dropzone.getAttribute("data-upload-max-queue-items"), 300),
 	};
-	const runner = getUploadService({ limits: uploadLimits });
+	const uploadPolicy = {
+		partConcurrency: parsePositiveInt(dropzone && dropzone.getAttribute("data-upload-part-concurrency"), 3),
+	};
+	const runner = getUploadService({ limits: uploadLimits, policy: uploadPolicy });
 	window.uploadRunner = uploadService;
 	let selectedFiles = [];
 	let state = { jobs: [], activeJobId: null };
