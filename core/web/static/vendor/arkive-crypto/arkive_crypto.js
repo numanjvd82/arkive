@@ -258,6 +258,22 @@ export function derive_password_kek(password, salt) {
 }
 
 /**
+ * @param {Uint8Array} master_key
+ * @returns {Uint8Array}
+ */
+export function derive_search_key(master_key) {
+    const ptr0 = passArray8ToWasm0(master_key, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.derive_search_key(ptr0, len0);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v2 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v2;
+}
+
+/**
  * @param {Uint8Array} chunk
  * @param {Uint8Array} key
  * @param {Uint8Array} aad
@@ -438,6 +454,25 @@ export function hash_bytes_sha256_hex(data) {
     } finally {
         wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
     }
+}
+
+/**
+ * @param {Uint8Array} key
+ * @param {Uint8Array} data
+ * @returns {Uint8Array}
+ */
+export function hmac_sha256(key, data) {
+    const ptr0 = passArray8ToWasm0(key, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.hmac_sha256(ptr0, len0, ptr1, len1);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v3 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v3;
 }
 
 /**

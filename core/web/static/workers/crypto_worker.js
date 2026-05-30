@@ -103,27 +103,6 @@ function activeMasterKey(supplied) {
   };
 }
 
-async function deriveSearchKey(masterKey) {
-  const hkdfKey = await globalThis.crypto.subtle.importKey(
-    "raw",
-    masterKey,
-    "HKDF",
-    false,
-    ["deriveBits"],
-  );
-  const bits = await globalThis.crypto.subtle.deriveBits(
-    {
-      name: "HKDF",
-      hash: "SHA-256",
-      salt: new Uint8Array(),
-      info: new TextEncoder().encode("arkive-search-v1"),
-    },
-    hkdfKey,
-    256,
-  );
-  return new Uint8Array(bits);
-}
-
 async function handleMessage(message) {
   const crypto = await ensureCrypto();
 
@@ -731,19 +710,12 @@ async function handleMessage(message) {
       if (!vaultId || !terms.length) {
         return { tokens: [] };
       }
-      const searchKey = await deriveSearchKey(unlockedMasterKey);
+      const searchKey = crypto.derive_search_key(unlockedMasterKey);
       try {
-        const hmacKey = await globalThis.crypto.subtle.importKey(
-          "raw",
-          searchKey,
-          { name: "HMAC", hash: "SHA-256" },
-          false,
-          ["sign"],
-        );
         const tokens = [];
         for (let i = 0; i < terms.length; i += 1) {
           const payload = new TextEncoder().encode(vaultId + ":" + String(terms[i] || ""));
-          const digest = new Uint8Array(await globalThis.crypto.subtle.sign("HMAC", hmacKey, payload));
+          const digest = crypto.hmac_sha256(searchKey, payload);
           tokens.push(encodeBase64URL(digest));
         }
         return { tokens: tokens };

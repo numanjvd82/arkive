@@ -29,6 +29,8 @@ export function decrypt_file_metadata(encrypted_metadata: Uint8Array, master_key
 
 export function derive_password_kek(password: string, salt: Uint8Array): Uint8Array;
 
+export function derive_search_key(master_key: Uint8Array): Uint8Array;
+
 export function encrypt_chunk(chunk: Uint8Array, key: Uint8Array, aad: Uint8Array): Uint8Array;
 
 export function encrypt_file_metadata(metadata_json: Uint8Array, master_key: Uint8Array, aad: Uint8Array): Uint8Array;
@@ -52,6 +54,8 @@ export function hash_bytes_blake3_hex(data: Uint8Array): string;
 export function hash_bytes_sha256(data: Uint8Array): Uint8Array;
 
 export function hash_bytes_sha256_hex(data: Uint8Array): string;
+
+export function hmac_sha256(key: Uint8Array, data: Uint8Array): Uint8Array;
 
 export function parse_recovery_key(recovery_key: string): Uint8Array;
 
@@ -96,20 +100,22 @@ export interface InitOutput {
     readonly parse_recovery_key: (a: number, b: number) => [number, number, number, number];
     readonly recover_master_key: (a: number, b: number, c: number, d: number) => [number, number, number, number];
     readonly wrap_master_key_for_recovery: (a: number, b: number, c: number, d: number) => [number, number, number, number];
-    readonly decrypt_file_metadata: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
-    readonly encrypt_file_metadata: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
-    readonly derive_password_kek: (a: number, b: number, c: number, d: number) => [number, number, number, number];
-    readonly generate_file_key: () => [number, number];
-    readonly generate_salt: () => [number, number];
-    readonly zeroize: (a: number, b: number, c: any) => void;
-    readonly generate_master_key: () => [number, number];
-    readonly generate_share_key: () => [number, number];
     readonly decrypt_chunk: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
     readonly encrypt_chunk: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
     readonly unwrap_file_key: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
     readonly unwrap_master_key: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
     readonly wrap_file_key: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
     readonly wrap_master_key: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
+    readonly decrypt_file_metadata: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
+    readonly encrypt_file_metadata: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
+    readonly derive_password_kek: (a: number, b: number, c: number, d: number) => [number, number, number, number];
+    readonly derive_search_key: (a: number, b: number) => [number, number, number, number];
+    readonly generate_file_key: () => [number, number];
+    readonly generate_salt: () => [number, number];
+    readonly zeroize: (a: number, b: number, c: any) => void;
+    readonly generate_master_key: () => [number, number];
+    readonly generate_share_key: () => [number, number];
+    readonly hmac_sha256: (a: number, b: number, c: number, d: number) => [number, number, number, number];
     readonly __wbindgen_exn_store: (a: number) => void;
     readonly __externref_table_alloc: () => number;
     readonly __wbindgen_externrefs: WebAssembly.Table;
