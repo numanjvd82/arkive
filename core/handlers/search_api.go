@@ -9,6 +9,7 @@ import (
 
 	"arkive/core/models"
 	filessvc "arkive/core/services/files"
+	folderssvc "arkive/core/services/folders"
 	"arkive/pkg/apierror"
 	appcontext "arkive/pkg/context"
 )
@@ -29,7 +30,19 @@ type encryptedSearchFileResult struct {
 	VaultID           string `json:"vaultId"`
 	EncryptedMetadata string `json:"encryptedMetadata"`
 	EncryptedFileKey  string `json:"encryptedFileKey"`
+	Score             int64  `json:"score"`
 	URL               string `json:"url"`
+}
+
+type encryptedSearchFolderResult struct {
+	ID                string  `json:"id"`
+	Kind              string  `json:"kind"`
+	ParentFolderID    *string `json:"parentFolderId"`
+	VaultID           string  `json:"vaultId"`
+	EncryptedName     string  `json:"encryptedName"`
+	EncryptedMetadata string  `json:"encryptedMetadata"`
+	Score             int64   `json:"score"`
+	URL               string  `json:"url"`
 }
 
 type searchRequest struct {
@@ -37,7 +50,7 @@ type searchRequest struct {
 	Limit  int      `json:"limit"`
 }
 
-func APISearch(filesService *filessvc.Service) gin.HandlerFunc {
+func APISearch(filesService *filessvc.Service, folderService *folderssvc.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user, ok := appcontext.UserFromContext(c)
 		if !ok || user.ID == "" {
@@ -79,15 +92,42 @@ func APISearch(filesService *filessvc.Service) gin.HandlerFunc {
 			apierror.Internal(c, "Search failed")
 			return
 		}
+		folders, err := folderService.SearchFoldersByTokens(c.Request.Context(), user.ID, user.ID, tokenHashes, limit)
+		if err != nil {
+			if err == folderssvc.ErrInvalidInput {
+				apierror.InvalidPayload(c)
+				return
+			}
+			apierror.Internal(c, "Search failed")
+			return
+		}
 
 		c.JSON(http.StatusOK, gin.H{
 			"results": gin.H{
+				"folders":  mapEncryptedFolderResults(folders),
 				"files":    mapEncryptedFileResults(files),
 				"shares":   []searchResult{},
 				"settings": []searchResult{},
 			},
 		})
 	}
+}
+
+func mapEncryptedFolderResults(folders []models.Folder) []encryptedSearchFolderResult {
+	results := make([]encryptedSearchFolderResult, 0, len(folders))
+	for _, folder := range folders {
+		results = append(results, encryptedSearchFolderResult{
+			ID:                folder.ID,
+			Kind:              "folder",
+			ParentFolderID:    folder.ParentFolderID,
+			VaultID:           folder.VaultID,
+			EncryptedName:     base64.StdEncoding.EncodeToString(folder.EncryptedName),
+			EncryptedMetadata: base64.StdEncoding.EncodeToString(folder.EncryptedMetadata),
+			Score:             folder.SearchScore,
+			URL:               "/folders/" + folder.ID,
+		})
+	}
+	return results
 }
 
 func mapEncryptedFileResults(files []models.File) []encryptedSearchFileResult {
@@ -103,6 +143,7 @@ func mapEncryptedFileResults(files []models.File) []encryptedSearchFileResult {
 			VaultID:           file.UserID,
 			EncryptedMetadata: base64.StdEncoding.EncodeToString(file.EncryptedMetadata),
 			EncryptedFileKey:  base64.StdEncoding.EncodeToString(file.EncryptedFileKey),
+			Score:             file.SearchScore,
 			URL:               url,
 		})
 	}

@@ -183,9 +183,34 @@
   color: var(--accent-ink);
 }
 
+.search-item-icon.has-thumb {
+  overflow: hidden;
+  padding: 0;
+}
+
+.search-item-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 .search-empty {
   padding: 12px 14px;
   color: var(--muted);
+}
+
+.search-empty.is-hidden {
+  display: none;
+}
+
+.search-loading {
+  padding: 12px 14px;
+  color: #9eb8ce;
+}
+
+.search-loading.is-hidden {
+  display: none;
 }
 
 .search-panel-footer {

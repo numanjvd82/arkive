@@ -43,6 +43,10 @@ func (s *Service) CreateFolder(ctx context.Context, input CreateFolderInput) (mo
 	if userID == "" || len(input.EncryptedName) == 0 {
 		return models.Folder{}, ErrInvalidInput
 	}
+	searchTokens, err := filessvc.NormalizeSearchTokens(input.SearchTokens, filessvc.MaxSearchTokensPerFile)
+	if err != nil {
+		return models.Folder{}, ErrInvalidInput
+	}
 	vaultID := strings.TrimSpace(input.VaultID)
 	if vaultID == "" {
 		vaultID = userID
@@ -78,6 +82,9 @@ func (s *Service) CreateFolder(ctx context.Context, input CreateFolderInput) (mo
 		EncryptedMetadata: input.EncryptedMetadata,
 	})
 	if err != nil {
+		return models.Folder{}, err
+	}
+	if err := s.folderRepo.InsertSearchTokensForFolder(ctx, tx, userID, folder.VaultID, folder.ID, searchTokens); err != nil {
 		return models.Folder{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -211,20 +218,58 @@ func (s *Service) RenameFolder(ctx context.Context, input RenameFolderInput) err
 	if userID == "" || len(input.EncryptedName) == 0 || len(input.EncryptedMetadata) == 0 {
 		return ErrInvalidInput
 	}
+	searchTokens, err := filessvc.NormalizeSearchTokens(input.SearchTokens, filessvc.MaxSearchTokensPerFile)
+	if err != nil {
+		return ErrInvalidInput
+	}
 
 	folderID, err := validateUUIDValue(input.FolderID)
 	if err != nil {
 		return err
 	}
 
-	renamed, err := s.folderRepo.RenameFolderForUser(ctx, s.db, userID, folderID, input.EncryptedName, input.EncryptedMetadata)
+	folder, err := s.folderRepo.GetForUser(ctx, s.db, userID, folderID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		}
+		return err
+	}
+	tx, err := s.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	renamed, err := s.folderRepo.RenameFolderForUser(ctx, tx, userID, folderID, input.EncryptedName, input.EncryptedMetadata)
 	if err != nil {
 		return err
 	}
 	if !renamed {
 		return ErrNotFound
 	}
+	if err := s.folderRepo.ReplaceSearchTokensForFolder(ctx, tx, userID, folder.VaultID, folderID, searchTokens); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
 	return nil
+}
+
+func (s *Service) SearchFoldersByTokens(ctx context.Context, userID, vaultID string, tokenHashes [][]byte, limit int) ([]models.Folder, error) {
+	userID = strings.TrimSpace(userID)
+	vaultID = strings.TrimSpace(vaultID)
+	if userID == "" || vaultID == "" {
+		return nil, ErrInvalidInput
+	}
+	if len(tokenHashes) == 0 {
+		return []models.Folder{}, nil
+	}
+	if len(tokenHashes) > filessvc.MaxSearchQueryTokens {
+		return nil, ErrInvalidInput
+	}
+	return s.folderRepo.SearchFoldersForTokens(ctx, s.db, userID, vaultID, tokenHashes, limit)
 }
 
 func (s *Service) folderPath(ctx context.Context, db database.PgExecutor, userID, folderID string) ([]models.Folder, error) {

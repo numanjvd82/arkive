@@ -5,6 +5,7 @@ DROP TABLE IF EXISTS restore_usage;
 DROP TABLE IF EXISTS upload_usage;
 DROP TABLE IF EXISTS upload_parts;
 DROP TABLE IF EXISTS upload_sessions;
+DROP TABLE IF EXISTS folder_search_tokens;
 DROP TABLE IF EXISTS file_search_tokens;
 DROP TABLE IF EXISTS files;
 DROP TABLE IF EXISTS folders;

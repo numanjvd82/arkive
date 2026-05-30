@@ -25,4 +25,5 @@ type File struct {
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
 	ExpiresAt           *time.Time
+	SearchScore         int64
 }

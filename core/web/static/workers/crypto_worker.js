@@ -754,6 +754,71 @@ async function handleMessage(message) {
         crypto.zeroize(encryptedMetadata);
       }
     }
+    case "decryptSearchFolder": {
+      if (!unlockedMasterKey) {
+        throw new Error("Vault is locked");
+      }
+      const encryptedName = decodeBase64(message.params.encryptedName);
+      const encryptedMetadata = decodeBase64(message.params.encryptedMetadata);
+      try {
+        const name = crypto.decrypt_chunk(
+          encryptedName,
+          unlockedMasterKey,
+          aadBytes(message.params.nameAad),
+        );
+        try {
+          const metadata = crypto.decrypt_chunk(
+            encryptedMetadata,
+            unlockedMasterKey,
+            aadBytes(message.params.metadataAad),
+          );
+          try {
+            return {
+              name: JSON.parse(new TextDecoder().decode(name)),
+              metadata: JSON.parse(new TextDecoder().decode(metadata)),
+            };
+          } finally {
+            crypto.zeroize(metadata);
+          }
+        } finally {
+          crypto.zeroize(name);
+        }
+      } finally {
+        crypto.zeroize(encryptedName);
+        crypto.zeroize(encryptedMetadata);
+      }
+    }
+    case "decryptSearchThumbnail": {
+      if (!unlockedMasterKey) {
+        throw new Error("Vault is locked");
+      }
+      const encryptedFileKey = decodeBase64(message.params.encryptedFileKey);
+      const encryptedThumbnail = toUint8Array(message.params.encryptedThumbnail);
+      try {
+        const fileKey = crypto.unwrap_file_key(
+          encryptedFileKey,
+          unlockedMasterKey,
+          aadBytes(message.params.fileKeyAad),
+        );
+        try {
+          const thumbnail = crypto.decrypt_chunk(
+            encryptedThumbnail,
+            fileKey,
+            aadBytes(message.params.thumbnailAad),
+          );
+          try {
+            return { thumbnailBytes: thumbnail.slice() };
+          } finally {
+            crypto.zeroize(thumbnail);
+          }
+        } finally {
+          crypto.zeroize(fileKey);
+        }
+      } finally {
+        crypto.zeroize(encryptedFileKey);
+        crypto.zeroize(encryptedThumbnail);
+      }
+    }
     default:
       throw new Error("Unsupported vault method");
   }
@@ -769,6 +834,9 @@ self.addEventListener("message", function (event) {
       }
       if (result && result.chunkBytes instanceof Uint8Array) {
         transfer.push(result.chunkBytes.buffer);
+      }
+      if (result && result.thumbnailBytes instanceof Uint8Array) {
+        transfer.push(result.thumbnailBytes.buffer);
       }
       self.postMessage({
         id: payload.id,

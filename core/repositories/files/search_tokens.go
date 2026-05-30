@@ -83,7 +83,6 @@ func (r *Repository) SearchCompletedForTokens(ctx context.Context, db database.P
 	for rows.Next() {
 		var file models.File
 		var folderID *string
-		var score int64
 		if err := rows.Scan(
 			&file.ID,
 			&file.UserID,
@@ -107,7 +106,7 @@ func (r *Repository) SearchCompletedForTokens(ctx context.Context, db database.P
 			&file.CreatedAt,
 			&file.UpdatedAt,
 			&file.ExpiresAt,
-			&score,
+			&file.SearchScore,
 		); err != nil {
 			return nil, err
 		}

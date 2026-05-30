@@ -294,6 +294,7 @@ async function submitRename() {
           id: entryID(entry),
           encryptedName: encryptedNameB64,
           encryptedMetadata: encryptedMetadataB64,
+          searchTokens: await vault.createSearchTokenEntries(document.body.getAttribute("data-vault-id") || "", metadata),
         })
       }, {
         code: "validation_failed",

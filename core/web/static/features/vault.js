@@ -620,6 +620,30 @@ export const vault = {
       metadataAad: "arkive:file-metadata:v1:" + String((file && file.vaultId) || "") + ":" + String((file && file.id) || ""),
     });
   },
+  decryptSearchFolder: function(folder) {
+    touchSessionUnlock();
+    return callWorker("decryptSearchFolder", {
+      encryptedName: String((folder && folder.encryptedName) || ""),
+      encryptedMetadata: String((folder && folder.encryptedMetadata) || ""),
+      nameAad: "arkive:folder-name:v1",
+      metadataAad: "arkive:folder-metadata:v1",
+    });
+  },
+  decryptSearchThumbnail: function(file, encryptedThumbnail) {
+    touchSessionUnlock();
+    const payload =
+      encryptedThumbnail instanceof Uint8Array
+        ? encryptedThumbnail.slice()
+        : encryptedThumbnail instanceof ArrayBuffer
+          ? encryptedThumbnail.slice(0)
+          : encryptedThumbnail;
+    return callWorker("decryptSearchThumbnail", {
+      encryptedFileKey: String((file && file.encryptedFileKey) || ""),
+      encryptedThumbnail: payload,
+      fileKeyAad: "arkive:file-key:v1:" + String((file && file.vaultId) || "") + ":" + String((file && file.id) || ""),
+      thumbnailAad: "arkive:file-thumbnail:v1:" + String((file && file.vaultId) || "") + ":" + String((file && file.id) || ""),
+    }, binaryTransfer(payload));
+  },
   getSessionUnlock: getSessionUnlock,
   onSessionUnlock: onSessionUnlock,
 };

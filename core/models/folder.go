@@ -12,4 +12,5 @@ type Folder struct {
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
 	DeletedAt         *time.Time
+	SearchScore       int64
 }

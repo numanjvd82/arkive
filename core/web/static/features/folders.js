@@ -152,7 +152,8 @@ export function initFolders() {
           body: JSON.stringify({
             parentFolderId: currentFolderId(),
             encryptedName: encryptedName && encryptedName.encryptedMetadata ? encryptedName.encryptedMetadata : "",
-            encryptedMetadata: encryptedMetadata && encryptedMetadata.encryptedMetadata ? encryptedMetadata.encryptedMetadata : ""
+            encryptedMetadata: encryptedMetadata && encryptedMetadata.encryptedMetadata ? encryptedMetadata.encryptedMetadata : "",
+            searchTokens: await vault.createSearchTokenEntries(document.body.getAttribute("data-vault-id") || "", { name: name })
           })
         }, {
           code: "validation_failed",

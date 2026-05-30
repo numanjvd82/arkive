@@ -97,7 +97,7 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 		api.GET("/health", handlers.Health(db))
 		api.GET("/public/shares/:token", handlers.APIPublicShareRecord(shareService, filesService, cfg.CookieSecret))
 		api.POST("/public/shares/:token/consume", handlers.APIPublicShareConsume(shareService, filesService, cfg.CookieSecret))
-		api.POST("/search", middleware.RequireSessionJSON(authService), handlers.APISearch(filesService))
+		api.POST("/search", middleware.RequireSessionJSON(authService), handlers.APISearch(filesService, folderService))
 	}
 
 	apiUploads := api.Group("/uploads")

@@ -26,6 +26,7 @@ type CreateFolderInput struct {
 	ParentFolderID    *string
 	EncryptedName     []byte
 	EncryptedMetadata []byte
+	SearchTokens      []models.FileSearchToken
 }
 
 type ListEntriesInput struct {
@@ -47,6 +48,7 @@ type RenameFolderInput struct {
 	FolderID          string
 	EncryptedName     []byte
 	EncryptedMetadata []byte
+	SearchTokens      []models.FileSearchToken
 }
 
 type ResolveDeleteScopeInput struct {

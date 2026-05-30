@@ -41,9 +41,9 @@ func SearchPalette(placeholder string) g.Node {
 					h.Class("search-panel-results"),
 					h.Div(
 						h.Class("search-section"),
-						g.Attr("data-search-category", "files"),
-						h.Div(h.Class("search-section-title"), g.Text("Files")),
-						h.Div(h.Class("search-section-list"), g.Attr("id", "search-results-files")),
+						g.Attr("data-search-category", "results"),
+						h.Div(h.Class("search-section-title"), g.Text("Results")),
+						h.Div(h.Class("search-section-list"), g.Attr("id", "search-results-items")),
 					),
 					h.Div(
 						h.Class("search-section"),
@@ -56,6 +56,11 @@ func SearchPalette(placeholder string) g.Node {
 						g.Attr("data-search-category", "settings"),
 						h.Div(h.Class("search-section-title"), g.Text("Settings")),
 						h.Div(h.Class("search-section-list"), g.Attr("id", "search-results-settings")),
+					),
+					h.Div(
+						h.Class("search-loading is-hidden"),
+						h.ID("search-loading"),
+						g.Text("Searching..."),
 					),
 					h.Div(
 						h.Class("search-empty is-hidden"),

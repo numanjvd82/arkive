@@ -16,9 +16,10 @@ import (
 )
 
 type createFolderRequest struct {
-	ParentFolderID    *string `json:"parentFolderId"`
-	EncryptedName     string  `json:"encryptedName"`
-	EncryptedMetadata string  `json:"encryptedMetadata"`
+	ParentFolderID    *string              `json:"parentFolderId"`
+	EncryptedName     string               `json:"encryptedName"`
+	EncryptedMetadata string               `json:"encryptedMetadata"`
+	SearchTokens      []searchTokenRequest `json:"searchTokens"`
 }
 
 type moveEntriesRequest struct {
@@ -80,6 +81,11 @@ func APICreateFolder(folderService *folderssvc.Service) gin.HandlerFunc {
 				return
 			}
 		}
+		searchTokens, err := decodeSearchTokens(req.SearchTokens)
+		if err != nil {
+			apierror.InvalidPayload(c)
+			return
+		}
 
 		folder, err := folderService.CreateFolder(c.Request.Context(), folderssvc.CreateFolderInput{
 			UserID:            userID.(string),
@@ -87,6 +93,7 @@ func APICreateFolder(folderService *folderssvc.Service) gin.HandlerFunc {
 			ParentFolderID:    req.ParentFolderID,
 			EncryptedName:     encryptedName,
 			EncryptedMetadata: encryptedMetadata,
+			SearchTokens:      searchTokens,
 		})
 		if err != nil {
 			switch err {
@@ -285,6 +292,11 @@ func APIRenameEntry(folderService *folderssvc.Service, filesService *filessvc.Se
 				return
 			}
 		case "folder":
+			searchTokens, decodeErr := decodeSearchTokens(req.SearchTokens)
+			if decodeErr != nil {
+				apierror.InvalidPayload(c)
+				return
+			}
 			encryptedName, decodeErr := base64.StdEncoding.DecodeString(strings.TrimSpace(req.EncryptedName))
 			if decodeErr != nil || len(encryptedName) == 0 {
 				apierror.InvalidPayload(c)
@@ -295,6 +307,7 @@ func APIRenameEntry(folderService *folderssvc.Service, filesService *filessvc.Se
 				FolderID:          strings.TrimSpace(req.ID),
 				EncryptedName:     encryptedName,
 				EncryptedMetadata: encryptedMetadata,
+				SearchTokens:      searchTokens,
 			}); err != nil {
 				switch {
 				case errors.Is(err, folderssvc.ErrInvalidInput):

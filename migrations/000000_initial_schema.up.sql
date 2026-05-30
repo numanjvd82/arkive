@@ -119,6 +119,20 @@ CREATE TABLE file_search_tokens (
 CREATE INDEX idx_file_search_tokens_lookup
   ON file_search_tokens (user_id, vault_id, token_hash, weight DESC);
 
+CREATE TABLE folder_search_tokens (
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  vault_id UUID NOT NULL,
+  folder_id UUID NOT NULL REFERENCES folders(id) ON DELETE CASCADE,
+  token_hash BYTEA NOT NULL,
+  field TEXT NOT NULL,
+  weight INT NOT NULL DEFAULT 1,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, vault_id, token_hash, folder_id, field)
+);
+
+CREATE INDEX idx_folder_search_tokens_lookup
+  ON folder_search_tokens (user_id, vault_id, token_hash, weight DESC);
+
 CREATE TABLE upload_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   file_id UUID NOT NULL REFERENCES files(id) ON DELETE CASCADE,
