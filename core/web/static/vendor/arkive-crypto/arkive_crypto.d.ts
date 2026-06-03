@@ -47,6 +47,8 @@ export function generate_salt(): Uint8Array;
 
 export function generate_share_key(): Uint8Array;
 
+export function hash_blake3(data: Uint8Array): Uint8Array;
+
 export function hash_bytes_blake3(data: Uint8Array): Uint8Array;
 
 export function hash_bytes_blake3_hex(data: Uint8Array): string;
@@ -83,14 +85,6 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
-    readonly format_recovery_key: (a: number, b: number) => [number, number, number, number];
-    readonly generate_recovery_key: () => [number, number];
-    readonly parse_recovery_key: (a: number, b: number) => [number, number, number, number];
-    readonly recover_master_key: (a: number, b: number, c: number, d: number) => [number, number, number, number];
-    readonly unwrap_master_key_with_recovery_key: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
-    readonly wrap_master_key_for_recovery: (a: number, b: number, c: number, d: number) => [number, number, number, number];
-    readonly wrap_master_key_with_password: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number, number, number];
-    readonly wrap_master_key_with_recovery_key: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
     readonly __wbg_blake3hasher_free: (a: number, b: number) => void;
     readonly __wbg_sha256hasher_free: (a: number, b: number) => void;
     readonly blake3hasher_digest: (a: number) => [number, number, number, number];
@@ -99,32 +93,41 @@ export interface InitOutput {
     readonly blake3hasher_finalize_hex: (a: number) => [number, number, number, number];
     readonly blake3hasher_new: () => number;
     readonly blake3hasher_update: (a: number, b: number, c: number) => [number, number];
+    readonly decrypt_chunk: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
+    readonly decrypt_file_metadata: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
+    readonly derive_password_kek: (a: number, b: number, c: number, d: number) => [number, number, number, number];
+    readonly derive_search_key: (a: number, b: number) => [number, number, number, number];
+    readonly encrypt_chunk: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
+    readonly encrypt_file_metadata: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
+    readonly format_recovery_key: (a: number, b: number) => [number, number, number, number];
+    readonly generate_file_key: () => [number, number];
+    readonly generate_master_key: () => [number, number];
+    readonly generate_recovery_key: () => [number, number];
+    readonly generate_salt: () => [number, number];
+    readonly generate_share_key: () => [number, number];
+    readonly hash_blake3: (a: number, b: number) => [number, number, number, number];
     readonly hash_bytes_blake3: (a: number, b: number) => [number, number];
     readonly hash_bytes_blake3_hex: (a: number, b: number) => [number, number];
     readonly hash_bytes_sha256: (a: number, b: number) => [number, number];
     readonly hash_bytes_sha256_hex: (a: number, b: number) => [number, number];
+    readonly hmac_sha256: (a: number, b: number, c: number, d: number) => [number, number, number, number];
+    readonly parse_recovery_key: (a: number, b: number) => [number, number, number, number];
+    readonly recover_master_key: (a: number, b: number, c: number, d: number) => [number, number, number, number];
     readonly sha256hasher_digest: (a: number) => [number, number, number, number];
     readonly sha256hasher_digest_hex: (a: number) => [number, number, number, number];
     readonly sha256hasher_finalize: (a: number) => [number, number, number, number];
     readonly sha256hasher_finalize_hex: (a: number) => [number, number, number, number];
     readonly sha256hasher_new: () => number;
     readonly sha256hasher_update: (a: number, b: number, c: number) => [number, number];
-    readonly decrypt_chunk: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
-    readonly encrypt_chunk: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
     readonly unwrap_file_key: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
     readonly unwrap_master_key: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
+    readonly unwrap_master_key_with_recovery_key: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
     readonly wrap_file_key: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
     readonly wrap_master_key: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
-    readonly decrypt_file_metadata: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
-    readonly encrypt_file_metadata: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
-    readonly derive_password_kek: (a: number, b: number, c: number, d: number) => [number, number, number, number];
-    readonly derive_search_key: (a: number, b: number) => [number, number, number, number];
-    readonly generate_file_key: () => [number, number];
-    readonly generate_salt: () => [number, number];
+    readonly wrap_master_key_for_recovery: (a: number, b: number, c: number, d: number) => [number, number, number, number];
+    readonly wrap_master_key_with_password: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number, number, number];
+    readonly wrap_master_key_with_recovery_key: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number, number, number];
     readonly zeroize: (a: number, b: number, c: any) => void;
-    readonly generate_master_key: () => [number, number];
-    readonly generate_share_key: () => [number, number];
-    readonly hmac_sha256: (a: number, b: number, c: number, d: number) => [number, number, number, number];
     readonly __wbindgen_exn_store: (a: number) => void;
     readonly __externref_table_alloc: () => number;
     readonly __wbindgen_externrefs: WebAssembly.Table;
