@@ -1,5 +1,13 @@
 import { apiRequest } from "../lib/api.js";
 
+export async function getUploadLimits(signal) {
+	return apiRequest("/api/uploads/limits", {
+		method: "GET",
+		credentials: "include",
+		signal: signal,
+	}, { code: "upload_limits_failed", message: "Upload limits load failed" });
+}
+
 export async function startUpload(payload, signal) {
 	return apiRequest("/api/uploads/start", {
 		method: "POST",

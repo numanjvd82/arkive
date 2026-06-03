@@ -91,6 +91,7 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 	apiUploads.Use(middleware.RequireSessionJSON(authService))
 	apiUploads.Use(middleware.LimitBody(2 << 20))
 	{
+		apiUploads.GET("/limits", handlers.APIUploadLimits(settingsService))
 		apiUploads.POST("/start", handlers.APIUploadStart(uploadService))
 		apiUploads.POST("/:id/parts", handlers.APIUploadPartRecord(uploadService))
 		apiUploads.POST("/:id/parts/presign", handlers.APIUploadPartPresignBatch(uploadService))

@@ -35,10 +35,6 @@ func WebDashboard(filesService *filessvc.Service, folderService *folderssvc.Serv
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
-		uploadSettings, err := settingsService.UploadSettings(c.Request.Context())
-		if err != nil {
-			uploadSettings = pages.DefaultUploadSettings()
-		}
 		storageSettings, err := settingsService.StorageSettings(c.Request.Context())
 		if err != nil {
 			storageSettings = models.StorageSettings{}
@@ -57,7 +53,6 @@ func WebDashboard(filesService *filessvc.Service, folderService *folderssvc.Serv
 			TotalFiles:      list.TotalFiles,
 			CurrentFolder:   currentFolder,
 			StorageSettings: storageSettings,
-			UploadSettings:  uploadSettings,
 		}))
 	}
 }

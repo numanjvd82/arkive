@@ -10,6 +10,7 @@ import (
 
 	"arkive/core/models"
 	filessvc "arkive/core/services/files"
+	settingssvc "arkive/core/services/settings"
 	"arkive/core/services/uploads"
 	"arkive/pkg/apierror"
 	"arkive/pkg/errs"
@@ -77,6 +78,32 @@ type thumbnailPresignRequest struct {
 	Mime          string `json:"mime"`
 	Width         int    `json:"width"`
 	Height        int    `json:"height"`
+}
+
+func APIUploadLimits(settingsService *settingssvc.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		settings, err := settingsService.UploadSettings(c.Request.Context())
+		if err != nil {
+			settings = settingssvc.DefaultUploadSettings()
+		}
+
+		defaults := settingssvc.DefaultUploadSettings()
+		if settings.MaxQueueItems <= 0 {
+			settings.MaxQueueItems = defaults.MaxQueueItems
+		}
+		if settings.PartConcurrency <= 0 {
+			settings.PartConcurrency = defaults.PartConcurrency
+		}
+		if settings.StaleUploadHours <= 0 {
+			settings.StaleUploadHours = defaults.StaleUploadHours
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"maxQueueItems":    settings.MaxQueueItems,
+			"partConcurrency":  settings.PartConcurrency,
+			"staleUploadHours": settings.StaleUploadHours,
+		})
+	}
 }
 
 func APIUploadStart(svc *uploads.Service) gin.HandlerFunc {

@@ -19,33 +19,13 @@ type DashboardPageProps struct {
 	TotalFiles      int
 	CurrentFolder   *string
 	StorageSettings models.StorageSettings
-	UploadSettings  models.UploadSettings
-}
-
-func DefaultUploadSettings() models.UploadSettings {
-	return models.UploadSettings{
-		MaxQueueItems:    300,
-		PartConcurrency:  3,
-		StaleUploadHours: 1,
-	}
 }
 
 func DashboardPage(props DashboardPageProps) web.Page {
 	user := props.Ctx.User
-	uploadSettings := props.UploadSettings
 	currentFolderAttr := g.Node(nil)
 	if props.CurrentFolder != nil {
 		currentFolderAttr = g.Attr("data-current-folder-id", *props.CurrentFolder)
-	}
-	defaultUploadSettings := DefaultUploadSettings()
-	if uploadSettings.MaxQueueItems <= 0 {
-		uploadSettings.MaxQueueItems = defaultUploadSettings.MaxQueueItems
-	}
-	if uploadSettings.PartConcurrency <= 0 {
-		uploadSettings.PartConcurrency = defaultUploadSettings.PartConcurrency
-	}
-	if uploadSettings.StaleUploadHours <= 0 {
-		uploadSettings.StaleUploadHours = defaultUploadSettings.StaleUploadHours
 	}
 	usedBytes := int64(0)
 	maxStorageBytes := props.StorageSettings.MaxStorageBytes
@@ -118,8 +98,6 @@ func DashboardPage(props DashboardPageProps) web.Page {
 						InputLabel:      "Secure Upload",
 						InputHelper:     "Drag and drop files here to begin encrypted upload. Data is encrypted in browser before transfer.",
 						StatusText:      "Select files manually to start a secure upload.",
-						MaxQueueItems:   uploadSettings.MaxQueueItems,
-						PartConcurrency: uploadSettings.PartConcurrency,
 					}),
 				),
 				h.Section(

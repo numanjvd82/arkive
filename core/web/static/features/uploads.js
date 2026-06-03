@@ -1,4 +1,5 @@
 import { showAppError } from "../lib/toasts.js";
+import { getUploadLimits } from "../upload/upload_api.js";
 import { Toast } from "./toast.js";
 import { getUploadService, uploadService } from "./uploads/service.js";
 import { getSessionUnlock, onSessionUnlock } from "./vault.js";
@@ -22,7 +23,7 @@ function parsePositiveInt(value, fallback) {
 	return parsed;
 }
 
-export function initUploads() {
+export async function initUploads() {
 	if (document.body.hasAttribute("data-uploads-ready")) return;
 	document.body.setAttribute("data-uploads-ready", "true");
 
@@ -48,11 +49,19 @@ export function initUploads() {
 
 	if (!input || !queueList || !status) return;
 
+	let rawLimits = null;
+	try {
+		rawLimits = await getUploadLimits();
+	} catch (error) {
+		setStatus(error && error.message ? error.message : "Failed to load upload limits.");
+		showUploadErrorToast({ error: error && error.message ? error.message : "Failed to load upload limits." });
+		return;
+	}
 	const uploadLimits = {
-		maxQueueItems: parseQueueLimit(dropzone && dropzone.getAttribute("data-upload-max-queue-items"), 300),
+		maxQueueItems: parseQueueLimit(rawLimits && rawLimits.maxQueueItems, 300),
 	};
 	const uploadPolicy = {
-		partConcurrency: parsePositiveInt(dropzone && dropzone.getAttribute("data-upload-part-concurrency"), 3),
+		partConcurrency: parsePositiveInt(rawLimits && rawLimits.partConcurrency, 3),
 	};
 	const runner = getUploadService({ limits: uploadLimits, policy: uploadPolicy });
 	window.uploadRunner = uploadService;
