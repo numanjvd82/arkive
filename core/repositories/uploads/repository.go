@@ -2,6 +2,7 @@ package uploadrepo
 
 import (
 	"context"
+	"time"
 
 	"arkive/core/database"
 	"arkive/core/models"
@@ -78,6 +79,19 @@ func (r *Repository) UpdateUploadSessionStatus(ctx context.Context, db database.
 	WHERE
 		id = $1`
 	_, err := db.Exec(ctx, query, uploadSessionID, status)
+	return err
+}
+
+func (r *Repository) TouchUploadSession(ctx context.Context, db database.PgExecutor, uploadSessionID, status string, expiresAt time.Time) error {
+	query := `UPDATE
+		upload_sessions
+	SET
+		status = $2,
+		expires_at = $3,
+		updated_at = now()
+	WHERE
+		id = $1`
+	_, err := db.Exec(ctx, query, uploadSessionID, status, expiresAt)
 	return err
 }
 

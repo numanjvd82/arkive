@@ -78,7 +78,7 @@ func main() {
 		usersrepo.New(),
 		storageProvider,
 		uploads.Config{
-			UploadExpires:       15 * time.Minute,
+			UploadExpires:       time.Duration(settingssvc.DefaultUploadSettings().StaleUploadHours) * time.Hour,
 			DownloadExpire:      3 * time.Hour,
 			ShareDownloadExpire: 30 * time.Minute,
 		})

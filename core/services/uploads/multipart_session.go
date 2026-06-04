@@ -271,7 +271,7 @@ func (s *Service) PresignMultipartUploadPart(ctx context.Context, userID, upload
 		return "", ErrInvalidInput
 	}
 
-	if err := s.uploadRepo.UpdateUploadSessionStatus(ctx, s.db, uploadSessionID, UploadStatusActive); err != nil {
+	if err := s.uploadRepo.TouchUploadSession(ctx, s.db, uploadSessionID, UploadStatusActive, time.Now().Add(s.uploadExpiry(ctx))); err != nil {
 		return "", err
 	}
 	objectKey, err := storage.BuildObjectKey(userID, uploadSession.FileID)
@@ -309,7 +309,7 @@ func (s *Service) PresignMultipartUploadParts(ctx context.Context, userID, uploa
 		return nil, ErrUploadCancelled
 	}
 
-	if err := s.uploadRepo.UpdateUploadSessionStatus(ctx, s.db, uploadSessionID, UploadStatusActive); err != nil {
+	if err := s.uploadRepo.TouchUploadSession(ctx, s.db, uploadSessionID, UploadStatusActive, time.Now().Add(s.uploadExpiry(ctx))); err != nil {
 		return nil, err
 	}
 	objectKey, err := storage.BuildObjectKey(userID, uploadSession.FileID)
@@ -364,6 +364,9 @@ func (s *Service) RecordMultipartUploadPart(ctx context.Context, userID, uploadS
 	}
 	if uploadSession.Status != UploadStatusActive || isExpired(&uploadSession.ExpiresAt) {
 		return ErrUploadCancelled
+	}
+	if err := s.uploadRepo.TouchUploadSession(ctx, s.db, uploadSessionID, UploadStatusActive, time.Now().Add(s.uploadExpiry(ctx))); err != nil {
+		return err
 	}
 
 	encryptedHash, err := base64.StdEncoding.DecodeString(strings.TrimSpace(input.EncryptedHash))
@@ -700,7 +703,7 @@ func (s *Service) PresignThumbnailUpload(ctx context.Context, userID, uploadSess
 	if uploadSession.Status != UploadStatusActive || isExpired(&uploadSession.ExpiresAt) {
 		return "", ErrUploadCancelled
 	}
-	if err := s.uploadRepo.UpdateUploadSessionStatus(ctx, s.db, uploadSessionID, UploadStatusActive); err != nil {
+	if err := s.uploadRepo.TouchUploadSession(ctx, s.db, uploadSessionID, UploadStatusActive, time.Now().Add(s.uploadExpiry(ctx))); err != nil {
 		return "", err
 	}
 
