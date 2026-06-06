@@ -500,10 +500,6 @@ func (s *Service) DeleteEntries(ctx context.Context, input DeleteEntriesInput) (
 		return DeleteEntriesResult{}, err
 	}
 
-	if len(deletedFiles) > 0 {
-		s.filesSvc.CleanupDeletedFiles(ctx, userID, deletedFiles)
-	}
-
 	return DeleteEntriesResult{
 		DeletedFiles:   len(deletedFiles),
 		DeletedFolders: deletedFolders,

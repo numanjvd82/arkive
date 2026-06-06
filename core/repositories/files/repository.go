@@ -80,7 +80,8 @@ func (r *Repository) GetEncryptedFileForUser(ctx context.Context, db database.Pg
 	FROM
 		files
 	WHERE
-		id = $1 AND user_id = $2`
+		id = $1 AND user_id = $2
+		AND deleted_at IS NULL`
 	if err := db.QueryRow(ctx, query, fileID, userID).Scan(
 		&file.ID,
 		&file.UserID,
@@ -136,7 +137,8 @@ func (r *Repository) GetEncryptedFileRecordForUser(ctx context.Context, db datab
 	FROM
 		files
 	WHERE
-		id = $1 AND user_id = $2`
+		id = $1 AND user_id = $2
+		AND deleted_at IS NULL`
 	if err := db.QueryRow(ctx, query, fileID, userID).Scan(
 		&file.ID,
 		&file.UserID,
@@ -221,6 +223,7 @@ func (r *Repository) CountInFlightForUser(ctx context.Context, db database.PgExe
 	WHERE
 		files.user_id = $1
 		AND files.upload_status IN ('pending', 'uploading')
+		AND files.deleted_at IS NULL
 		AND upload_sessions.status = 'active'
 		AND upload_sessions.expires_at > now()`
 	if err := db.QueryRow(ctx, query, userID).Scan(&total); err != nil {
@@ -238,7 +241,8 @@ func (r *Repository) CountArchivedFilesForUser(ctx context.Context, db database.
 	WHERE
 		user_id = $1
 		AND upload_status = 'complete'
-		AND expires_at IS NOT NULL`
+		AND expires_at IS NOT NULL
+		AND deleted_at IS NULL`
 	if err := db.QueryRow(ctx, query, userID).Scan(&total); err != nil {
 		return 0, err
 	}
@@ -256,7 +260,8 @@ func (r *Repository) GetFileByID(ctx context.Context, db database.PgExecutor, fi
 	FROM
 		files
 	WHERE
-		id = $1`
+		id = $1
+		AND deleted_at IS NULL`
 	if err := db.QueryRow(ctx, query, fileID).Scan(
 		&file.ID,
 		&file.UserID,
@@ -298,7 +303,8 @@ func (r *Repository) GetFileForUser(ctx context.Context, db database.PgExecutor,
 	FROM
 		files
 	WHERE
-		id = $1 AND user_id = $2`
+		id = $1 AND user_id = $2
+		AND deleted_at IS NULL`
 	if err := db.QueryRow(ctx, query, fileID, userID).Scan(
 		&file.ID,
 		&file.UserID,
@@ -346,6 +352,7 @@ func (r *Repository) ListCompletedForUser(ctx context.Context, db database.PgExe
 		user_id = $1
 		AND upload_status = 'complete'
 		AND expires_at IS NULL
+		AND deleted_at IS NULL
 	ORDER BY updated_at DESC
 	LIMIT $2 OFFSET $3`
 	rows, err := db.Query(ctx, query, userID, pageSize, offset)
@@ -396,7 +403,8 @@ func (r *Repository) CountCompletedForUser(ctx context.Context, db database.PgEx
 	WHERE
 		user_id = $1
 		AND upload_status = 'complete'
-		AND expires_at IS NULL`
+		AND expires_at IS NULL
+		AND deleted_at IS NULL`
 	var count int
 	if err := db.QueryRow(ctx, query, userID).Scan(&count); err != nil {
 		return 0, err
@@ -413,6 +421,7 @@ func (r *Repository) CountByFolder(ctx context.Context, db database.PgExecutor, 
 		user_id = $1
 		AND upload_status = 'complete'
 		AND expires_at IS NULL
+		AND deleted_at IS NULL
 		AND (
 			($2::uuid IS NULL AND folder_id IS NULL)
 			OR folder_id = $2
@@ -434,6 +443,7 @@ func (r *Repository) ListByFolder(ctx context.Context, db database.PgExecutor, u
 		user_id = $1
 		AND upload_status = 'complete'
 		AND expires_at IS NULL
+		AND deleted_at IS NULL
 		AND (
 			($2::uuid IS NULL AND folder_id IS NULL)
 			OR folder_id = $2
@@ -489,7 +499,8 @@ func (r *Repository) MoveFilesToFolder(ctx context.Context, db database.PgExecut
 		user_id = $1
 		AND id = ANY($2::uuid[])
 		AND upload_status = 'complete'
-		AND expires_at IS NULL`
+		AND expires_at IS NULL
+		AND deleted_at IS NULL`
 	tag, err := db.Exec(ctx, query, userID, fileIDs, targetFolderID)
 	if err != nil {
 		return 0, err
@@ -506,7 +517,8 @@ func (r *Repository) RenameFileForUser(ctx context.Context, db database.PgExecut
 		id = $1
 		AND user_id = $2
 		AND upload_status = 'complete'
-		AND expires_at IS NULL`
+		AND expires_at IS NULL
+		AND deleted_at IS NULL`
 	tag, err := db.Exec(ctx, query, fileID, userID, encryptedMetadata)
 	if err != nil {
 		return false, err
@@ -515,10 +527,14 @@ func (r *Repository) RenameFileForUser(ctx context.Context, db database.PgExecut
 }
 
 func (r *Repository) DeleteFileForUser(ctx context.Context, db database.PgExecutor, fileID, userID string) (bool, error) {
-	query := `DELETE FROM
-		files
+	query := `UPDATE files
+	SET
+		deleted_at = now(),
+		updated_at = now()
 	WHERE
-		id = $1 AND user_id = $2`
+		id = $1
+		AND user_id = $2
+		AND deleted_at IS NULL`
 	tag, err := db.Exec(ctx, query, fileID, userID)
 	if err != nil {
 		return false, err

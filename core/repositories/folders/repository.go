@@ -241,6 +241,7 @@ func (r *Repository) FileIDsInFolders(ctx context.Context, db database.PgExecuto
 	WHERE user_id = $1
 		AND upload_status = 'complete'
 		AND expires_at IS NULL
+		AND deleted_at IS NULL
 		AND folder_id = ANY($2::uuid[])`
 	rows, err := db.Query(ctx, query, userID, folderIDs)
 	if err != nil {

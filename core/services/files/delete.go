@@ -27,14 +27,12 @@ func (s *Service) DeleteFile(ctx context.Context, userID, fileID string) error {
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	files, err := s.DeleteFilesWithinTx(ctx, tx, userID, []string{fileID})
-	if err != nil {
+	if _, err := s.DeleteFilesWithinTx(ctx, tx, userID, []string{fileID}); err != nil {
 		return err
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return err
 	}
-	s.CleanupDeletedFiles(ctx, userID, files)
 	return nil
 }
 
@@ -65,7 +63,6 @@ func (s *Service) DeleteFiles(ctx context.Context, userID string, fileIDs []stri
 	if err := tx.Commit(ctx); err != nil {
 		return 0, err
 	}
-	s.CleanupDeletedFiles(ctx, userID, files)
 	return len(files), nil
 }
 

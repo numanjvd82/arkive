@@ -68,6 +68,7 @@ func (r *Repository) SearchCompletedForTokens(ctx context.Context, db database.P
 		AND fst.token_hash = ANY($3::bytea[])
 		AND f.upload_status = 'complete'
 		AND f.expires_at IS NULL
+		AND f.deleted_at IS NULL
 	GROUP BY
 		f.id
 	ORDER BY
