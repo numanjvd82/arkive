@@ -541,3 +541,56 @@ func (r *Repository) DeleteFileForUser(ctx context.Context, db database.PgExecut
 	}
 	return tag.RowsAffected() > 0, nil
 }
+
+func (r *Repository) ListDeletedPendingPurge(ctx context.Context, db database.PgExecutor, limit int) ([]models.File, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+	rows, err := db.Query(ctx, `SELECT
+		id,
+		user_id
+	FROM files
+	WHERE deleted_at IS NOT NULL
+		AND purged_at IS NULL
+	ORDER BY deleted_at ASC, id ASC
+	LIMIT $1`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	files := make([]models.File, 0, limit)
+	for rows.Next() {
+		var file models.File
+		if err := rows.Scan(
+			&file.ID,
+			&file.UserID,
+		); err != nil {
+			return nil, err
+		}
+		files = append(files, file)
+	}
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+	return files, nil
+}
+
+func (r *Repository) MarkFilesPurged(ctx context.Context, db database.PgExecutor, fileIDs []string) (int64, error) {
+	if len(fileIDs) == 0 {
+		return 0, nil
+	}
+	query := `UPDATE files
+	SET
+		purged_at = now(),
+		updated_at = now()
+	WHERE
+		id = ANY($1::uuid[])
+		AND deleted_at IS NOT NULL
+		AND purged_at IS NULL`
+	tag, err := db.Exec(ctx, query, fileIDs)
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
+}

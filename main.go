@@ -21,6 +21,7 @@ import (
 	"arkive/core/services/storageprovider"
 	"arkive/core/services/uploads"
 	"arkive/migrations"
+	"arkive/pkg/jobs"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -67,6 +68,11 @@ func main() {
 			ShareDownloadExpire: 30 * time.Minute,
 		},
 	)
+	deletedFileCleanupCron, err := jobs.StartDeletedFileCleanup(filesService)
+	if err != nil {
+		log.Fatalf("deleted file cleanup cron failed: %v", err)
+	}
+	defer deletedFileCleanupCron.Stop()
 
 	uploadService := uploads.NewService(
 		db,
