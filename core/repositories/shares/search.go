@@ -43,6 +43,7 @@ func (r *Repository) SearchSharesForUser(ctx context.Context, db database.PgExec
 		files f ON f.id = ssf.file_id
 	WHERE
 		sl.owner_user_id = $1
+		AND f.deleted_at IS NULL
 		AND (
 			f.id::text ILIKE $2
 			OR sl.token ILIKE $2

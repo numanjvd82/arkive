@@ -25,5 +25,8 @@ type File struct {
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
 	ExpiresAt           *time.Time
+	DeletedAt           *time.Time
+	PurgedAt            *time.Time
+	TombstonePurgedAt   *time.Time
 	SearchScore         int64
 }

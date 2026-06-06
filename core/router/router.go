@@ -12,6 +12,7 @@ import (
 	sessionrepo "arkive/core/repositories/session"
 	settingsrepo "arkive/core/repositories/settings"
 	sharerepo "arkive/core/repositories/shares"
+	syncrepo "arkive/core/repositories/sync"
 	usersrepo "arkive/core/repositories/users"
 	"arkive/core/services/auth"
 	filessvc "arkive/core/services/files"
@@ -19,6 +20,7 @@ import (
 	settingssvc "arkive/core/services/settings"
 	"arkive/core/services/setup"
 	"arkive/core/services/shares"
+	syncsvc "arkive/core/services/sync"
 	"arkive/core/services/uploads"
 	"arkive/core/web"
 	"arkive/pkg/storage/localclient"
@@ -40,6 +42,7 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 	settingsService := settingssvc.NewService(db, settingsRepo)
 	setupService := setup.NewService(db, authRepo, usersRepo, settingsRepo)
 	shareService := shares.NewService(db, filerepo.New(), sharerepo.New())
+	syncService := syncsvc.NewService(db, syncrepo.New())
 
 	r.StaticFS("/static", web.StaticFS("static"))
 	r.StaticFS("/web/pages", web.StaticFS("pages"))
@@ -131,6 +134,12 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 		apiFolders.POST("/entries/delete", handlers.APIDeleteEntries(folderService))
 		apiFolders.POST("/entries/move", handlers.APIMoveEntries(folderService))
 		apiFolders.POST("/entries/rename", handlers.APIRenameEntry(folderService, filesService))
+	}
+
+	apiSync := api.Group("/sync")
+	apiSync.Use(middleware.RequireSessionJSON(authService))
+	{
+		apiSync.GET("/entries", handlers.APIListSyncEntries(syncService))
 	}
 
 	r.NoRoute(handlers.WebNotFound())

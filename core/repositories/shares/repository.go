@@ -161,8 +161,11 @@ func (r *Repository) GetShareByToken(ctx context.Context, db database.PgExecutor
 		share_items si ON si.share_link_id = sl.id
 	JOIN
 		share_snapshot_files ssf ON ssf.share_item_id = si.id
+	JOIN
+		files f ON f.id = ssf.file_id
 	WHERE
 		sl.token = $1
+		AND f.deleted_at IS NULL
 	ORDER BY
 		ssf.display_order ASC
 	LIMIT 1`
@@ -201,8 +204,11 @@ func (r *Repository) GetShareForFile(ctx context.Context, db database.PgExecutor
 		share_items si ON si.share_link_id = sl.id
 	JOIN
 		share_snapshot_files ssf ON ssf.share_item_id = si.id
+	JOIN
+		files f ON f.id = ssf.file_id
 	WHERE
 		ssf.file_id = $1
+		AND f.deleted_at IS NULL
 	ORDER BY
 		ssf.display_order ASC
 	LIMIT 1`
@@ -241,8 +247,11 @@ func (r *Repository) GetShareForFileForUser(ctx context.Context, db database.PgE
 		share_items si ON si.share_link_id = sl.id
 	JOIN
 		share_snapshot_files ssf ON ssf.share_item_id = si.id
+	JOIN
+		files f ON f.id = ssf.file_id
 	WHERE
 		ssf.file_id = $1 AND sl.owner_user_id = $2
+		AND f.deleted_at IS NULL
 	ORDER BY
 		ssf.display_order ASC
 	LIMIT 1`
@@ -281,8 +290,11 @@ func (r *Repository) GetShareForUser(ctx context.Context, db database.PgExecutor
 		share_items si ON si.share_link_id = sl.id
 	JOIN
 		share_snapshot_files ssf ON ssf.share_item_id = si.id
+	JOIN
+		files f ON f.id = ssf.file_id
 	WHERE
 		sl.id = $1 AND sl.owner_user_id = $2
+		AND f.deleted_at IS NULL
 	ORDER BY
 		ssf.display_order ASC
 	LIMIT 1`
@@ -473,6 +485,14 @@ func (r *Repository) ConsumeShareByToken(ctx context.Context, db database.PgExec
 	  AND burn_after_read = true
 	  AND max_access_count IS NOT NULL
 	  AND access_count < max_access_count
+	  AND EXISTS (
+		SELECT 1
+		FROM share_items si
+		JOIN share_snapshot_files ssf ON ssf.share_item_id = si.id
+		JOIN files f ON f.id = ssf.file_id
+		WHERE si.share_link_id = share_links.id
+		  AND f.deleted_at IS NULL
+	  )
 	RETURNING
 	  id, owner_user_id, token, encrypted_share_key, allow_preview, allow_download, burn_after_read,
 	  access_count, max_access_count, password_hash, expires_at, status, revoked_at, consumed_at, created_at, updated_at`
@@ -533,6 +553,7 @@ func (r *Repository) ListSharesForUser(ctx context.Context, db database.PgExecut
 		files f ON f.id = ssf.file_id
 	WHERE
 		sl.owner_user_id = $1
+		AND f.deleted_at IS NULL
 	ORDER BY
 		sl.created_at DESC`, ownerUserID)
 	if err != nil {
@@ -601,6 +622,7 @@ func (r *Repository) GetPublicShareRecord(ctx context.Context, db database.PgExe
 		files f ON f.id = ssf.file_id
 	WHERE
 		sl.token = $1
+		AND f.deleted_at IS NULL
 	ORDER BY
 		ssf.display_order ASC
 	LIMIT 1`
