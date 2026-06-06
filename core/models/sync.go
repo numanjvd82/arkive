@@ -2,8 +2,18 @@ package models
 
 import "time"
 
+type ListEntriesPageInput struct {
+	UserID         string
+	FolderID       *string
+	IncludeDeleted bool
+	Cursor         *SyncEntriesCursor
+	Limit          int
+}
+
 type SyncEntriesResponse struct {
-	Entries []SyncEntry `json:"entries"`
+	Entries    []SyncEntry `json:"entries"`
+	NextCursor *string     `json:"next_cursor"`
+	HasMore    bool        `json:"has_more"`
 }
 
 type SyncEntry struct {
@@ -18,4 +28,10 @@ type SyncEntry struct {
 	UpdatedAt         time.Time  `json:"updated_at"`
 	DeletedAt         *time.Time `json:"deleted_at"`
 	PurgedAt          *time.Time `json:"purged_at,omitempty"`
+}
+
+type SyncEntriesCursor struct {
+	UpdatedAt time.Time
+	Type      string
+	ID        string
 }

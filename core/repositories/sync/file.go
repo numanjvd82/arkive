@@ -27,6 +27,132 @@ func (r *Repository) FolderExistsForUser(ctx context.Context, db database.PgExec
 	return exists, nil
 }
 
+func (r *Repository) ListEntriesPage(ctx context.Context, db database.PgExecutor, input models.ListEntriesPageInput) ([]models.SyncEntry, error) {
+	cursorUpdatedAt := any(nil)
+	cursorTypeOrder := any(nil)
+	cursorID := any(nil)
+
+	if input.Cursor != nil {
+		cursorUpdatedAt = input.Cursor.UpdatedAt
+		cursorID = input.Cursor.ID
+		switch input.Cursor.Type {
+		case "folder":
+			cursorTypeOrder = 0
+		case "file":
+			cursorTypeOrder = 1
+		default:
+			cursorTypeOrder = nil
+		}
+	}
+
+	query := `WITH entries AS (
+		SELECT
+			0 AS entry_type_order,
+			'folder' AS entry_type,
+			id,
+			NULL::uuid AS folder_id,
+			parent_folder_id,
+			encrypted_metadata,
+			NULL::bytea AS encrypted_file_key,
+			NULL::bytea AS encrypted_manifest,
+			encrypted_name,
+			updated_at,
+			deleted_at,
+			NULL::timestamptz AS purged_at
+		FROM folders
+		WHERE user_id = $1
+			AND (
+				($2::uuid IS NULL AND parent_folder_id IS NULL)
+				OR parent_folder_id = $2
+			)
+			AND ($3::boolean OR deleted_at IS NULL)
+
+		UNION ALL
+
+		SELECT
+			1 AS entry_type_order,
+			'file' AS entry_type,
+			id,
+			folder_id,
+			NULL::uuid AS parent_folder_id,
+			encrypted_metadata,
+			encrypted_file_key,
+			encrypted_manifest,
+			NULL::bytea AS encrypted_name,
+			updated_at,
+			deleted_at,
+			purged_at
+		FROM files
+		WHERE user_id = $1
+			AND upload_status = 'complete'
+			AND expires_at IS NULL
+			AND (
+				($2::uuid IS NULL AND folder_id IS NULL)
+				OR folder_id = $2
+			)
+			AND ($3::boolean OR deleted_at IS NULL)
+	)
+	SELECT
+		entry_type,
+		id::text,
+		folder_id::text,
+		parent_folder_id::text,
+		encrypted_metadata,
+		encrypted_file_key,
+		encrypted_manifest,
+		encrypted_name,
+		updated_at,
+		deleted_at,
+		purged_at
+	FROM entries
+	WHERE
+		$4::timestamptz IS NULL
+		OR updated_at < $4
+		OR (updated_at = $4 AND entry_type_order > $5)
+		OR (updated_at = $4 AND entry_type_order = $5 AND id > $6::uuid)
+	ORDER BY updated_at DESC, entry_type_order ASC, id ASC
+	LIMIT $7`
+
+	rows, err := db.Query(ctx, query,
+		input.UserID,
+		input.FolderID,
+		input.IncludeDeleted,
+		cursorUpdatedAt,
+		cursorTypeOrder,
+		cursorID,
+		input.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	entries := make([]models.SyncEntry, 0)
+	for rows.Next() {
+		var entry models.SyncEntry
+		if err := rows.Scan(
+			&entry.Type,
+			&entry.ID,
+			&entry.FolderID,
+			&entry.ParentFolderID,
+			&entry.EncryptedMetadata,
+			&entry.EncryptedFileKey,
+			&entry.EncryptedManifest,
+			&entry.EncryptedName,
+			&entry.UpdatedAt,
+			&entry.DeletedAt,
+			&entry.PurgedAt,
+		); err != nil {
+			return nil, err
+		}
+		entries = append(entries, entry)
+	}
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+	return entries, nil
+}
+
 func (r *Repository) ListFilesByFolder(ctx context.Context, db database.PgExecutor, userID string, folderID *string, includeDeleted bool) ([]models.File, error) {
 	query := `SELECT
 		id,
