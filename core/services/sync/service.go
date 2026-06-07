@@ -92,15 +92,19 @@ func (s *Service) ListEntries(ctx context.Context, input models.ListEntriesPageI
 
 	entries := make([]models.SyncEntry, 0, len(rows))
 	for _, row := range rows {
+		encryptedMetaDataBytes := encodeSyncBytes([]byte(row.EncryptedMetadata))
+		encryptedFileKeyBytes := []byte(row.EncryptedFileKey)
+		encryptedManifestBytes := []byte(row.EncryptedManifest)
+		encryptedNameBytes := []byte(row.EncryptedName)
 		entries = append(entries, models.SyncEntry{
 			Type:              row.Type,
 			ID:                row.ID,
 			FolderID:          row.FolderID,
 			ParentFolderID:    row.ParentFolderID,
-			EncryptedMetadata: encodeSyncBytes([]byte(row.EncryptedMetadata)),
-			EncryptedFileKey:  encodeSyncBytes([]byte(row.EncryptedFileKey)),
-			EncryptedManifest: encodeSyncBytes([]byte(row.EncryptedManifest)),
-			EncryptedName:     encodeSyncBytes([]byte(row.EncryptedName)),
+			EncryptedMetadata: encryptedMetaDataBytes,
+			EncryptedFileKey:  encodeSyncBytes(encryptedFileKeyBytes),
+			EncryptedManifest: encodeSyncBytes(encryptedManifestBytes),
+			EncryptedName:     encodeSyncBytes(encryptedNameBytes),
 			UpdatedAt:         row.UpdatedAt,
 			DeletedAt:         row.DeletedAt,
 			PurgedAt:          row.PurgedAt,

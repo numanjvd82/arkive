@@ -130,21 +130,29 @@ func (r *Repository) ListEntriesPage(ctx context.Context, db database.PgExecutor
 	entries := make([]models.SyncEntry, 0)
 	for rows.Next() {
 		var entry models.SyncEntry
+		var encryptedMetadata []byte
+		var encryptedFileKey []byte
+		var encryptedManifest []byte
+		var encryptedName []byte
 		if err := rows.Scan(
 			&entry.Type,
 			&entry.ID,
 			&entry.FolderID,
 			&entry.ParentFolderID,
-			&entry.EncryptedMetadata,
-			&entry.EncryptedFileKey,
-			&entry.EncryptedManifest,
-			&entry.EncryptedName,
+			&encryptedMetadata,
+			&encryptedFileKey,
+			&encryptedManifest,
+			&encryptedName,
 			&entry.UpdatedAt,
 			&entry.DeletedAt,
 			&entry.PurgedAt,
 		); err != nil {
 			return nil, err
 		}
+		entry.EncryptedMetadata = string(encryptedMetadata)
+		entry.EncryptedFileKey = string(encryptedFileKey)
+		entry.EncryptedManifest = string(encryptedManifest)
+		entry.EncryptedName = string(encryptedName)
 		entries = append(entries, entry)
 	}
 	if rows.Err() != nil {
