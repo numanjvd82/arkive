@@ -316,13 +316,12 @@ Important architectural rules:
 - [x] Sharing
 - [x] Search
 - [x] Vault lock and re-unlock flow
-
+- [x] BYOS (Supports any S3 compatible Storage)
 ### Planned
 
-- [ ] Native sync engine
-- [ ] Desktop applications
+- [ ] Native sync engine (Under Active Development)
+- [ ] Desktop applications (Under Active Development)
 - [ ] Mobile applications
-- [ ] Additional storage providers
 - [ ] File versioning
 - [ ] Offline support
 
