@@ -23,7 +23,7 @@ Arkive Core is designed to provide modern cloud storage functionality while pres
 - Recovery keys
 - Password reset and master-key rewrapping
 - Zero-knowledge share links
-- Privacy-preserving search
+- Privacy-preserving trigram search
 
 ### Storage
 
@@ -41,7 +41,7 @@ Arkive Core is designed to provide modern cloud storage functionality while pres
 - Move, rename, and delete
 - Folder hierarchy
 - Grid and list views
-- Encrypted search
+- Encrypted trigram search
 
 ### Sharing
 
@@ -83,7 +83,7 @@ Browser
  ├─ Vault unlock
  ├─ Encrypt files
  ├─ Encrypt metadata
- ├─ Generate search tokens
+ ├─ Generate trigram search tokens
  └─ Decrypt content
           │
           ▼
@@ -104,7 +104,9 @@ The backend never receives plaintext file names, folder names, manifests, thumbn
 
 Arkive supports encrypted file and folder search.
 
-Search tokens are derived client-side from the unlocked vault and sent to the server as blind lookup tokens. The server never receives plaintext search terms.
+Search tokens are derived client-side from the unlocked vault as 3-character trigrams, then sent to the server as blind lookup tokens. The server never receives plaintext search terms or plaintext filenames.
+
+The backend matches all query trigrams against the indexed tokens, which gives substring-style search behavior while keeping names private.
 
 Like most searchable-encryption systems, token equality patterns may be observable, but plaintext names and search queries remain hidden.
 

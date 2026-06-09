@@ -256,43 +256,30 @@ function normalizeText(value) {
     .trim();
 }
 
-function termsForFile(metadata) {
-  const name = normalizeText(metadata && metadata.name);
-  const mime = normalizeText(metadata && metadata.mime);
-  const ext = name.includes(".") ? name.split(".").pop() : "";
-  const words = name.replace(/\./g, " ").split(/\s+/).filter(Boolean);
-  const terms = [];
+function normalizeSearchText(value) {
+  return normalizeText(value).replace(/\s+/g, " ").trim();
+}
 
-  words.forEach(function(word) {
-    terms.push({ term: word, field: "name", weight: 10 });
-    if (word.length >= 3) {
-      for (let i = 3; i <= Math.min(word.length, 32); i += 1) {
-        terms.push({ term: word.slice(0, i), field: "prefix", weight: 1 });
-      }
-    }
+function trigramsForText(value) {
+  const normalized = normalizeSearchText(value);
+  const terms = [];
+  if (normalized.length < 3) {
+    return terms;
+  }
+  for (let i = 0; i <= normalized.length - 3; i += 1) {
+    terms.push(normalized.slice(i, i + 3));
+  }
+  return Array.from(new Set(terms));
+}
+
+function termsForFile(metadata) {
+  return trigramsForText(metadata && metadata.name).map(function(term) {
+    return { term: term, field: "name", weight: 10 };
   });
-  if (ext) {
-    terms.push({ term: ext, field: "ext", weight: 4 });
-  }
-  if (mime) {
-    terms.push({ term: mime, field: "mime", weight: 2 });
-  }
-  return terms;
 }
 
 function termsForQuery(query) {
-  const normalized = normalizeText(query).replace(/\./g, " ");
-  const words = normalized.split(/\s+/).filter(Boolean);
-  const terms = [];
-  words.forEach(function(word) {
-    terms.push(word);
-    if (word.length >= 3) {
-      for (let i = 3; i <= Math.min(word.length, 32); i += 1) {
-        terms.push(word.slice(0, i));
-      }
-    }
-  });
-  return Array.from(new Set(terms)).slice(0, 32);
+  return trigramsForText(query).slice(0, 32);
 }
 
 export function getSessionUnlock() {

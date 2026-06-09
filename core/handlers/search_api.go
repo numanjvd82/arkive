@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/base64"
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -133,10 +132,6 @@ func mapEncryptedFolderResults(folders []models.Folder) []encryptedSearchFolderR
 func mapEncryptedFileResults(files []models.File) []encryptedSearchFileResult {
 	results := make([]encryptedSearchFileResult, 0, len(files))
 	for _, file := range files {
-		url := "/api/files/" + file.ID + "/download"
-		if isSearchPreviewable(file.UploadStatus) {
-			url = "/files/" + file.ID + "/view"
-		}
 		results = append(results, encryptedSearchFileResult{
 			ID:                file.ID,
 			Kind:              "file",
@@ -144,12 +139,8 @@ func mapEncryptedFileResults(files []models.File) []encryptedSearchFileResult {
 			EncryptedMetadata: base64.StdEncoding.EncodeToString(file.EncryptedMetadata),
 			EncryptedFileKey:  base64.StdEncoding.EncodeToString(file.EncryptedFileKey),
 			Score:             file.SearchScore,
-			URL:               url,
+			URL:               "/files/" + file.ID + "/view",
 		})
 	}
 	return results
-}
-
-func isSearchPreviewable(status string) bool {
-	return strings.TrimSpace(status) == "complete"
 }

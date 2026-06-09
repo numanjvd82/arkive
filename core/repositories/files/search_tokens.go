@@ -71,6 +71,8 @@ func (r *Repository) SearchCompletedForTokens(ctx context.Context, db database.P
 		AND f.deleted_at IS NULL
 	GROUP BY
 		f.id
+	HAVING
+		COUNT(DISTINCT fst.token_hash) = cardinality($3::bytea[])
 	ORDER BY
 		score DESC,
 		f.updated_at DESC

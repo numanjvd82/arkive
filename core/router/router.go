@@ -44,6 +44,7 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 	shareService := shares.NewService(db, filerepo.New(), sharerepo.New())
 	syncService := syncsvc.NewService(db, syncrepo.New())
 
+	// Static assets or page: public
 	r.StaticFS("/static", web.StaticFS("static"))
 	r.StaticFS("/web/pages", web.StaticFS("pages"))
 	r.GET("/sw.js", handlers.ServiceWorkerJS())
@@ -62,6 +63,8 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 	r.GET("/login", handlers.WebLoginGet(authService, setupService))
 	r.GET("/forgot-password", handlers.WebForgotPasswordGet(authService, setupService))
 	r.GET("/reset-password", handlers.WebResetPasswordGet(authService, setupService))
+
+	// Protected
 	protected := r.Group("/")
 	protected.Use(middleware.RequireSessionRedirect(authService))
 	protected.GET("/lock", handlers.WebLockGet())
@@ -76,6 +79,7 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 	protected.POST("/settings/previews", handlers.WebSettingsPreviewPost(settingsService))
 	protected.POST("/logout", handlers.WebLogout(authService))
 
+	// Public api endpoints
 	api := r.Group("/api")
 	{
 		api.POST("/auth/login", handlers.APILogin(authService))
@@ -110,8 +114,6 @@ func New(db database.PgPool, cfg config.Config, uploadService *uploads.Service, 
 		apiFiles.GET("/:id/record", handlers.APIFileRecord(filesService))
 		apiFiles.GET("/:id/thumbnail", handlers.APIThumbnailRedirect(filesService))
 		apiFiles.GET("/:id/share", handlers.APIGetShareForFile(shareService))
-		apiFiles.GET("/:id/download", handlers.APIDownloadFile(filesService))
-		apiFiles.GET("/:id/media", handlers.APIMediaRedirect(filesService))
 		apiFiles.POST("/:id/share", handlers.APICreateShare(shareService))
 	}
 

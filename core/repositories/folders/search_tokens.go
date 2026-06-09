@@ -56,6 +56,8 @@ func (r *Repository) SearchFoldersForTokens(ctx context.Context, db database.PgE
 		AND f.deleted_at IS NULL
 	GROUP BY
 		f.id
+	HAVING
+		COUNT(DISTINCT fst.token_hash) = cardinality($3::bytea[])
 	ORDER BY
 		score DESC,
 		f.updated_at DESC
